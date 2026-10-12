@@ -1,0 +1,6 @@
+{
+  "name": "squadra",
+  "description": "Squadra coordination skill for coding windows and independent reviews.",
+  "owner": {"name": "Stefano D'Agostino"},
+  "plugins": [{"name": "squadra", "source": "."}]
+}

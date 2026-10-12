@@ -1,0 +1,842 @@
+{
+ "agents": {
+  "A": {
+   "client": "claude",
+   "id": "A",
+   "identity": "author",
+   "model": "",
+   "repo": "/synthetic/repo",
+   "role": "builder",
+   "session": "",
+   "skills": [],
+   "updated": "2026-10-10T07:51:13.950927+00:00"
+  },
+  "A2": {
+   "client": "claude",
+   "id": "A2",
+   "identity": "author",
+   "model": "",
+   "repo": "/synthetic/repo",
+   "role": "builder",
+   "session": "",
+   "skills": [],
+   "updated": "2026-10-10T07:51:13.951306+00:00"
+  },
+  "C": {
+   "client": "codex",
+   "id": "C",
+   "identity": "coord",
+   "model": "",
+   "repo": "/synthetic/repo",
+   "role": "coordinator",
+   "session": "",
+   "skills": [],
+   "updated": "2026-10-10T07:51:13.950732+00:00"
+  },
+  "R": {
+   "client": "codex",
+   "id": "R",
+   "identity": "outside",
+   "model": "",
+   "repo": "/synthetic/repo",
+   "role": "reviewer",
+   "session": "",
+   "skills": [],
+   "updated": "2026-10-10T07:51:13.951088+00:00"
+  }
+ },
+ "asks": {
+  "Q1": {
+   "actor": "C",
+   "evidence": [
+    {
+     "bytes": 10,
+     "name": "evidence.md",
+     "original": "/synthetic/evidence.md",
+     "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+    }
+   ],
+   "id": "Q1",
+   "options": [
+    {
+     "id": "A",
+     "label": "Continue",
+     "say": "Continue within scope"
+    },
+    {
+     "id": "B",
+     "label": "Stop",
+     "say": "Stop"
+    }
+   ],
+   "question": "Continue?",
+   "recommended": "A",
+   "resolution": {
+    "actor": "C",
+    "answers": "Q1",
+    "channel": "typed-here",
+    "choice": "A",
+    "owner_words": "Continua pure",
+    "reason": "Owner chose",
+    "utc": "2026-10-10T07:51:13.961808+00:00"
+   },
+   "status": "answered",
+   "task": "T",
+   "utc": "2026-10-10T07:51:13.961316+00:00",
+   "waiting": [
+    "A"
+   ]
+  },
+  "Q2": {
+   "actor": "C",
+   "evidence": [],
+   "id": "Q2",
+   "options": [
+    {
+     "id": "A",
+     "label": "Continue",
+     "say": "Continue within scope"
+    },
+    {
+     "id": "B",
+     "label": "Stop",
+     "say": "Stop"
+    }
+   ],
+   "question": "Obsolete?",
+   "recommended": null,
+   "resolution": {
+    "actor": "C",
+    "reason": "No longer relevant",
+    "utc": "2026-10-10T07:51:13.962809+00:00",
+    "withdraws": "Q2"
+   },
+   "status": "withdrawn",
+   "task": null,
+   "utc": "2026-10-10T07:51:13.962296+00:00",
+   "waiting": []
+  },
+  "Q3": {
+   "actor": "C",
+   "evidence": [],
+   "id": "Q3",
+   "options": [
+    {
+     "id": "A",
+     "label": "Continue",
+     "say": "Continue within scope"
+    },
+    {
+     "id": "B",
+     "label": "Stop",
+     "say": "Stop"
+    }
+   ],
+   "question": "Still open?",
+   "recommended": null,
+   "status": "open",
+   "task": "T3",
+   "utc": "2026-10-10T07:51:13.964331+00:00",
+   "waiting": [
+    "A"
+   ]
+  }
+ },
+ "benchmarks": [
+  {
+   "actor": "C",
+   "artifacts": [],
+   "command": "bench-run",
+   "status": "completed",
+   "utc": "2026-10-10T07:51:13.970557+00:00"
+  }
+ ],
+ "challenges": [
+  {
+   "actor": "R",
+   "artifacts": [],
+   "status": "matched",
+   "utc": "2026-10-10T07:51:13.969870+00:00"
+  }
+ ],
+ "decisions": [
+  {
+   "actor": "C",
+   "answers": "Q1",
+   "channel": "typed-here",
+   "choice": "A",
+   "owner_words": "Continua pure",
+   "reason": "Owner chose",
+   "utc": "2026-10-10T07:51:13.961808+00:00"
+  },
+  {
+   "actor": "C",
+   "reason": "No longer relevant",
+   "utc": "2026-10-10T07:51:13.962809+00:00",
+   "withdraws": "Q2"
+  },
+  {
+   "actor": "C",
+   "owner_words": "Fermati su T2",
+   "reason": "Owner instruction without a registered question",
+   "utc": "2026-10-10T07:51:13.963324+00:00"
+  },
+  {
+   "actor": "C",
+   "reason": "Coordinator keeps the scope",
+   "utc": "2026-10-10T07:51:13.963830+00:00"
+  }
+ ],
+ "event_count": 63,
+ "legacy": {
+  "/synthetic/old": {
+   "files": [
+    {
+     "bytes": 10,
+     "name": "stato.md",
+     "original": "/synthetic/stato.md",
+     "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+   ],
+   "notice": "Historical snapshot only",
+   "path": "/synthetic/old",
+   "trust": "reported-unverified",
+   "utc": "2026-10-10T07:51:13.967393+00:00"
+  }
+ },
+ "messages": {
+  "assign-T": {
+   "ack": {
+    "agent": "A",
+    "utc": "2026-10-10T07:51:13.952684+00:00"
+   },
+   "body": "Assignment T",
+   "from": "C",
+   "id": "assign-T",
+   "task": "T",
+   "to": "A",
+   "utc": "2026-10-10T07:51:13.951555+00:00"
+  },
+  "assign-T2": {
+   "ack": null,
+   "body": "Assignment T2",
+   "from": "C",
+   "id": "assign-T2",
+   "task": "T2",
+   "to": "A",
+   "utc": "2026-10-10T07:51:13.951798+00:00"
+  },
+  "assign-T3": {
+   "ack": {
+    "agent": "A",
+    "utc": "2026-10-10T07:51:13.971828+00:00"
+   },
+   "body": "Assignment T3",
+   "from": "C",
+   "id": "assign-T3",
+   "task": "T3",
+   "to": "A",
+   "utc": "2026-10-10T07:51:13.952163+00:00"
+  },
+  "assign-T4": {
+   "ack": null,
+   "body": "Assignment T4",
+   "from": "C",
+   "id": "assign-T4",
+   "task": "T4",
+   "to": "A2",
+   "utc": "2026-10-10T07:51:13.952441+00:00"
+  },
+  "awaited-1": {
+   "ack": null,
+   "awaited": true,
+   "body": "Read",
+   "from": "C",
+   "id": "awaited-1",
+   "reply_to": null,
+   "to": "Newcomer",
+   "utc": "2026-10-10T07:51:13.977233+00:00"
+  },
+  "note-1": {
+   "ack": null,
+   "body": "<b>please</b> fix",
+   "from": "C",
+   "id": "note-1",
+   "related_task": "T",
+   "reply_to": null,
+   "to": "A",
+   "transport": {
+    "delivered": false,
+    "message": "note-1",
+    "via": "manual"
+   },
+   "utc": "2026-10-10T07:51:13.956754+00:00"
+  }
+ },
+ "outputs": [
+  {
+   "agent": "A",
+   "artifacts": [],
+   "event": "b741d3ec115046909c7a9309ac3f706d",
+   "next": "Prova sul candidato",
+   "task": "T",
+   "text": "Built the first part\nmore",
+   "utc": "2026-10-10T07:51:13.966152+00:00"
+  },
+  {
+   "agent": "C",
+   "artifacts": [
+    {
+     "bytes": 10,
+     "name": "note.md",
+     "original": "/synthetic/note.md",
+     "sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+    }
+   ],
+   "event": "d1411818dcab4757af42b27da1828c28",
+   "next": "Nothing",
+   "task": null,
+   "text": "Area note",
+   "utc": "2026-10-10T07:51:13.966793+00:00"
+  }
+ ],
+ "paused": true,
+ "resources": {},
+ "restores": [
+  {
+   "actor": "C",
+   "result": {
+    "bytes": 10,
+    "name": "RESTORE-RESULT.json",
+    "original": "/synthetic/RESTORE-RESULT.json",
+    "sha256": "4444444444444444444444444444444444444444444444444444444444444444"
+   },
+   "utc": "2026-10-10T07:51:13.969215+00:00"
+  }
+ ],
+ "runs": {
+  "p1": {
+   "after": {
+    "files": [],
+    "head": "cccccccccccccccccccccccccccccccccccccccc",
+    "repo": "/synthetic/repo",
+    "sha256": "6666666666666666666666666666666666666666666666666666666666666666"
+   },
+   "agent": "A",
+   "argv": [
+    "python3",
+    "-m",
+    "unittest"
+   ],
+   "artifacts": [
+    {
+     "bytes": 10,
+     "name": "p1-stdout.log",
+     "original": "/synthetic/p1-stdout.log",
+     "sha256": "7777777777777777777777777777777777777777777777777777777777777777"
+    }
+   ],
+   "covers": [],
+   "error": "Native command exit differs from expected result",
+   "heartbeat": "2026-10-10T07:51:13.954620+00:00",
+   "id": "p1",
+   "mode": "proof",
+   "native_rc": 1,
+   "seconds": 1.5,
+   "status": "failed",
+   "task": "T",
+   "utc": "2026-10-10T07:51:13.954317+00:00"
+  },
+  "p2": {
+   "after": {
+    "files": [],
+    "head": "dddddddddddddddddddddddddddddddddddddddd",
+    "repo": "/synthetic/repo",
+    "sha256": "8888888888888888888888888888888888888888888888888888888888888888"
+   },
+   "agent": "A",
+   "argv": [
+    "python3",
+    "-m",
+    "unittest"
+   ],
+   "artifacts": [
+    {
+     "bytes": 10,
+     "name": "p2-stdout.log",
+     "original": "/synthetic/p2-stdout.log",
+     "sha256": "9999999999999999999999999999999999999999999999999999999999999999"
+    }
+   ],
+   "counts": {
+    "passed": 12
+   },
+   "covers": [],
+   "id": "p2",
+   "mode": "proof",
+   "native_rc": 0,
+   "seconds": 2.0,
+   "status": "passed",
+   "task": "T",
+   "utc": "2026-10-10T07:51:13.955318+00:00"
+  },
+  "p3": {
+   "after": {
+    "files": [],
+    "head": "dddddddddddddddddddddddddddddddddddddddd",
+    "repo": "/synthetic/repo",
+    "sha256": "8888888888888888888888888888888888888888888888888888888888888888"
+   },
+   "agent": "A",
+   "argv": [
+    "python3"
+   ],
+   "artifacts": [],
+   "cancel_requested": true,
+   "covers": [],
+   "id": "p3",
+   "mode": "proof",
+   "native_rc": -15,
+   "status": "interrupted",
+   "task": "T",
+   "utc": "2026-10-10T07:51:13.958370+00:00"
+  },
+  "p4": {
+   "after": {
+    "files": [],
+    "head": "dddddddddddddddddddddddddddddddddddddddd",
+    "repo": "/synthetic/repo",
+    "sha256": "8888888888888888888888888888888888888888888888888888888888888888"
+   },
+   "agent": "A",
+   "argv": [
+    "python3"
+   ],
+   "artifacts": [],
+   "cleanup": "not verified",
+   "covers": [],
+   "id": "p4",
+   "mode": "proof",
+   "native_rc": 0,
+   "status": "cleanup-unknown",
+   "task": "T",
+   "utc": "2026-10-10T07:51:13.960314+00:00"
+  },
+  "p5": {
+   "after": {
+    "files": [],
+    "head": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "repo": "/synthetic/repo",
+    "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+   },
+   "agent": "A",
+   "argv": [
+    "python3"
+   ],
+   "artifacts": [],
+   "covers": [],
+   "id": "p5",
+   "mode": "proof",
+   "native_rc": 0,
+   "status": "passed",
+   "task": "T3",
+   "utc": "2026-10-10T07:51:13.973109+00:00"
+  },
+  "p6": {
+   "agent": "A",
+   "argv": [
+    "python3"
+   ],
+   "covers": [],
+   "id": "p6",
+   "mode": "proof",
+   "status": "running",
+   "task": "T",
+   "utc": "2026-10-10T07:51:13.976486+00:00"
+  }
+ },
+ "saves": [
+  {
+   "actor": "C",
+   "manifest": {
+    "bytes": 10,
+    "name": "MANIFEST.json",
+    "original": "/synthetic/MANIFEST.json",
+    "sha256": "3333333333333333333333333333333333333333333333333333333333333333"
+   },
+   "path": "/synthetic/save",
+   "utc": "2026-10-10T07:51:13.968627+00:00"
+  }
+ ],
+ "tasks": {
+  "T": {
+   "authors": [
+    "A"
+   ],
+   "base": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+   "candidate": {
+    "files": [],
+    "head": "dddddddddddddddddddddddddddddddddddddddd",
+    "repo": "/synthetic/repo",
+    "sha256": "8888888888888888888888888888888888888888888888888888888888888888"
+   },
+   "coordinator": "C",
+   "delivered_utc": "2026-10-10T07:51:13.956026+00:00",
+   "delivery": {
+    "snapshot": {
+     "files": [],
+     "head": "dddddddddddddddddddddddddddddddddddddddd",
+     "repo": "/synthetic/repo",
+     "sha256": "8888888888888888888888888888888888888888888888888888888888888888"
+    },
+    "task": "T"
+   },
+   "depends": [],
+   "expected": null,
+   "full_gate": false,
+   "id": "T",
+   "owner": "A",
+   "plan": {
+    "bytes": 10,
+    "name": "plan-2.md",
+    "original": "/synthetic/plan-2.md",
+    "sha256": "2222222222222222222222222222222222222222222222222222222222222222"
+   },
+   "proof": null,
+   "proofs": [
+    {
+     "after": {
+      "files": [],
+      "head": "cccccccccccccccccccccccccccccccccccccccc",
+      "repo": "/synthetic/repo",
+      "sha256": "6666666666666666666666666666666666666666666666666666666666666666"
+     },
+     "agent": "A",
+     "argv": [
+      "python3",
+      "-m",
+      "unittest"
+     ],
+     "artifacts": [
+      {
+       "bytes": 10,
+       "name": "p1-stdout.log",
+       "original": "/synthetic/p1-stdout.log",
+       "sha256": "7777777777777777777777777777777777777777777777777777777777777777"
+      }
+     ],
+     "covers": [],
+     "error": "Native command exit differs from expected result",
+     "heartbeat": "2026-10-10T07:51:13.954620+00:00",
+     "id": "p1",
+     "mode": "proof",
+     "native_rc": 1,
+     "seconds": 1.5,
+     "status": "failed",
+     "task": "T",
+     "utc": "2026-10-10T07:51:13.954317+00:00"
+    },
+    {
+     "after": {
+      "files": [],
+      "head": "dddddddddddddddddddddddddddddddddddddddd",
+      "repo": "/synthetic/repo",
+      "sha256": "8888888888888888888888888888888888888888888888888888888888888888"
+     },
+     "agent": "A",
+     "argv": [
+      "python3",
+      "-m",
+      "unittest"
+     ],
+     "artifacts": [
+      {
+       "bytes": 10,
+       "name": "p2-stdout.log",
+       "original": "/synthetic/p2-stdout.log",
+       "sha256": "9999999999999999999999999999999999999999999999999999999999999999"
+      }
+     ],
+     "counts": {
+      "passed": 12
+     },
+     "covers": [],
+     "id": "p2",
+     "mode": "proof",
+     "native_rc": 0,
+     "seconds": 2.0,
+     "status": "passed",
+     "task": "T",
+     "utc": "2026-10-10T07:51:13.955318+00:00"
+    },
+    {
+     "after": {
+      "files": [],
+      "head": "dddddddddddddddddddddddddddddddddddddddd",
+      "repo": "/synthetic/repo",
+      "sha256": "8888888888888888888888888888888888888888888888888888888888888888"
+     },
+     "agent": "A",
+     "argv": [
+      "python3"
+     ],
+     "artifacts": [],
+     "cancel_requested": true,
+     "covers": [],
+     "id": "p3",
+     "mode": "proof",
+     "native_rc": -15,
+     "status": "interrupted",
+     "task": "T",
+     "utc": "2026-10-10T07:51:13.958370+00:00"
+    },
+    {
+     "after": {
+      "files": [],
+      "head": "dddddddddddddddddddddddddddddddddddddddd",
+      "repo": "/synthetic/repo",
+      "sha256": "8888888888888888888888888888888888888888888888888888888888888888"
+     },
+     "agent": "A",
+     "argv": [
+      "python3"
+     ],
+     "artifacts": [],
+     "cleanup": "not verified",
+     "covers": [],
+     "id": "p4",
+     "mode": "proof",
+     "native_rc": 0,
+     "status": "cleanup-unknown",
+     "task": "T",
+     "utc": "2026-10-10T07:51:13.960314+00:00"
+    }
+   ],
+   "repo": "/synthetic/repo",
+   "requirements": [],
+   "reviewer": null,
+   "reviews": [
+    {
+     "binding": "1111111111111111111111111111111111111111111111111111111111111111",
+     "covers": [],
+     "report": {
+      "bytes": 10,
+      "name": "plan-read-1.md",
+      "original": "/synthetic/plan-read-1.md",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+     },
+     "reviewer": "R",
+     "stage": "plan",
+     "task": "T",
+     "utc": "2026-10-10T07:51:13.953190+00:00",
+     "verdict": "changes-required"
+    },
+    {
+     "binding": "2222222222222222222222222222222222222222222222222222222222222222",
+     "covers": [],
+     "report": {
+      "bytes": 10,
+      "name": "plan-read-2.md",
+      "original": "/synthetic/plan-read-2.md",
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+     },
+     "reviewer": "R",
+     "stage": "plan",
+     "task": "T",
+     "utc": "2026-10-10T07:51:13.953736+00:00",
+     "verdict": "accepted"
+    },
+    {
+     "binding": "8888888888888888888888888888888888888888888888888888888888888888",
+     "covers": [],
+     "report": {
+      "bytes": 10,
+      "name": "code-read-1.md",
+      "original": "/synthetic/code-read-1.md",
+      "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+     },
+     "reviewer": "R",
+     "stage": "code",
+     "task": "T",
+     "utc": "2026-10-10T07:51:13.956392+00:00",
+     "verdict": "changes-required"
+    }
+   ],
+   "rounds": {
+    "code": 1,
+    "plan": 2
+   },
+   "scope": {
+    "bytes": 10,
+    "name": "scope-T.md",
+    "original": "/synthetic/scope-T.md",
+    "sha256": "5555555555555555555555555555555555555555555555555555555555555555"
+   },
+   "status": "changes-required",
+   "status_utc": "2026-10-10T07:51:13.956392+00:00",
+   "title": "Task T"
+  },
+  "T2": {
+   "authors": [
+    "A"
+   ],
+   "base": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+   "coordinator": "C",
+   "depends": [
+    "T"
+   ],
+   "expected": null,
+   "full_gate": false,
+   "id": "T2",
+   "owner": "A",
+   "proof": null,
+   "proofs": [],
+   "repo": "/synthetic/repo",
+   "requirements": [],
+   "reviewer": null,
+   "reviews": [],
+   "rounds": {
+    "code": 0,
+    "plan": 0
+   },
+   "scope": {
+    "bytes": 10,
+    "name": "scope-T2.md",
+    "original": "/synthetic/scope-T2.md",
+    "sha256": "5555555555555555555555555555555555555555555555555555555555555555"
+   },
+   "status": "waiting-ack",
+   "status_utc": "2026-10-10T07:51:13.951766+00:00",
+   "title": "Task T2"
+  },
+  "T3": {
+   "authors": [
+    "A"
+   ],
+   "base": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+   "candidate": {
+    "files": [],
+    "head": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "repo": "/synthetic/repo",
+    "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+   },
+   "coordinator": "C",
+   "delivered_utc": "2026-10-10T07:51:13.974430+00:00",
+   "delivery": {
+    "snapshot": {
+     "files": [],
+     "head": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+     "repo": "/synthetic/repo",
+     "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+    },
+    "task": "T3"
+   },
+   "depends": [],
+   "expected": null,
+   "full_gate": false,
+   "id": "T3",
+   "owner": "A",
+   "proof": null,
+   "proofs": [
+    {
+     "after": {
+      "files": [],
+      "head": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "repo": "/synthetic/repo",
+      "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+     },
+     "agent": "A",
+     "argv": [
+      "python3"
+     ],
+     "artifacts": [],
+     "covers": [],
+     "id": "p5",
+     "mode": "proof",
+     "native_rc": 0,
+     "status": "passed",
+     "task": "T3",
+     "utc": "2026-10-10T07:51:13.973109+00:00"
+    }
+   ],
+   "repo": "/synthetic/repo",
+   "requirements": [],
+   "reviewer": null,
+   "reviews": [
+    {
+     "binding": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+     "covers": [],
+     "report": {
+      "bytes": 10,
+      "name": "code-read-3.md",
+      "original": "/synthetic/code-read-3.md",
+      "sha256": "2222222222222222222222222222222222222222222222222222222222222222"
+     },
+     "reviewer": "R",
+     "stage": "code",
+     "task": "T3",
+     "utc": "2026-10-10T07:51:13.975121+00:00",
+     "verdict": "accepted"
+    }
+   ],
+   "rounds": {
+    "code": 1,
+    "plan": 0
+   },
+   "scope": {
+    "bytes": 10,
+    "name": "scope-T3.md",
+    "original": "/synthetic/scope-T3.md",
+    "sha256": "5555555555555555555555555555555555555555555555555555555555555555"
+   },
+   "status": "done",
+   "status_utc": "2026-10-10T07:51:13.975791+00:00",
+   "title": "Task T3"
+  },
+  "T4": {
+   "authors": [
+    "A2"
+   ],
+   "base": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+   "coordinator": "C",
+   "depends": [],
+   "expected": null,
+   "full_gate": false,
+   "id": "T4",
+   "owner": "A2",
+   "proof": null,
+   "proofs": [],
+   "repo": "/synthetic/repo",
+   "requirements": [],
+   "reviewer": null,
+   "reviews": [],
+   "rounds": {
+    "code": 0,
+    "plan": 0
+   },
+   "scope": {
+    "bytes": 10,
+    "name": "scope-T4.md",
+    "original": "/synthetic/scope-T4.md",
+    "sha256": "5555555555555555555555555555555555555555555555555555555555555555"
+   },
+   "status": "waiting-ack",
+   "status_utc": "2026-10-10T07:51:13.952417+00:00",
+   "title": "Task T4"
+  }
+ },
+ "workspace": {
+  "limits": {
+   "build": 3,
+   "code": 2,
+   "plan": 3
+  },
+  "name": "Replay fixture",
+  "project": "/synthetic/project",
+  "temporary": true,
+  "version": "3.0.0",
+  "wait_seconds": {
+   "ack": 600
+  }
+ }
+}
