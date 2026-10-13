@@ -152,6 +152,13 @@ def execute(store, actor, task_id, argv=None, mode="proof", prompt=None,
         path = Path(task["plan"]["original"])
         require(path.is_file() and digest(path.read_bytes()) == task["plan"]["sha256"], "Original plan changed; re-register/review it")
     before = snapshot(task["repo"], store.root)
+    route_record = {}
+    if task.get("contract") or task.get("route") == "light":
+        from light_route import check_contract, measure
+        check_contract(task)
+        route_record["contract"] = task["contract"]
+        if mode == "proof" and task["route"] == "light":
+            route_record["light"] = measure(task, before)
     run_id = run_id or uuid.uuid4().hex
     folder = store.root / "runs" / run_id
     folder.mkdir(parents=True, mode=0o700, exist_ok=False)
@@ -173,7 +180,7 @@ def execute(store, actor, task_id, argv=None, mode="proof", prompt=None,
         require(mode == "probe" or not task.get("proof") or argv == task["proof"], "Proof command differs from agreed task contract")
     record = {"id": run_id, "task": task_id, "mode": mode, "argv": argv,
               "before": before, "gate": gate, "timeout": timeout, "folder": str(folder), "stage": stage,
-              "expected_rc": expected_rc, "requested_model": agent.get("model"), "covers": covers or []}
+              "expected_rc": expected_rc, "requested_model": agent.get("model"), "covers": covers or [], **route_record}
     store.append("run.start", actor, record, "run-start:" + run_id)
     store.project()
     result = {"id": run_id, "status": "failed", "native_rc": None, "started": now()}

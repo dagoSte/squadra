@@ -788,6 +788,7 @@ const CORE={
  "story.plan":{it:"{who} ha scritto il piano, versione {n}",en:"{who} wrote the plan, version {n}"},
  "story.planRead":{it:"{who} ha letto il piano: {verdict}",en:"{who} read the plan: {verdict}"},
  "story.build":{it:"{who} ha avviato la costruzione",en:"{who} started building"},
+ "story.routeFull":{it:"Passaggio al percorso completo: servono una nuova prova e una lettura indipendente",en:"Moved to the full route: a fresh proof and independent read are required"},
  "story.proof":{it:"Prova di {who}: {result}",en:"Proof by {who}: {result}"},
  "story.delivery":{it:"{who} ha consegnato la versione da leggere",en:"{who} delivered the version to read"},
  "story.codeRead":{it:"{who} ha letto il codice: {verdict}",en:"{who} read the code: {verdict}"},
@@ -2365,6 +2366,7 @@ function panelStory(t){
  if(brief?.utc)add('brief',brief.utc,null,tr('story.brief',{who:who(brief.actor)}));
  const build=(state.progress?.[id]?.steps||[]).find(s=>s.id==='build'&&s.reached);
  if(build)add('build',build.utc,null,tr('story.build',{who:who(t.owner)}));
+ for(const [i,r] of (t.route_history||[]).entries())if(r.route==='full')add('route:'+i,r.utc,null,tr('story.routeFull'));
  for(const m of Object.values(state.messages||{}).filter(m=>m.task===id||m.related_task===id)){
   const assigned=m.task===id;
   add('m:'+m.id,m.utc,null,assigned?tr('story.assigned',{who:who(m.from),to:who(m.to)}):tr('story.message',{who:who(m.from),to:who(m.to),text:m.body}),{tech:tr('table.mail.tech',{id:m.id,from:m.from,to:m.to})});

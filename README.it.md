@@ -724,10 +724,22 @@ Vedi [i contratti di sfide e confronti](references/benchmark.md).
 
 Scrivi sempre attraverso la CLI, mai nei file generati. `export` rigenera le viste, `status` mostra incarichi, richieste per il proprietario e attese, e `doctor` controlla catena e artefatti e segnala ACK in sospeso o esecuzioni incerte. L'integrità non è una prova che le affermazioni siano vere, né un'autenticazione crittografica delle identità. `legacy --actor coord --path /old/packet` importa i record come **copie storiche non verificate**, senza toccare gli originali, creare incarichi o ACK, o concedere un'accettazione.
 
+### Piccole modifiche: il percorso leggero
+
+Il coordinatore può dichiarare `task --route light` per una modifica circoscritta e reversibile, dopo il consueto triage a domande. La policy **light-v1 / P2** ammette al massimo **80 righe aggiunte più cancellate in quattro file**, dalla base Git originaria pulita, inclusi test e documenti. Sostituire una riga conta due; un commit durante l'incarico non azzera il conteggio. File binari, symlink, cambi di tipo/modo, base mancante, sorgenti instabili e modifiche vuote sono rifiutati. Niente compressione per rientrare.
+
+P2 ammette Markdown descrittivo in docs/references, README IT/EN, test e `assets/dashboard.html`. Script, bundle plugin, configurazioni client/CI/build/dipendenze, file d'istruzioni e contratti normativi restano protetti; anche i percorsi sconosciuti sono protetti. Le esclusioni esatte sono nel [metodo](references/work.md#light-route). Impatti di sicurezza o gate completi obbligatori richiedono il percorso completo: dimensione e percorsi non danno permessi.
+
+Il percorso leggero salta la lettura del piano e usa la prova mirata concordata invece della suite intera; consente un solo giro di lettura del codice. Restano lettore non autore, ACK di incarico/passaggio, binding esatti a sorgenti e contratto, risultati nativi, copertura esplicita dei requisiti, pause, riserve, budget e prove richieste. Non cambiano le letture finali del rilascio né la parola del proprietario digitata per pubblicare. Esempio: il fix del refresh stabile modificava **23 righe aggiunte/cancellate in due file**, compreso il test; poteva usare i sei test del caricamento, conservando la misura browser richiesta.
+
+Il registro rimisura prima del processo di prova, alla consegna, al check e alla chiusura, anche nelle scritture dirette Store. Un eccesso o percorso protetto produce un codice `light_*` e “Full route required”; anche una seconda lettura leggera è rifiutata. Solo il coordinatore promuove con `route --full --scope-file ... --proof-file ... --reason ...` (e `--full-gate` o `--expected` quando richiesti). La promozione conserva base, autori, storia e contatori spesi, invalida i vecchi binding di prova/lettura e non si può invertire. Non azzera budget esauriti.
+
+Gli incarichi senza route conservano il comportamento precedente. Una squadra congelata deve coordinare esplicitamente l'aggiornamento di **tutti gli scrittori** prima di registrare incarichi leggeri; installare la release non la migra. Le vecchie CLI ignorano i nuovi metadati: nessuna promessa di enforcement tra versioni miste. Policy future sconosciute restano leggibili ma non possono qualificare il lavoro.
+
 <a id="commands"></a>
 ## Comandi di squadra
 
-Ogni comando, raggruppato per scopo: **45 sottocomandi**, più `--version`. Usa `squadra <comando> --help` per le opzioni; i comandi del registro accettano `--root` o `SQUADRA_ROOT`. «Solo il coordinatore» segna ciò che solo il coordinatore può registrare: `task`, `supersede`, `brief`, `close`, `ask`, `decision`, `settings`, `pause`, `resume`, `save`, `standby`, `ping --sweep`, e la ricevuta che `restore-check` scrive nel registro vivo. Senza installare, gli stessi comandi girano come `python3 -B scripts/squadra.py <comando>`.
+Ogni comando, raggruppato per scopo: **46 sottocomandi**, più `--version`. Usa `squadra <comando> --help` per le opzioni; i comandi del registro accettano `--root` o `SQUADRA_ROOT`. «Solo il coordinatore» segna ciò che solo il coordinatore può registrare: `task`, `route`, `supersede`, `brief`, `close`, `ask`, `decision`, `settings`, `pause`, `resume`, `save`, `standby`, `ping --sweep`, e la ricevuta che `restore-check` scrive nel registro vivo. Senza installare, gli stessi comandi girano come `python3 -B scripts/squadra.py <comando>`.
 
 ### Avvio e squadra
 
@@ -746,6 +758,7 @@ Ogni comando, raggruppato per scopo: **45 sottocomandi**, più `--version`. Usa 
 | Comando | Cosa fa |
 |---|---|
 | `task` | Solo il coordinatore: assegna un incarico: responsabile, lettore, checkout, perimetro, prova, requisiti, dipendenze; `--supersedes` sostituisce un incarico aperto. |
+| `route` | Solo coordinatore: promuove con `--full`, conservando base/storia/budget; nuove prova e lettura. |
 | `supersede` | Solo il coordinatore: registra dopo che un incarico esistente e più recente sostituisce uno aperto, con lo stesso effetto di `--supersedes`. |
 | `brief` | Solo il coordinatore: descrive in parole semplici il progetto (`brief --project`) o un incarico (`brief --task ID`), da un file UTF-8 di al massimo 8192 byte. |
 | `plan` | Registra un piano prima della costruzione, da far leggere a un non autore. |

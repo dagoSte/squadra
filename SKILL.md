@@ -181,6 +181,21 @@ For the dashboard plugins' data and declared settings read [folders, schemas and
   and the concrete question; do not restart with an alias or an identical task to reset
   the counter. A budget decision must be explicit and recorded; a narrow corrective
   reread also consumes the same budget, and no new cycle starts.
+- For a small, reversible change after the same triage, the coordinator may declare
+  `task --route light`: **light-v1, at most 80 added+deleted lines in 4 files, P2**.
+  All operational scripts, security, instruction and normative contract paths stay
+  protected; unknown paths refuse. Counts include tests/docs from the original
+  clean base, not the latest commit. No plan read, agreed targeted proof, one code
+  read; independence, ACKs, native/source/contract binding, covers, required domain
+  evidence, pauses, resources, budgets, final release reads and typed publication
+  consent remain. The registry rechecks at proof/delivery/check/close, also inside
+  Store. Outside limits or after a rejected read, use coordinator-only `route --full`:
+  keep base/history/counters, invalidate old bindings, require new proof/read; no
+  reverse or budget reset. The steady refresh example counted 23 lines in 2 files,
+  so its six targeted loading tests could replace the suite, but its browser check
+  stayed required. See [exact policy, refusals and promotion](references/work.md#light-route).
+  Frozen squads must explicitly upgrade every writer first; old CLI versions ignore
+  this metadata, so no mixed-version enforcement claim or automatic migration.
 - The builder runs `prove` on frozen code and delivers with `deliver`. The command
   keeps argv, stdout/stderr, the native result and the fingerprint of tracked and
   untracked sources. A later change invalidates the proof and the review. Choose the

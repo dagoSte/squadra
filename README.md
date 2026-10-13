@@ -719,10 +719,22 @@ See [challenge and benchmark contracts](references/benchmark.md).
 
 Always write through the CLI, never into the generated files. `export` regenerates the projections, `status` shows tasks, input and waits, and `doctor` checks the chain and the artifacts and reports pending ACKs or uncertain runs. Integrity is not proof that claims are true, nor cryptographic authentication of identities. `legacy --actor coord --path /old/packet` imports records as **historical, unverified copies**, never touching the originals, creating tasks or ACKs, or granting acceptance.
 
+### Small changes: the light route
+
+The coordinator may declare `task --route light` for a bounded, reversible change after the usual questions. Policy **light-v1 / P2** allows at most **80 added plus deleted lines in four files**, counted from the original clean Git base, including tests and documents. Replacing one line counts as two; commits during the task do not reset the count. Binary files, symlinks, type/mode changes, missing bases, unstable snapshots and empty changes refuse. No compression to qualify.
+
+P2 admits descriptive Markdown under docs/references, README EN/IT, tests and `assets/dashboard.html`. All scripts, plugin bundles, client/CI/build/dependency files, instruction files and normative contracts stay protected; unknown paths are protected too. The exact exclusions are in [the workflow](references/work.md#light-route). A security impact or required whole gate still takes the full route: size and paths never grant permission.
+
+The light route skips a plan read and uses the agreed targeted proof instead of a whole suite; it allows one code-read round. A non-author reader, assignment/handoff ACKs, exact source and contract bindings, native results, explicit requirement coverage, pauses, reservations, budgets and required evidence remain. Release final reads and the owner's typed publication permission do not change. Example: the steady refresh fix changed **23 added/deleted lines in two files** including its test; it could use the six loading-contract tests, while its required browser measurement remains.
+
+The registry remeasures before a proof process, on delivery, check and close, including direct Store writes. An excess or protected path refuses with a `light_*` code and “Full route required”; a second light read is refused too. Only the coordinator can promote with `route --full --scope-file ... --proof-file ... --reason ...` (and `--full-gate` or `--expected` when required). Promotion keeps the base, authors, history and spent counters, invalidates old proof/read bindings, and has no reverse. It cannot reset an exhausted budget.
+
+Existing tasks without a route keep their behavior. A frozen squad must explicitly coordinate an upgrade of **every writer** before registering light tasks; installing this release does not migrate it. Older CLIs ignore this new metadata: mixed-version enforcement is not promised. Unknown future policies remain readable but cannot qualify work.
+
 <a id="commands"></a>
 ## Squadra commands
 
-Every command, grouped by purpose: **45 subcommands**, plus `--version`. Use `squadra <command> --help` for the flags; registry commands accept `--root` or `SQUADRA_ROOT`. «Coordinator only» marks what only the coordinator can record: `task`, `supersede`, `brief`, `close`, `ask`, `decision`, `settings`, `pause`, `resume`, `save`, `standby`, `ping --sweep`, and the receipt that `restore-check` writes into the live registry. Without installing, the same commands run as `python3 -B scripts/squadra.py <command>`.
+Every command, grouped by purpose: **46 subcommands**, plus `--version`. Use `squadra <command> --help` for the flags; registry commands accept `--root` or `SQUADRA_ROOT`. «Coordinator only» marks what only the coordinator can record: `task`, `route`, `supersede`, `brief`, `close`, `ask`, `decision`, `settings`, `pause`, `resume`, `save`, `standby`, `ping --sweep`, and the receipt that `restore-check` writes into the live registry. Without installing, the same commands run as `python3 -B scripts/squadra.py <command>`.
 
 ### Start and team
 
@@ -741,6 +753,7 @@ Every command, grouped by purpose: **45 subcommands**, plus `--version`. Use `sq
 | Command | What it does |
 |---|---|
 | `task` | Coordinator only: assign a task: owner, reviewer, checkout, scope, proof, requirements, dependencies; `--supersedes` replaces an open task. |
+| `route` | Coordinator only: promote with `--full`, keeping the base/history/budgets; new proof and read. |
 | `supersede` | Coordinator only: record afterwards that an existing, later task replaces an open one, with the same effect as `--supersedes`. |
 | `brief` | Coordinator only: describe the project (`brief --project`) or a task (`brief --task ID`) in plain words, from a UTF-8 file of at most 8192 bytes. |
 | `plan` | Record a plan before building, to be read by a non-author. |

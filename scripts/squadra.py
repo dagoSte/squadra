@@ -11,7 +11,8 @@ import tempfile
 import uuid
 
 from registry import (Store, Error, VERSION, BRIEF_BYTES, REFERENCE_KINDS, canonical, digest, require, snapshot, table, board, now,
-                      git, waits, requirement_matrix, presence, standby, latest_ping, return_ping)
+                      git, waits, requirement_matrix, presence, standby, latest_ping, return_ping,
+                      current_proofs, candidate_checks)
 
 
 def resolve_follows(state, values):
@@ -48,17 +49,12 @@ def bindings(store, task_id, require_review=True):
         require(Path(plan["original"]).is_file() and digest(Path(plan["original"]).read_bytes()) == plan["sha256"], "Plan drift")
         plans = [r for r in task["reviews"] if r["stage"] == "plan"]
         require(plans and plans[-1]["binding"] == plan["sha256"] and plans[-1]["verdict"] == "accepted", "Current plan review pending")
-    proof = [p for p in task["proofs"] if p["status"] == "passed" and p["after"] == current]
-    require(bool(proof), "No complete native proof on current candidate")
-    if task.get("full_gate"):
-        require(any(p.get("gate") for p in proof), "Required full gate not complete")
-    ids = {r["id"] for r in task.get("requirements", [])}
-    require(ids <= {i for p in proof for i in p.get("covers", [])}, "Requirement lacks native current proof")
-    if require_review:
-        reviews = [r for r in task["reviews"] if r["stage"] == "code"]
-        require(bool(reviews) and reviews[-1]["verdict"] == "accepted" and
-                reviews[-1]["binding"] == current["sha256"], "Independent current code review pending")
-        require(ids <= set(reviews[-1].get("covers", [])), "Requirement lacks independent current review")
+    if task.get("route") == "light" or task.get("contract"):
+        from light_route import check_contract, measure
+        check_contract(task)
+        if task["route"] == "light":
+            measure(task, current)
+    candidate_checks(task, current, require_review)
     return current
 
 
@@ -75,12 +71,22 @@ def deliver(store, actor, task_id, reconcile=False):
 
     operations = []
     data = {"task": task_id, "snapshot": current}
+    if task.get("contract"):
+        data["contract"] = task["contract"]
+        from light_route import check_contract, measure
+        check_contract(task)
+        if task["route"] == "light":
+            data["light"] = measure(task, current)
     reader = task.get("reviewer")
     if reader:
         packet = {"task": task_id, "candidate": current, "reviewer": reader, "base": task["base"],
                   "scope": task["scope"], "plan": task.get("plan"), "requirements": task.get("requirements", []),
-                  "proofs": [p for p in task["proofs"] if p["status"] == "passed" and p["after"] == current],
+                  "proofs": current_proofs(task, current),
                   "instructions": "ACK this exact message, read frozen candidate in an isolated copy, record independent verdict and limitations; never publish or edit the candidate."}
+        if task.get("contract"):
+            packet["contract"] = task["contract"]
+            if "light" in data:
+                packet["light"] = data["light"]
         if previous.get("handoff") and previous.get("packet_data") == packet:
             return {"handoff": previous["handoff"], "packet": previous["packet"], "already_delivered": True}
         require(actor == task["owner"], "Owner must reconcile changed/missing handoff; coordinator may inspect an identical existing packet")
@@ -126,7 +132,14 @@ def parser():
     a.add_argument("--expected", type=int); a.add_argument("--full-gate", action="store_true")
     a.add_argument("--depends", action="append", default=[])
     a.add_argument("--reviewer"); a.add_argument("--requirements-file")
+    a.add_argument("--route", choices=["full", "light"], default="full", help="Explicit light-v1 small-change contract; default full")
     a.add_argument("--supersedes", help="Existing open task this one replaces; its history stays")
+    a = sub.add_parser("route", help="Coordinator promotes light to full, retaining base, history and budgets")
+    a.add_argument("--actor", required=True); a.add_argument("--task", required=True)
+    a.add_argument("--full", action="store_true", required=True)
+    a.add_argument("--full-gate", action="store_true", help="Require a reserved whole gate on the full route")
+    a.add_argument("--scope-file", required=True); a.add_argument("--proof-file", required=True)
+    a.add_argument("--reason", required=True); a.add_argument("--expected", type=int, default=argparse.SUPPRESS)
     a = sub.add_parser("supersede", help="Coordinator records that an existing later task replaces an open one; history stays")
     a.add_argument("--actor", required=True); a.add_argument("--task", required=True, help="Open task being replaced")
     a.add_argument("--by", required=True, help="Existing task recorded after it"); a.add_argument("--reason", required=True)
@@ -240,11 +253,25 @@ def dispatch(a, store):
                 "scope": store.artifact(a.scope_file), "proof": proof, "expected": a.expected,
                 "full_gate": a.full_gate, "depends": a.depends, "reviewer": a.reviewer,
                 "requirements": json.loads(Path(a.requirements_file).read_text()) if a.requirements_file else []}
+        if a.route == "light":
+            from light_route import POLICY, contract
+            task.update(route="light", light_policy=dict(POLICY))
+            task["contract"] = contract(task)
         if a.supersedes is not None:
             task["supersedes"] = a.supersedes
         assignment = "assign-" + a.id
         store.batch([("task", actor, task, None), ("message", actor, {"id": assignment, "to": a.owner,
                      "task": a.id, "body": f"Assignment {a.id}: {a.title}\nBase {base['head']}\nScope {task['scope']['sha256']}\nACK required before starting."}, None)])
+    elif command == "route":
+        from light_route import contract
+        require(a.task in state["tasks"], "Unknown task")
+        task = state["tasks"][a.task]
+        data = {"task": a.task, "route": "full", "scope": store.artifact(a.scope_file),
+                "proof": json.loads(Path(a.proof_file).read_text()), "reason": a.reason, "full_gate": a.full_gate,
+                "expected": getattr(a, "expected", task.get("expected")),
+                "previous_contract": task.get("contract")}
+        data["contract"] = contract({**task, **data})
+        store.append("route", actor, data)
     elif command == "supersede":
         store.append("supersede", actor, {"task": a.task, "by": a.by, "reason": a.reason})
     elif command == "send":
@@ -351,7 +378,8 @@ def dispatch(a, store):
             current = bindings(store, a.task, require_review=False)
             binding = current["sha256"]
         store.append("review", actor, {"task": a.task, "stage": a.stage, "verdict": a.verdict,
-                     "binding": binding, "covers": a.covers, "report": store.artifact(a.report), **extra})
+                     "binding": binding, "covers": a.covers, "report": store.artifact(a.report), **extra,
+                     **({"contract": task["contract"]} if task.get("contract") else {})})
     elif command == "output":
         output = {"task": a.task, "text": Path(a.file).read_text(), "next": a.next,
                   "artifacts": [store.artifact(f) for f in a.artifact]}

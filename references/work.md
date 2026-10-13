@@ -409,3 +409,71 @@ Earlier registries can be read without migration. After new presence events,
 all writing windows must use the same updated version: an earlier CLI does not
 enforce the new constraints. This does not authorize installation or migration
 of an already active squad.
+
+<a id="light-route"></a>
+## Light route for a small change
+
+After the same question-based triage, the coordinator may use `task --route light`.
+The task must start at a clean Git base, with a nonempty scope, requirements,
+configured independent reader and exact proof argv. These form an immutable
+contract under **light-v1: 80 added plus deleted lines, 4 files, profile P2**.
+Equality is allowed; 81 lines or 5 files refuse. Tests, documentation, comments and
+whitespace count. Git raw Myers diff counts renames as deletion plus addition,
+without textconv, external diff or whitespace exemptions. Intermediate commits do
+not change the original base. There is no flag to enlarge these limits.
+
+P2 permits README.md/README.it.md, Markdown under docs/ or references/,
+tests/** and assets/dashboard.html, except the following protected names:
+all scripts/**, plugins/**, assets/vendor/**, client/CI directories
+(.github, .agents, .codex, .claude, .cursor, .claude-plugin, .codex-plugin),
+.gitignore/.gitattributes/.gitmodules, VERSION, pyproject.toml, requirements*.txt,
+*.lock, package-lock.json, pnpm-lock.yaml, yarn.lock, Makefile, package*.json,
+AGENTS.md/CLAUDE.md at any depth, SKILL.md,
+references/{work,start,runtime,recovery,plugins,plugin-authoring}.md and
+docs/plugin-authoring.it.md. Patterns match whole relative paths (`*` includes
+slashes), with NFC/case-folded comparison. Aliases/collisions, unknown paths,
+symlinks/submodules (including in the base), type/mode changes, non-UTF-8/binary
+changes, unavailable bases, unstable snapshots and no-op changes require full.
+
+No plan or plan read on light; use the agreed targeted proof and one code-read
+round. ACKs, non-author identity, native proof on unchanged exact bytes and the
+same contract, requirement covers, dependencies, pauses, resources and budgets
+remain. Required browser or other domain evidence remains too. The refreshed
+status example changed 23 added/deleted lines in two files including its test:
+`["python3","-B","-m","unittest","discover","-s","tests","-p","test_dashboard_loading.py","-v"]`
+would run its six targeted tests, but would not replace the required browser
+measurement. Release final reads and the owner's explicit typed publication
+permission never relax. No minification to qualify, and no path/size threshold
+replaces judgment about security or irreversible impact.
+
+The central validator remeasures before a proof process, at deliver, check and
+close, also for direct Store events; packets retain the verified measurement.
+Refusals use `light_lines_exceeded`, `light_files_exceeded`,
+`light_protected_path`, `light_unmeasurable`, `light_empty_change`,
+`light_contract_required`, `light_policy_unsupported`,
+`light_plan_requires_full` or `light_read_round_exhausted`, with a native nonzero
+exit and “Full route required”. No proof process or handoff follows a refusal.
+Both automated read starts and recorded code verdicts allow at most one round.
+A changes-required verdict stops light work; it is not another light fix cycle.
+
+Only the coordinator may promote an open light task:
+
+```sh
+squadra route --actor coord --task T1 --full --scope-file /evidence/full-scope.md --proof-file /evidence/full-proof.json --reason "Broader impact"
+```
+
+Use `--full-gate` if that scope requires a reserved gate; `--expected` updates an
+agreed collection count (otherwise the count is retained). Promotion keeps base,
+authors, all old proofs/reads and spent counters. It changes the contract, clears
+current delivery/plan, and requires fresh proof and independent read; the normal
+triage determines whether a new plan is needed. There is no demotion. Exhausted
+budgets still stop work; neither promotion nor a fresh equivalent task can reset
+them. Exact same-base/scope/proof/requirements aliases with spent budgets refuse;
+semantic disguises are still the coordinator's responsibility, not a classifier.
+
+No-route tasks and historical projections keep their existing behavior. Unknown
+future light policies are readable but cannot qualify work. A frozen squad must
+coordinate every writer's explicit upgrade before opting in: older CLI versions
+ignore new route metadata, so mixed-version enforcement is not supported. No
+launcher, installation or workspace version is changed automatically. The change
+that implements this protocol itself takes the full route and full suite.
