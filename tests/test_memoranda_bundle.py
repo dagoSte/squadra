@@ -1,5 +1,6 @@
 """Public Store boundary, isolated installed commands and stopped-writer migration."""
 import hashlib
+import re
 import importlib.util
 import json
 import os
@@ -246,6 +247,13 @@ class Installed(unittest.TestCase):
 
 
 class BundleContract(unittest.TestCase):
+    def test_bundled_reader_pin_entry_is_a_release_entry(self):
+        body = (fx.ROOT / 'registry.py').read_bytes()
+        entry = next(e for e in source.load_pin()['accepted'] if e['registry_py_sha256'] == hashlib.sha256(body).hexdigest())
+        version = re.search(rb'^VERSION = "([0-9.]+)"$', body, re.M).group(1).decode()
+        self.assertEqual(entry['label'], 'squadra ' + version)
+        self.assertRegex(entry['source_commit'] or '', r'^[0-9a-f]{40}$')
+
     def test_bundled_helpers_are_exact_source_bytes_and_pin_refuses_modified_code(self):
         for name in ('registry.py', 'plugins.py', 'plugin_settings.py'):
             self.assertEqual((fx.ROOT / name).read_bytes(), (ROOT / 'scripts' / name).read_bytes(), name)

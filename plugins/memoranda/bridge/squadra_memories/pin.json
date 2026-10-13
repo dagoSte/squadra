@@ -323,9 +323,9 @@
       ]
     },
     {
-      "label": "squadra 3.8.0 construction (coordinator replaces at integration)",
-      "registry_py_sha256": "b95625b9ade1bad121d7ef3bd2afb339edf0f3f4e4a5f53bf3d5ab99434aab24",
-      "source_commit": null,
+      "label": "squadra 3.8.0",
+      "registry_py_sha256": "921ee11dfc45157e487cc500c7af187e54a7952603fbd5aa27df502d43287906",
+      "source_commit": "33a7f5978a854d3cf4cb294ecda4326c4b656f70",
       "kinds": [
         "ack",
         "agent",
