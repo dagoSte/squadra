@@ -230,6 +230,26 @@ class SentryBridge(SentryFixture, unittest.TestCase):
             {'index': 1, 'error': 'sensitive_text'}, {'index': 2, 'error': 'personal_text'}]})
         self.assertEqual([(path.read_bytes(), path.stat().st_mtime_ns) for path in paths], before)
 
+    def test_schema_error_in_one_issue_refuses_the_whole_import(self):
+        self.select(self.imported())
+        paths = [self.journal, self.plugin / 'panels' / (self.key + '.json'), self.request]
+        before = [(path.read_bytes(), path.stat().st_mtime_ns) for path in paths]
+        for label, bad in (
+            ('count without window', {'id': 'BAD', 'title': 'Ordinary failure', 'count': 3}),
+            ('bad timestamp', {'id': 'BAD', 'title': 'Ordinary failure', 'first_seen': 'yesterday'}),
+            ('missing title', {'id': 'BAD'}),
+            ('not an object', 'plain string issue'),
+        ):
+            with self.subTest(label=label):
+                value = deepcopy(self.spec)
+                value['observed'] = '2026-10-14T07:00:00Z'
+                value['issues'] = [value['issues'][0], bad,
+                                   {'id': 'GOOD', 'title': 'Another sanitised issue'}]
+                reply = self.cli(['import', '--organization', 'example-org', '--project', 'example-app',
+                                  '--file', str(self.write('mixed-schema.json', value))], 1)
+                self.assertNotIn('refused', reply)
+                self.assertEqual([(path.read_bytes(), path.stat().st_mtime_ns) for path in paths], before)
+
     def test_sensitive_association_and_snapshot_text_never_reaches_storage(self):
         first=self.imported()[0];snapshot=self.select([first]);before=self.journal.read_bytes()
         for field in ('id','task','note','run'):
@@ -339,8 +359,10 @@ class SentryBridge(SentryFixture, unittest.TestCase):
         for language in ('it','en'):
             value=plugin_store.catalogue(self.home,ROOT,lang=language)
             self.assertEqual(value['refused'],[])
-            self.assertEqual([x['name'] for x in value['plugins']],['sentry','playwright'])
-            row=value['plugins'][0];self.assertEqual(row['store']['price'],'free');self.assertTrue(row['store']['mcp'])
+            self.assertEqual([x['name'] for x in value['plugins']],['sentry','memoranda','playwright'])
+            rows = [row for row in value['plugins'] if row['name'] == 'sentry']
+            self.assertEqual(len(rows), 1)
+            row=rows[0];self.assertEqual(row['store']['price'],'free');self.assertTrue(row['store']['mcp'])
             self.assertEqual(row['store']['licence'], 'MIT')
             self.assertIn('FREE · Sponsored by memoranda', row['description']['en'])
             self.assertIn('Gratis · Sviluppo finanziato da memoranda', row['description']['it'])
