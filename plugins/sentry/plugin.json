@@ -6,18 +6,29 @@
     "en": "App errors · Sentry"
   },
   "description": {
-    "it": "Segui riepiloghi degli errori osservati e richiedi un incarico di analisi.",
-    "en": "Follow observed error summaries and request an analysis task."
+    "it": "Gratis · Sviluppo finanziato da memoranda. Segui gli errori osservati e richiedi un incarico di analisi.",
+    "en": "FREE · Sponsored by memoranda. Follow observed errors and request an analysis task."
   },
   "about": {
     "publisher": "Squadra contributors",
     "version": "0.1.0",
     "homepage": "https://github.com/dagoSte/squadra/tree/main/plugins/sentry",
     "tagline": {
-      "it": "Dalla segnalazione al lavoro verificabile.",
-      "en": "From an observed issue to traceable work."
+      "it": "Sviluppo finanziato da memoranda. Plugin gratuito per tutti.",
+      "en": "Development funded by memoranda. Free for all users."
     },
     "sections": [
+      {
+        "id": "sponsorship",
+        "title": {
+          "it": "Gratis · Sviluppo finanziato da memoranda",
+          "en": "FREE · Sponsored by memoranda"
+        },
+        "text": {
+          "it": "Sviluppo finanziato da memoranda. Plugin gratuito per tutti, con licenza MIT. Gli eventuali costi del servizio Sentry e del client restano separati.",
+          "en": "Development funded by memoranda. Free for all users under the MIT licence. Any Sentry service and client costs remain separate."
+        }
+      },
       {
         "id": "workflow",
         "title": {
@@ -50,8 +61,8 @@
           "en": "Validation status"
         },
         "text": {
-          "it": "Versione di sviluppo verificata con un trasporto MCP sintetico. Collegamento a un account Sentry reale e distribuzione commerciale ancora da verificare e decidere.",
-          "en": "Development version checked using a synthetic MCP transport. Real Sentry account connectivity and commercial distribution remain to be checked and decided."
+          "it": "Versione di sviluppo verificata con un trasporto MCP sintetico. Il collegamento OAuth a un account Sentry reale resta da verificare.",
+          "en": "Development version checked using a synthetic MCP transport. OAuth connectivity to a real Sentry account remains to be checked."
         }
       }
     ]

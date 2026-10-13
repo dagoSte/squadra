@@ -1,11 +1,21 @@
-Sentry plugin — unpublished development preview
+MIT License
 
-Commercial distribution terms have not been decided by the owner. This notice
-does not set a price, grant a commercial licence, or authorise publication.
-This candidate is held for private development and review.
+Copyright (c) 2026 Stefano D'Agostino
 
-The four copied Squadra helpers and the bridge portions derived from its
-Playwright plugin retain their MIT licence in SQUADRA-LICENSE. Nothing in this
-notice restricts the permissions that licence already grants to those portions.
-The owner must settle licence wording and the paid distribution route before
-including this plugin in any release. The Store price class is metadata only.
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

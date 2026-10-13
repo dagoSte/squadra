@@ -29,6 +29,12 @@ SENSITIVE = re.compile(
 EMAIL = re.compile(r'(?i)[a-z0-9.!#$%&\x27*+/=?^_`{|}~-]+@[a-z0-9-]+(?:\.[a-z0-9-]+)+')
 
 
+class ImportRefused(p.Refused):
+    def __init__(self, refused):
+        super().__init__(refused[0]['error'])
+        self.refused = refused
+
+
 def safe(value):
     """A backstop for known shapes, not a substitute for agent sanitisation."""
     if isinstance(value, str):
@@ -264,7 +270,7 @@ def persist(parent, key, data):
 
 def import_data(home, root, value, organization=None, project=None):
     key, _ = registry(root)
-    safe(value)
+    safe({k: v for k, v in value.items() if k != 'issues'} if isinstance(value, dict) else value)
     scope(organization, project)
     p._fields(value, ('schema', 'organization', 'project', 'observed', 'availability', 'issues'))
     p._schema(value)
@@ -273,13 +279,21 @@ def import_data(home, root, value, organization=None, project=None):
     p.require(type(value['availability']) is str and value['availability'] in ('available', 'unavailable'))
     p.require(type(value['issues']) is list and len(value['issues']) <= 50)
     p.require(value['availability'] == 'available' or not value['issues'], 'capability_unavailable')
-    additions = {}
-    for item in value['issues']:
+    additions, refused = {}, []
+    for index, item in enumerate(value['issues'], 1):
         spec = {k: value[k] for k in ('organization', 'project', 'observed')}
         spec['issue'] = item
-        name = observation(spec)
+        try:
+            name = observation(spec)
+        except p.Refused as exc:
+            if exc.code not in ('sensitive_text', 'personal_text'):
+                raise
+            refused.append({'index': index, 'error': exc.code})
+            continue
         p.require(name not in additions, 'duplicate_issue')
         additions[name] = {'observation': spec}
+    if refused and not additions:
+        raise ImportRefused(refused)
     with locked(home) as (parent, _):
         data = saved(parent, key)
         if data is None:
@@ -292,7 +306,10 @@ def import_data(home, root, value, organization=None, project=None):
         for name, record in additions.items():
             data['issues'].setdefault(name, record)
         persist(parent, key, data)
-    return {'saved': True, 'key': key, 'ids': list(additions), 'availability': value['availability']}
+    result = {'saved': True, 'key': key, 'ids': list(additions), 'availability': value['availability']}
+    if refused:
+        result['refused'] = refused
+    return result
 
 
 def refresh(home, root):
@@ -398,7 +415,10 @@ def main(argv=None):
         print(json.dumps(result, ensure_ascii=False))
         return 0
     except (p.Refused, Error, OSError, ValueError, RecursionError) as exc:
-        print(json.dumps({'error': exc.code if isinstance(exc, p.Refused) else 'io_error'}), file=sys.stderr)
+        result = {'error': exc.code if isinstance(exc, p.Refused) else 'io_error'}
+        if isinstance(exc, ImportRefused):
+            result['refused'] = exc.refused
+        print(json.dumps(result), file=sys.stderr)
         return 1
 
 

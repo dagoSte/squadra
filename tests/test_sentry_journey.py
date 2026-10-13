@@ -24,6 +24,7 @@ def assert_no_credentials(test, folder):
         except UnicodeError:continue
         strong=fixture.bridge.SENSITIVE.pattern.split(r'|\b(?:')[0]
         test.assertIsNone(re.search(strong,text),str(path))
+        test.assertIsNone(fixture.bridge.EMAIL.search(text),str(path))
         if path.suffix=='.py':
             for node in ast.walk(ast.parse(text)):
                 if isinstance(node,ast.Constant) and isinstance(node.value,str):
@@ -38,7 +39,8 @@ class SentryJourney(fixture.SentryFixture, unittest.TestCase):
         for suffix in ('.md','.json','.py'):
             path=folder/('fixture'+suffix)
             for value in ('sntry'+'u_SYNTHETIC_ONLY','https://synthetic@sentry.example.invalid/1',
-                          'Bearer SYNTHETIC_ONLY','api_key=SYNTHETIC_ONLY'):
+                          'Bearer SYNTHETIC_ONLY','api_key=SYNTHETIC_ONLY',
+                          'synthetic.person@example.invalid'):
                 with self.subTest(suffix=suffix,shape=value.split(':')[0]):
                     path.write_text('value='+repr(value) if suffix=='.py' else json.dumps({'text':value}))
                     with self.assertRaises(AssertionError):assert_no_credentials(self,folder)

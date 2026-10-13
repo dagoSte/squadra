@@ -179,7 +179,7 @@ class SentryBridge(SentryFixture, unittest.TestCase):
         value=deepcopy(self.spec); value['issues'][0]['title']=payloads[0]
         reply=self.cli(['import','--organization','example-org','--project','example-app',
                         '--file',str(self.write('rejected.json',value))],1)
-        self.assertEqual(reply, {'error':'sensitive_text'})
+        self.assertEqual(reply, {'error':'sensitive_text', 'refused':[{'index':1, 'error':'sensitive_text'}]})
         self.assertNotIn(payloads[0],json.dumps(reply))
 
     def test_email_addresses_in_title_context_and_association_are_refused(self):
@@ -189,6 +189,46 @@ class SentryBridge(SentryFixture, unittest.TestCase):
         first=self.imported()[0];snapshot=self.select([first])
         self.refuse(lambda:self.record(snapshot,self.result(first,note='synthetic.person@example.invalid')),'personal_text')
         self.assertTrue(self.request.exists())
+
+    def test_import_refuses_only_sensitive_items_with_safe_one_based_indices(self):
+        first = self.imported()[0]; self.select([first]); pending = self.request.read_bytes()
+        for title, code in (
+            ('Missing key: user_id in payload', 'sensitive_text'),
+            ('TypeError: token: undefined', 'sensitive_text'),
+            ('ValueError: invalid dsn: check settings', 'sensitive_text'),
+            ('Authorization: header missing', 'sensitive_text'),
+            ('Bearer SYNTHETIC_ONLY', 'sensitive_text'),
+            ('Error for synthetic.person@example.invalid', 'personal_text'),
+        ):
+            with self.subTest(title=title):
+                value = deepcopy(self.spec)
+                value['issues'] = [value['issues'][0], {'id': 'REJECTED', 'title': title},
+                                   {'id': 'GOOD', 'title': 'Another sanitised issue'},
+                                   {'id': 'REJECTED-CONTEXT', 'title': 'Issue', 'context': title}]
+                reply = self.cli(['import', '--organization', 'example-org', '--project', 'example-app',
+                                  '--file', str(self.write('partial.json', value))])
+                self.assertTrue(reply['saved']); self.assertEqual(len(reply['ids']), 2)
+                self.assertEqual(reply['ids'][0], first)
+                self.assertEqual(reply['refused'], [{'index': 2, 'error': code}, {'index': 4, 'error': code}])
+                self.assertNotIn(title, json.dumps(reply))
+                stored = json.loads(self.journal.read_text())['issues']
+                self.assertEqual(set(stored), set(reply['ids']))
+                self.assertEqual({x['observation']['issue']['id'] for x in stored.values()},
+                                 {self.spec['issues'][0]['id'], 'GOOD'})
+                self.assertEqual(self.request.read_bytes(), pending)
+
+    def test_all_refused_import_preserves_existing_observations_panel_and_request(self):
+        self.select(self.imported())
+        paths = [self.journal, self.plugin / 'panels' / (self.key + '.json'), self.request]
+        before = [(path.read_bytes(), path.stat().st_mtime_ns) for path in paths]
+        value = deepcopy(self.spec); value['observed'] = '2026-10-14T07:00:00Z'
+        value['issues'] = [{'id': 'SECRET', 'title': 'Bearer SYNTHETIC_ONLY'},
+                           {'id': 'EMAIL', 'title': 'synthetic.person@example.invalid'}]
+        reply = self.cli(['import', '--organization', 'example-org', '--project', 'example-app',
+                          '--file', str(self.write('all-refused.json', value))], 1)
+        self.assertEqual(reply, {'error': 'sensitive_text', 'refused': [
+            {'index': 1, 'error': 'sensitive_text'}, {'index': 2, 'error': 'personal_text'}]})
+        self.assertEqual([(path.read_bytes(), path.stat().st_mtime_ns) for path in paths], before)
 
     def test_sensitive_association_and_snapshot_text_never_reaches_storage(self):
         first=self.imported()[0];snapshot=self.select([first]);before=self.journal.read_bytes()
@@ -300,7 +340,10 @@ class SentryBridge(SentryFixture, unittest.TestCase):
             value=plugin_store.catalogue(self.home,ROOT,lang=language)
             self.assertEqual(value['refused'],[])
             self.assertEqual([x['name'] for x in value['plugins']],['sentry','playwright'])
-            row=value['plugins'][0];self.assertEqual(row['store']['price'],'paid');self.assertTrue(row['store']['mcp'])
+            row=value['plugins'][0];self.assertEqual(row['store']['price'],'free');self.assertTrue(row['store']['mcp'])
+            self.assertEqual(row['store']['licence'], 'MIT')
+            self.assertIn('FREE · Sponsored by memoranda', row['description']['en'])
+            self.assertIn('Gratis · Sviluppo finanziato da memoranda', row['description']['it'])
             self.assertEqual(row['store']['accepted_version'],row['about']['version'])
             date.fromisoformat(row['store']['review_date'])
             self.assertEqual(row['store']['source'],row['about']['homepage'])
@@ -318,8 +361,31 @@ class SentryBridge(SentryFixture, unittest.TestCase):
         self.assertIn('within existing permissions',agents);self.assertIn('never widens permissions',agents)
         self.assertIn('Store screenshots',en);self.assertIn('the first one is Playwright',en)
         self.assertIn('2026-10-13',en);self.assertNotIn('browser_navigate',agents)
+        self.assertIn('Development funded by memoranda. Free for all users.', en)
+        self.assertIn('Sviluppo finanziato da memoranda. Plugin gratuito per tutti.', it)
+        self.assertEqual((self.plugin/'LICENSE').read_bytes(), (ROOT/'LICENSE').read_bytes())
+        for document in (en, it, agents):
+            self.assertNotIn('paid distribution route', document)
+            self.assertNotIn('Utilizzo offerto', document)
         self.assertNotIn('AGENTS.md',(self.plugin/'bridge/sentry_plugin.py').read_text())
         self.assertFalse(list(self.plugin.rglob('__pycache__')))
+
+    def test_publication_links_resolve_to_the_shipped_bundle_offline(self):
+        from urllib.parse import urlsplit
+        bundle = ROOT / 'plugins/sentry'
+        manifest = json.loads((bundle / 'plugin.json').read_text())
+        listing = json.loads((bundle / 'store.json').read_text())
+        for url in (manifest['about']['homepage'], listing['source']):
+            parsed = urlsplit(url)
+            self.assertEqual((parsed.scheme, parsed.netloc, parsed.query, parsed.fragment),
+                             ('https', 'github.com', '', ''))
+            prefix = '/dagoSte/squadra/tree/main/'
+            self.assertTrue(parsed.path.startswith(prefix))
+            relative = Path(parsed.path.removeprefix(prefix))
+            self.assertEqual(relative, Path('plugins') / manifest['name'])
+            self.assertEqual((ROOT / relative).resolve(), bundle.resolve())
+            for name in ('plugin.json', 'store.json', 'README.md', 'LICENSE'):
+                self.assertEqual((ROOT / relative / name).read_bytes(), (self.plugin / name).read_bytes())
 
 
 class SentryPage(SentryFixture, unittest.TestCase):

@@ -5,10 +5,11 @@ analysis, and follow their linked tasks and recorded runs. This version has been
 tested with a **synthetic MCP transport only**. Real Sentry account/OAuth
 compatibility is pending; there is no claim of a successful live connection.
 
-This is a paid-class development candidate, **not for inclusion in a release
-until the owner chooses the paid distribution route and licence terms**. The
-Store's price label is metadata, not payment collection or access control. See
-[LICENSE](LICENSE) and the copied code's [MIT notice](SQUADRA-LICENSE).
+**FREE · Sponsored by memoranda**
+
+Development funded by memoranda. Free for all users. The plugin is distributed
+under the [MIT licence](LICENSE); the copied code retains its
+[MIT notice](SQUADRA-LICENSE).
 
 ## 1. Connection and permissions
 
@@ -22,8 +23,8 @@ network. Installation, MCP connection and authority to create tasks are separate
 Discover the connected server's current tool schemas and choose only permitted
 read operations for the configured project. No Sentry tool name or parameter is
 pinned here. Do not run triage mutations, analysis services that may cost money,
-or resolve an issue just because a dashboard request exists. Provider and client
-costs are separate from any future plugin price.
+or resolve an issue just because a dashboard request exists. Any Sentry service
+and client costs remain separate from this free plugin.
 
 The agent sanitises first. Remove personal data, user identifiers, raw events,
 request bodies and credentials before producing any file or transcript. The
@@ -80,6 +81,14 @@ history. Titles are at most 200 characters, context 1000. Unknown/raw fields
 are refused; omitted issues do not become resolved. Older import timestamps
 are refused. An identical observation retains its ID and association; changing
 its content or observation time creates a new immutable selectable observation.
+
+An issue containing credential-shaped text or an email is refused individually;
+other valid issues are imported. The reply lists `refused` entries with a
+one-based `index` and fixed `error` code, never issue text or identifiers. The
+backstop may also match ordinary error titles: sanitise and retry those items.
+If every issue is refused, the command fails without changing observations,
+the panel or a pending request. Invalid batch metadata or other schema errors
+continue to refuse the entire import.
 
 ## 4. Request analysis and link the work
 
@@ -148,4 +157,4 @@ Validation targets the Squadra 3.6.0 contract and this candidate, using syntheti
 HOMEs, Store install/reinstall, the real dashboard scripts and a synthetic MCP
 journey. Synthetic tool names are deliberately labelled synthetic. Real account
 validation remains pending. Release integration must revisit Store screenshots,
-the release notes' “the first one is Playwright” wording and licence text.
+the release notes' “the first one is Playwright” wording.

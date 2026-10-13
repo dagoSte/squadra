@@ -21,6 +21,7 @@ const reply=data=>({ok:true,status:200,json:async()=>clone(data)});
   };
   one(app.doc.getElementById('plugin-links'),e=>key(e)==='nav:plugin:sentry').onclick();await settle();
   assert.match(text(content(app)),english?/Development version/:/Versione di sviluppo/);
+  assert.match(text(content(app)),english?/Development funded by memoranda\. Free for all users\./:/Sviluppo finanziato da memoranda\. Plugin gratuito per tutti\./);
   assert.equal(all(content(app),e=>key(e)==='plugin:tab:settings').length,0);
   const tab=one(content(app),e=>key(e)==='plugin:tab:results');
   assert.equal(tab.textContent,english?'App errors':'Errori dell’app');tab.onclick();await settle();

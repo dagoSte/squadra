@@ -5,10 +5,11 @@ analizzare e segui incarichi e prove collegati. Questa versione è verificata
 **solo con un trasporto MCP sintetico**: il collegamento OAuth a un account
 Sentry reale resta da provare. Non è dichiarata una compatibilità reale già verificata.
 
-Il plugin è classificato a pagamento, ma **non può entrare in una release finché
-il proprietario non decide distribuzione e licenza**. L’etichetta del catalogo
-non riscuote pagamenti e non controlla l’accesso. Nessun prezzo è stato deciso.
-Vedi [licenza di sviluppo](LICENSE) e [licenza del codice copiato](SQUADRA-LICENSE).
+**Gratis · Sviluppo finanziato da memoranda**
+
+Sviluppo finanziato da memoranda. Plugin gratuito per tutti. Il plugin è
+distribuito con [licenza MIT](LICENSE); il codice copiato conserva la propria
+[licenza MIT](SQUADRA-LICENSE).
 
 ## Collegamento e dati
 
@@ -21,7 +22,7 @@ collegare MCP e autorizzare la creazione di incarichi sono operazioni distinte.
 L’agente scopre gli strumenti di lettura e i loro schemi dal server collegato.
 Non sono fissati qui nomi o parametri di strumenti Sentry. Non avvia analisi a
 pagamento, modifiche o risoluzioni solo perché esiste una richiesta nel pannello.
-I costi del servizio e del client restano separati dall’eventuale prezzo del plugin.
+Gli eventuali costi del servizio Sentry e del client restano separati da questo plugin gratuito.
 
 **L’agente depura i dati prima dell’importazione.** Esclude corpi di eventi,
 richieste e utenti, identificativi personali, email e credenziali anche dai file
@@ -74,6 +75,15 @@ la rende risolta. La configurazione del diario è fissa per registro; un’impor
 più vecchia è rifiutata. Un’osservazione identica conserva identificativo e
 associazione; contenuto o istante diversi producono una nuova osservazione
 immutabile. Al limite di capacità il bridge rifiuta senza cancellare la storia.
+
+Una segnalazione con testo simile a credenziali o un’email viene rifiutata
+singolarmente; le altre segnalazioni valide sono importate. La risposta elenca
+in `refused` la posizione `index`, contando da uno, e il codice fisso `error`,
+mai testo o identificativi della segnalazione. Il controllo può corrispondere
+anche a titoli ordinari: depura e riprova quegli elementi. Se sono tutti
+rifiutati, il comando fallisce senza cambiare osservazioni, pannello o richiesta
+pendente. Metadati del gruppo non validi o altri errori di formato continuano
+a rifiutare l’intera importazione.
 
 ## Dalla richiesta all’incarico
 
@@ -136,4 +146,4 @@ Le prove usano il contratto Squadra 3.6.0 e questo candidato: HOME sintetiche,
 installazione/reinstallazione, script reali della dashboard e un trasporto MCP
 sintetico, con nomi esplicitamente sintetici. La prova reale resta da fare.
 L’inclusione in una release richiederà anche nuove schermate dello Store,
-l’aggiornamento della frase «the first one is Playwright» nelle note e della licenza.
+l’aggiornamento della frase «the first one is Playwright» nelle note.

@@ -6,7 +6,7 @@ publication or decisions reserved for the user. For anything beyond running
 this plugin's producer or consumer, stop and report. Ordinary task creation
 needs the coordinator's separate existing authority, never this file.
 
-This is a private development preview, not approved for release inclusion.
+This free plugin uses the MIT licence; its development is funded by memoranda.
 Only a synthetic MCP journey has been checked; real Sentry/OAuth remains pending.
 Do not install or configure MCP because a request exists. Use the open registry
 and the HOME of its dashboard. Shell-quote paths. Never approve project memories.
@@ -30,6 +30,10 @@ the fields belong to this plugin, not to Sentry's MCP API.
 umask 077
 python3 -I -B "$HOME/.squadra/plugins/sentry/bridge/sentry_plugin.py" import --root "$REGISTRY" --organization "$SENTRY_ORGANIZATION" --project "$SENTRY_PROJECT" --file issues.json
 ```
+
+Inspect the import reply for `refused` entries: their one-based indices identify
+items to sanitise and retry, without echoing their text. Other valid issues are
+saved; an all-refused import fails without changing runtime data.
 
 The two named variables contain agreed non-secret slugs only. No credential is
 accepted in any argument or input. To display a missing connection, import an

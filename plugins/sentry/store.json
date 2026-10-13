@@ -1,7 +1,7 @@
 {
   "schema": 1,
-  "licence": "Development preview; distribution terms pending",
-  "price": "paid",
+  "licence": "MIT",
+  "price": "free",
   "mcp": true,
   "source": "https://github.com/dagoSte/squadra/tree/main/plugins/sentry",
   "accepted_version": "0.1.0",
