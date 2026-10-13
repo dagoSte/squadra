@@ -241,9 +241,9 @@
       ]
     },
     {
-      "label": "squadra 3.7.0 READS-VALUE construction",
-      "registry_py_sha256": "b25cfa31e91b721fb7b61f544eb7283fd1d6e75245deb2a892add62e7659d6ba",
-      "source_commit": "f1c464492bdf83273aba83064019d324146a0b39",
+      "label": "squadra 3.7.0",
+      "registry_py_sha256": "aeed10710166def0d4b88a2ffa21d4f0d995031c83cdc60c797795c9653a2e02",
+      "source_commit": "4d7cece99feddaec9da7eb4ec29fe545d3cc7dbe",
       "kinds": [
         "ack",
         "agent",
@@ -268,6 +268,7 @@
         "restore.freeze",
         "resume",
         "review",
+        "route",
         "run.cancel",
         "run.end",
         "run.progress",
