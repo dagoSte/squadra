@@ -317,6 +317,8 @@ entry links to its report and task story. These are counts of reads and later
 versions, not a count of prevented defects or successful fixes; repeated reads
 and observations remain separate records. Closed and replaced tasks stay included.
 
+![The Reads view: recorded verdicts in total and by task, with the observations readers supplied](docs/images/dashboard-reads-en.png)
+
 Readers may supply `review --findings-file findings.json` with bounded observations
 (`severity`: `grave`, `minor` or `info`; a safe one-line `title`). See
 [the review command](references/work.md). Missing observations say **Not recorded**;
@@ -431,6 +433,7 @@ Every screenshot exists in both languages:
 | Communications | [EN](docs/images/dashboard-comms-en.png) | [IT](docs/images/dashboard-comms-it.png) |
 | Communications, one pair | [EN](docs/images/dashboard-comms-pair-en.png) | [IT](docs/images/dashboard-comms-pair-it.png) |
 | Decisions | [EN](docs/images/dashboard-decisions-en.png) | [IT](docs/images/dashboard-decisions-it.png) |
+| Reads | [EN](docs/images/dashboard-reads-en.png) | [IT](docs/images/dashboard-reads-it.png) |
 | Plugin page | [EN](docs/images/dashboard-plugins-en.png) | [IT](docs/images/dashboard-plugins-it.png) |
 | Plugin settings | [EN](docs/images/dashboard-plugin-settings-en.png) | [IT](docs/images/dashboard-plugin-settings-it.png) |
 | Plugin memories | [EN](docs/images/dashboard-plugin-memories-en.png) | [IT](docs/images/dashboard-plugin-memories-it.png) |

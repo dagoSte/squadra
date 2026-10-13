@@ -320,6 +320,8 @@ versioni successive, non di difetti evitati o correzioni riuscite; letture e
 osservazioni ripetute restano registrazioni distinte. Sono inclusi anche gli
 incarichi chiusi o sostituiti.
 
+![La vista Letture: i verdetti registrati in totale e per incarico, con le osservazioni fornite dai lettori](docs/images/dashboard-reads-it.png)
+
 Il lettore può aggiungere `review --findings-file findings.json` con osservazioni
 limitate (`severity`: `grave`, `minor` o `info`; `title`: una riga senza contenuti
 privati). Vedi [il comando di lettura](references/work.md). I dati assenti sono
@@ -435,6 +437,7 @@ Ogni schermata esiste in entrambe le lingue:
 | Comunicazioni | [EN](docs/images/dashboard-comms-en.png) | [IT](docs/images/dashboard-comms-it.png) |
 | Comunicazioni, una coppia | [EN](docs/images/dashboard-comms-pair-en.png) | [IT](docs/images/dashboard-comms-pair-it.png) |
 | Decisioni | [EN](docs/images/dashboard-decisions-en.png) | [IT](docs/images/dashboard-decisions-it.png) |
+| Letture | [EN](docs/images/dashboard-reads-en.png) | [IT](docs/images/dashboard-reads-it.png) |
 | Pagina di un plugin | [EN](docs/images/dashboard-plugins-en.png) | [IT](docs/images/dashboard-plugins-it.png) |
 | Impostazioni di un plugin | [EN](docs/images/dashboard-plugin-settings-en.png) | [IT](docs/images/dashboard-plugin-settings-it.png) |
 | Memorie di un plugin | [EN](docs/images/dashboard-plugin-memories-en.png) | [IT](docs/images/dashboard-plugin-memories-it.png) |
