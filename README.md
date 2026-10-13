@@ -8,7 +8,7 @@ The most complete team skill for Claude Code, Codex and Cursor.
 
 **Free and open source** — MIT licence, no account, everything runs on your machine.
 
-**Version 3.7.1** · Free · MIT · Local toolkit · Python 3.12+ · macOS / POSIX
+**Version 3.8.0** · Free · MIT · Local toolkit · Python 3.12+ · macOS / POSIX
 
 **English** · [Italiano](README.it.md) · [Privacy](PRIVACY.md)
 
@@ -496,6 +496,8 @@ and proposes them to memoranda.dev; it never approves them. Installation is free
 the connected service starts with a free trial, then is paid.
 
 **Try browser checks:** the optional [Playwright MCP plugin](plugins/playwright/README.md) prepares checks for a task, saves your selection and lets an authorized agent use its connected browser tools and report the outcome. Installing the data plugin does not install or activate MCP.
+
+**Bring app errors in (preview):** the optional [Sentry plugin](plugins/sentry/README.md) brings sanitised summaries of errors from your authorised Sentry connection into Squadra, so you can select issues for analysis and follow their tasks. FREE · Sponsored by memoranda: development funded by memoranda, free for all users. Tested with a synthetic connection only; a live Sentry connection is not yet verified.
 
 **Publish your own plugin:** follow the [authoring and distribution guide](references/plugin-authoring.md) for a working example, tests, permissions and version compatibility. These data plugins are separate from installing Squadra itself with `/plugin`; publishing a package does not automatically list, install or approve it.
 
