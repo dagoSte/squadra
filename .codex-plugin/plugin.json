@@ -1,0 +1,25 @@
+{
+  "name": "squadra",
+  "version": "3.6.1",
+  "description": "Your coding agents, one team — and proof for every step. The most complete team skill for Claude Code, Codex and Cursor.",
+  "author": {
+    "name": "Stefano D'Agostino"
+  },
+  "license": "MIT",
+  "repository": "https://github.com/dagoSte/squadra",
+  "homepage": "https://github.com/dagoSte/squadra",
+  "skills": "./.",
+  "interface": {
+    "displayName": "Squadra 3+",
+    "shortDescription": "Your coding agents, one team — with proof for every step.",
+    "longDescription": "Coordinate Claude Code, Codex and Cursor windows in one shared registry: scoped tasks, acknowledgements, proof bound to the exact code, a non-author review on every change, owner questions with the sentence to say, and a live local dashboard with sounds and toasts.",
+    "developerName": "Stefano D'Agostino",
+    "category": "Productivity",
+    "defaultPrompt": [
+      "Use $squadra to coordinate this project.",
+      "Open the squadra dashboard.",
+      "Resume the squad and show what needs me."
+    ],
+    "logo": "./assets/squadra-icon.png"
+  }
+}
