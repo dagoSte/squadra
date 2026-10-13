@@ -1,0 +1,88 @@
+{
+  "schema": 1,
+  "name": "sentry",
+  "title": {
+    "it": "Errori dell’app · Sentry",
+    "en": "App errors · Sentry"
+  },
+  "description": {
+    "it": "Segui riepiloghi degli errori osservati e richiedi un incarico di analisi.",
+    "en": "Follow observed error summaries and request an analysis task."
+  },
+  "about": {
+    "publisher": "Squadra contributors",
+    "version": "0.1.0",
+    "homepage": "https://github.com/dagoSte/squadra/tree/main/plugins/sentry",
+    "tagline": {
+      "it": "Dalla segnalazione al lavoro verificabile.",
+      "en": "From an observed issue to traceable work."
+    },
+    "sections": [
+      {
+        "id": "workflow",
+        "title": {
+          "it": "Come funziona",
+          "en": "How it works"
+        },
+        "items": [
+          {
+            "it": "Un agente autorizzato legge Sentry tramite il proprio collegamento MCP e importa un riepilogo depurato.",
+            "en": "An authorised agent reads Sentry through its own MCP connection and imports a sanitised summary."
+          },
+          {
+            "it": "Selezioni le segnalazioni e richiedi l’analisi. La dashboard salva soltanto la richiesta.",
+            "en": "Select issues and request analysis. The dashboard only saves the request."
+          },
+          {
+            "it": "Il coordinatore collega gli incarichi e le prove attraverso il normale lavoro della squadra.",
+            "en": "The coordinator links tasks and proofs through the normal squad workflow."
+          },
+          {
+            "it": "Chiudere un incarico non significa risolvere la segnalazione in Sentry.",
+            "en": "Closing a task does not mean resolving the issue in Sentry."
+          }
+        ]
+      },
+      {
+        "id": "limits",
+        "title": {
+          "it": "Stato della verifica",
+          "en": "Validation status"
+        },
+        "text": {
+          "it": "Versione di sviluppo verificata con un trasporto MCP sintetico. Collegamento a un account Sentry reale e distribuzione commerciale ancora da verificare e decidere.",
+          "en": "Development version checked using a synthetic MCP transport. Real Sentry account connectivity and commercial distribution remain to be checked and decided."
+        }
+      }
+    ]
+  },
+  "results": {
+    "label": {
+      "it": "Errori dell’app",
+      "en": "App errors"
+    },
+    "empty": {
+      "it": "Nessuna osservazione importata. Controlla il collegamento MCP con il coordinatore.",
+      "en": "No observation imported. Check the MCP connection with the coordinator."
+    },
+    "status_labels": {
+      "draft": {
+        "it": "Analisi da richiedere",
+        "en": "Ready to request analysis"
+      },
+      "sent": {
+        "it": "Collegato a un incarico",
+        "en": "Linked to a task"
+      }
+    }
+  },
+  "actions": [
+    {
+      "id": "analyse",
+      "label": {
+        "it": "Richiedi analisi",
+        "en": "Request analysis"
+      }
+    }
+  ]
+}

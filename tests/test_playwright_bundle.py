@@ -160,7 +160,7 @@ class PlaywrightBundle(unittest.TestCase):
             matching = [row for row in catalog['plugins'] if row['name'] == 'playwright']
             self.assertEqual(len(matching), 1)
             self.assertIn('memoranda', [row['name'] for row in catalog['plugins']])
-            self.assertEqual([row['name'] for row in catalog['plugins'][:2]], ['memoranda', 'playwright'])
+            self.assertEqual([row['name'] for row in catalog['plugins']], ['sentry', 'memoranda', 'playwright'])
             row = matching[0]
             self.assertEqual(row['name'], 'playwright'); self.assertTrue(row['installed'])
             self.assertEqual(row['receipt']['state'], 'complete')

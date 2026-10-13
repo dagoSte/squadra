@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "organization": "example-org",
+  "project": "example-app",
+  "observed": "2026-10-13T07:00:00Z",
+  "availability": "available",
+  "issues": [
+    {
+      "id": "EXAMPLE-1",
+      "title": "Synthetic checkout failure",
+      "status": "unresolved",
+      "severity": "error",
+      "count": 7,
+      "window": "Previous 24 hours",
+      "first_seen": "2026-10-12T12:00:00Z",
+      "last_seen": "2026-10-13T06:55:00Z",
+      "context": "Synthetic example: checkout handler returned a validation error."
+    }
+  ]
+}

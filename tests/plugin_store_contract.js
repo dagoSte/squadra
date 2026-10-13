@@ -23,17 +23,18 @@ async function setup(opts={}){
 const tests={
  async playwright(){
   const app=await setup();await app.select();
-  const matching=app.cards().filter(c=>c.getAttribute('data-store-item')==='playwright');
-  assert.equal(matching.length,1);
+  const cards=app.cards().filter(e=>e.getAttribute('data-store-item')==='playwright');
+  const rows=payload.plugins.filter(p=>p.name==='playwright');
+  assert.equal(cards.length,1);assert.equal(rows.length,1);
+  assert.equal(cards[0].getAttribute('data-store-item'),'playwright');
   assert.ok(app.cards().some(c=>c.getAttribute('data-store-item')==='memoranda'));
-  assert.deepEqual(app.cards().slice(0,2).map(c=>c.getAttribute('data-store-item')),['memoranda','playwright']);
-  const rows=payload.plugins.filter(p=>p.name==='playwright');assert.equal(rows.length,1);
-  const row=rows[0];
+  assert.deepEqual(app.cards().map(e=>e.getAttribute('data-store-item')),['sentry','memoranda','playwright']);
   assert.match(text(app.content),/Playwright.*Controlli del browser/);
-  assert.ok(text(app.content).includes(row.install_command));
-  assert.equal(row.receipt.state,'complete');
+  assert.ok(text(app.content).includes(rows[0].install_command));
+  assert.equal(rows[0].receipt.state,'complete');
   app.run("setLanguage('en')");await settle();
   assert.match(text(app.content),/Playwright.*Browser checks/);
+  assert.deepEqual(app.cards().map(e=>e.getAttribute('data-store-item')),['sentry','memoranda','playwright']);
   assert.match(text(app.content),/Installed.*Installation complete.*Receipt release:/);
   for(let i=0;i<2;i++)await app.refresh();
   assert.equal(app.fetched.filter(p=>p==='/api/plugin-store').length,1);

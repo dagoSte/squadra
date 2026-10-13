@@ -1,0 +1,9 @@
+{
+  "schema": 1,
+  "licence": "Development preview; distribution terms pending",
+  "price": "paid",
+  "mcp": true,
+  "source": "https://github.com/dagoSte/squadra/tree/main/plugins/sentry",
+  "accepted_version": "0.1.0",
+  "review_date": "2026-10-13"
+}

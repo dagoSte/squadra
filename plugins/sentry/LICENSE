@@ -1,0 +1,11 @@
+Sentry plugin — unpublished development preview
+
+Commercial distribution terms have not been decided by the owner. This notice
+does not set a price, grant a commercial licence, or authorise publication.
+This candidate is held for private development and review.
+
+The four copied Squadra helpers and the bridge portions derived from its
+Playwright plugin retain their MIT licence in SQUADRA-LICENSE. Nothing in this
+notice restricts the permissions that licence already grants to those portions.
+The owner must settle licence wording and the paid distribution route before
+including this plugin in any release. The Store price class is metadata only.

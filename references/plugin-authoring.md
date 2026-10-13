@@ -560,11 +560,12 @@ never sends, runs, approves or contacts anything.
 1. Open `actions/<id>.lock` without following links and take an exclusive
    `fcntl.flock`. Never create, delete or replace that lock: the dashboard creates it.
    A request file without its lock is invalid; stop and report.
-2. Read and check the request, keep it as a snapshot, check that its `key` is the key
-   of the registry you are working for, then release the lock.
+2. Read and check the request, keeping its content and file identity (device, inode,
+   mtime_ns, ctime_ns) from the same opened file as a snapshot. Check that its `key`
+   is the key of the registry you are working for, then release the lock.
 3. Do the work outside the lock, for example send the drafts to your service.
-4. Take the lock again, re-read the request and delete it **only if `key`,
-   `requested` and the ordered `ids` still equal your snapshot**; then fsync the
+4. Take the lock again, re-read the request and delete it **only if the file identity,
+   `key`, `requested` and the ordered `ids` still equal your snapshot**; then fsync the
    `actions` folder. If they differ, the user made a newer choice: leave it pending.
 5. Run the producer, so the items show the outcome (`sent`, `error`, …) and the ones
    already sent stop being selectable.
@@ -627,21 +628,29 @@ def private(fd, name):
         raise SystemExit(f"unsafe {name}: stop and report")
 
 
-def read_private(folder, name, limit):
+def file_identity(fd):
+    info = os.fstat(fd)
+    return (info.st_dev, info.st_ino, info.st_mtime_ns, info.st_ctime_ns)
+
+
+def read_private(folder, name, limit, with_identity=False):
     fd = os.open(name, FILE, dir_fd=folder)
     try:
         private(fd, name)
+        identity = file_identity(fd)
         body = b""
         while len(body) <= limit:
             chunk = os.read(fd, limit + 1 - len(body))
             if not chunk:
                 break
             body += chunk
+        if file_identity(fd) != identity:
+            raise SystemExit("file changed while reading: stop and report")
     finally:
         os.close(fd)
     if len(body) > limit:
         raise SystemExit(f"{name} is too large: stop and report")
-    return body
+    return (body, identity) if with_identity else body
 
 
 def read_settings():
@@ -671,14 +680,15 @@ def read_settings():
 
 
 def read_request(actions):
-    """The saved request, or None when there is none."""
+    """The saved request and its same-open-file identity, or (None, None)."""
     try:
-        request = json.loads(read_private(actions, ACTION + ".json", 64 * 1024))
+        body, identity = read_private(actions, ACTION + ".json", 64 * 1024, with_identity=True)
+        request = json.loads(body)
     except FileNotFoundError:
-        return None
+        return None, None
     if set(request) != {"schema", *SNAPSHOT} or request["schema"] != 1:
         raise SystemExit("unexpected request: stop and report")
-    return request
+    return request, identity
 
 
 def deliver(ids, values, api_key):
@@ -702,13 +712,13 @@ def consume(registry):
         try:
             lock = os.open(ACTION + ".lock", FILE, dir_fd=actions)
         except FileNotFoundError:
-            if read_request(actions) is not None:
+            if read_request(actions)[0] is not None:
                 raise SystemExit("request without its lock: stop and report")
             return "no request"
         try:
             private(lock, ACTION + ".lock")
             fcntl.flock(lock, fcntl.LOCK_EX)
-            snapshot = read_request(actions)
+            snapshot, identity = read_request(actions)
             fcntl.flock(lock, fcntl.LOCK_UN)
             if snapshot is None:
                 return "no request"
@@ -716,10 +726,10 @@ def consume(registry):
                 return "the request belongs to another registry; left alone"
             deliver(snapshot["ids"], *read_settings())  # outside the lock
             fcntl.flock(lock, fcntl.LOCK_EX)
-            current = read_request(actions)
+            current, current_identity = read_request(actions)
             if current is None:
                 return "sent; the request had already been cancelled"
-            if any(current[field] != snapshot[field] for field in SNAPSHOT):
+            if current_identity != identity or any(current[field] != snapshot[field] for field in SNAPSHOT):
                 return "sent; a newer choice stays pending"
             os.unlink(ACTION + ".json", dir_fd=actions)
             os.fsync(actions)
