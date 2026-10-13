@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🧭 Squadra 3+
+# Squadra 3+
 
 **I tuoi agenti di codice, una sola squadra — e la prova di ogni passo.**
 
@@ -8,7 +8,7 @@ La skill di squadra più completa per Claude Code, Codex e Cursor.
 
 **Gratuita e open source** — licenza MIT, nessun account, tutto gira sul tuo computer.
 
-**Versione 3.5.1** · Gratuita · MIT · Toolkit locale · Python 3.12+ · macOS / POSIX
+**Versione 3.6.0** · Gratuita · MIT · Toolkit locale · Python 3.12+ · macOS / POSIX
 
 [English](README.md) · **Italiano**
 
@@ -16,11 +16,13 @@ La skill di squadra più completa per Claude Code, Codex e Cursor.
 
 </div>
 
-[![Squadra 3+ — guarda il tour di 84 secondi](docs/video/squadra-3plus-it-preview.webp)](https://github.com/dagoSte/squadra/releases/download/v3.5.1/squadra-3plus-it.mp4)
+**Guarda il tour di 84 secondi — attiva l'audio nel lettore:**
+
+https://github.com/user-attachments/assets/d0a696da-9562-4a84-9eea-0fda7b8c75d1
 
 Si installa con `/plugin` in Claude Code e Codex. **Per installarla:** vedi [Installazione](#start).
 
-## ✨ Cosa la rende diversa
+## Cosa la rende diversa
 
 - **Un solo registro, in cui scrivono tutte le finestre.** Incarichi, messaggi, prove, letture, decisioni e parole del proprietario finiscono in un unico archivio durevole sul tuo computer, con una catena di hash che rivela le modifiche accidentali. Niente dipende da quello che una chat ricorda ancora.
 - **Per ogni modifica, un lettore che non l'ha scritta.** Le letture sono registrate da un'identità diversa dagli autori; un alias non vale mai come secondo lettore.
@@ -32,7 +34,7 @@ Si installa con `/plugin` in Claude Code e Codex. **Per installarla:** vedi [Ins
 - **Claude, Codex e Cursor nella stessa squadra**, con plugin locali che aggiungono una propria pagina, e un self-test e dei banchi offline che non chiamano alcun modello.
 - **Aperta ai plugin della community.** Il formato dei plugin è aperto e documentato: chiunque può costruire un plugin, gratuito o a pagamento, che porta i propri dati nella dashboard, con una sua pagina, le sue impostazioni e un'azione facoltativa.
 
-## 🧭 Cosa fa Squadra
+## Cosa fa Squadra
 
 Squadra fa lavorare più finestre di agenti AI sullo stesso progetto come una squadra che puoi seguire: una finestra coordina, un'altra fa la modifica e una terza, mai l'autrice, la controlla. È pensata per i momenti in cui il lavoro degli agenti di solito si inceppa: un autore che rilegge il proprio lavoro, un test verde eseguito su un codice diverso, una conferma che nessuno ha dato, una decisione persa in una conversazione lunga, una sessione che si chiude a metà. Tre parti lavorano insieme: **la skill**, che gli agenti seguono; **la CLI**, che registra ogni passo; **la dashboard**, dove leggi il registro. Ogni finestra può lavorare su una propria copia del codice, un *checkout*, e tutte condividono un unico registro.
 
@@ -58,7 +60,7 @@ Squadra fa lavorare più finestre di agenti AI sullo stesso progetto come una sq
 | Ping / stand-by | Una chiamata di presenza che chiede a una finestra di confermare che risponde ancora / la registrazione, fatta dal coordinatore, che una finestra per ora non riceve nuovi incarichi. Lo stand-by non ferma nulla di ciò che è in esecuzione. |
 
 <a id="start"></a>
-## 🚀 Installazione e primo registro
+## Installazione e primo registro
 
 **Requisiti:** Python 3.12+, Git e la libreria standard di Python. **Node.js** esegue i controlli JavaScript della dashboard nella suite di test e in `selftest`: senza Node quei controlli falliscono, non vengono mai saltati. Un browser per la dashboard; la CLI di Codex o di Claude solo per i runner nativi. L'ambiente di processi provato è macOS/POSIX; il controllo dei processi su Windows e il ripristino con submodule, LFS o checkout sparsi non sono qualificati.
 
@@ -92,6 +94,21 @@ squadra --version
 ```
 
 Installa da un checkout pulito, senza modifiche fuori dai commit, con una **nuova cartella di backup** ogni volta. L'installatore congela una copia legata al commit, collega la skill per Codex, Claude e Cursor (`~/.cursor/skills/squadra`) e prepara `~/.local/bin/squadra` (tieni quella cartella nel PATH), conservando le skill e il programma di avvio precedenti. Per tornare indietro, sostituisci solo le quattro destinazioni elencate in `INSTALL.json` con le versioni precedenti registrate. Senza installare, usa `python3 -B scripts/squadra.py <comando>`. L'installazione non migra mai una squadra al lavoro: ognuna tiene la versione con cui è partita finché non la cambi esplicitamente.
+
+### Aggiornare
+
+**Con /plugin.** In Claude Code esegui `/plugin marketplace update squadra`, poi `/plugin update squadra@squadra`, poi riavvia Claude Code. Per Codex esegui `codex plugin marketplace upgrade`, poi di nuovo `codex plugin add squadra@squadra`.
+
+**Con l'installatore autonomo.** Nella tua copia del repository esegui `git pull` e poi di nuovo l'installatore, ogni volta con una cartella di backup nuova:
+
+```sh
+git pull
+python3 -B scripts/install.py \
+  --backup "$HOME/.local/state/squadra/install-backup-002"
+squadra --version
+```
+
+Ogni rilascio alza il numero di versione. I plugin installati dallo Store mantengono la loro versione finché non esegui di nuovo `squadra plugin install <name>` dalla nuova release ([Plugin inclusi nella release](#plugin-store)). Le finestre già aperte usano la versione che hanno letto finché non le riavvii, e una squadra al lavoro mantiene il suo protocollo finché non la passi esplicitamente alla nuova versione.
 
 ### Regola 0: trovare le finestre e presentarsi
 
@@ -144,7 +161,7 @@ Ogni aggiornamento al proprietario, da qualunque finestra, mostra il lavoro pres
 - **Più veloce la prossima volta:** a ogni chiusura la coordinatrice guarda dove è andato il tempo, scrive una riga su come risparmiarlo e la applica all'incarico successivo.
 
 <a id="prompts"></a>
-## 💬 Prompt di esempio
+## Prompt di esempio
 
 Con gli agenti parli in parole semplici; i comandi li eseguono loro. Copia un prompt nella finestra a cui è destinato e sostituisci percorsi e nomi. Ogni prompt funziona nelle finestre Codex, Claude e Cursor interattivo che hanno la skill squadra installata.
 
@@ -294,7 +311,7 @@ poi un lettore Claude e un lettore Codex leggono tutto insieme.
 ```
 
 <a id="first-steps"></a>
-## 👣 Primi passi
+## Primi passi
 
 È la prima volta con Squadra? Prova questi dodici passi una volta, dall'inizio alla fine, su un progetto di prova. Una **finestra** è una sessione di lavoro: un agente Codex, Claude o Cursor, oppure una persona. Tutte le finestre usano lo stesso registro.
 
@@ -338,7 +355,7 @@ squadra dash --open
 ```
 
 <a id="dashboard"></a>
-## 🖥️ Dashboard: il lavoro a colpo d'occhio
+## Dashboard: il lavoro a colpo d'occhio
 
 ![Quadro di Squadra in italiano: una frase su dove è il lavoro, indicatori in parole e una scheda per ogni lavoro](docs/images/dashboard-overview-it.png)
 
@@ -403,13 +420,20 @@ Ogni schermata esiste in entrambe le lingue:
 | Pagina di un plugin | [EN](docs/images/dashboard-plugins-en.png) | [IT](docs/images/dashboard-plugins-it.png) |
 | Impostazioni di un plugin | [EN](docs/images/dashboard-plugin-settings-en.png) | [IT](docs/images/dashboard-plugin-settings-it.png) |
 | Memorie di un plugin | [EN](docs/images/dashboard-plugin-memories-en.png) | [IT](docs/images/dashboard-plugin-memories-it.png) |
+| Store dei plugin | [EN](docs/images/dashboard-plugin-store-en.png) | [IT](docs/images/dashboard-plugin-store-it.png) |
 
-**Aggiornamento e sicurezza.** La pagina si aggiorna ogni due secondi, offre la ricerca nel testo e apre gli artefatti registrati in una finestra. È **in sola lettura salvo impostazioni e selezioni dichiarate dei plugin installati**; le azioni sul registro passano dalla CLI. Ascolta su `127.0.0.1`, verifica Host e token, controlla Origin per il salvataggio di impostazioni e selezioni, e non carica script remoti né CDN. `--port` sceglie una porta (senza, ne cerca una libera); `Ctrl-C` chiude il server della dashboard, non gli agenti; se si disconnette, la pagina conserva l'ultima vista con un avviso.
+**Aggiornamento e sicurezza.** La pagina si aggiorna ogni due secondi, sospende gli aggiornamenti quando la scheda è nascosta e si aggiorna subito al ritorno. Offre la ricerca nel testo e apre gli artefatti registrati in una finestra. È **in sola lettura salvo impostazioni e selezioni dichiarate dei plugin installati**; le azioni sul registro passano dalla CLI. Ascolta su `127.0.0.1`, verifica Host e token, controlla Origin per il salvataggio di impostazioni e selezioni, e non carica script remoti né CDN. `--port` sceglie una porta (senza, ne cerca una libera); `Ctrl-C` chiude il server della dashboard, non gli agenti; se si disconnette, la pagina conserva l'ultima vista con un avviso.
 
 <a id="plugins"></a>
 ### Plugin di dati locali
 
 Un **plugin** porta nella dashboard i dati di un altro strumento: una cartella `$HOME/.squadra/plugins/<name>/` con un manifesto `plugin.json`, in cui un programma separato, il *produttore* del plugin, scrive i pannelli di dati. Il gruppo **Plugin** del menù elenca ogni manifesto installato, oppure dice «Nessun plugin installato» e spiega dove si installano; scegline uno per vedere i suoi dati per il registro aperto.
+
+HOME, `.squadra`, `plugins` e ogni cartella di plugin devono appartenere all'utente
+corrente e non essere scrivibili da gruppo o altri. Elenco, lettura dei pannelli,
+impostazioni e azioni rifiutano le cartelle non sicure con `unsafe_permissions`.
+Le cartelle dell'utente con permessi 0700 o 0755 funzionano; lo Store crea cartelle
+private con permessi 0700.
 
 **Costruisci il tuo.** Il formato è aperto: chiunque nella community può pubblicare un plugin per squadra, gratuito o a pagamento. Un plugin è fatto di dati e di un programma separato. La dashboard e la CLI non eseguono mai il codice dei plugin; gli agenti lo eseguono solo come indicato nell'`AGENTS.md` del plugin, rispettando le [condizioni di affidabilità del file e i permessi già concessi dall'utente](references/plugins.md#agent-instructions). Parti dal [formato dei plugin](references/plugins.md).
 
@@ -417,21 +441,42 @@ Un **plugin** porta nella dashboard i dati di un altro strumento: una cartella `
 
 ![La pagina di un plugin installato: intestazione con autore e versione, e le schede Panoramica, Impostazioni e Memorie](docs/images/dashboard-plugins-it.png)
 
-- **Dati, non codice.** La dashboard non esegue mai il codice dei plugin. L'unico collegamento che mostra è la homepage HTTPS dichiarata, che si apre in una nuova scheda solo al tuo clic; un logo PNG locale facoltativo compare senza richieste remote; i badge di stato non danno alcuna autorità sul registro. La pagina `about` facoltativa (autore, versione, presentazione, fino a otto sezioni) è una descrizione del produttore, mai contenuto eseguibile né un'identità verificata.
+- **Dati, non codice.** La dashboard non esegue mai il codice dei plugin. La homepage HTTPS dichiarata si apre in una nuova scheda solo al tuo clic; i riferimenti a incarichi ed esecuzioni aprono la vista corrispondente del registro; un logo PNG locale facoltativo compare senza richieste remote; i badge di stato non danno alcuna autorità sul registro. La pagina `about` facoltativa (autore, versione, presentazione, fino a otto sezioni) è una descrizione del produttore, mai contenuto eseguibile né un'identità verificata.
 - **Impostazioni.** Fino a quattro campi dichiarati, che si salvano con **Salva**; **Cancella** ha effetto al salvataggio, e una password lasciata vuota conserva il segreto salvato. I segreti non vengono mai precompilati né restituiti, e i gestori di password restano fuori dal controllo di Squadra. I file vanno nella **HOME dell'utente che esegue `squadra dash`** (una dashboard avviata da un agente con una HOME privata salva lì, non nella tua), come file locali in chiaro `settings.json` e `secrets/<id>` (0600): non una cassaforte cifrata, e mai nel registro. Le scritture sono atomiche file per file, quindi una risposta persa può voler dire un salvataggio parziale: rileggi lo stato e invia di nuovo con intenzione; non dedurre mai il successo da una risposta mancante.
 
 ![La scheda Impostazioni: i campi dichiarati, un segreto che non viene più mostrato, e Salva](docs/images/dashboard-plugin-settings-it.png)
 
-- **Selezionare le bozze.** Un plugin può dichiarare un'azione, per esempio «Invia per revisione». Nella sua scheda Memorie spunti le bozze e premi il pulsante: viene salvata solo la tua scelta, come richiesta in attesa che una scelta nuova sostituisce e «Annulla richiesta» ritira. La dashboard non invia né esegue nulla.
+- **Risultati per ogni servizio.** Un plugin può dare un nome alla propria sezione di dati, per esempio «Collaudi», e spiegare gli stati dei risultati nelle due lingue. I plugin precedenti conservano «Memorie». Le voci possono collegarsi a un incarico esistente o a una sua esecuzione registrata: sono associazioni dichiarate dal produttore, non prove di successo o approvazione.
+- **Selezionare le bozze.** Un plugin può dichiarare un'azione, per esempio «Richiedi un collaudo» o «Invia per revisione». Nella sua sezione di dati spunti le bozze e premi il pulsante: viene salvata solo la tua scelta, come richiesta in attesa che una scelta nuova sostituisce e «Annulla richiesta» ritira. La dashboard non invia né esegue nulla.
 
 ![La scheda Memorie: le voci del plugin con il loro stato; le bozze si selezionano e si inviano per revisione, e una richiesta in attesa si può annullare](docs/images/dashboard-plugin-memories-it.png)
 
+<a id="plugin-agent-instructions"></a>
 **Chi esegue la richiesta?** Un plugin installato può fornire `$HOME/.squadra/plugins/<name>/AGENTS.md` con istruzioni per gli agenti. La finestra coordinatrice lo legge all’avvio e alla ripresa ed esegue solo i comandi indicati, nei permessi già autorizzati: il produttore dopo una chiusura, il consumatore quando la dashboard mostra una richiesta in attesa, poi riferisce l’esito. Vale solo un file regolare di proprietà dell’utente, non scrivibile da gruppo o altri e non un link simbolico. Senza un file valido, la richiesta resta in attesa e la coordinatrice lo segnala: non devi lanciare comandi. La dashboard non legge, non scrive e non esegue questo file. Questo file non amplia mai i permessi e non autorizza installazioni, push, pubblicazioni o decisioni riservate all’utente; per qualunque richiesta oltre a eseguire il produttore o il consumatore di quel plugin, fermarsi e riferire.
 
 Schemi, dimensioni, limiti e codici di rifiuto esatti: [contratto dei plugin](references/plugins.md), [metadati about](references/plugins.md#optional-about-metadata), [sito e icona](references/plugins.md#homepage-and-local-icon).
 
+<a id="plugin-store"></a>
+### Plugin inclusi nella release
+
+L’installazione rende disponibili alla coordinatrice anche le [istruzioni per gli agenti](#plugin-agent-instructions): le legge al prossimo avvio o alla ripresa ed esegue il produttore o il consumatore nei momenti documentati, entro i permessi già autorizzati.
+
+Apri **Plugin → Store** per vedere il catalogo della release in esecuzione, i comandi di installazione e lo stato locale. Si aggiorna solo all'apertura o con **Aggiorna catalogo**; non c'è un pulsante per installare. I siti dei plugin si aprono al clic in una nuova scheda. Chiedi al coordinatore di eseguire il comando mostrato, che usa questa installazione di Squadra.
+
+![La pagina Store: i plugin inclusi nella release in esecuzione, prima quelli basati su MCP, ognuno con autore, versione, licenza, prezzo, data della revisione e il comando di installazione per il coordinatore](docs/images/dashboard-plugin-store-it.png)
+
+`squadra plugin list` elenca il catalogo accettato della release locale, prima i plugin basati su MCP, con lo stato d'installazione e la release installata e corrente. `squadra plugin install <name>` copia un plugin incluso: non scarica né esegue codice. Con l'installazione `/plugin` non c'è il comando autonomo: chiedi al coordinatore di usare `python3 <cartella della release>/scripts/squadra.py plugin list` o `plugin install <name>`.
+
+Ripetere l'installazione applica esplicitamente il pacchetto di quella release e riporta le versioni **da X a Y**, segnalando anche un ritorno a una versione precedente. Impostazioni, segreti, selezioni salvate e pannelli restano intatti. Prima dell'aggiornamento ferma produttore e consumatore. Una cartella preesistente non gestita dallo store non viene adottata: salva `settings.json` e `secrets/`, sposta la cartella, poi installa; ripristina la configurazione solo dopo aver verificato lo schema del nuovo plugin. Per disinstallare, ferma produttore e consumatore, salva la configurazione e rimuovi solo la cartella di quel plugin. Una copia interrotta risulta incompleta: riprova con lo stesso pacchetto. L'aggiornamento dell'intera cartella non è atomico. Vedi [metadati e controlli dello store](references/plugins.md#release-local-plugin-store).
+
+I plugin si propongono tramite PR o email di contatto del manutentore, che li analizza dando precedenza a quelli basati su MCP. Inclusione e data della lettura valgono solo per la versione accettata. Il catalogo è locale alla release: non è un marketplace remoto e non esegue nulla automaticamente.
+
+**Prova i collaudi del browser:** il [plugin Playwright MCP](plugins/playwright/README.it.md), facoltativo, prepara i controlli di un incarico, salva la tua selezione e permette a un agente autorizzato di usare i propri strumenti browser collegati e riferire l’esito. Installare il plugin di dati non installa né attiva MCP.
+
+**Pubblica il tuo plugin:** leggi la [panoramica italiana](docs/plugin-authoring.it.md), che rimanda alla guida tecnica in inglese per esempi, verifiche e compatibilità. Questi plugin di dati sono separati dall’installazione di Squadra tramite `/plugin`; pubblicare un pacchetto non lo inserisce automaticamente in un catalogo, non lo installa e non lo approva.
+
 <a id="decisions"></a>
-## 🕸️ Grafo delle decisioni e briefing
+## Grafo delle decisioni e briefing
 
 ![La vista Decisioni: una risposta del proprietario e un'istruzione riferita collegate all'incarico e alla domanda, con i dettagli dell'istruzione selezionata](docs/images/dashboard-decisions-it.png)
 
@@ -474,7 +519,7 @@ squadra decision --actor coord --id D-SCOPE --task T1 \
 **Leggere il grafo.** Ogni riquadro è un fatto registrato, i più vecchi a sinistra. Le **linee continue** sono collegamenti registrati; le **linee tratteggiate** dicono solo «dopo, nello stesso incarico», mai una ragione. I riquadri del proprietario mostrano sempre il canale: «scritto qui», «riferito da un'altra finestra» o «canale non registrato»; i verdetti sono scritti a parole oltre che a colori. Seleziona un riquadro (clic, Invio o Spazio) per vedere chi, quando, le parole complete e i collegamenti nelle due direzioni; filtra per incarico e usa lo zoom. Gli aggiornamenti conservano selezione, filtro, zoom e fuoco, e dicono «elemento non più presente» quando un elemento non c'è più. Sul telefono il grafo diventa un elenco in ordine di tempo, rispettando la riduzione del movimento; i collegamenti circolari, possibili solo in un registro alterato, sono elencati sotto «Collegamenti non ordinabili». Le regole complete sono in [lavoro, prova e lettura](references/work.md).
 
 <a id="workflow"></a>
-## 🔁 Incarico, prova, lettura indipendente e chiusura
+## Incarico, prova, lettura indipendente e chiusura
 
 **Scegli il percorso.** Alla creazione, e davanti a un rilievo o a un cambio di perimetro, il costruttore propone un percorso, il lettore non autore lo conferma o dissente, e il coordinatore decide con una motivazione registrata, rispondendo alle cinque domande della [pagina di triage IT/EN](references/work.md#triage-in-una-pagina): tocca sicurezza, dati dei clienti, chiavi, permessi, integrità delle prove o azioni difficili da annullare; ne capiamo tutto l'effetto e possiamo annullarla; è una correzione delimitata, dimostrata da una verifica mirata; quale comportamento richiesto potrebbe restare scoperto; un errore potrebbe restare nascosto. Nessuna regex, nessun modello di percorso e nessun punteggio scelgono il percorso; risposte e scelta si registrano in una riga del perimetro o del rapporto.
 
@@ -520,7 +565,7 @@ squadra close --actor coord --task T1
 
 **Il completamento non dà l'autorità di pubblicare.** Il protocollo completo è in [lavoro, prova e lettura](references/work.md).
 
-## 📬 Posta, output e cose da ricordare
+## Posta, output e cose da ricordare
 
 ```sh
 squadra send --actor coord --to builder --id M1 \
@@ -543,7 +588,7 @@ squadra output --actor coord --task T1 --file /evidence/update.md \
 
 Allega un artefatto chiamato esattamente `da-ricordare.json` (`form: "da-ricordare/1"`, ID dell'incarico, `answer: "yes"` oppure `"no"`, `items`) al consueto `squadra output --artifact ...` dell'agente che chiude; vedi [lo schema e gli esempi](references/work.md#da-ricordare-at-close). Non segue da sola alcuna proposta o approvazione. **Se usi un servizio di memoria, dichiara alla chiusura e non proporre lo stesso elemento attraverso un altro canale.** **Mai** segreti, dati personali o percorsi privati nella dichiarazione: gli artefatti registrati sono immutabili, e un segreto scritto per errore non si può rimuovere. Un plugin consumatore può trasformare le dichiarazioni in bozze; l'API delle azioni salva solo la scelta dell'utente, non la invia e non esegue plugin ([contratto delle azioni](references/plugins.md#action-requests)).
 
-## 🙋 Domande e decisioni del proprietario
+## Domande e decisioni del proprietario
 
 `ask` registra una domanda prima che venga mostrata, con almeno due opzioni dai valori `id`, `label` e `say` distinti (`say` è la frase da dire); `buys`, `costs` ed `example` sono facoltativi.
 
@@ -566,7 +611,7 @@ squadra decision --actor coord --reason "Il proprietario ha scelto il perimetro 
 
 `--channel relayed` conserva parole riportate da un'altra finestra. `decision --withdraws Q1` chiude una domanda superata senza inventare una risposta; un `decision --reason` senza collegamenti conserva una motivazione senza chiudere domande. Risposte e ritiri sono esclusivi e non si ripetono. Testo della chat, prosa della posta e `output.next` non vengono mai letti in silenzio come decisioni o come autorità.
 
-## ⏱️ Attese, risorse e presenza
+## Attese, risorse e presenza
 
 L'età delle attese si calcola quando una vista viene letta. Valori predefiniti, in secondi: **ACK 900**, **delivered 3600**, **reviewed 1800**, **heartbeat 1800**, **alive 300**; `cleanup-unknown` è sempre visibile. `settings --actor coord --file /evidence/thresholds.json` imposta le chiavi scelte, per esempio `{"ack": 600, "alive": 300}` (zero avvisa subito); sostituisce i valori personalizzati precedenti, e le chiavi omesse tornano ai predefiniti. Un avviso non ritenta, non riassegna e non rilascia mai nulla.
 
@@ -590,7 +635,7 @@ squadra standby --actor coord --agent builder --resume --reason "Disponibilità 
 Tutte le finestre che scrivono nello stesso registro dovrebbero usare la stessa versione di Squadra, altrimenti alcune regole potrebbero non essere applicate; portare una squadra al lavoro su un'altra versione è un passo esplicito e autorizzato.
 
 <a id="checkpoints"></a>
-## 📦 Checkpoint, ripristino e contesti puliti
+## Checkpoint, ripristino e contesti puliti
 
 **Gli agenti fanno i checkpoint senza aspettare che tu lo chieda.** È il modo di lavorare richiesto dalla skill, non un servizio in background né un contatore invisibile di token.
 
@@ -616,7 +661,7 @@ squadra resume --actor coord --reason "Il proprietario ha ripreso esplicitamente
 
 **Limiti del ripristino:** i filtri per i segreti sono parziali, **non** una scansione completa di storia e artefatti; una copia sullo stesso disco non sopravvive a un guasto del disco; `--declared-offsite` è una dichiarazione, non un archivio remoto verificato. Il contratto completo è in [ripristino e passaggio di contesto](references/recovery.md).
 
-## 🤖 Runner nativi facoltativi
+## Runner nativi facoltativi
 
 ```sh
 squadra run --actor builder --task T1 --mode build \
@@ -628,7 +673,7 @@ squadra cancel --actor coord --run "RUN-ID"
 
 `run` avvia un nuovo turno non interattivo di Codex o Claude e non si collega mai a una finestra aperta; i prompt passano da stdin, i modelli non sono mai scritti nel codice, e i turni reali consumano la quota del client entro il budget concordato. **Cursor è rifiutato:** il turno di un posto `cursor` si ferma prima di qualunque processo con «Squadra non avvia cursor-agent: Cursor esegue gli hook di team, utente e azienda senza sandbox. Le finestre Cursor lavorano in modo interattivo» (lo stesso messaggio riporta anche il testo inglese), finché una versione di Cursor non documenterà un interruttore che disattiva tutti gli hook e MCP, confermato da una lettura di un non autore e da una vera sonda. Un esito valido richiede una sessione reale, un turno completato, l'uscita attesa e una lettura strutturata: un'uscita 0 da sola non basta, e il verdetto di un client non è la lettura registrata. Pausa, interruzione e timeout agiscono sul gruppo di processi posseduto; un segnale rifiutato lascia `cleanup-unknown`, da riconciliare prima di rilasciare le risorse. Discendenti staccati, Windows e compatibilità con i client reali vanno qualificati a parte. Leggi [i contratti dei runner](references/runtime.md) prima di invocarli in automatico.
 
-## 🧪 Self-test, sfide ai difetti e banco comparativo
+## Self-test, sfide ai difetti e banco comparativo
 
 ```sh
 squadra selftest --output /durable/selftest-001
@@ -648,7 +693,7 @@ squadra bench-score --actor coord --from /evidence/benchmark-run \
 
 Vedi [i contratti di sfide e confronti](references/benchmark.md).
 
-## 🗂️ Stato durevole e integrità
+## Stato durevole e integrità
 
 | File | A cosa serve |
 |---|---|
@@ -662,9 +707,9 @@ Vedi [i contratti di sfide e confronti](references/benchmark.md).
 Scrivi sempre attraverso la CLI, mai nei file generati. `export` rigenera le viste, `status` mostra incarichi, richieste per il proprietario e attese, e `doctor` controlla catena e artefatti e segnala ACK in sospeso o esecuzioni incerte. L'integrità non è una prova che le affermazioni siano vere, né un'autenticazione crittografica delle identità. `legacy --actor coord --path /old/packet` importa i record come **copie storiche non verificate**, senza toccare gli originali, creare incarichi o ACK, o concedere un'accettazione.
 
 <a id="commands"></a>
-## ⌨️ Comandi di squadra
+## Comandi di squadra
 
-Ogni comando, raggruppato per scopo: **44 sottocomandi**, più `--version`. Usa `squadra <comando> --help` per le opzioni; i comandi del registro accettano `--root` o `SQUADRA_ROOT`. «Solo il coordinatore» segna ciò che solo il coordinatore può registrare: `task`, `supersede`, `brief`, `close`, `ask`, `decision`, `settings`, `pause`, `resume`, `save`, `standby`, `ping --sweep`, e la ricevuta che `restore-check` scrive nel registro vivo. Senza installare, gli stessi comandi girano come `python3 -B scripts/squadra.py <comando>`.
+Ogni comando, raggruppato per scopo: **45 sottocomandi**, più `--version`. Usa `squadra <comando> --help` per le opzioni; i comandi del registro accettano `--root` o `SQUADRA_ROOT`. «Solo il coordinatore» segna ciò che solo il coordinatore può registrare: `task`, `supersede`, `brief`, `close`, `ask`, `decision`, `settings`, `pause`, `resume`, `save`, `standby`, `ping --sweep`, e la ricevuta che `restore-check` scrive nel registro vivo. Senza installare, gli stessi comandi girano come `python3 -B scripts/squadra.py <comando>`.
 
 ### Avvio e squadra
 
@@ -745,6 +790,7 @@ Ogni comando, raggruppato per scopo: **44 sottocomandi**, più `--version`. Usa 
 | `doctor` | Controlla la catena di hash e gli artefatti; segnala ACK in sospeso ed esecuzioni incerte. |
 | `export` | Rigenera dal registro le viste leggibili. |
 | `legacy` | Importa vecchi record come copie storiche non verificate. |
+| `plugin` | Elenca i plugin inclusi o ne installa uno da questa release; non scarica né esegue codice. |
 | `dash` | Apre la dashboard locale, in sola lettura salvo impostazioni e selezioni dichiarate dei plugin installati. |
 
 ### Verifiche del toolkit
@@ -756,7 +802,7 @@ Ogni comando, raggruppato per scopo: **44 sottocomandi**, più `--version`. Usa 
 | `bench-run` | Esegue un confronto registrato in anticipo. |
 | `bench-score` | Assegna i punteggi a un confronto con la sua sonda separata. |
 
-## 🛡️ Confini operativi
+## Confini operativi
 
 **Cosa Squadra non può fare.**
 - **Solo finestre affidabili:** Squadra coordina finestre locali affidabili.
@@ -766,7 +812,7 @@ Ogni comando, raggruppato per scopo: **44 sottocomandi**, più `--version`. Usa 
 - **Non un'accettazione:** le verifiche sintetiche non sono un'accettazione per la produzione né per la qualità dei modelli.
 - **Nessun pulsante della dashboard** pubblica qualcosa o esegue comandi.
 
-## 📚 Guide del protocollo
+## Guide del protocollo
 
 [Skill](SKILL.md) · [Avvio](references/start.md) · [Lavoro/prova/lettura](references/work.md) · [Runner nativi](references/runtime.md) · [Ripristino/passaggio di contesto](references/recovery.md) · [Sfide/confronto](references/benchmark.md) · [Plugin](references/plugins.md) · [Creare un plugin](references/plugin-authoring.md)
 

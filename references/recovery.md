@@ -168,13 +168,35 @@ No command or shell execution, no remote scripts or CDN. The disconnected view k
 last page with a warning. Ctrl-C stops that server, not the agents. Do not expose the port
 or use it as a multi-user service.
 
-`/api/state` reads the verified registry once and returns, using the same read-time clock,
+`/api/state` reuses a verified snapshot while SQLite's data version and the database/WAL
+file identity and change stamps are unchanged. Any change, including an older-row edit or
+a replaced database, requires verification of the complete chain again; a verification
+failure is reported rather than replaced with a cached success. Derived ages are never cached.
+The response returns, using the same read-time clock,
 waits (`waits`), presence (`presence`), the decision graph (`graph`), each task's steps
 (`progress`) and communications (`comms`, at most the 500 most recent, without message
 bodies). The page opens on Summary, has Communications and Decisions tabs and the presence
 panel in Windows; the IT / EN button changes the language of the entire page and remembers
 it only in that browser. Ages and deadlines are computed at read time: opening the page
 neither writes events nor changes any window's availability.
+
+The page requests `X-Squadra-View: compact`: only the source-file inventories inside task
+and run fingerprints are omitted from recurring responses. Fingerprint metadata, registered
+artifacts, legacy file lists and raw Timeline events remain. Without that header, the API
+returns the complete state. `X-Squadra-Search` carries the URI-encoded search text; matches
+against complete task/run records, including omitted paths and hashes, are returned in
+`search` with the query and the matching task/run IDs. The page waits for the matching reply
+before replacing its search results. The technical-data buttons read `/api/detail/task` or
+`/api/detail/run` with the URI-encoded record ID in `X-Squadra-Record`, under the same token
+and exact-Host checks. They return only records of this registry, never arbitrary file paths.
+
+Initial load and page reload show a loading message; later refreshes keep the current view
+with a small updating indicator. Each GET has a 15-second deadline covering the response
+body as well as connection/headers. Failure leaves a message and a Retry action. State requests
+never overlap; regular polling waits two seconds after completion, while a changed search or
+an explicit retry can request the next state sooner. Hidden tabs suspend new
+state polls and refresh when visible again. Read dialogs keep their complete text, while
+truncation measurement is grouped and limited to visible content.
 
 `legacy --actor coord --path /old/package` preserves **historical, unconfirmed** copies,
 without generating ACKs or tasks. Active squads remain on their frozen protocol/version;

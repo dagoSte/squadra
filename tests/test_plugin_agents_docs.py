@@ -41,6 +41,33 @@ class PluginAgentDocs(unittest.TestCase):
                     self.assertIn(clause, rule)
         for folder in ('scripts', 'assets'):
             for path in (ROOT / folder).rglob('*'):
-                if path.is_file():
+                # D-STORE-AGENTS-EXCEPTION: the explicit installer validates/copies inert instructions.
+                if path.is_file() and path != ROOT / 'scripts/plugin_store.py':
                     with self.subTest(runtime=str(path.relative_to(ROOT))):
                         self.assertNotIn(b'AGENTS.md', path.read_bytes())
+
+    def test_plugin_instructions_are_copied_only_by_explicit_installer(self):
+        def boundary(root):
+            self.assertFalse((root / 'scripts/playwright_plugin.py').exists())
+            for path in (root / 'plugins/playwright/bridge').glob('*.py'):
+                self.assertNotIn('AGENTS.md', path.read_text(), str(path))
+            for folder in ('scripts', 'assets'):
+                for path in (root / folder).rglob('*'):
+                    if path.is_file():
+                        self.assertNotIn(b'playwright_plugin', path.read_bytes())
+        boundary(ROOT)
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            clone = Path(tmp)
+            for directory in ('scripts', 'assets', 'plugins/playwright/bridge'):
+                (clone / directory).mkdir(parents=True, exist_ok=True)
+            helper = clone / 'plugins/playwright/bridge/probe.py'
+            helper.write_text('marker = "AGENTS.md"')
+            with self.assertRaises(AssertionError): boundary(clone)
+            helper.write_text('pass')
+            forbidden = clone / 'scripts/probe.py'
+            forbidden.write_text('import playwright_plugin')
+            with self.assertRaises(AssertionError): boundary(clone)
+            forbidden.unlink()
+            (clone / 'assets/probe.js').write_text('playwright_plugin')
+            with self.assertRaises(AssertionError): boundary(clone)

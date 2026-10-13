@@ -47,8 +47,7 @@ def installed(home, name, capability='settings'):
     with p._root(home) as root:
         fd = p._open(root, name, directory=True)
         try:
-            info = os.fstat(fd)
-            p.require(info.st_uid == os.getuid() and not (info.st_mode & 0o022), 'unsafe_permissions')
+            p.check_directory(fd)
             manifest = p._manifest(fd, name)
             p.require(capability in manifest, 'not_configurable')
             yield fd, manifest[capability]

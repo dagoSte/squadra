@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import re
+import subprocess
 import sys
 import tempfile
 import types
@@ -20,6 +21,38 @@ from registry import Store
 
 
 class GuideBoundary(unittest.TestCase):
+    def test_folder_setup_example_leaves_safe_owned_directories_under_each_umask(self):
+        text = (ROOT / 'references/plugin-authoring.md').read_text()
+        section = text.split('### Step 1: create the folder\n', 1)[1].split('### Step 2:', 1)[0]
+        blocks = re.findall(r'^```sh\n(.*?)^```\s*$', section, re.M | re.S)
+        self.assertEqual(len(blocks), 1)
+        for mask in (0o077, 0o022, 0o002):
+            with self.subTest(umask=oct(mask)), tempfile.TemporaryDirectory(prefix='sq-guide-folders-') as tmp:
+                home = Path(tmp) / 'home'
+                home.mkdir(mode=0o700)
+                run = subprocess.run(['sh', '-eu'], input=blocks[0], cwd=ROOT,
+                                     env={**os.environ, 'HOME': str(home)}, umask=mask,
+                                     text=True, capture_output=True, timeout=20)
+                self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
+                for folder in (home, home / '.squadra', home / '.squadra/plugins',
+                               home / '.squadra/plugins/release-notes'):
+                    self.assertEqual(folder.stat().st_uid, os.getuid())
+                    self.assertEqual(folder.stat().st_mode & 0o022, 0)
+
+    def test_results_refs_shell_example_runs_literally(self):
+        text = (ROOT / "references/plugin-authoring.md").read_text()
+        section = text.split('### Name the results and link them to work\n', 1)[1]
+        section = section.split('<a id="settings-and-secrets">', 1)[0]
+        blocks = re.findall(r'^```sh\n(.*?)^```\s*$', section, re.M | re.S)
+        self.assertEqual(len(blocks), 1)
+        for mask in (0o077, 0o022, 0o002):
+            with self.subTest(umask=oct(mask)), tempfile.TemporaryDirectory(prefix='sq-guide-results-') as tmp:
+                run = subprocess.run(['sh', '-eu'], input=blocks[0], cwd=ROOT,
+                                     env={**os.environ, 'HOME': tmp, 'TMPDIR': tmp}, umask=mask,
+                                     text=True, capture_output=True, timeout=20)
+                self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
+                self.assertEqual(run.stdout.strip(), 'Manifest and panel accepted; no check was executed.')
+
     @contextmanager
     def example(self):
         text = (ROOT / "references/plugin-authoring.md").read_text()

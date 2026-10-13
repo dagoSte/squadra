@@ -1,0 +1,9 @@
+{
+  "schema": 1,
+  "licence": "MIT",
+  "price": "free",
+  "mcp": true,
+  "source": "https://github.com/dagoSte/squadra/tree/main/plugins/playwright",
+  "accepted_version": "1.0.0",
+  "review_date": "2026-10-13"
+}

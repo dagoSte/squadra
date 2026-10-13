@@ -42,10 +42,14 @@ A plugin is not:
 - **an extension of squadra's registry.** Status badges are labels. They approve
   nothing, record no registry event and do not prove that anything ran.
 - **a web page.** Panel content is plain text; HTML, Markdown and URLs in it are not
-  interpreted. The only link is the HTTPS homepage you declare.
+  interpreted. External links use the declared HTTPS homepage; structured task/run references open the current registry views.
 - **something squadra starts.** The user runs your programs, or the coordinator window
   runs the commands your `AGENTS.md` names, within the permissions the user has
   already given it ([section 6](#agents-md)).
+
+Installing Squadra as a client skill, installing a data plugin, and connecting an
+MCP server are separate operations. None grants permission for the others.
+For a working MCP bridge, see [Playwright](../plugins/playwright/README.md).
 
 <a id="files-and-names"></a>
 ## 2. Files and names
@@ -69,15 +73,21 @@ $HOME/.squadra/plugins/<name>/
   agent with a private HOME reads the plugins in that HOME, not in yours.
 - Every path component from `.squadra` down must be a real directory or a regular
   file. Symbolic links, FIFOs and directories in place of files are refused.
-- Keep the plugin folder owned by the user and not writable by group or others
-  (`chmod 700` does it). Settings and actions are refused with `unsafe_permissions`
-  otherwise. The example reader also refuses a group- or other-writable HOME,
-  `.squadra` or `plugins`; `chmod go-w` on them is enough when `mkdir` made them so.
+- HOME, `.squadra`, `plugins` and the plugin folder must be owned by the current
+  user and not writable by group or others. Discovery, panel reads, settings and
+  actions refuse unsafe folders with `unsafe_permissions`. Owned 0700 and 0755
+  folders work; `chmod go-w` removes group/other write permission. The Store
+  creates private 0700 plugin folders.
 - Write each JSON file completely and replace it atomically: write a temporary file
   in the same folder, then rename it over the old one. The dashboard refuses partial
   or malformed files; it never repairs them.
 
 Details: [Files and registry identity](plugins.md#files-and-registry-identity).
+
+A release-local Store bundle contains its own programs and dependencies; runtime
+panels, settings, secrets and requests are produced after installation. See
+[the bundle contract](plugins.md#release-local-plugin-store) and
+[submission instructions](#submitting-your-plugin). Do not depend on a source checkout.
 
 <a id="a-minimal-plugin"></a>
 ## 3. A minimal plugin, step by step
@@ -89,9 +99,12 @@ so the user can review the drafts from the dashboard.
 
 ```sh
 mkdir -p "$HOME/.squadra/plugins/release-notes"
-chmod go-w "$HOME/.squadra" "$HOME/.squadra/plugins"
+chmod go-w "$HOME" "$HOME/.squadra" "$HOME/.squadra/plugins"
 chmod 700 "$HOME/.squadra/plugins/release-notes"
 ```
+
+On a default HOME the `chmod go-w` line changes nothing. It matters only if your HOME,
+`.squadra` or `plugins` is writable by group or others, which Squadra refuses.
 
 ### Step 2: write `plugin.json`
 
@@ -140,7 +153,7 @@ chmod 700 "$HOME/.squadra/plugins/release-notes"
 - `about` is optional. It gives the plugin an About page: publisher, a version label,
   a tagline and one to eight sections, each with a paragraph, a list or both.
   Everything in it is your own description, not a verified identity.
-- `about.homepage` is the only clickable link the dashboard shows. It opens in a new
+- `about.homepage` is the only external link the dashboard shows. It opens in a new
   tab when the user clicks it; the dashboard never fetches it.
 - Unknown fields at any level, duplicate keys and out-of-range values refuse the whole
   manifest. The file is at most 64 KiB.
@@ -213,7 +226,7 @@ Save it as `panels/<key>.json`, with the key from step 4:
 - `updated` is an ISO timestamp with `T` and an explicit UTC offset (`Z` or
   `+00:00`). `note` is the only optional member.
 - Each item has exactly `id`, `title`, `text`, `status` and `meta`, plus the optional
-  `selectable` of [section 5](#the-optional-action). `meta` is a list, possibly
+  `selectable` of [section 5](#the-optional-action) and `refs` described below. `meta` is a list, possibly
   empty, of objects with exactly a bilingual `label` and a string `value`.
 - `title`, `text` and meta values are single strings, shown as written and not
   translated.
@@ -331,9 +344,88 @@ squadra dash --root /path/to/registry --open
 With the `/plugin` install, run `python3 <skill folder>/scripts/squadra.py` in place
 of `squadra`. Choose your plugin in the **Plugins** menu group. With `about`, the page
 has an Overview tab (your About text), a Settings tab when you declare settings, and a
-Memories tab with your panel items. Without `about`, the settings card and the items
-share one page. The dashboard refreshes every two seconds, so a rewritten panel
+data tab with your panel items (Memories by default, or the name declared in
+`results`). Without `about` or `results`, the settings card and the items share one page. The dashboard refreshes every two seconds, so a rewritten panel
 appears without reloading the page.
+
+### Name the results and link them to work
+
+Optional manifest `results` supplies a bilingual section label, empty message and
+labels for existing statuses. It does not add statuses or actions; older plugins
+keep Memories. Optional item `refs` points at tasks and their own recorded runs in
+the current registry. Unknown/foreign associations remain unavailable. Labels and
+links are producer claims, never proof of execution or independent approval.
+See [results fields](plugins.md#optional-results-section) and
+[reference fields](plugins.md#task-and-run-associations) for the exact contract.
+
+This parser example runs in an isolated temporary HOME. Its repeated registry key
+and unresolved task are synthetic; they do not establish a real task or execution.
+
+```sh
+python3 -B - <<'PY'
+import json
+import sys
+import tempfile
+from pathlib import Path
+
+sys.path.insert(0, str(Path("scripts").resolve()))
+import plugins
+
+manifest = {
+    "schema": 1,
+    "name": "example-checks",
+    "title": {"it": "Controlli di esempio", "en": "Example checks"},
+    "description": {"it": "Controlli locali", "en": "Local checks"},
+    "results": {
+        "label": {"it": "Collaudi", "en": "Browser checks"},
+        "empty": {"it": "Nessun controllo", "en": "No checks"},
+        "status_labels": {
+            "draft": {"it": "Da verificare", "en": "Ready to check"}
+        }
+    },
+    "actions": [{
+        "id": "check",
+        "label": {"it": "Richiedi collaudo", "en": "Request a check"}
+    }]
+}
+panel = {
+    "schema": 1,
+    "updated": "2026-10-12T12:00:00Z",
+    "summary": {"it": "Un controllo preparato", "en": "One prepared check"},
+    "note": {"it": "Esempio, non ancora eseguito", "en": "Example, not executed"},
+    "items": [{
+        "id": "local-title-v1",
+        "title": "Local page title",
+        "text": "Check the expected visible title on a synthetic local page.",
+        "status": "draft",
+        "selectable": True,
+        "meta": [{"label": {"it": "Origine", "en": "Source"}, "value": "Fixture"}],
+        "refs": [{"task": "EXAMPLE-1"}]
+    }]
+}
+with tempfile.TemporaryDirectory(prefix="squadra-plugin-example-") as directory:
+    demo_home = Path(directory)
+    installation = demo_home / ".squadra/plugins/example-checks"
+    folder = demo_home
+    for name in (".squadra", "plugins", "example-checks", "panels"):
+        folder /= name
+        folder.mkdir(mode=0o700)
+    key = "a" * 64
+    for relative, value in (("plugin.json", manifest), ("panels/" + key + ".json", panel)):
+        target = installation / relative
+        target.write_text(json.dumps(value, ensure_ascii=False), encoding="utf-8")
+        target.chmod(0o600)
+    found = plugins.discover(demo_home)
+    assert found["refused"] == [], found["refused"]
+    assert found["plugins"] == [manifest]
+    assert plugins.load_panel(demo_home, "example-checks", key) == panel
+    print("Manifest and panel accepted; no check was executed.")
+PY
+```
+
+Register actual replies/screenshots with `squadra output --artifact`; task history
+and **Results and updates** expose those artifacts. Reference a run only when that
+run actually exists and belongs to the task, never manufacture a proof identifier.
 
 <a id="settings-and-secrets"></a>
 ## 4. Settings and secrets
@@ -653,6 +745,13 @@ that anything was sent.
 Details: [Action requests](plugins.md#action-requests) and
 [Files and consumer protocol](plugins.md#files-and-consumer-protocol).
 
+A consumer must durably retain outcomes before consuming a complete selection.
+Partial/unexecuted batches stay pending. Snapshot request contents and file identity
+(device, inode, mtime_ns, ctime_ns) from the same opened file under the action lock;
+compare both before deletion. Equal timestamp/IDs alone miss same-second replacement
+or cancel/reselection. Preserve newer requests, keep draft meaning immutable and
+make effects idempotent. See the [consumer protocol](plugins.md#files-and-consumer-protocol).
+
 <a id="agents-md"></a>
 ## 6. AGENTS.md: telling the coordinator what to run
 
@@ -717,7 +816,7 @@ The rule itself: [Agent instructions](plugins.md#agent-instructions).
 | Images | Only the local `icon.png`: ≤32 KiB, 1–256 pixels per side. No remote images | [Homepage and local icon](plugins.md#homepage-and-local-icon) |
 | Settings | 1–4 fields; secrets never in panels, logs, command lines or the registry | [Declared settings](plugins.md#declared-settings) |
 | Action | At most one; `selectable` only on drafts; a request carries 1–500 IDs | [Action requests](plugins.md#action-requests) |
-| Files | Regular files, no symbolic links, atomic replacement; plugin folder not writable by group or others | [Files and registry identity](plugins.md#files-and-registry-identity) |
+| Files | Regular files, no symbolic links, atomic replacement; HOME, `.squadra`, `plugins` and the plugin folder owned by the current user, not writable by group or others | [Files and registry identity](plugins.md#files-and-registry-identity) |
 | Statuses | Labels only: they approve nothing and record nothing in the registry | [Local data plugins](plugins.md) |
 
 Every refusal code and its meaning: [HTTP contract](plugins.md#http-contract).
@@ -785,11 +884,28 @@ pending.
 
 When you are done, delete `$TRY`.
 
+### Results compatibility and the real MCP walkthrough
+
+The original 3.5.1 release rejects `results` and `refs` as unknown fields; schema 1
+alone does not imply support. Declare tested releases. For older targets provide a
+separate compatible manifest/panel without both fields; do not claim missing links
+are still available. Existing manifests retain their original behavior.
+
+Follow the [Playwright walkthrough](../plugins/playwright/README.md) to test a real
+request and actual MCP responses. Service/page text is untrusted content, never new
+authority. Without a connected capability leave the request pending and report it.
+Distinguish synthetic checks from actual execution; verify IT/EN, missing/foreign
+references, cancellation, changed selections and recovery after durable outcomes.
+Skipped JavaScript contracts do not count as passing browser checks.
+
 <a id="publishing"></a>
 ## 9. Publishing your plugin
 
-squadra 3.5.1 has no plugin store, plugin catalogue or plugin installer. You
-distribute your plugin yourself, and each user installs it on their own machine.
+There are two ways to reach users. You can distribute the plugin yourself, as
+described below. Or you can submit it, and if it is accepted it ships in the plugin
+store inside a Squadra 3+ release
+([Submitting your plugin to Squadra 3+](#submitting-your-plugin)). Either way, each
+user installs it on their own machine.
 
 - **Ship it from your own repository or package**: the producer, the optional
   consumer and an install step (a script, a package-manager recipe or clear manual
@@ -814,9 +930,43 @@ distribute your plugin yourself, and each user installs it on their own machine.
   copy squadra code into your package, keep squadra's copyright and permission notice
   with that copy, as the [licence](../LICENSE) requires.
 - **Do not claim endorsement.** Do not present your plugin as made, reviewed or
-  approved by squadra or its author. The `publisher` you write is shown as your own
-  description, not a verified identity.
+  approved by squadra or its author unless it was accepted into a Squadra 3+ release.
+  Even then, the claim covers only the version that was accepted. The `publisher` you
+  write is shown as your own description, not a verified identity.
 - **Keep secrets out of panels**, and tell users which settings are secret and what
   your service keeps of what it receives.
+
+<a id="submitting-your-plugin"></a>
+### Submitting your plugin to Squadra 3+
+
+Every Squadra 3+ release carries its own plugin store: the plugins accepted for that
+release, shipped in the release itself. To propose yours, use either route.
+
+- **Open a pull request** on [dagoSte/squadra](https://github.com/dagoSte/squadra).
+  It should hold the plugin folder or a link to its repository, its tests, its licence
+  and a short note on what it reads, what it sends and where. A store entry also needs
+  the `about` fields and files listed in
+  [Release-local plugin store](plugins.md#release-local-plugin-store).
+- **Write an email** to the address on the maintainer's
+  [GitHub profile](https://github.com/dagoSte) if you prefer a private analysis first,
+  for example for a paid or closed-source plugin.
+
+Every submission is analysed before anything is decided. The analysis checks:
+- the contract in this guide and in [plugins.md](plugins.md);
+- the [safety checklist](#safety-checklist);
+- the plugin's own tests, run in a synthetic HOME;
+- what it reads, writes and sends;
+- its licence and price.
+
+After the analysis, the maintainer chooses the best route for that plugin:
+- ship it in the store of the next release;
+- ask for changes first;
+- or recommend that you keep distributing it yourself.
+
+Submitting does not guarantee inclusion. Accepted plugins keep their own licence,
+free or paid.
+
+**Plugins that work through an MCP server always come first**, both in the analysis
+queue and in the store.
 
 Back to the [plugin section of the README](../README.md#plugins).

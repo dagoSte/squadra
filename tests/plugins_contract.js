@@ -89,6 +89,15 @@ const tests={
   assert.match(text(app.doc.getElementById('plugin-notices')),/<img src=x>: refused \(bad_name\)/);
   app.reply=async()=>{throw Error('synthetic denied')};await app.refresh();assert.match(text(app.doc.getElementById('content')),/unavailable or refused/);
   assert.doesNotMatch(text(app.doc.getElementById('content')),/synthetic denied/);
+  next.plugins={plugins:[],refused:[{name:null,code:'unsafe_permissions'}],key:next.plugins.key};
+  await app.refresh(next);assert.match(text(app.doc.getElementById('plugin-notices')),/refused \(unsafe_permissions\)/);
+  const links=app.doc.getElementById('plugin-links').children.map(key);
+  assert.ok(!links.includes('nav:plugin:example'),'refused plugin is removed from navigation');
+  assert.ok(links.includes('nav:plugin:empty'),'empty plugin entry remains available');
+  app.run("setLanguage('it')");await settle();
+  assert.match(text(app.doc.getElementById('plugin-notices')),/rifiutato \(unsafe_permissions\)/);
+  next.plugins.refused[0].name='example';await app.refresh(next);
+  assert.match(text(app.doc.getElementById('plugin-notices')),/example: rifiutato \(unsafe_permissions\)/);
  }
 };
 (async()=>{assert.ok(tests[scenario],'known scenario');await tests[scenario]();console.log('plugins contract passed: '+scenario)})().catch(e=>{console.error(e);process.exitCode=1});

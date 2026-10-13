@@ -7,8 +7,9 @@ from pathlib import Path
 import re
 import secrets
 import sqlite3
+import threading
 import time
-from urllib.parse import urlparse
+from urllib.parse import unquote, urlparse
 import webbrowser
 
 from registry import (Store, Error, digest, attention, waits, now, requirement_matrix, initial, apply, decision_graph,
@@ -18,12 +19,85 @@ from panel import activity
 import plugins
 import plugin_settings
 import plugin_actions
+import plugin_store
 
 SETTINGS_BODY_TIMEOUT = 5.0
 SETTINGS_STATUS = {'host_refused': 403, 'token_required': 401, 'origin_refused': 403,
                    'content_type': 415, 'length_required': 411, 'too_large': 413, 'body_timeout': 408,
                    'invalid_length': 400, 'invalid_body': 400, 'invalid_json': 400, 'unknown_key': 400,
                    'unknown_id': 400, 'bad_value': 400, 'bad_name': 400, 'not_found': 404, 'save_failed': 500}
+
+
+def compact_records(value):
+    """Project retained fingerprints without traversing their source inventories."""
+    if isinstance(value, dict):
+        fingerprint = {'head', 'sha256', 'files'} <= value.keys()
+        return {key: compact_records(item) for key, item in value.items()
+                if not (fingerprint and key == 'files')}
+    if isinstance(value, list):
+        return [compact_records(item) for item in value]
+    return value
+
+
+class VerifiedView:
+    """Reuse verified data until SQLite or the underlying files change."""
+    def __init__(self, root):
+        self.root = Path(root).resolve()
+        self.path = self.root / 'registry.sqlite3'
+        self.lock = threading.Lock()
+        self.monitor = None
+        self.identity = self.marker = self.value = None
+
+    def stamp(self):
+        if self.path.is_symlink():
+            raise Error('Registry symlink refused')
+        stat = self.path.stat()
+        identity = (stat.st_dev, stat.st_ino)
+        if self.monitor is None or identity != self.identity:
+            if self.monitor is not None:
+                self.monitor.close()
+            self.monitor = sqlite3.connect(self.path.as_uri() + '?mode=ro', uri=True,
+                                           isolation_level=None, check_same_thread=False)
+            self.identity, self.marker, self.value = identity, None, None
+        version = self.monitor.execute('PRAGMA data_version').fetchone()[0]
+        def changed(path):
+            try:
+                row = path.stat()
+                return (row.st_dev, row.st_ino, row.st_size, row.st_mtime_ns, row.st_ctime_ns)
+            except FileNotFoundError:
+                return None
+        return version, changed(self.path), changed(Path(str(self.path) + '-wal'))
+
+    def read(self):
+        with self.lock:
+            before = self.stamp()
+            if self.value is not None and before == self.marker:
+                return self.value
+            self.value = self.marker = None
+            store = Store(self.root, read_only=True)
+            try:
+                events = store.events()
+            finally:
+                store.close()
+            state = initial()
+            for event in events:
+                apply(state, event)
+            state.update(root=str(self.root), graph=decision_graph(events), progress=task_progress(events),
+                         requirements={key: requirement_matrix(task) for key, task in state['tasks'].items()})
+            compact = {key: compact_records(state[key]) for key in ('tasks', 'runs')}
+            value = events, state, compact
+            after = self.stamp()
+            # A concurrent commit may leave a valid older snapshot, but it must not be cached as current.
+            if before == after:
+                self.marker, self.value = after, value
+            return value
+
+    def close(self):
+        with self.lock:
+            if self.monitor is not None:
+                self.monitor.close()
+                self.monitor = None
+            self.value = self.marker = None
 
 
 def make_server(root, port=0):
@@ -35,6 +109,7 @@ def make_server(root, port=0):
              for name in ("geist-var-latin.woff2", "fraunces-var-latin.woff2")}
     plugin_home = Path.home()
     verified_first = None
+    view = VerifiedView(root)
 
     def remember_key(events):
         nonlocal verified_first
@@ -79,17 +154,19 @@ def make_server(root, port=0):
                 self.answer(200, fonts[path], "font/woff2"); return
             if not secrets.compare_digest(self.headers.get("X-Squadra-Token", ""), token):
                 self.answer(401, b'{"error":"token required"}'); return
+            if path == "/api/plugin-store":
+                try:
+                    body = plugin_store.catalogue(plugin_home)
+                    self.answer(200, json.dumps(body, ensure_ascii=False).encode())
+                except (plugins.Refused, OSError, ValueError, KeyError):
+                    self.answer(409, b'{"error":"store_unavailable"}')
+                return
             if path == "/api/plugins" or path.startswith("/api/plugin/"):
                 self.plugin_answer(path)
                 return
-            store = Store(root)
             try:
-                # One read of the whole verified log feeds the state, the graph and the artifact whitelist.
-                events = store.events()
-                state = initial()
-                for event in events:
-                    apply(state, event)
-                state["root"] = str(store.root)
+                events, recorded, compact = view.read()
+                state = dict(recorded)
                 if path == "/api/state":
                     key = remember_key(events)
                     state["plugins"] = {**plugin_actions.discover(plugin_home, key), "key": key}
@@ -97,15 +174,27 @@ def make_server(root, port=0):
                     stamp = now()
                     state["waits"] = waits(state, stamp)
                     state["presence"] = presence(state, stamp)
-                    state["requirements"] = {k: requirement_matrix(t) for k, t in state["tasks"].items()}
                     state["project_started"] = events[0]["utc"]
                     state["events"] = events[-120:]
-                    state["graph"] = decision_graph(events)
-                    state["progress"] = task_progress(events)
                     state["integrity"] = "verified"
                     state["comms"] = communications(state, events, state["waits"], stamp)
                     state["activity"] = activity(events, stamp)
+                    if self.headers.get('X-Squadra-View') == 'compact':
+                        query = unquote(self.headers.get('X-Squadra-Search', '')).lower()
+                        state['search'] = {'query': query, **{
+                            kind: [key for key, record in recorded[kind].items()
+                                   if query and query in json.dumps(record, ensure_ascii=False,
+                                                                    separators=(',', ':')).lower()]
+                            for kind in ('tasks', 'runs')}}
+                        state.update(compact)
                     self.answer(200, json.dumps(state, ensure_ascii=False).encode())
+                elif path in ('/api/detail/task', '/api/detail/run'):
+                    kind = 'tasks' if path.endswith('/task') else 'runs'
+                    record = recorded[kind].get(unquote(self.headers.get('X-Squadra-Record', '')))
+                    if record is None:
+                        self.answer(404, b'{"error":"record not found"}')
+                    else:
+                        self.answer(200, json.dumps(record, ensure_ascii=False).encode())
                 elif re.fullmatch(r"/api/artifact/[0-9a-f]{64}", path):
                     sha = path.rsplit("/", 1)[-1]
                     registered = set()
@@ -122,7 +211,7 @@ def make_server(root, port=0):
                     collect(events)  # Keep replaced plans and briefs accessible through their recorded events.
                     if sha not in registered:
                         self.answer(404, b'{"error":"unregistered artifact"}'); return
-                    body = (store.root / "artifacts" / sha).read_bytes()
+                    body = (Path(root) / "artifacts" / sha).read_bytes()
                     if digest(body) != sha:
                         raise Error("Artifact integrity failed")
                     self.answer(200, body, "text/plain; charset=utf-8")
@@ -130,10 +219,8 @@ def make_server(root, port=0):
                     self.answer(404, b'{"error":"not found"}')
             except plugins.Refused as exc:
                 self.answer(409, json.dumps({"error": exc.code}).encode())
-            except (Error, OSError, ValueError) as exc:
+            except (Error, OSError, ValueError, sqlite3.Error) as exc:
                 self.answer(409, json.dumps({"error": str(exc)}).encode())
-            finally:
-                store.close()
 
         def plugin_answer(self, path):
             store = None
@@ -224,6 +311,13 @@ def make_server(root, port=0):
 
     server = ThreadingHTTPServer(("127.0.0.1", port), Handler)
     server.daemon_threads = True
+    close = server.server_close
+    def close_view():
+        try:
+            close()
+        finally:
+            view.close()
+    server.server_close = close_view
     return server, token
 
 

@@ -74,7 +74,17 @@ const tests={
   for(const fn of app.doc.listeners.click)fn({isTrusted:false});assert.equal(app.audio.contexts.length,0,'programmatic click cannot unlock');
   await app.click();assert.equal(app.audio.notes.length,0,'no backlog');const ctx=app.audio.contexts[0];ctx.state='suspended';
   await app.refresh(close(app,[1]));assert.equal(app.audio.resumes,1,'polling never resumes');await app.click();assert.equal(app.audio.resumes,2);
-  app.doc.hidden=true;await app.refresh(close(app,[2]));assert.equal(app.audio.notes.length,0,'hidden page skips audio');assert.equal(texts(app).at(-1),'Lavoro completato: nessun incarico aperto');
+  app.doc.hidden=true;for(const fn of app.doc.listeners.visibilitychange||[])fn();await settle();
+  const fetched=app.fetched.length;await app.refresh(close(app,[2]));
+  assert.equal(app.fetched.length,fetched,'a hidden page does not poll');
+  assert.equal(app.audio.notes.length,0,'hidden page skips audio');assert.equal(texts(app).at(-1),'Passo fatto: Task 1');
+  app.doc.hidden=false;for(const fn of app.doc.listeners.visibilitychange||[])fn();await settle();
+  assert.equal(app.fetched.length,fetched+1,'returning to the page refreshes once');
+  assert.equal(texts(app).at(-1),'Lavoro completato: nessun incarico aperto');assert.equal(app.audio.notes.length,3);
+  const inflight=await boot({fixture:fixture(['working'])});await inflight.click();inflight.doc.hidden=true;
+  inflight.run('notifyPoll('+JSON.stringify(close(inflight,[0]))+')');
+  assert.equal(inflight.audio.notes.length,0,'a reply already in flight never sounds while hidden');
+  assert.equal(texts(inflight).at(-1),'Lavoro completato: nessun incarico aperto');
   for(const mode of ['throw','reject','missing']){
    const a=await boot({fixture:fixture()});a.audio.mode=mode;if(mode==='missing')a.run('delete window.AudioContext');await a.click();await a.refresh(close(a,[0]));healthy(a);assert.equal(texts(a).length,1);assert.equal(a.audio.notes.length,0);
   }

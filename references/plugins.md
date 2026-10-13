@@ -1,8 +1,9 @@
 # Local data plugins
 
 The dashboard reads data written by a separately operated producer. It never runs
-plugin code. Only the declared HTTPS homepage is rendered as a link, opened by
-your click in a new tab; other content links remain plain text. Its writes save declared
+plugin code. The declared HTTPS homepage opens in a new tab only on your click.
+Optional task/run references navigate within the current registry; other content
+URLs remain plain text. Its writes save declared
 settings and user selections of an installed plugin; they never execute a request. Displayed
 statuses are labels, not task approvals, registry events or proof that the producer
 executed an action. No plugin is selected
@@ -35,9 +36,16 @@ partially written or malformed data is refused, not repaired by the dashboard.
 These checks do not authenticate the producer against someone who can already
 write under the same local account.
 
+For discovery, panel reads, settings and actions, HOME, `.squadra`, `plugins`
+and each plugin folder must be owned by the current user and must not be
+group- or other-writable. Owned 0700 and 0755 folders are accepted. An unsafe
+plugin is excluded with `unsafe_permissions`; an unsafe parent gives an empty
+plugin list with that refusal. Store installations still use private 0700 folders.
+
 ## JSON schemas, version 1
 
-`plugin.json` is at most **64 KiB** (including optional `settings` and `about`):
+`plugin.json` is at most **64 KiB** (including optional `settings`, `about`,
+`actions` and `results`):
 
 ```json
 {
@@ -70,14 +78,81 @@ Within a panel, only `note` is optional. Every bilingual object requires exactly
 Unknown fields at any depth, duplicate JSON keys, nonfinite numbers and invalid
 UTF-8 are refused. Schema must be the integer `1`, not a boolean or string.
 The base manifest and panel strings are at most **4096 UTF-8 bytes** each; the
-optional `about` and settings fields have their own limits below. `updated` must be an ISO timestamp
+optional `about`, settings, results and reference fields have their own limits below. `updated` must be an ISO timestamp
 with a `T` separator and an explicit UTC offset (`Z` or `+00:00`). Manifest name
 must equal its folder name. Keep item IDs stable across updates to retain focus.
 
 Allowed status values are `draft`, `sent`, `approved`, `rejected`, `withheld` and
-`error`; their labels are translated by the dashboard. Item title, text and meta
+`error`; their default labels are translated by the dashboard. The optional
+`results.status_labels` map changes their display labels, never their behavior. Item title, text and meta
 values remain as recorded. Panel content is inert text: no HTML, Markdown or clickable URLs are interpreted.
 Only the manifest’s declared HTTPS homepage becomes a link in the page header.
+
+## Optional results section
+
+A manifest can name its data section for its purpose: “Collaudi” / “Browser checks”,
+“Segnalazioni” / “Issues”, or another short bilingual label. Example member:
+
+```json
+"results": {
+  "label": {"it": "Collaudi", "en": "Browser checks"},
+  "empty": {"it": "Nessun collaudo preparato", "en": "No browser checks prepared"},
+  "status_labels": {
+    "draft": {"it": "Da verificare", "en": "Ready to check"},
+    "approved": {"it": "Esito positivo dichiarato", "en": "Reported success"}
+  }
+}
+```
+
+| Field | Bounds |
+| --- | --- |
+| `label` | Required, exactly `it` and `en`, each 1–80 Unicode characters |
+| `empty` | Optional, exactly `it` and `en`, each 1–300 characters |
+| `status_labels` | Optional object mapping any subset of the six existing status values to bilingual labels, each language 1–80 characters |
+
+Unknown fields/status keys are refused. The whole manifest remains ≤64 KiB.
+The section appears even without `about`; when `about` exists it sits alongside
+Overview and any declared Settings. Existing manifests without `results` retain
+the Memories wording and default labels. Missing overrides retain the translated
+default. Item `title`, `text` and `meta` already carry the producer's result data;
+this extension does not permit custom HTML, scripts, arbitrary widgets or new
+status values. The producer must describe what a status measures: a label such
+as “Reported success” is not a registry proof or independent review.
+
+One action per plugin remains the limit. Only `draft` items can be selectable,
+even if their visible label changes. Settings, pending selection, cancellation,
+refresh and execution boundaries are unchanged.
+
+## Task and run associations
+
+Each panel item can optionally include `refs`, a list of **0–8** objects. An
+object has exactly `task`, or exactly `task` and `run`:
+
+```json
+"refs": [
+  {"task": "WEB-1"},
+  {"task": "WEB-1", "run": "0123456789abcdef0123456789abcdef"}
+]
+```
+
+A task ID is a nonempty string of at most **200 Unicode characters**, without
+Unicode category C characters (controls, format characters, surrogates, private-use
+or unassigned characters). A run ID is exactly **32 lowercase hexadecimal
+characters**. The example run ID illustrates the shape; it must not be invented
+for a real result. References contain no paths, URLs, artifact fields or approval
+claims. They fit within the panel's existing 2 MiB limit.
+
+The dashboard resolves references against the current registry's own task/run
+keys on every refresh. A task link opens that task's history. A run link opens
+the existing Runs view filtered to that exact task and run, only when the run
+belongs to the named task. Unknown tasks/runs or mismatched ownership appear as
+unavailable plain text. A later refresh cannot keep an obsolete link active.
+
+These are **producer-supplied associations**, not attestations that the referenced
+proof tested this item or succeeded. Run outcomes, artifacts and independent
+review remain owned by the normal registry workflow. Register real evidence
+through that workflow; never construct artifact links from plugin content.
+No new endpoint, network poll, write or content-security-policy source is added.
 
 ## Optional about metadata
 
@@ -134,8 +209,8 @@ are unchanged.
 
 ## Homepage and local icon
 
-The optional `about.homepage` is the only plugin-supplied text rendered as a
-link. It must be a valid Unicode string of 1–200 characters, with scheme `https`
+The optional `about.homepage` is the only plugin-supplied external URL rendered
+as a link. Task/run associations use existing internal registry navigation. It must be a valid Unicode string of 1–200 characters, with scheme `https`
 and a host. Userinfo (including empty userinfo), fragments (including an empty
 `#`), Unicode whitespace, control/format characters (Cc/Cf, including bidi
 controls), backslashes, malformed hosts and invalid ports are refused with
@@ -163,8 +238,9 @@ next discovery; no usable icon is cached across reads.
 ## HTTP contract
 
 All plugin APIs use the dashboard's existing loopback Host and
-`X-Squadra-Token` checks. Only the declared-settings POST described below is
-permitted; other POSTs and OPTIONS stay 405. The Content-Security-Policy is unchanged.
+`X-Squadra-Token` checks. The only permitted POST routes save declared settings
+or an action selection, as described below. Other POSTs and OPTIONS stay 405.
+The Content-Security-Policy is unchanged.
 
 | GET route | Response |
 | --- | --- |
@@ -190,6 +266,7 @@ valid ones. Plugin errors do not replace the main registry view.
 | `name_mismatch` | Manifest name differs from folder |
 | `symlink` | Refused path component is a symbolic link |
 | `not_directory`, `not_regular` | Wrong filesystem object type |
+| `unsafe_permissions` | A checked folder has a foreign owner or allows group/other writes; settings and action files also retain their private-file rules |
 | `too_large` | File exceeds its byte limit, including growth during reading |
 | `invalid_json` | Malformed UTF-8/JSON, duplicate key, nonfinite value or parser depth refusal |
 | `invalid_icon` | Icon has an invalid PNG signature, first IHDR header or dimensions; plugin remains listed without icon |
@@ -294,7 +371,8 @@ single exact loopback Host, single constant-time token, Origin absent or exactly
 framing and length. Transfer-Encoding is refused. Content-Length must be a single
 positive integer ≤16 KiB; body reading has a five-second total deadline. UTF-8/JSON
 is strict, including duplicate/unknown keys. Only installed, declared fields can
-be saved. No CORS headers or OPTIONS permission are provided; other POSTs are 405.
+be saved. No CORS headers or OPTIONS permission are provided. Apart from this
+route and the declared-action route below, POSTs are 405.
 The CSP is unchanged. No outbound connection or plugin execution occurs.
 
 Success returns `{"settings":[{"id":"agent_key","set":true}]}` plus the other
@@ -406,13 +484,22 @@ oversize files refuse. An existing request with a missing lock refuses; it is
 not silently assigned a second synchronization domain.
 
 A consumer snapshots the request under that lock, verifies its registry key,
-then releases the lock before processing/sending. Afterwards it reopens and
-validates the current file under the same lock and **compare-and-deletes only
-if `key`, `requested` and ordered `ids` still equal its snapshot**. Fsync the
-directory after deleting. Preserve a newer selection. Cancellation/replacement
-cannot retract work already taken by a consumer. A consumer must make its own
-sends idempotent and retain observed outcomes; a saved selection is no proof of
-execution. The server adds no consumer, scheduler or audit event.
+and captures file identity from the **same open regular file**: device, inode,
+`mtime_ns` and `ctime_ns`. It then releases the lock before processing/sending.
+Persist outcomes durably before consuming the request. Every selected immutable
+item must have a terminal recorded outcome; an unexecuted or partially processed
+batch remains pending. Reopen and validate the current file under the same lock
+and **compare-and-delete only if both its file identity and `key`, `requested`
+and ordered `ids` still match the snapshot**. Fsync the directory after deletion.
+Content equality alone misses replacement or cancel/reselection within the same
+second; preserve those newer requests, even when their JSON equals the snapshot.
+
+Cancellation/replacement cannot retract work already taken by a consumer. Make
+external operations idempotent and retain observed outcomes. Publish panels
+atomically and coordinate producer/consumer updates with the action lock so
+selection validation cannot race a change in draft meaning. Never reuse a draft
+ID for a different request. A saved selection is no proof of execution. The
+server adds no consumer, scheduler or audit event.
 
 | HTTP | Fixed action refusals |
 | --- | --- |
@@ -426,3 +513,107 @@ execution. The server adds no consumer, scheduler or audit event.
 Codes never include input values or paths. Registry contents, settings and the
 CSP remain unchanged by these requests. This contract supplies the server API;
 a client must distinguish selection saved from actual consumer outcome.
+
+## Release-local plugin store
+
+An accepted plugin is bundled under the installed release's `plugins/<name>/`,
+with `plugin.json`, `AGENTS.md`, `README.md` (required), optional `README.it.md`,
+and all programs needed to operate it. The catalogue always comes from the
+running Squadra release, never the current directory or the user's installed
+plugin folders. The maintainer analyses PR/email submissions, prioritizing
+MCP-based plugins; acceptance covers only the stated version. The catalogue is
+ordered MCP first, then title and name. No code is downloaded or executed.
+The Store's directory-owner check expects a user-owned Squadra installation;
+a shared root-owned installation is refused when run by another user.
+
+The dashboard's **Plugins → Store** view reads this catalogue on entry or explicit
+refresh, outside the registry poll. It shows the installed receipt's release
+version and ID beside the running release, including unmanaged or incomplete
+installations. Homepage links open only on a click. Installation commands are
+displayed for the coordinator to run; there is no install button, and no bundled
+instructions or programs are served by the Store route. The page also works
+when the running release has no bundled plugins.
+
+Store entries require the existing `about.publisher`, `about.version` and
+`about.homepage` fields. Adjacent `store.json` contains only additional metadata:
+
+```json
+{"schema":1,"licence":"MIT","price":"free","mcp":true,"source":"https://example.invalid/source","accepted_version":"1.0.0","review_date":"2026-10-12"}
+```
+
+`accepted_version` must equal `about.version`; `review_date` is a real YYYY-MM-DD
+date. `price` is `free` or `paid`; `mcp` is a boolean. The licence is nonempty,
+at most 128 characters, without control/direction characters; the source uses
+the existing HTTPS homepage validator. Unknown/duplicate keys, invalid UTF-8,
+invalid dates and incomplete metadata exclude the entry from the catalogue.
+The acceptance metadata is a maintainer declaration, not a runtime attestation.
+`store.json` is copied to HOME and included in the managed file inventory.
+
+Bounds: 128 catalogue entries; 256 files and 512 total file/directory entries
+per plugin; depth 8; 4 MiB per file, 32 MiB total; store.json 16 KiB. Existing
+plugin.json limits apply. AGENTS.md and each README must be a nonempty regular
+UTF-8 file at most 64 KiB. Relative path components use ASCII letters, digits,
+period, underscore or hyphen, up to 128 characters; no traversal, case-colliding
+names, symlinks or special files. Root `settings.json`, `secrets/`, `actions/`,
+`panels/`, `.settings.lock`, `.store-receipt.json` and `.store.lock` are reserved.
+`SKILL.md`, `.claude-plugin`, `.codex-plugin`, `.agents` and `.mcp.json` are refused
+at every depth, including case variants: a data plugin must not become another
+client skill, agent, hook or MCP configuration through client discovery.
+
+### List, install and recover
+
+`squadra plugin list` is read-only. It returns JSON with the running release,
+valid plugins, installed/managed status, receipt release/version/state, and
+bounded refusal codes. A folder may be installed but unmanaged or incomplete.
+A release ID is the SHA-256 of the named hashes of scripts/squadra.py,
+registry.py, plugins.py and plugin_store.py; it is a code fingerprint, not a
+Git commit or an authenticity signature. Both release version and ID are shown.
+The command offered for a plugin uses `squadra` only when the current standalone
+launcher targets that release; otherwise it uses a shell-quoted
+`python3 <release root>/scripts/squadra.py plugin install <name>`.
+
+`plugin install <name>` dispatches without opening a registry. It uses one shared
+`plugins.check_directory` policy: HOME, `.squadra` and `plugins` must be user-owned
+and not group/other-writable (0755 is valid); the plugin folder and its internal
+directories must be 0700. Missing directories are created 0700; existing unsafe
+permissions are refused, never repaired. Each path component is opened relative
+to a directory descriptor with no-follow semantics. Written files are 0600,
+regular, with one hard link, replaced atomically and fsynced.
+
+A nonblocking `.store.lock` in the plugins parent serializes installations. A
+single private `.store-receipt.json` records schema, plugin, state, release,
+plugin version, target bundle digest and managed file hashes. Before copying it
+is written as `upgrading`, with old/new path hashes and explicit absence for new
+or removed paths. A retry accepts only that same target bundle/release and only
+old/new hashes. The final receipt is `complete`. Locally modified managed files
+and unowned collisions refuse; obsolete files are removed only if they were
+receipted and unchanged. Runtime data and other unowned files stay untouched.
+
+Per-file replacement is atomic; the whole upgrade is not. Stop the producer and
+consumer first. A partial copy remains visible as incomplete; retry the same
+release/bundle. Other bundles refuse until the interrupted operation is
+reconciled. Never edit the receipt to force an upgrade. A crash between creating
+a new folder and its initial receipt can leave an unmanaged folder; inspect and
+move it aside before retrying. Receipts cannot protect against an attacker
+controlling the same account. No installer runs AGENTS.md or a program.
+
+No force/adoption switch exists. For a legacy installation, save settings.json
+and secrets/, move its folder aside, then install; restore configuration only
+after checking compatibility. For uninstall, stop its producer/consumer, save
+configuration, and remove only that plugin's folder. No new recursive-delete
+command is provided. Reinstall explicitly applies the running release's bundle,
+with plugin and release transitions `from`/`to`. Numeric decreases are labelled
+`downgrade`; arbitrary plugin labels are `unordered`, never claimed newer.
+
+Refusals include `bad_name`, `not_found`, `invalid_bundle`, `unsafe_permissions`,
+`symlink`, `unmanaged_installation`, `modified_installation`, `busy` and
+`install_incomplete`, plus existing strict reader codes. Errors contain codes,
+not private file contents. There is no remote update or automatic execution.
+
+## Building and distributing a plugin
+
+Follow the [plugin authoring guide](plugin-authoring.md) for a runnable isolated
+example, producer/consumer responsibilities, compatibility checks and packaging.
+The [Italian overview](../docs/plugin-authoring.it.md) links to the English rules.
+The optional [Playwright browser-check plugin](../plugins/playwright/README.md)
+provides a concrete bridge to an agent's MCP tools; it is not auto-installed.

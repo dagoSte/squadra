@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🧭 Squadra 3+
+# Squadra 3+
 
 **Your coding agents, one team — and proof for every step.**
 
@@ -8,7 +8,7 @@ The most complete team skill for Claude Code, Codex and Cursor.
 
 **Free and open source** — MIT licence, no account, everything runs on your machine.
 
-**Version 3.5.1** · Free · MIT · Local toolkit · Python 3.12+ · macOS / POSIX
+**Version 3.6.0** · Free · MIT · Local toolkit · Python 3.12+ · macOS / POSIX
 
 **English** · [Italiano](README.it.md)
 
@@ -16,11 +16,13 @@ The most complete team skill for Claude Code, Codex and Cursor.
 
 </div>
 
-[![Squadra 3+ — watch the 80-second tour](docs/video/squadra-3plus-preview.webp)](https://github.com/dagoSte/squadra/releases/download/v3.5.1/squadra-3plus.mp4)
+**Watch the 80-second tour — turn the sound on in the player:**
+
+https://github.com/user-attachments/assets/69f512be-775c-40ae-95c2-e1e403b3f5d1
 
 It installs with `/plugin` in Claude Code and Codex. **Install:** see [Installation](#start).
 
-## ✨ What makes it different
+## What makes it different
 
 - **One registry every window writes to.** Assignments, messages, proofs, reviews, decisions and the owner's words go into one durable record on your computer, with a hash chain that reveals accidental changes. Nothing depends on what a chat still remembers.
 - **A reader who did not write it, on every change.** Reviews are recorded by an identity different from the authors; an alias never counts as a second reader.
@@ -32,7 +34,7 @@ It installs with `/plugin` in Claude Code and Codex. **Install:** see [Installat
 - **Claude, Codex and Cursor in one squad**, with local plugins that add their own page, and a self-test and offline harnesses that make no model calls.
 - **Open to community plugins.** The plugin contract is open and documented: anyone can build a plugin, free or paid, that brings its own data into the dashboard, with its own page, settings and one optional action.
 
-## 🧭 What Squadra does
+## What Squadra does
 
 Squadra lets several AI agent windows work on one project as a team you can follow: one window coordinates, another makes the change, and a third, never the author, checks it. It is built for the moments where agent work usually goes wrong: an author reviewing its own work, a green test that ran on different code, a confirmation nobody gave, a decision lost in a long conversation, a session that ends halfway. Three parts work together: **the skill**, which the agents follow; **the CLI**, which records each step; **the dashboard**, where you read the record. Each window can work in its own copy of the code, a *checkout*, while all of them share one registry.
 
@@ -58,7 +60,7 @@ Squadra lets several AI agent windows work on one project as a team you can foll
 | Ping / stand-by | A presence call asking a window to confirm it still answers / the coordinator's record that a window gets no new assignments for now. Stand-by stops nothing that is running. |
 
 <a id="start"></a>
-## 🚀 Installation and first workspace
+## Installation and first workspace
 
 **Requirements:** Python 3.12+, Git and the Python standard library. **Node.js** runs the dashboard's JavaScript checks in the test suite and in `selftest`: without it they fail, they are never skipped. A browser for the dashboard; the Codex or Claude CLI only for the native runners. macOS/POSIX is the tested process environment; Windows process controls and recovery with submodules, LFS or sparse checkouts are not qualified.
 
@@ -92,6 +94,21 @@ squadra --version
 ```
 
 Install from a clean, committed checkout with a **new backup directory** each time. The installer freezes a copy by commit, links the skill for Codex, Claude and Cursor (`~/.cursor/skills/squadra`) and prepares `~/.local/bin/squadra` (keep it in PATH), preserving the previous skills and launcher. To roll back, replace only the four targets listed in `INSTALL.json` with their recorded predecessors. Without installing, run `python3 -B scripts/squadra.py <command>`. Installing never migrates a working squad: each keeps its version until you switch it explicitly.
+
+### Updating
+
+**With /plugin.** In Claude Code, run `/plugin marketplace update squadra`, then `/plugin update squadra@squadra`, then restart Claude Code. For Codex, run `codex plugin marketplace upgrade`, then `codex plugin add squadra@squadra` again.
+
+**With the standalone installer.** In your checkout, run `git pull` and then the installer again, with a new backup folder each time:
+
+```sh
+git pull
+python3 -B scripts/install.py \
+  --backup "$HOME/.local/state/squadra/install-backup-002"
+squadra --version
+```
+
+Every release raises the version number. Plugins installed from the Store keep their version until `squadra plugin install <name>` runs again from the new release ([Plugins bundled in your release](#plugin-store)). Windows that are already open keep the version they read until they restart, and a running squad keeps its protocol until you switch it explicitly.
 
 ### Rule 0: find the windows and introduce yourself
 
@@ -144,7 +161,7 @@ Every update to the owner, from any window, shows the work from `squadra board`:
 - **Faster next time:** at every close the coordinator reads where the time went and writes one line on how to save it, then applies it to the next task.
 
 <a id="prompts"></a>
-## 💬 Example prompts
+## Example prompts
 
 You talk to the agents in plain words; they run the commands. Copy a prompt into the window it is meant for and replace the paths and names. Every prompt works in Codex, Claude and interactive Cursor windows that have the squadra skill installed.
 
@@ -292,7 +309,7 @@ reader and a Codex reader read everything together.
 ```
 
 <a id="first-steps"></a>
-## 👣 First steps
+## First steps
 
 New to Squadra? Try these twelve steps once, end to end, on a test project. A **window** is one working session: a Codex, Claude or Cursor agent, or a person. Every window uses the same registry.
 
@@ -336,7 +353,7 @@ squadra dash --open
 ```
 
 <a id="dashboard"></a>
-## 🖥️ Dashboard: the work at a glance
+## Dashboard: the work at a glance
 
 ![Squadra summary in English: one sentence on where the work stands, plain tiles, and one card per task](docs/images/dashboard-overview-en.png)
 
@@ -401,13 +418,19 @@ Every screenshot exists in both languages:
 | Plugin page | [EN](docs/images/dashboard-plugins-en.png) | [IT](docs/images/dashboard-plugins-it.png) |
 | Plugin settings | [EN](docs/images/dashboard-plugin-settings-en.png) | [IT](docs/images/dashboard-plugin-settings-it.png) |
 | Plugin memories | [EN](docs/images/dashboard-plugin-memories-en.png) | [IT](docs/images/dashboard-plugin-memories-it.png) |
+| Plugin store | [EN](docs/images/dashboard-plugin-store-en.png) | [IT](docs/images/dashboard-plugin-store-it.png) |
 
-**Refresh and safety.** The page refreshes every two seconds, offers text search and opens registered artifacts in a dialog. It is **read-only except declared settings and selections of installed plugins**; registry actions use the CLI. It listens on `127.0.0.1`, checks Host and token, checks Origin for settings and selection writes, and loads no remote scripts or CDN. `--port` picks a port (by default a free one); `Ctrl-C` closes the dashboard server, not the agents; a disconnected page keeps its last view with a warning.
+**Refresh and safety.** The page refreshes every two seconds, pauses while the tab is hidden, and refreshes immediately when you return. It offers text search and opens registered artifacts in a dialog. It is **read-only except declared settings and selections of installed plugins**; registry actions use the CLI. It listens on `127.0.0.1`, checks Host and token, checks Origin for settings and selection writes, and loads no remote scripts or CDN. `--port` picks a port (by default a free one); `Ctrl-C` closes the dashboard server, not the agents; a disconnected page keeps its last view with a warning.
 
 <a id="plugins"></a>
 ### Local data plugins
 
 A **plugin** brings another tool's data into the dashboard: a folder `$HOME/.squadra/plugins/<name>/` with a `plugin.json` manifest, where a separate program, the plugin's *producer*, writes data panels. The **Plugins** menu group lists every installed manifest, or says «No plugins installed» and explains where plugins go; select one to see its data for the open registry.
+
+HOME, `.squadra`, `plugins` and each plugin folder must belong to the current user
+and must not be writable by group or others. Discovery, panel reads, settings and
+actions refuse unsafe folders with `unsafe_permissions`. Owned 0700 or 0755 folders
+work; the Store creates private 0700 plugin folders.
 
 **Build your own.** The contract is open: anyone in the community can publish a squadra plugin, free or paid. A plugin is data plus a separate program. The dashboard and CLI never run plugin code; agents run it only as its `AGENTS.md` says, under the [file's trust conditions and the user's existing permissions](references/plugins.md#agent-instructions). Start from the [plugin contract](references/plugins.md).
 
@@ -415,21 +438,42 @@ A **plugin** brings another tool's data into the dashboard: a folder `$HOME/.squ
 
 ![An installed plugin's page: header with publisher and version, and the Overview, Settings and Memories tabs](docs/images/dashboard-plugins-en.png)
 
-- **Data, not code.** The dashboard never runs plugin code. Its only link is the declared HTTPS homepage, opened by your click in a new tab; an optional local PNG logo appears without a remote request; status badges grant no authority over the registry. The optional `about` page (publisher, version, tagline, up to eight sections) is the producer's own description, never executable content or a verified identity.
+- **Data, not code.** The dashboard never runs plugin code. The declared HTTPS homepage opens by your click in a new tab; task/run associations open the matching registry view; an optional local PNG logo appears without a remote request; status badges grant no authority over the registry. The optional `about` page (publisher, version, tagline, up to eight sections) is the producer's own description, never executable content or a verified identity.
 - **Settings.** Up to four declared fields, stored with **Save**; **Clear** takes effect on save, and a blank password keeps the saved secret. Secrets are never prefilled or returned, and password managers remain outside Squadra's control. Files go to the **HOME of the user who runs `squadra dash`** (a dash started by an agent with a private HOME saves there, not in yours), as local plaintext `settings.json` and `secrets/<id>` (0600): not an encrypted vault, and never in the registry. Writes are atomic per file, so a lost reply can mean a partial save: re-read the status and submit again deliberately; never infer success from a missing reply.
 
 ![The Settings tab: declared fields, a secret that is never shown again, and Save](docs/images/dashboard-plugin-settings-en.png)
 
-- **Selecting drafts.** A plugin can declare one action, such as «Send for review». In its Memories tab you tick drafts and press the button: only your choice is saved, as a pending request that a new choice replaces and «Cancel request» withdraws. The dashboard never sends or runs anything.
+- **Results for each service.** A plugin can name its data section, for example «Browser checks», and explain its result states in both languages. Older plugins keep «Memories». Items can link to an existing task or one of its recorded runs; these are producer-supplied associations, not proof of success or approval.
+- **Selecting drafts.** A plugin can declare one action, such as «Request a browser check» or «Send for review». In its data section you tick drafts and press the button: only your choice is saved, as a pending request that a new choice replaces and «Cancel request» withdraws. The dashboard never sends or runs anything.
 
 ![The Memories tab: the plugin's items with their status; drafts can be selected and sent for review, and a pending request cancelled](docs/images/dashboard-plugin-memories-en.png)
 
+<a id="plugin-agent-instructions"></a>
 **Who runs the request?** An installed plugin may ship `$HOME/.squadra/plugins/<name>/AGENTS.md` with instructions for agents. The coordinator window reads it at start and resume and runs only the commands it specifies, within existing permissions: the producer after a close, the consumer when the dashboard shows a pending request, then reports the outcome. This requires a regular file owned by the user, not group- or other-writable and not a symlink. Without a valid file, the request stays pending and the coordinator says so; you have no command to run. The dashboard never reads, writes or runs this file. This file never widens permissions and never authorizes installation, push, publication or decisions reserved for the user; for anything beyond running that plugin’s producer or consumer, stop and report.
 
 Exact schemas, sizes, limits and refusal codes: [plugin contract](references/plugins.md), [about metadata](references/plugins.md#optional-about-metadata), [homepage and icon](references/plugins.md#homepage-and-local-icon).
 
+<a id="plugin-store"></a>
+### Plugins bundled in your release
+
+Installation also makes the bundled [agent instructions](#plugin-agent-instructions) available to the coordinator: it reads them at the next start or resume and runs the producer or consumer at the documented triggers, within existing permissions.
+
+Open **Plugins → Store** to see the running release's catalogue, its install commands and local installation status. It refreshes only when opened or when you choose **Refresh catalogue**; there is no install button. Homepage links open on a click in a new tab. Ask the coordinator to run the displayed command, which targets this installation of Squadra.
+
+![The Store page: the plugins bundled in the running release, MCP-based first, each with publisher, version, licence, price, review date and the install command for the coordinator](docs/images/dashboard-plugin-store-en.png)
+
+`squadra plugin list` lists the local release's accepted catalogue, MCP-based plugins first, with installed status and both the installed and running release. `squadra plugin install <name>` copies a bundled plugin; it does not download or run code. With a `/plugin` installation there is no standalone launcher: ask the coordinator to use `python3 <release root>/scripts/squadra.py plugin list` or `plugin install <name>`.
+
+Repeat install explicitly applies that release's bundle and reports the versions **from X to Y**, including a downgrade. Settings, secrets, saved selections and panels stay untouched. Stop the plugin's producer/consumer before updating. A legacy folder is never adopted: save its `settings.json` and `secrets/`, move the folder aside, then install; restore configuration only after checking the new plugin's schema. To uninstall, stop its producer/consumer, save configuration and remove only that plugin's folder. An interrupted copy is reported as incomplete; retry the same bundle. There is no atomic whole-folder upgrade. See [store metadata and safeguards](references/plugins.md#release-local-plugin-store).
+
+Submit plugins by PR or the maintainer's contact email for analysis; MCP plugins come first. Inclusion and its review date refer only to the accepted version. This is a release-local catalogue, not a remote marketplace or automatic execution service.
+
+**Try browser checks:** the optional [Playwright MCP plugin](plugins/playwright/README.md) prepares checks for a task, saves your selection and lets an authorized agent use its connected browser tools and report the outcome. Installing the data plugin does not install or activate MCP.
+
+**Publish your own plugin:** follow the [authoring and distribution guide](references/plugin-authoring.md) for a working example, tests, permissions and version compatibility. These data plugins are separate from installing Squadra itself with `/plugin`; publishing a package does not automatically list, install or approve it.
+
 <a id="decisions"></a>
-## 🕸️ Decision graph and briefs
+## Decision graph and briefs
 
 ![The Decisions view: an owner answer and a relayed instruction linked to the task and the question, with the selected instruction's details](docs/images/dashboard-decisions-en.png)
 
@@ -472,7 +516,7 @@ squadra decision --actor coord --id D-SCOPE --task T1 \
 **Reading the graph.** Each box is a recorded fact, earlier on the left. **Solid lines** are recorded links; **dashed lines** only mean "later, in the same task", never a reason. Owner boxes always show the channel: «scritto qui» (typed here), «riferito da un'altra finestra» (relayed by another window) or «canale non registrato»; verdicts are written in words as well as colours. Select a box (click, Enter or Space) for who, when, the full words and the links both ways; filter by task and zoom. Refreshes keep selection, filter, zoom and focus, and say «elemento non più presente» when an item is gone. On a phone the graph becomes a list in time order, with reduced motion respected; circular links, possible only in an altered registry, are listed under «Collegamenti non ordinabili». The full rules are in [work, proof and review](references/work.md).
 
 <a id="workflow"></a>
-## 🔁 Assignment, proof, independent read, closure
+## Assignment, proof, independent read, closure
 
 **Choose the path.** At creation, and on a finding or a scope change, the builder proposes a path, the non-author reader confirms or disagrees, and the coordinator settles it with a recorded reason, answering the five questions of [the IT/EN triage page](references/work.md#triage-in-una-pagina): does it touch security, customer data, keys, permissions, evidence integrity or actions hard to undo; do we understand its full effect and can we undo it; is it a bounded fix proven by a focused check; which required behaviour could be left unmet; could an error stay hidden. No regex, path pattern or score chooses the path; record the answers and the choice in one line of the scope or report.
 
@@ -518,7 +562,7 @@ squadra close --actor coord --task T1
 
 **Completion does not grant publication authority.** The complete protocol is in [work, proof and review](references/work.md).
 
-## 📬 Mail, outputs and what to remember
+## Mail, outputs and what to remember
 
 ```sh
 squadra send --actor coord --to builder --id M1 \
@@ -541,7 +585,7 @@ squadra output --actor coord --task T1 --file /evidence/update.md \
 
 Attach an artifact named exactly `da-ricordare.json` (`form: "da-ricordare/1"`, task ID, `answer: "yes"` or `"no"`, `items`) to the closing agent's usual `squadra output --artifact ...`; see [the schema and examples](references/work.md#da-ricordare-at-close). Nothing is proposed or approved by itself. **If a memory service is in use, declare at close and do not propose the same item through another channel.** **Never** put secrets, personal data or private paths in it: registered artifacts are immutable, so an accidental secret cannot be removed. Plugin consumers may turn declarations into drafts; the action API only saves the user's selection and never sends it or runs a plugin ([action contract](references/plugins.md#action-requests)).
 
-## 🙋 Owner questions and decisions
+## Owner questions and decisions
 
 `ask` records a question before it is shown, with at least two options of distinct `id`, `label` and `say` (the sentence to say); `buys`, `costs` and `example` are optional.
 
@@ -564,7 +608,7 @@ squadra decision --actor coord --reason "Owner chose scope A" \
 
 `--channel relayed` keeps words reported by another window. `decision --withdraws Q1` closes an obsolete question without inventing an answer; a `decision --reason` without links keeps a reason without closing a question. Answers and withdrawals are exclusive and never repeated. Chat text, mail prose and `output.next` are never silently read as decisions or authority.
 
-## ⏱️ Waits, resources and presence
+## Waits, resources and presence
 
 Wait ages are computed when a view is read. Defaults, in seconds: **ACK 900**, **delivered 3600**, **reviewed 1800**, **heartbeat 1800**, **alive 300**; `cleanup-unknown` is always shown. `settings --actor coord --file /evidence/thresholds.json` sets chosen keys, such as `{"ack": 600, "alive": 300}` (zero warns at once); it replaces earlier custom values, and omitted keys use the defaults. A warning never retries, reassigns or releases anything.
 
@@ -588,7 +632,7 @@ squadra standby --actor coord --agent builder --resume --reason "Availability co
 Every window writing to one registry should run the same Squadra version, or some rules may not be enforced; moving a working squad to another version is an explicit, authorized step.
 
 <a id="checkpoints"></a>
-## 📦 Checkpoints, recovery and clean contexts
+## Checkpoints, recovery and clean contexts
 
 **Agents checkpoint without waiting for you to ask.** This is the skill's required agent workflow, not a background service or an invisible token meter.
 
@@ -614,7 +658,7 @@ squadra resume --actor coord --reason "Owner explicitly resumed"
 
 **Limits of recovery:** the secret filters are partial, **not** a full scan of history and artifacts; a copy on the same disk does not survive a disk failure; `--declared-offsite` is a declaration, not verified remote storage. The complete contract is in [recovery and context handover](references/recovery.md).
 
-## 🤖 Optional native client runners
+## Optional native client runners
 
 ```sh
 squadra run --actor builder --task T1 --mode build \
@@ -626,7 +670,7 @@ squadra cancel --actor coord --run "RUN-ID"
 
 `run` starts a new non-interactive Codex or Claude turn and never attaches to an open window; prompts go through stdin, models are never hardcoded, and real turns spend the client's quota within the agreed budget. **Cursor is refused:** a `cursor` seat's turn stops before any process with «Squadra does not launch cursor-agent: Cursor runs team, user and enterprise hooks unsandboxed. Cursor seats work interactively», until a Cursor release documents a switch that disables all hooks and MCP, confirmed by a non-author read and a real probe. A valid result needs a real session, a completed turn, the expected exit and a structured read: exit 0 alone is not enough, and a client's verdict is not the recorded review. Pause, cancel and timeout act on the owned process group; a refused signal leaves `cleanup-unknown`, to reconcile before releasing resources. Detached descendants, Windows and real-client compatibility are qualified separately. See [runtime contracts](references/runtime.md) before invoking them automatically.
 
-## 🧪 Self-test, defect challenges and comparison harness
+## Self-test, defect challenges and comparison harness
 
 ```sh
 squadra selftest --output /durable/selftest-001
@@ -646,7 +690,7 @@ squadra bench-score --actor coord --from /evidence/benchmark-run \
 
 See [challenge and benchmark contracts](references/benchmark.md).
 
-## 🗂️ Durable state and integrity
+## Durable state and integrity
 
 | File | Purpose |
 |---|---|
@@ -660,9 +704,9 @@ See [challenge and benchmark contracts](references/benchmark.md).
 Always write through the CLI, never into the generated files. `export` regenerates the projections, `status` shows tasks, input and waits, and `doctor` checks the chain and the artifacts and reports pending ACKs or uncertain runs. Integrity is not proof that claims are true, nor cryptographic authentication of identities. `legacy --actor coord --path /old/packet` imports records as **historical, unverified copies**, never touching the originals, creating tasks or ACKs, or granting acceptance.
 
 <a id="commands"></a>
-## ⌨️ Squadra commands
+## Squadra commands
 
-Every command, grouped by purpose: **44 subcommands**, plus `--version`. Use `squadra <command> --help` for the flags; registry commands accept `--root` or `SQUADRA_ROOT`. «Coordinator only» marks what only the coordinator can record: `task`, `supersede`, `brief`, `close`, `ask`, `decision`, `settings`, `pause`, `resume`, `save`, `standby`, `ping --sweep`, and the receipt that `restore-check` writes into the live registry. Without installing, the same commands run as `python3 -B scripts/squadra.py <command>`.
+Every command, grouped by purpose: **45 subcommands**, plus `--version`. Use `squadra <command> --help` for the flags; registry commands accept `--root` or `SQUADRA_ROOT`. «Coordinator only» marks what only the coordinator can record: `task`, `supersede`, `brief`, `close`, `ask`, `decision`, `settings`, `pause`, `resume`, `save`, `standby`, `ping --sweep`, and the receipt that `restore-check` writes into the live registry. Without installing, the same commands run as `python3 -B scripts/squadra.py <command>`.
 
 ### Start and team
 
@@ -743,6 +787,7 @@ Every command, grouped by purpose: **44 subcommands**, plus `--version`. Use `sq
 | `doctor` | Check the hash chain and the artifacts; report pending ACKs and uncertain runs. |
 | `export` | Regenerate the readable projections from the registry. |
 | `legacy` | Import old records as historical, unverified copies. |
+| `plugin` | List bundled plugins or install one from this release; no download or execution. |
 | `dash` | Open the local dashboard, read-only except declared settings and selections of installed plugins. |
 
 ### Toolkit checks
@@ -754,7 +799,7 @@ Every command, grouped by purpose: **44 subcommands**, plus `--version`. Use `sq
 | `bench-run` | Run a preregistered comparison. |
 | `bench-score` | Score a comparison run against its separate oracle. |
 
-## 🛡️ Operating boundaries
+## Operating boundaries
 
 **What Squadra cannot do.**
 - **Trusted windows only:** Squadra coordinates trusted local windows.
@@ -764,7 +809,7 @@ Every command, grouped by purpose: **44 subcommands**, plus `--version`. Use `sq
 - **Not acceptance:** synthetic checks are not acceptance for production or for model quality.
 - **No dashboard button** publishes anything or runs commands.
 
-## 📚 Protocol guides
+## Protocol guides
 
 [Skill](SKILL.md) · [Setup](references/start.md) · [Work/proof/review](references/work.md) · [Native runners](references/runtime.md) · [Recovery/context handover](references/recovery.md) · [Challenges/benchmark](references/benchmark.md) · [Plugins](references/plugins.md) · [Plugin authoring](references/plugin-authoring.md)
 

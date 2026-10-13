@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "name": "playwright",
+  "title": {"it": "Playwright · Controlli del browser", "en": "Playwright · Browser checks"},
+  "description": {"it": "Richiedi verifiche di pagine e segui gli esiti dichiarati dagli agenti.", "en": "Request page checks and follow agent-reported outcomes."},
+  "about": {
+    "publisher": "Squadra contributors",
+    "version": "1.0.0",
+    "homepage": "https://github.com/dagoSte/squadra/tree/main/plugins/playwright",
+    "tagline": {"it": "Dal controllo richiesto alla relazione, collegati all’incarico.", "en": "From requested check to report, linked to the task."},
+    "sections": [{
+      "id": "workflow",
+      "title": {"it": "Come funziona", "en": "How it works"},
+      "items": [
+        {"it": "Un agente prepara i controlli con una pagina e il testo da trovare.", "en": "An agent prepares checks with a page and expected visible text."},
+        {"it": "Selezioni i controlli e richiedi la verifica. La dashboard salva la richiesta.", "en": "Select checks and request verification. The dashboard saves the request."},
+        {"it": "Un agente autorizzato usa Playwright MCP e registra la relazione con schermate e risposte dello strumento.", "en": "An authorized agent uses Playwright MCP and registers the report with screenshots and tool responses."},
+        {"it": "Gli esiti sono dichiarazioni dell’agente, non approvazioni o prove vincolate. Se MCP non è disponibile, la richiesta rimane in attesa.", "en": "Outcomes are agent reports, not approvals or bound proofs. If MCP is unavailable, the request stays pending."}
+      ]
+    }]
+  },
+  "results": {
+    "label": {"it": "Collaudi", "en": "Browser checks"},
+    "empty": {"it": "Nessun controllo preparato per questo progetto.", "en": "No checks prepared for this project."},
+    "status_labels": {
+      "draft": {"it": "Pronto da richiedere", "en": "Ready to request"},
+      "approved": {"it": "Riuscito · dichiarato dall’agente", "en": "Passed · agent-reported"},
+      "rejected": {"it": "Non riuscito · dichiarato dall’agente", "en": "Failed · agent-reported"},
+      "error": {"it": "Errore · dichiarato dall’agente", "en": "Error · agent-reported"}
+    }
+  },
+  "actions": [{"id": "check", "label": {"it": "Richiedi verifica", "en": "Request verification"}}]
+}

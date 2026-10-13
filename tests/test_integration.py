@@ -25,7 +25,16 @@ def blocks():
 
 
 def function(name):
-    found = [line for line in PAGE.splitlines() if re.match(r"(async )?function " + name + r"\(", line)]
+    lines = PAGE.splitlines()
+    found = []
+    for i, line in enumerate(lines):
+        if not re.match(r"(async )?function " + name + r"\(", line):
+            continue
+        if line.endswith("{"):
+            end = next(j for j in range(i + 1, len(lines)) if lines[j] == "}")
+            found.append("\n".join(lines[i:end + 1]))
+        else:
+            found.append(line)
     return found
 
 
@@ -73,8 +82,10 @@ class IntegratedPage(unittest.TestCase):
         self.assertIn("if(tab==='Comunicazioni')comms(content);else{", render)
         self.assertEqual(len(re.findall(r"\(\{Finestre:team,Incarichi:tasks,Posta:mail,Prove:evidence,Output:outputs,"
                                         r"Cronologia:timeline,Storico:legacyView,Decisioni:decisionsView\}\)\[tab\]\(\)", PAGE)), 1)
-        self.assertIn("const anchor=commsAnchor();$('notice').replaceChildren(", refresh)
-        self.assertIn("commsRestore(anchor)}finally{setTimeout(refresh,2000)}", refresh)
+        catch = refresh.split("}catch(e){", 1)[1].split("}finally{", 1)[0]
+        self.assertLess(catch.index("const anchor=commsAnchor()"), catch.index("$('notice').replaceChildren("))
+        self.assertLess(catch.index("$('notice').replaceChildren("), catch.index("commsRestore(anchor)"))
+        self.assertIn("scheduleRefresh(loadUI.searchAgain?0:2000)", refresh.split("}finally{", 1)[1])
 
 
 class EventKinds(unittest.TestCase):

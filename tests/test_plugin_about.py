@@ -95,7 +95,7 @@ class PluginAboutJavaScript(unittest.TestCase):
             ('missing-selection', "b.setAttribute('aria-selected',String(section===pluginView.section))", "b.setAttribute('aria-selected','false')", 'keyboard'),
             ('hidden-polling', "else if(pluginPanelVisible()){pluginView.loading", "else if(pluginSelected()){pluginView.loading", 'polling'),
             ('english-only', "function pluginLocal(value){return value?.[UI_LANG]||''}", "function pluginLocal(value){return value?.en||''}", 'literal_languages'),
-            ('no-legacy-panel', "(!pluginManifest()?.about||pluginView.section==='memories')", "(pluginView.section==='memories')", 'fallback'),
+            ('no-legacy-panel', "(!pluginSections().length||pluginView.section===pluginResultSection())", "(pluginView.section===pluginResultSection())", 'fallback'),
         ]
         for name, before, after, scenario in mutants:
             with self.subTest(mutant=name):

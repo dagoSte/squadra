@@ -31,6 +31,14 @@ def require(ok, code="bad_value"):
         raise Refused(code)
 
 
+def check_directory(fd, private=False):
+    """Shared policy: safe owned parents; private plugin installation directories."""
+    info = os.fstat(fd)
+    mode = stat.S_IMODE(info.st_mode)
+    require(stat.S_ISDIR(info.st_mode) and info.st_uid == os.getuid()
+            and (mode == 0o700 if private else not mode & 0o022), "unsafe_permissions")
+
+
 def _open(parent, name, directory=False):
     try:
         flags = os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK
@@ -70,9 +78,11 @@ def _root(home):
         except OSError:
             raise Refused("io_error") from None
         stack.callback(os.close, fd)
+        check_directory(fd)
         for name in (".squadra", "plugins"):
             fd = _open(fd, name, directory=True)
             stack.callback(os.close, fd)
+            check_directory(fd)
         yield fd
 
 
@@ -220,13 +230,24 @@ def _about(value):
 
 def _manifest(parent, name):
     value = _read(parent, "plugin.json", MANIFEST_BYTES)
-    _fields(value, ("schema", "name", "title", "description"), ("settings", "about", "actions"))
+    _fields(value, ("schema", "name", "title", "description"), ("settings", "about", "actions", "results"))
     _schema(value)
     require(value["name"] == name, "name_mismatch")
     _bilingual(value["title"])
     _bilingual(value["description"])
     if "about" in value:
         _about(value["about"])
+    if "results" in value:
+        results = value["results"]
+        _fields(results, ("label",), ("empty", "status_labels"))
+        _about_bilingual(results["label"], 1, 80)
+        if "empty" in results:
+            _about_bilingual(results["empty"], 1, 300)
+        if "status_labels" in results:
+            labels = results["status_labels"]
+            _fields(labels, (), STATUSES)
+            for label in labels.values():
+                _about_bilingual(label, 1, 80)
     if "actions" in value:
         require(type(value["actions"]) is list and len(value["actions"]) <= 1)
         for action in value["actions"]:
@@ -249,6 +270,16 @@ def _manifest(parent, name):
     return value
 
 
+def _references(value):
+    require(type(value) is list and len(value) <= 8)
+    for ref in value:
+        _fields(ref, ("task",), ("run",))
+        _about_text(ref["task"], 1, 200)
+        require(not any(unicodedata.category(c).startswith("C") for c in ref["task"]))
+        if "run" in ref:
+            require(type(ref["run"]) is str and re.fullmatch(r"[0-9a-f]{32}", ref["run"]))
+
+
 def _panel(value):
     _fields(value, ("schema", "updated", "summary", "items"), ("note",))
     _schema(value)
@@ -263,13 +294,15 @@ def _panel(value):
         _bilingual(value["note"])
     require(type(value["items"]) is list and len(value["items"]) <= 500)
     for item in value["items"]:
-        _fields(item, ("id", "title", "text", "status", "meta"), ("selectable",))
+        _fields(item, ("id", "title", "text", "status", "meta"), ("selectable", "refs"))
         for field in ("id", "title", "text", "status"):
             _text(item[field])
         require(item["status"] in STATUSES)
         if "selectable" in item:
             require(type(item["selectable"]) is bool)
             require(not item["selectable"] or item["status"] == "draft")
+        if "refs" in item:
+            _references(item["refs"])
         require(type(item["meta"]) is list)
         for entry in item["meta"]:
             _fields(entry, ("label", "value"))
@@ -289,6 +322,7 @@ def discover(home):
                     require(NAME.fullmatch(name), "bad_name")
                     fd = _open(root, name, directory=True)
                     try:
+                        check_directory(fd)
                         manifest = _manifest(fd, name)
                         result["plugins"].append(manifest)
                         try:
@@ -332,5 +366,6 @@ def load_panel(home, name, key):
     with _root(home) as root, ExitStack() as stack:
         plugin = _open(root, name, directory=True)
         stack.callback(os.close, plugin)
+        check_directory(plugin)
         _manifest(plugin, name)
         return panel_at(plugin, key)

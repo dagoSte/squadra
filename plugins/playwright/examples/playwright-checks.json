@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "task": "BROWSER-CHECK",
+  "checks": [{
+    "title": "Synthetic page heading",
+    "url": "http://127.0.0.1:8765/",
+    "expect": "Squadra browser check",
+    "revision": "first-check"
+  }]
+}

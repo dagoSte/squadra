@@ -197,6 +197,10 @@ def parser():
     a = sub.add_parser("bench-run"); a.add_argument("--actor", required=True); a.add_argument("--manifest", required=True)
     a.add_argument("--output", required=True); a.add_argument("--allow-models", action="store_true"); a.add_argument("--budget-file")
     a = sub.add_parser("bench-score"); a.add_argument("--actor", required=True); a.add_argument("--from", dest="run_folder", required=True); a.add_argument("--oracle", required=True)
+    a = sub.add_parser("plugin", help="List or install plugins bundled in this release")
+    commands = a.add_subparsers(dest="plugin_command", required=True)
+    commands.add_parser("list")
+    install = commands.add_parser("install"); install.add_argument("name")
     sub.add_parser("status"); sub.add_parser("doctor"); sub.add_parser("export")
     a = sub.add_parser("board"); a.add_argument("--lang", choices=["it", "en"], help="Override the workspace board language")
     a = sub.add_parser("dash"); a.add_argument("--port", type=int, default=0); a.add_argument("--open", action="store_true")
@@ -480,6 +484,17 @@ def main(argv=None):
             print("\n| Ruolo | Prova | Esito | Registro | Prossimo passo |\n|---|---|---|---|---|\n"
                   f"| selftest | {result.get('tests', 0)} test sintetici | {result['status']} | {result['folder']}/RESULT.json | Leggere il rapporto; nessuna accettazione di prodotto |")
             return 0 if result["status"] == "passed" else 1
+        if a.command == "plugin":
+            import plugin_store
+            import plugins
+            try:
+                result = (plugin_store.catalogue(Path.home()) if a.plugin_command == "list"
+                          else plugin_store.install(Path.home(), a.name))
+            except (plugins.Refused, OSError) as exc:
+                print("Squadra: " + (exc.code if isinstance(exc, plugins.Refused) else "io_error"), file=sys.stderr)
+                return 1
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+            return 0
         store = Store(workspace_path(a.root), create=a.command == "init")
         result = dispatch(a, store)
         if a.command != "dash":

@@ -227,6 +227,26 @@ class Server(Fixtures, unittest.TestCase):
             self.assertEqual(self.get(path)[::2], (400, {'error': 'bad_name'}))
         self.assertEqual(self.get('/api/plugin/absent')[::2], (404, {'error': 'not_found'}))
 
+    def test_unsafe_directories_are_visible_refusals_in_warm_api_state(self):
+        self.assertEqual(self.get('/api/state')[0], 200)
+        for folder in (self.home, self.home / '.squadra', self.base.parent, self.base):
+            original = folder.stat().st_mode & 0o777
+            with self.subTest(level=str(folder.relative_to(self.home))):
+                folder.chmod(0o775)
+                try:
+                    expected = {'plugins': [], 'refused': [
+                        {'name': 'example' if folder == self.base else None, 'code': 'unsafe_permissions'}]}
+                    status, headers, found = self.get('/api/plugins')
+                    self.assertEqual((status, found), (200, expected))
+                    self.assertEqual(headers['Content-Security-Policy'], POLICY)
+                    status, _, state = self.get('/api/state')
+                    self.assertEqual(status, 200)
+                    self.assertEqual(state['plugins'], {**expected, 'key': self.key})
+                    self.assertEqual(self.get('/api/plugin/example')[::2], (409, {'error': 'unsafe_permissions'}))
+                finally:
+                    folder.chmod(original)
+                self.assertEqual(self.get('/api/plugins')[2]['refused'], [])
+
     def test_discovery_in_state_and_key_reuse_without_another_full_read(self):
         original = Store.events; calls = []
         def counted(store): calls.append(1); return original(store)
