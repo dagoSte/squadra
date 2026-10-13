@@ -489,6 +489,10 @@ Ripetere l'installazione applica esplicitamente il pacchetto di quella release e
 
 I plugin si propongono tramite PR o email di contatto del manutentore, che li analizza dando precedenza a quelli basati su MCP. Inclusione e data della lettura valgono solo per la versione accettata. Il catalogo è locale alla release: non è un marketplace remoto e non esegue nulla automaticamente.
 
+Il [plugin memoranda nello Store](plugins/memoranda/README.it.md) raccoglie le lezioni
+dichiarate e le propone a memoranda.dev, senza approvarle. Il plugin si installa
+gratuitamente; il servizio collegato inizia con una prova gratuita, poi è a pagamento.
+
 **Prova i collaudi del browser:** il [plugin Playwright MCP](plugins/playwright/README.it.md), facoltativo, prepara i controlli di un incarico, salva la tua selezione e permette a un agente autorizzato di usare i propri strumenti browser collegati e riferire l’esito. Installare il plugin di dati non installa né attiva MCP.
 
 **Pubblica il tuo plugin:** leggi la [panoramica italiana](docs/plugin-authoring.it.md), che rimanda alla guida tecnica in inglese per esempi, verifiche e compatibilità. Questi plugin di dati sono separati dall’installazione di Squadra tramite `/plugin`; pubblicare un pacchetto non lo inserisce automaticamente in un catalogo, non lo installa e non lo approva.

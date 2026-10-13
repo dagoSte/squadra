@@ -1,0 +1,12 @@
+{
+  "form": "da-ricordare/1",
+  "task": "EXAMPLE-TASK",
+  "answer": "yes",
+  "items": [{
+    "type": "constraint",
+    "sentence": "Retain the receipt before retrying an interrupted write.",
+    "certainty": "sure",
+    "private_content": "no",
+    "evidence": [{"event": 1}]
+  }]
+}

@@ -24,3 +24,7 @@ Il manutentore lo analizza prima dell'eventuale inclusione.
 
 Per un caso completo, leggi il [plugin Playwright](../plugins/playwright/README.it.md):
 collega una richiesta di controllo di una pagina al risultato osservato nel browser.
+
+Il prezzo nello Store distingue gratuito, a pagamento e prova gratuita seguita da
+un servizio a pagamento. La scheda spiega separatamente il costo del plugin e
+quello del servizio collegato: [contratto dello Store](../references/plugins.md).

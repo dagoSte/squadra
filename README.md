@@ -484,6 +484,10 @@ Repeat install explicitly applies that release's bundle and reports the versions
 
 Submit plugins by PR or the maintainer's contact email for analysis; MCP plugins come first. Inclusion and its review date refer only to the accepted version. This is a release-local catalogue, not a remote marketplace or automatic execution service.
 
+The [memoranda Store plugin](plugins/memoranda/README.md) collects declared lessons
+and proposes them to memoranda.dev; it never approves them. Installation is free;
+the connected service starts with a free trial, then is paid.
+
 **Try browser checks:** the optional [Playwright MCP plugin](plugins/playwright/README.md) prepares checks for a task, saves your selection and lets an authorized agent use its connected browser tools and report the outcome. Installing the data plugin does not install or activate MCP.
 
 **Publish your own plugin:** follow the [authoring and distribution guide](references/plugin-authoring.md) for a working example, tests, permissions and version compatibility. These data plugins are separate from installing Squadra itself with `/plugin`; publishing a package does not automatically list, install or approve it.

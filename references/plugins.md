@@ -551,7 +551,9 @@ Store entries require the existing `about.publisher`, `about.version` and
 ```
 
 `accepted_version` must equal `about.version`; `review_date` is a real YYYY-MM-DD
-date. `price` is `free` or `paid`; `mcp` is a boolean. The licence is nonempty,
+date. `price` is `free`, `paid` or `trial`; `trial` means a free service trial followed
+by paid use. The plugin card must distinguish the installation price from the
+connected service price. `mcp` is a boolean. The licence is nonempty,
 at most 128 characters, without control/direction characters; the source uses
 the existing HTTPS homepage validator. Unknown/duplicate keys, invalid UTF-8,
 invalid dates and incomplete metadata exclude the entry from the catalogue.

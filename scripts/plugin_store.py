@@ -135,7 +135,7 @@ def bundle(root, name):
     p._schema(store)
     p._about_text(store['licence'], 1, 128)
     p.require(not any(unicodedata.category(c).startswith('C') for c in store['licence']), 'invalid_bundle')
-    p.require(type(store['price']) is str and store['price'] in {'free', 'paid'}, 'invalid_bundle')
+    p.require(type(store['price']) is str and store['price'] in {'free', 'paid', 'trial'}, 'invalid_bundle')
     p.require(type(store['mcp']) is bool and store['accepted_version'] == manifest['about']['version'], 'invalid_bundle')
     p._homepage(store['source'])
     p.require(type(store['review_date']) is str and re.fullmatch(r'\d{4}-\d{2}-\d{2}', store['review_date']), 'invalid_bundle')

@@ -1,0 +1,174 @@
+{
+  "schema": 1,
+  "name": "memoranda",
+  "title": {
+    "it": "memoranda",
+    "en": "memoranda"
+  },
+  "actions": [
+    {
+      "id": "send",
+      "label": {
+        "it": "Invia per revisione",
+        "en": "Send for review"
+      }
+    }
+  ],
+  "description": {
+    "it": "Plugin gratuito; servizio memoranda.dev con prova gratuita, poi a pagamento. Le memorie che gli agenti della squadra hanno dichiarato, proposte a memoranda.dev.",
+    "en": "Free plugin; memoranda.dev service with a free trial, then paid. The memories the squad's agents declared, proposed to memoranda.dev."
+  },
+  "about": {
+    "publisher": "memoranda",
+    "version": "1.0.0",
+    "homepage": "https://memoranda.dev",
+    "tagline": {
+      "it": "Le decisioni e le lezioni della tua squadra di agenti, proposte alla memoria del tuo team insieme alla loro prova.",
+      "en": "Your agent squad's decisions and lessons, proposed to your team's memory together with their proof."
+    },
+    "sections": [
+      {
+        "id": "what",
+        "title": {
+          "it": "Che cos'è memoranda",
+          "en": "What memoranda is"
+        },
+        "text": {
+          "it": "memoranda è la memoria del tuo team. Tiene le decisioni prese, i vincoli da rispettare e le lezioni già pagate, ognuna con la sua prova. Niente vi entra da solo: ogni ricordo viene approvato da una persona, oppure dalla regola che il tuo team ha scelto per quell'area.",
+          "en": "memoranda is your team's memory. It keeps the decisions you took, the constraints to respect and the lessons already paid for, each with its proof. Nothing gets in on its own: every memory is approved by a person, or by the rule your team chose for that area."
+        }
+      },
+      {
+        "id": "does",
+        "title": {
+          "it": "Cosa fa questo plugin",
+          "en": "What this plugin does"
+        },
+        "text": {
+          "it": "Quando un incarico si chiude, gli agenti della squadra dicono che cosa vale la pena ricordare e con quale prova. Il plugin raccoglie queste dichiarazioni e le propone al tuo spazio memoranda. Propone e basta: non approva mai nulla.",
+          "en": "When a task closes, the squad's agents say what is worth remembering and with which proof. The plugin gathers these declarations and proposes them to your memoranda space. It only proposes: it never approves anything."
+        }
+      },
+      {
+        "id": "how",
+        "title": {
+          "it": "Come funziona",
+          "en": "How it works"
+        },
+        "items": [
+          {
+            "it": "1. Alla chiusura di un incarico, gli agenti dichiarano che cosa ricordare.",
+            "en": "1. When a task closes, the agents declare what to remember."
+          },
+          {
+            "it": "2. Colleghi memoranda una volta sola, dalla scheda Impostazioni: l'indirizzo del tuo spazio e la chiave dell'agente.",
+            "en": "2. You connect memoranda once, from the Settings tab: your space's address and the agent key."
+          },
+          {
+            "it": "3. La finestra coordinatrice raccoglie e invia automaticamente le bozze idonee alla chiusura di ogni incarico, poi legge gli esiti. Puoi ancora salvare una selezione manuale.",
+            "en": "3. The coordinator window collects and automatically sends eligible drafts at each task close, then reads the outcomes. You can still save a manual selection."
+          },
+          {
+            "it": "4. In memoranda le approvi tu, oppure lo fa la regola che hai scelto per quell'area.",
+            "en": "4. In memoranda you approve them, or the rule you chose for that area does."
+          },
+          {
+            "it": "5. Qui, nella scheda Memorie, vedi lo stato di ogni proposta, aggiornato a ogni invio o controllo.",
+            "en": "5. Here, in the Memories tab, you see each proposal's status, updated at every send or check."
+          }
+        ]
+      },
+      {
+        "id": "privacy",
+        "title": {
+          "it": "Riservatezza",
+          "en": "Privacy"
+        },
+        "items": [
+          {
+            "it": "Ciò che un agente dichiara privato, o su cui non ha risposto, non lascia mai il tuo computer.",
+            "en": "What an agent declares private, or did not answer about, never leaves your computer."
+          },
+          {
+            "it": "La chiave resta su questo computer, leggibile solo da te, e non viene mai mostrata.",
+            "en": "The key stays on this computer, readable only by you, and is never shown."
+          },
+          {
+            "it": "Parte solo la proposta: la frase che gli agenti hanno dichiarato non privata, il tipo, l'area, i riferimenti alla sua prova e quanto è sicura; nessun file viene mai allegato. La frase parte così com'è: gli agenti devono tenerne fuori dati privati e percorsi.",
+            "en": "Only the proposal leaves: the sentence the agents declared non-private, its kind, the area, the references to its proof and how sure it is; no file is ever attached. The sentence leaves as written: agents must keep private data and paths out of it."
+          }
+        ]
+      },
+      {
+        "id": "statuses",
+        "title": {
+          "it": "Gli stati",
+          "en": "Statuses"
+        },
+        "items": [
+          {
+            "it": "Bozza: raccolta qui, non ancora proposta.",
+            "en": "Draft: collected here, not proposed yet."
+          },
+          {
+            "it": "Inviato: la proposta è arrivata a memoranda; la decisione non è ancora visibile qui.",
+            "en": "Sent: the proposal reached memoranda; the decision is not visible here yet."
+          },
+          {
+            "it": "Approvato: è entrata in memoria, da sola o unita a un ricordo esistente, per decisione di una persona o della regola della sua area.",
+            "en": "Approved: it entered the memory, alone or merged into an existing one, by a person's decision or its area's rule."
+          },
+          {
+            "it": "Rifiutato: memoranda non l'ha tenuta; il motivo compare quando c'è.",
+            "en": "Rejected: memoranda did not keep it; the reason shows when there is one."
+          },
+          {
+            "it": "Trattenuto: dichiarata privata, o senza risposta sulla riservatezza; resta qui e non viene inviata.",
+            "en": "Withheld: declared private, or with no privacy answer; it stays here and is not sent."
+          },
+          {
+            "it": "Errore: qualcosa non è andato. Un invio dall'esito incerto non viene mai ripetuto da solo: decidi tu come risolverlo.",
+            "en": "Error: something went wrong. A sending whose outcome is uncertain is never repeated on its own: you decide how to resolve it."
+          }
+        ]
+      },
+      {
+        "id": "price",
+        "title": {
+          "it": "Plugin gratuito, servizio in prova",
+          "en": "Free plugin, service trial"
+        },
+        "text": {
+          "it": "Installare questo plugin è gratuito. Il servizio memoranda.dev inizia con una prova gratuita, poi è a pagamento. Consulta memoranda.dev per le condizioni attuali.",
+          "en": "This plugin installs at no cost. The memoranda.dev service starts with a free trial, then is paid. See memoranda.dev for the current terms."
+        }
+      }
+    ]
+  },
+  "settings": [
+    {
+      "id": "endpoint",
+      "kind": "url",
+      "label": {
+        "it": "Indirizzo del tuo spazio memoranda",
+        "en": "Your memoranda space address"
+      },
+      "help": {
+        "it": "Nella console di memoranda.dev apri «Configurazione guidata»: al passo «Configura il tuo client», «L'indirizzo del tuo tenant» è https://mcp.memoranda.dev/t/<spazio>/mcp. Copialo qui così com'è.",
+        "en": "In the memoranda.dev console open «Guided setup»: at the «Configure your client» step, «Your tenant's address» is https://mcp.memoranda.dev/t/<space>/mcp. Paste it here as it is."
+      }
+    },
+    {
+      "id": "key",
+      "kind": "secret",
+      "label": {
+        "it": "Chiave dell'agente",
+        "en": "Agent key"
+      },
+      "help": {
+        "it": "1. Accedi alla console di memoranda.dev con il secondo fattore. 2. Apri «Agenti e chiavi»: come «Il nome dell'agente nei tuoi sistemi» scrivi per esempio il nome di questa macchina, come «Con quale identità agisce nella tua memoria» scrivi squadra, la scadenza è facoltativa; premi «Crea la chiave». 3. Copia la chiave: è l'unica volta che viene mostrata. 4. Incollala qui e premi Salva. Resta solo su questo computer e squadra non la mostra mai; per scollegare, svuota il campo e salva.",
+        "en": "1. Sign in to the memoranda.dev console with your second factor. 2. Open «Agents and keys»: as «The agent's name in your systems» write, for example, this machine's name; as «Who it acts as in your memory» write squadra; the expiry is optional; press «Create the key». 3. Copy the key: it is shown only once. 4. Paste it here and press Save. It stays on this computer only and squadra never shows it; to disconnect, clear the field and save."
+      }
+    }
+  ]
+}

@@ -925,7 +925,7 @@ user installs it on their own machine.
   picks it up at its next refresh.
 - **Free or paid is your choice.** squadra is released under the MIT licence, and that
   licence does not restrict your plugin: your plugin is your own work under your own
-  licence, open source or proprietary, free or paid. A plugin talks to squadra only
+  licence, open source or proprietary, free, paid or a free trial followed by paid use. A plugin talks to squadra only
   through the files described here, so it does not need squadra's code. If you do
   copy squadra code into your package, keep squadra's copyright and permission notice
   with that copy, as the [licence](../LICENSE) requires.
@@ -964,9 +964,13 @@ After the analysis, the maintainer chooses the best route for that plugin:
 - or recommend that you keep distributing it yourself.
 
 Submitting does not guarantee inclusion. Accepted plugins keep their own licence,
-free or paid.
+free, paid or a free trial followed by paid use.
 
 **Plugins that work through an MCP server always come first**, both in the analysis
 queue and in the store.
 
 Back to the [plugin section of the README](../README.md#plugins).
+
+Store metadata uses `price: "trial"` for a free service trial followed by paid use.
+State separately whether installing the plugin costs anything; do not imply that a
+free plugin makes its connected service free. See [the Store schema](plugins.md).
