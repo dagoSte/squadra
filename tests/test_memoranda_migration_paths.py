@@ -96,6 +96,62 @@ print('system TMPDIR accepted')
             with self.assertRaises(module.p.Refused):
                 module.directory(leaf)
 
+    def check_mocked_root_link(self, unsafe_level, uid, permissions):
+        module = migration_module()
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp).resolve()
+            parent = base / 'protected'; parent.mkdir(mode=0o700)
+            target = parent / 'target'; target.mkdir(mode=0o700)
+            leaf = target / 'child'; leaf.mkdir(mode=0o700)
+            alias = parent / 'alias'; alias.symlink_to('target')
+            identity = lambda st: (st.st_dev, st.st_ino)
+            unsafe_id = identity((base if unsafe_level == 'ancestor' else parent).stat())
+            leaf_id = identity(leaf.stat())
+            original_fstat, original_stat = module.os.fstat, module.os.stat
+            for unsafe in (False, True):
+                with self.subTest(unsafe=unsafe, uid=uid, permissions=oct(permissions)):
+                    seen = set()
+                    def ancestry(fd):
+                        result = original_fstat(fd)
+                        if identity(result) == leaf_id:
+                            return result  # Keep the real private-leaf ownership check.
+                        fields = list(result)
+                        fields[4], fields[0] = 0, (result.st_mode & ~0o777) | 0o755
+                        if identity(result) == unsafe_id:
+                            seen.add('parent')
+                            if unsafe:
+                                fields[4], fields[0] = uid, (result.st_mode & ~0o777) | permissions
+                        return os.stat_result(fields)
+                    def root_link(path, *args, **kwargs):
+                        result = original_stat(path, *args, **kwargs)
+                        if path == 'alias' and kwargs.get('follow_symlinks') is False:
+                            seen.add('link')
+                            fields = list(result); fields[4] = 0
+                            return os.stat_result(fields)
+                        return result
+                    with patch.object(module.os, 'fstat', side_effect=ancestry), \
+                            patch.object(module.os, 'stat', side_effect=root_link):
+                        if unsafe:
+                            with self.assertRaises(module.LinkedComponent) as caught:
+                                fd = module.directory(alias / 'child')
+                                os.close(fd)
+                            self.assertEqual(caught.exception.component, 'alias')
+                        else:
+                            fd = module.directory(alias / 'child')
+                            try:
+                                self.assertEqual(identity(original_fstat(fd)), leaf_id)
+                            finally:
+                                os.close(fd)
+                    self.assertEqual(seen, {'parent', 'link'})
+
+    def test_root_owned_link_under_writable_parent_is_refused(self):
+        for permissions in (0o775, 0o757):
+            self.check_mocked_root_link('parent', 0, permissions)
+
+    def test_root_owned_link_below_user_ancestor_is_still_refused(self):
+        for uid, permissions in ((501, 0o755), (0, 0o775), (0, 0o757)):
+            self.check_mocked_root_link('ancestor', uid, permissions)
+
     def test_short_card_keeps_price_and_moves_operational_detail_to_readme(self):
         bundle = ROOT / 'plugins/memoranda'
         manifest = json.loads((bundle / 'plugin.json').read_text())
