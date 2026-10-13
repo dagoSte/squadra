@@ -142,7 +142,7 @@ class Source(unittest.TestCase):
         run = fx.collect(self.reg, self.tmp / "out")
         self.assertEqual(run.rc, 0, run.stderr)
         self.assertEqual(run.doc["binding"]["last_seq"], supersede)
-        self.assertEqual(run.doc["binding"]["squadra"]["label"], "squadra 3.6.0")
+        self.assertEqual(run.doc["binding"]["squadra"]["label"], "squadra 3.7.0")
         self.assertEqual(len(run.doc["candidates"]), 1)
 
     def test_t9b_a_fabricated_unknown_kind_is_refused_whole(self):
