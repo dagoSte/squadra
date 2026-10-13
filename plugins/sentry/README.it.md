@@ -46,7 +46,7 @@ Dal checkout di sviluppo che contiene il plugin:
 HOME="$TEST_HOME" python3 -B scripts/squadra.py plugin install sentry
 ```
 
-Per questa anteprima non usare la HOME reale. Lo Store installa tutto nella
+Provalo prima con una HOME di prova separata, come questa. Lo Store installa tutto nella
 cartella privata `$HOME/.squadra/plugins/sentry/`; rifiuta cartelle non gestite,
 permessi non sicuri e modifiche locali ai file gestiti. La reinstallazione
 conserva i dati prodotti e non esegue programmi né collega Sentry. Dopo
@@ -142,8 +142,7 @@ prima osservazioni e associazioni necessarie, poi rimuovi solo la cartella del
 plugin: perdi anche la richiesta pendente, ma non gli incarichi o gli errori
 Sentry. Gli altri plugin e la configurazione del client restano separati.
 
-Le prove usano il contratto Squadra 3.6.0 e questo candidato: HOME sintetiche,
-installazione/reinstallazione, script reali della dashboard e un trasporto MCP
-sintetico, con nomi esplicitamente sintetici. La prova reale resta da fare.
-L’inclusione in una release richiederà anche nuove schermate dello Store,
-l’aggiornamento della frase «the first one is Playwright» nelle note.
+Le prove usano la suite di test di Squadra 3.8.0: HOME sintetiche,
+installazione e reinstallazione dallo Store, script reali della dashboard e un
+trasporto MCP sintetico, con nomi esplicitamente sintetici. La prova con un
+account Sentry reale resta da fare.

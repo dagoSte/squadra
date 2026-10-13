@@ -381,7 +381,11 @@ class SentryBridge(SentryFixture, unittest.TestCase):
         self.assertIn('agent sanitises first',en);self.assertIn('L’agente depura',it)
         self.assertIn('backstop',agents);self.assertIn('already-created task',agents)
         self.assertIn('within existing permissions',agents);self.assertIn('never widens permissions',agents)
-        self.assertIn('Store screenshots',en);self.assertIn('the first one is Playwright',en)
+        for document in (en, it):
+            for phrase in ('this candidate', 'questo candidato', 'questa anteprima', 'Release integration', 'richiederà', '3.6.0', 'the first one is Playwright'):
+                self.assertNotIn(phrase, document)
+        self.assertIn('Validation with a real Sentry\naccount remains pending', en)
+        self.assertIn('La prova con un\naccount Sentry reale resta da fare', it)
         self.assertIn('2026-10-13',en);self.assertNotIn('browser_navigate',agents)
         self.assertIn('Development funded by memoranda. Free for all users.', en)
         self.assertIn('Sviluppo finanziato da memoranda. Plugin gratuito per tutti.', it)

@@ -49,7 +49,7 @@ HOME="$TEST_HOME" python3 -B scripts/squadra.py plugin install sentry
 ```
 
 The Store installs everything below `$HOME/.squadra/plugins/sentry/`, with private
-directories and files. Do not run this against the real HOME for this candidate.
+directories and files. Try it first with a separate test HOME like this one.
 It refuses unsafe/unmanaged folders and locally modified managed files. Reinstall
 preserves runtime data; it does not execute the bridge or connect to Sentry.
 
@@ -153,8 +153,7 @@ any needed local observations and associations; removal deletes them and the
 pending selection. It does not delete Sentry issues or Squadra tasks. No other
 plugin folder or client configuration is involved.
 
-Validation targets the Squadra 3.6.0 contract and this candidate, using synthetic
-HOMEs, Store install/reinstall, the real dashboard scripts and a synthetic MCP
-journey. Synthetic tool names are deliberately labelled synthetic. Real account
-validation remains pending. Release integration must revisit Store screenshots,
-the release notes' “the first one is Playwright” wording.
+Validation uses the Squadra 3.8.0 test suite with synthetic HOMEs, Store install
+and reinstall, the real dashboard scripts and a synthetic MCP journey; synthetic
+tool names are deliberately labelled synthetic. Validation with a real Sentry
+account remains pending.
