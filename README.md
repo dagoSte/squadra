@@ -309,6 +309,21 @@ For this release use one final review only: merge the lanes as they deliver, the
 reader and a Codex reader read everything together.
 ```
 
+## What the reads caught
+
+Open **Reads** in the dashboard to see recorded plan and code verdicts, in total
+and by task, and changed versions submitted after a request for changes. Every
+entry links to its report and task story. These are counts of reads and later
+versions, not a count of prevented defects or successful fixes; repeated reads
+and observations remain separate records. Closed and replaced tasks stay included.
+
+Readers may supply `review --findings-file findings.json` with bounded observations
+(`severity`: `grave`, `minor` or `info`; a safe one-line `title`). See
+[the review command](references/work.md). Missing observations say **Not recorded**;
+`[]` explicitly means none. The view shows how many reads supplied this data.
+**Accepted with conditions** is not recorded by the three-verdict protocol.
+The optional metadata does not change approval, closing rules or frozen protocols.
+
 <a id="first-steps"></a>
 ## First steps
 

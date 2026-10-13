@@ -12,6 +12,8 @@ import sqlite3
 import subprocess
 import tempfile
 import uuid
+import unicodedata
+
 
 VERSION = "3.6.1"
 WAIT_SECONDS = {"ack": 900, "delivered": 3600, "reviewed": 1800, "heartbeat": 1800, "alive": 300}
@@ -31,6 +33,31 @@ NEXT_STEPS = {
     "reviewed": "Check e chiusura del coordinatore",
     "done": "Nessun passo pendente",
 }
+
+
+FINDINGS_BYTES = 16 * 1024
+SEVERITIES = ('grave', 'minor', 'info')
+
+
+def validate_findings(value):
+    valid = isinstance(value, list) and len(value) <= 32
+    if valid:
+        for item in value:
+            if not isinstance(item, dict) or set(item) != {'severity', 'title'}:
+                valid = False
+                break
+            title = item['title']
+            if (item['severity'] not in SEVERITIES or not isinstance(title, str)
+                    or not 1 <= len(title) <= 200 or not title.strip()
+                    or any(unicodedata.category(c).startswith('C') or c in '\u2028\u2029' for c in title)):
+                valid = False
+                break
+    if not valid:
+        raise ValueError('Invalid review findings')
+    if len(json.dumps(value, ensure_ascii=False).encode('utf-8')) > FINDINGS_BYTES:
+        raise ValueError('Review findings exceed 16 KiB')
+    return value
+
 
 
 class Error(Exception):
@@ -922,6 +949,8 @@ def validate(state, kind, actor, d):
                 require(not any(r.get("gate") and r["status"] == "running" for r in state["runs"].values()),
                         "A whole gate is already running, including under the same owner")
         if kind == "review":
+            if 'findings' in d:
+                validate_findings(d['findings'])
             author_identities = {state["agents"][a]["identity"] for a in task["authors"]}
             require(state["agents"][actor]["identity"] not in author_identities,
                     "Author cannot independently review own changes, even under another seat ID")

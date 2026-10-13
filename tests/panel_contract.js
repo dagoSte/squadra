@@ -9,7 +9,7 @@ const page=fs.readFileSync(htmlPath,'utf8');
 const scripts=[...page.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)].map(m=>m[1]);
 const base=JSON.parse(fs.readFileSync(fixturePath,'utf8'));
 const clone=value=>JSON.parse(JSON.stringify(value));
-const TABS=['Quadro','Finestre','Incarichi','Posta','Comunicazioni','Decisioni','Prove','Output','Cronologia','Storico'];
+const TABS=['Quadro','Finestre','Incarichi','Posta','Comunicazioni','Decisioni','Letture','Prove','Output','Cronologia','Storico'];
 const ALLOWED=new Set(['div','span','section','h2','h3','h4','p','button','details','summary','dl','dt','dd','ul','ol','li','table','tr','th','td',
  'a','small','time','nav','strong','select','option','label','article','aside','br','svg','defs','marker','path','g','rect','text','title']);
 

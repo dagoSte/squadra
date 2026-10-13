@@ -311,6 +311,23 @@ Per questo rilascio fai un'unica revisione finale: unisci le corsie man mano che
 poi un lettore Claude e un lettore Codex leggono tutto insieme.
 ```
 
+## Cosa hanno fermato le letture
+
+Apri **Letture** nella dashboard per vedere i verdetti su piani e codice, in totale
+e per incarico, e le nuove versioni presentate dopo una richiesta di modifiche.
+Ogni voce apre il rapporto e la storia dell’incarico. Sono conteggi di letture e
+versioni successive, non di difetti evitati o correzioni riuscite; letture e
+osservazioni ripetute restano registrazioni distinte. Sono inclusi anche gli
+incarichi chiusi o sostituiti.
+
+Il lettore può aggiungere `review --findings-file findings.json` con osservazioni
+limitate (`severity`: `grave`, `minor` o `info`; `title`: una riga senza contenuti
+privati). Vedi [il comando di lettura](references/work.md). I dati assenti sono
+**Non registrato**; `[]` dichiara esplicitamente nessuna osservazione. La vista
+mostra quante letture hanno fornito questi dati. **Accettate con condizioni** non
+è registrato dal protocollo a tre verdetti. I metadati opzionali non cambiano
+approvazioni, regole di chiusura o protocolli congelati.
+
 <a id="first-steps"></a>
 ## Primi passi
 

@@ -16,6 +16,7 @@ from registry import (Store, Error, digest, attention, waits, now, requirement_m
                       task_progress, presence)
 from comms import communications
 from panel import activity
+from reads import read_value
 import plugins
 import plugin_settings
 import plugin_actions
@@ -47,6 +48,7 @@ class VerifiedView:
         self.lock = threading.Lock()
         self.monitor = None
         self.identity = self.marker = self.value = None
+        self.reads_head = self.reads_value = None
 
     def stamp(self):
         if self.path.is_symlink():
@@ -92,12 +94,22 @@ class VerifiedView:
                 self.marker, self.value = after, value
             return value
 
+    def reads(self):
+        events, _, _ = self.read()
+        head = events[-1]['hash'] if events else None
+        with self.lock:
+            if self.reads_value is None or head != self.reads_head:
+                self.reads_value = read_value(events)
+                self.reads_head = head
+            return self.reads_value
+
     def close(self):
         with self.lock:
             if self.monitor is not None:
                 self.monitor.close()
                 self.monitor = None
             self.value = self.marker = None
+            self.reads_head = self.reads_value = None
 
 
 def make_server(root, port=0):
@@ -165,6 +177,9 @@ def make_server(root, port=0):
                 self.plugin_answer(path)
                 return
             try:
+                if path == '/api/reads':
+                    self.answer(200, json.dumps(view.reads(), ensure_ascii=False).encode())
+                    return
                 events, recorded, compact = view.read()
                 state = dict(recorded)
                 if path == "/api/state":
@@ -177,6 +192,7 @@ def make_server(root, port=0):
                     state["project_started"] = events[0]["utc"]
                     state["events"] = events[-120:]
                     state["integrity"] = "verified"
+                    state['registry_head'] = {'seq': events[-1]['seq'], 'hash': events[-1]['hash']}
                     state["comms"] = communications(state, events, state["waits"], stamp)
                     state["activity"] = activity(events, stamp)
                     if self.headers.get('X-Squadra-View') == 'compact':

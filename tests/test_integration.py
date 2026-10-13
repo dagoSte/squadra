@@ -15,7 +15,7 @@ from dashboard_test_support import make_server
 
 ROOT = Path(__file__).resolve().parents[1]
 PAGE = (ROOT / "assets/dashboard.html").read_text(encoding="utf-8")
-TABS = ["Quadro", "Finestre", "Incarichi", "Posta", "Comunicazioni", "Decisioni", "Prove", "Output", "Cronologia", "Storico"]
+TABS = ["Quadro", "Finestre", "Incarichi", "Posta", "Comunicazioni", "Decisioni", "Letture", "Prove", "Output", "Cronologia", "Storico"]
 LIGHT = {"standby": "#3d5fc4", "comms-sent": "#5b6878", "comms-queued": "#a65a00",
          "comms-confirmed": "#0b7a55", "comms-overdue": "#c42b3c"}
 

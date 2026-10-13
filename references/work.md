@@ -206,6 +206,26 @@ gate --reason ...`, then `prove --gate`, finally `resource release` after the
 terminal receipt. The label does not prove the command is the whole suite:
 the coordinator must agree on the correct command and project reservations.
 
+The optional `review --findings-file findings.json` records observations for the
+**Reads** dashboard view. The file is a UTF-8 JSON array, at most 16 KiB and 32
+items; each item has exactly `severity` (`grave`, `minor`, `info`) and `title`
+(one nonblank line, 1–200 characters, no control characters). Duplicate JSON
+keys and unknown fields are refused. Use safe summaries, never secrets or copied
+private content. For example:
+
+```json
+[{"severity":"minor","title":"The example omits the retry limit"}]
+```
+
+Omitting the option leaves observations unrecorded; `[]` explicitly declares
+none. It does not change the verdict, closure rules or runtime reply schema.
+Old registries and frozen protocols need no migration or backfill. The dashboard
+counts recorded observations, not unique or unresolved defects. A changed plan
+or delivery after a bound changes-required read is a chronological revision,
+not proof of causation or a successful fix. “Accepted with conditions” remains
+unrecorded because the protocol has only three verdicts. Reports and task stories
+retain the evidence behind each count.
+
 The review records a non-author report bound to the current fingerprint; it does
 not magically run tests. The reviewer may use `probe --actor reader --task T1
 --expected-rc 0 -- argv...` for independent probes, or `--expected-rc 1` for a

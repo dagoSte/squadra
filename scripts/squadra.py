@@ -148,6 +148,7 @@ def parser():
     a.add_argument("--stage", choices=["plan", "code"], default="code")
     a.add_argument("--verdict", choices=["accepted", "changes-required", "blocked"], required=True)
     a.add_argument("--report", required=True)
+    a.add_argument("--findings-file", help="Optional bounded JSON observations (severity and one-line title)")
     a.add_argument("--covers", action="append", default=[])
     a = sub.add_parser("output"); a.add_argument("--actor", required=True); a.add_argument("--task")
     a.add_argument("--file", required=True); a.add_argument("--next", required=True)
@@ -339,6 +340,8 @@ def dispatch(a, store):
             store.append("close", actor, {"task": a.task})
         return {"task": a.task, "verified": True, "snapshot": current["sha256"], "publication_authorized": False}
     elif command == "review":
+        from reads import load_findings
+        extra = {'findings': load_findings(a.findings_file)} if a.findings_file is not None else {}
         task = state["tasks"][a.task]
         if a.stage == "plan":
             require(bool(task.get("plan")), "No registered plan")
@@ -348,7 +351,7 @@ def dispatch(a, store):
             current = bindings(store, a.task, require_review=False)
             binding = current["sha256"]
         store.append("review", actor, {"task": a.task, "stage": a.stage, "verdict": a.verdict,
-                     "binding": binding, "covers": a.covers, "report": store.artifact(a.report)})
+                     "binding": binding, "covers": a.covers, "report": store.artifact(a.report), **extra})
     elif command == "output":
         output = {"task": a.task, "text": Path(a.file).read_text(), "next": a.next,
                   "artifacts": [store.artifact(f) for f in a.artifact]}

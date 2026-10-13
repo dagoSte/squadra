@@ -42,7 +42,7 @@ context.window=context;
   await new Promise(r=>setTimeout(r,20));
   assert.equal(historyReplaced,true,'URL token handling must not be shadowed by a tab function');
   assert.equal(get('name').textContent,'Synthetic dashboard');
-  assert.deepEqual(get('tabs').children.map(e=>e.textContent),['Quadro','Finestre','Incarichi','Posta','Comunicazioni','Decisioni','Prove','Output','Cronologia','Storico']);
+  assert.deepEqual(get('tabs').children.map(e=>e.textContent),['Quadro','Finestre','Incarichi','Posta','Comunicazioni','Decisioni','Letture','Prove','Output','Cronologia','Storico']);
   assert.equal(get('content').children[0].children[0].textContent,'Serve a te','owner panel must be first');
   assert.match(text(get('content').children[0]),/Nessuna richiesta registrata.*solo in chat/);
   const artifact={name:'evidence.md',sha256:'c'.repeat(64)};
