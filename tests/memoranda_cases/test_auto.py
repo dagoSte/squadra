@@ -28,7 +28,7 @@ class Automatic(unittest.TestCase):
         self.home, self.out = self.tmp / 'home', self.tmp / 'out'
         self.home.mkdir()
         fx.install(self.home)
-        self.out.mkdir()
+        self.out.mkdir(mode=0o700)
         self.fake = fake_mcp.Fake(fx.TOKEN)
         self.addCleanup(self.fake.close)
 
@@ -186,7 +186,7 @@ class AutomaticInstructions(unittest.TestCase):
         self.home, self.out = self.tmp / 'home', self.tmp / 'out'
         self.home.mkdir()
         fx.install(self.home)
-        self.out.mkdir()
+        self.out.mkdir(mode=0o700)
 
     def test_instructions_and_bilingual_copy_describe_automatic_proposals(self):
         done = fx.collect(self.reg, self.out, home=self.home)

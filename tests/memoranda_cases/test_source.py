@@ -108,18 +108,6 @@ class Source(unittest.TestCase):
             self.assertEqual(again.rc, 3)
             self.assertTrue(again.stderr.startswith("E-OUTPUT:"), again.stderr)
             self.assertEqual([p.name for p in (self.tmp / "twice").iterdir()], [first.folder.name])
-        with self.subTest("registry.py differs from the pin"):
-            version = self.tmp / "version"
-            (version / "scripts").mkdir(parents=True)
-            body = (fx.scripts() / "registry.py").read_bytes()
-            altered = body + b"\n# Synthetic alteration for the pin-refusal control.\n"
-            self.assertNotEqual(hashlib.sha256(altered).digest(), hashlib.sha256(body).digest())
-            (version / "scripts" / "registry.py").write_bytes(altered)
-            (version / "SOURCE_COMMIT").write_text("synthetic")
-            run = fx.collect(self.reg, self.tmp / "altered", version / "scripts")
-            self.assertEqual(run.rc, 3)
-            self.assertTrue(run.stderr.startswith("E-PIN:"), run.stderr)
-            self.assertEqual(list((self.tmp / "altered").iterdir()), [])
 
     def fabricate(self, kind):
         """An event of a kind no accepted squadra writes, chained with the pinned code on this test's own copy."""
@@ -154,7 +142,7 @@ class Source(unittest.TestCase):
 
     def test_every_pin_entry_matches_its_supported_build(self):
         from squadra_memories.source import load_pin, load_registry
-        entry = load_registry(fx.ROOT)[1]
+        entry = load_registry()[1]
         self.assertIn(entry, load_pin()['accepted'])
         module = fx.pinned_module()
         for kind in entry['kinds']:
@@ -168,11 +156,11 @@ class Source(unittest.TestCase):
 
     def observe(self, out_root, ready=None):
         fx.install(fx.synthetic_home())
-        out_root.mkdir(exist_ok=True)
+        out_root.mkdir(mode=0o700, exist_ok=True)
         record = self.tmp / "record.json"
         env = {**fx.env(), **({"SQMEM_OBSERVE_READY": str(ready)} if ready else {})}
         argv = [sys.executable, "-B", str(fx.CASES / "_observe.py"), str(record), "collect",
-                "--registry", str(self.reg.root), "--out-root", str(out_root), "--squadra-scripts", str(fx.ROOT)]
+                "--registry", str(self.reg.root), "--out-root", str(out_root)]
         return subprocess.Popen(argv, cwd=fx.ROOT, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                 text=True), record
 

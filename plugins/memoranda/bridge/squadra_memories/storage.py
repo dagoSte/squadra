@@ -7,6 +7,15 @@ import plugin_settings as files
 from .source import Refusal
 
 
+def output_directory(path):
+    """Open the private directory through the same protected walk used by migration."""
+    from migrate import directory
+    try:
+        return directory(path)
+    except (p.Refused, OSError):
+        raise Refusal('E-OUTPUT') from None
+
+
 def data_root(home):
     try:
         with files.installed(home, 'memoranda', 'actions') as (parent, _):

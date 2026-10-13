@@ -7,11 +7,13 @@ folder, and squadra's pinned `registry.py` verifies the copy.
 from __future__ import annotations
 
 import hashlib
+import importlib
 import json
 import os
 from pathlib import Path
 import shutil
 import stat
+import sys
 import types
 
 MAX_ARTIFACT = 16 * 1024 * 1024
@@ -31,29 +33,26 @@ def load_pin():
     return json.loads(Path(__file__).with_name("pin.json").read_text(encoding="utf-8"))
 
 
-def locate_scripts(explicit=None):
-    """Use the bundled reader unless a caller explicitly names another pinned build."""
-    return Path(explicit) if explicit else Path(__file__).resolve().parents[1]
-
-
-def load_registry(scripts):
-    """Hash the exact reader bytes before execution; external builds also need their pinned commit."""
-    path = Path(scripts) / "registry.py"
+def load_registry():
+    """Verify the bundled reader before importing it in its own namespace."""
+    path = Path(__file__).resolve().parents[1] / "registry.py"
     try:
         body = path.read_bytes()
         sha = hashlib.sha256(body).hexdigest()
         entry = next((e for e in load_pin()["accepted"] if e["registry_py_sha256"] == sha), None)
         if entry is None:
             raise Refusal("E-PIN")
-        if path.resolve().parent != Path(__file__).resolve().parents[1]:
-            commit = (Path(scripts).parent / "SOURCE_COMMIT").read_text(encoding="utf-8").strip()
-            if commit != entry["source_commit"]:
-                raise Refusal("E-PIN")
     except (OSError, ValueError):
         raise Refusal("E-PIN") from None
-    module = types.ModuleType("squadra_registry_pinned")
-    module.__file__ = str(path)
-    exec(compile(body, str(path), "exec"), module.__dict__)
+    # The namespace prevents an unrelated caller's already-imported registry from being reused.
+    name = "_memoranda_bundled_reader"
+    package = sys.modules.setdefault(name, types.ModuleType(name))
+    if hasattr(package, "__path__") and package.__path__ != [str(path.parent)]:
+        raise Refusal("E-PIN")
+    package.__path__ = [str(path.parent)]
+    module = importlib.import_module(name + ".registry")
+    if Path(module.__file__).resolve() != path:
+        raise Refusal("E-PIN")
     return module, entry
 
 

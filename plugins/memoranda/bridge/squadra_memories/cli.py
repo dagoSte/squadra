@@ -16,7 +16,7 @@ from . import LISTS
 from . import actions, connector, panel
 from .collect import collect
 from .render import document, preview
-from .source import Artifacts, Refusal, load_registry, locate_scripts, snapshot, verified_events
+from .source import Artifacts, Refusal, load_registry, snapshot, verified_events
 
 REPO = Path(__file__).resolve().parents[1]
 MESSAGES = {
@@ -38,7 +38,8 @@ MESSAGES = {
     "E-TIMEOUT": "the timeout must be more than 0 and at most 60 seconds.",
     "E-BINDING": "this ledger is bound to another endpoint, tenant, scope or key; nothing sent.",
     "E-BUSY": "another send, status or resolve holds this ledger; nothing sent.",
-    "E-LEDGER": "the ledger is unreadable or not a regular file; nothing sent.",
+    "E-LEDGER": "the private ledger could not be read or saved; delivery may be uncertain. Preserve the ledger, "
+                "run status, and follow the README recovery steps; do not resend automatically.",
     "E-LEDGER-SIZE": "the ledger would exceed its size limit; nothing more recorded.",
     "E-AUTH": "memoranda refused the key (401/403); the run stopped.",
     "E-NETWORK": "the request did not complete; the run stopped.",
@@ -74,11 +75,11 @@ def _locations(args):
     registry = Path(os.path.realpath(args.registry))
     if not registry.is_dir():
         raise Refusal("E-SNAPSHOT")
-    from .storage import data_root
+    from .storage import data_root, output_directory
     default = data_root(Path.home())
     given = Path(args.out_root) if args.out_root else default
-    if os.path.islink(given) or not given.is_dir():
-        raise Refusal("E-OUTPUT")
+    fd = output_directory(given)
+    os.close(fd)
     out_root = Path(os.path.realpath(given))
     if _inside(out_root, registry) or _inside(out_root, Path(os.path.realpath(REPO))):
         raise Refusal("E-OUTPUT")
@@ -88,7 +89,7 @@ def _locations(args):
 def read_registry(args):
     """The verified read and the collected answers; the registry copy never enters the out-root."""
     registry, out_root = _locations(args)
-    module, entry = load_registry(locate_scripts(args.squadra_scripts))
+    module, entry = load_registry()
     # The registry copy lives in the system temporary folder, never in the out-root; it is removed on every exit
     # path Python runs, and the out-root receives a folder only once the read has succeeded.
     work = Path(os.path.realpath(tempfile.mkdtemp(prefix="sqmem-snapshot-")))
@@ -229,7 +230,6 @@ def _interrupt(signum, frame):
 def _common(command):
     command.add_argument("--registry", required=True)
     command.add_argument("--out-root", help="Existing private folder; default: data/ in the installed plugin")
-    command.add_argument("--squadra-scripts", help="Explicit pinned squadra scripts folder; default: the bundled reader")
 
 
 def _remote(command):

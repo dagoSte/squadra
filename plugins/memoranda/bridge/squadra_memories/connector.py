@@ -22,6 +22,7 @@ import urllib.parse
 import urllib.request
 
 from .source import Refusal
+from .storage import output_directory
 
 PROTOCOL_VERSION = "2025-03-26"
 MAX_RESPONSE = 1 << 20
@@ -328,6 +329,13 @@ class Client:
         return payload
 
 
+def _private_ledger_file(fd):
+    info = os.fstat(fd)
+    if not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid() or info.st_mode & 0o077:
+        raise Refusal("E-LEDGER")
+    return info
+
+
 class Ledger:
     """`ledger-<event-1 hash>.json` beside the collector's output, held under an exclusive lock for a whole run."""
 
@@ -335,21 +343,24 @@ class Ledger:
         self.path = Path(out_root) / f"ledger-{registry_id}.json"
         self.lock_path = Path(out_root) / f"ledger-{registry_id}.lock"
         self.registry_id = registry_id
-        self.data, self._fd = None, None
+        self.data, self._fd, self._directory = None, None, None
+        self._locked = False
 
     def __enter__(self):
+        self._directory = output_directory(self.path.parent)
         try:
-            fd = os.open(self.lock_path, os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW | os.O_CLOEXEC, 0o600)
-        except OSError:
-            raise Refusal("E-LEDGER") from None
-        try:
-            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except OSError:
-            os.close(fd)
-            raise Refusal("E-BUSY") from None
-        self._fd = fd
-        try:
-            self.data = read_ledger(self.path)
+            try:
+                self._fd = os.open(self.lock_path.name, os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW | os.O_CLOEXEC
+                                   | os.O_NONBLOCK, 0o600, dir_fd=self._directory)
+                _private_ledger_file(self._fd)
+            except OSError:
+                raise Refusal("E-LEDGER") from None
+            try:
+                fcntl.flock(self._fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                self._locked = True
+            except OSError:
+                raise Refusal("E-BUSY") from None
+            self.data = read_ledger(self.path, parent=self._directory)
             changed = False
             for entry in (self.data or {}).get("items", {}).values():
                 if entry.get("status") == "sending":
@@ -364,9 +375,15 @@ class Ledger:
 
     def __exit__(self, *exc):
         if self._fd is not None:
-            fcntl.flock(self._fd, fcntl.LOCK_UN)
-            os.close(self._fd)
-            self._fd = None
+            try:
+                if self._locked:
+                    fcntl.flock(self._fd, fcntl.LOCK_UN)
+            finally:
+                os.close(self._fd)
+                self._fd, self._locked = None, False
+        if self._directory is not None:
+            os.close(self._directory)
+            self._directory = None
 
     def bind(self, binding):
         if self.data is None:
@@ -383,41 +400,44 @@ class Ledger:
         body = (json.dumps(self.data, ensure_ascii=False, sort_keys=True, indent=1) + "\n").encode("utf-8")
         if len(body) > LEDGER_LIMIT:
             raise Refusal("E-LEDGER-SIZE")
-        folder = self.path.parent
-        temporary = folder / f".{self.path.name}.{os.getpid()}.tmp"
+        temporary = f".{self.path.name}.{os.getpid()}.tmp"
         try:
-            with os.fdopen(os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_CLOEXEC, 0o600), "wb") as out:
+            with os.fdopen(os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_CLOEXEC,
+                                   0o600, dir_fd=self._directory), "wb") as out:
                 out.write(body)
                 out.flush()
                 os.fsync(out.fileno())
-            os.replace(temporary, self.path)
-            descriptor = os.open(folder, os.O_RDONLY)
-            try:
-                os.fsync(descriptor)
-            finally:
-                os.close(descriptor)
+            os.replace(temporary, self.path.name, src_dir_fd=self._directory, dst_dir_fd=self._directory)
+            os.fsync(self._directory)
         except OSError:
-            temporary.unlink(missing_ok=True)
+            try:
+                os.unlink(temporary, dir_fd=self._directory)
+            except FileNotFoundError:
+                pass
             raise Refusal("E-LEDGER") from None
 
 
-def read_ledger(path):
-    """The ledger as data, or None when absent; a symlink, an oversized or a malformed ledger is refused."""
+def read_ledger(path, *, parent=None):
+    """Read an owned, private regular descriptor under a checked directory; absent is None."""
+    path = Path(path)
+    owned = parent is None
+    if owned:
+        parent = output_directory(path.parent)
     try:
-        st = os.lstat(path)
-    except FileNotFoundError:
-        return None
-    except OSError:
-        raise Refusal("E-LEDGER") from None
-    if not stat.S_ISREG(st.st_mode):
-        raise Refusal("E-LEDGER")
-    if st.st_size > LEDGER_LIMIT:
-        raise Refusal("E-LEDGER-SIZE")
-    try:
-        with os.fdopen(os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC), "rb") as handle:
+        try:
+            fd = os.open(path.name, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC | os.O_NONBLOCK, dir_fd=parent)
+        except FileNotFoundError:
+            return None
+        with os.fdopen(fd, "rb") as handle:
+            st = _private_ledger_file(handle.fileno())
+            if st.st_size > LEDGER_LIMIT:
+                raise Refusal("E-LEDGER-SIZE")
             data = json.loads(handle.read(LEDGER_LIMIT + 1).decode("utf-8"))
     except (OSError, ValueError, UnicodeError):
         raise Refusal("E-LEDGER") from None
+    finally:
+        if owned:
+            os.close(parent)
     if not isinstance(data, dict) or data.get("schema") != 1 or not isinstance(data.get("items"), dict):
         raise Refusal("E-LEDGER")
     return data

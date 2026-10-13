@@ -38,7 +38,7 @@ class Connector(unittest.TestCase):
         self.reg = fx.copy_registry(self.tmp)
         self.home, self.out = self.tmp / "home", self.tmp / "out"
         self.home.mkdir()
-        self.out.mkdir()
+        self.out.mkdir(mode=0o700)
 
     def serve(self, **options):
         fake = fake_mcp.Fake(fx.TOKEN, **options)

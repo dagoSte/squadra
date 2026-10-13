@@ -208,15 +208,13 @@ class Run:
         return "\n".join(files + [self.stdout, self.stderr])
 
 
-def collect(reg, out_root, squadra_scripts=None, home=None, install_bundle=True):
+def collect(reg, out_root, home=None, install_bundle=True):
     if install_bundle:
         install(home or synthetic_home())
     out_root = Path(out_root)
-    out_root.mkdir(exist_ok=True)
+    out_root.mkdir(mode=0o700, exist_ok=True)
     argv = [sys.executable, "-B", "-m", "squadra_memories", "collect", "--registry", reg.root,
             "--out-root", out_root]
-    if squadra_scripts is not None:
-        argv += ["--squadra-scripts", squadra_scripts]
     done = subprocess.run([str(a) for a in argv], cwd=ROOT, env=env(home), capture_output=True, text=True, timeout=600)
     return Run(done, out_root)
 
@@ -226,8 +224,7 @@ SECRET = "SENTINEL-SECRET-0f9e8d7c"
 
 
 def connector_argv(command, reg, out_root, *extra, endpoint=None):
-    argv = [sys.executable, "-B", "-m", "squadra_memories", command, "--registry", reg.root, "--out-root", out_root,
-            "--squadra-scripts", ROOT]
+    argv = [sys.executable, "-B", "-m", "squadra_memories", command, "--registry", reg.root, "--out-root", out_root]
     if endpoint:
         argv += ["--endpoint", endpoint, "--timeout", "3"]
     return [str(a) for a in argv + list(extra)]
@@ -242,7 +239,7 @@ def connector_env(home, token=TOKEN):
 
 def run_connector(command, reg, out_root, home, *extra, endpoint=None, token=TOKEN):
     install(home)
-    Path(out_root).mkdir(exist_ok=True)
+    Path(out_root).mkdir(mode=0o700, exist_ok=True)
     done = subprocess.run(connector_argv(command, reg, out_root, *extra, endpoint=endpoint), cwd=ROOT,
                           env=connector_env(home, token), capture_output=True, text=True, timeout=600)
     return done

@@ -149,7 +149,7 @@ class ActionJourney(unittest.TestCase):
         self.home = self.tmp / 'home'
         self.home.mkdir()
         self.out = self.tmp / 'out'
-        self.out.mkdir()
+        self.out.mkdir(mode=0o700)
         self.fake = fake_mcp.Fake(fx.TOKEN)
         self.addCleanup(self.fake.close)
 
@@ -243,7 +243,7 @@ class ActionJourney(unittest.TestCase):
         self.assertTrue((self.home / '.squadra/plugins/memoranda/actions/send.json').exists())
         fx.choose_drafts(self.reg, self.home)
         with patch.object(actions.Selection, 'clear', side_effect=Refusal('E-ACTION')):
-            args = SimpleNamespace(registry=self.reg.root, out_root=self.out, squadra_scripts=fx.ROOT,
+            args = SimpleNamespace(registry=self.reg.root, out_root=self.out,
                                    token_file=None, endpoint=self.fake.url, scope=None, timeout=3, accept_scope_policy=False)
             with patch.dict(os.environ, fx.connector_env(self.home), clear=True):
                 with self.assertRaises(Refusal):
@@ -277,7 +277,7 @@ class ActionJourney(unittest.TestCase):
     def test_request_is_snapshotted_only_after_ledger_admission(self):
         seq = self.declare(self.item(), self.item('Replacement won before admission.'))
         self.request([f'{seq}:0'])
-        args = SimpleNamespace(registry=self.reg.root, out_root=self.out, squadra_scripts=fx.ROOT,
+        args = SimpleNamespace(registry=self.reg.root, out_root=self.out,
                                    token_file=None, endpoint=self.fake.url, scope=None, timeout=3, accept_scope_policy=False)
         enter = connector.Ledger.__enter__
         def admitted(ledger):

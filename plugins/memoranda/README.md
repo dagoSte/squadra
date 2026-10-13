@@ -93,7 +93,9 @@ Directories are private and files owner-only; symlinks/unsafe files are refused.
 Migration accepts root-owned system aliases only above the user-controlled tree;
 links within that tree are refused and the linked component is named in the error.
 An explicit `--out-root` may select another private data directory; keep it stable
-for all commands and never reset a ledger to make a refusal disappear.
+for all commands and never reset a ledger to make a refusal disappear. The directory
+must be owned by you with mode 0700; ledger and lock descriptors must be regular
+files owned by you with no group/other access. Unsafe paths refuse before ledger use.
 
 Stop all producer/consumer processes before upgrading or migrating. Reinstalling
 a managed bundle preserves settings, secrets and data. Modified managed files,
@@ -124,6 +126,11 @@ and verify the history before enabling automatic sending. Never run both version
 Rollback requires stopped writers and the **latest** ledger, never an earlier copy.
 The owner's actual installation moves only on the owner's explicit instruction.
 
-The bundled reader accepts exact reviewed registry bytes and known event kinds.
-A new Squadra registry build requires a reviewed pin update; neither a matching
-version string nor a rewritten SOURCE_COMMIT bypasses byte verification.
+Only the bundled reader is supported. Its SHA-256 is checked against the reviewed
+pin before a normal import; changed code refuses without being loaded. External
+reader paths are not accepted. A new registry build needs a reviewed bundle/pin update.
+
+If E-LEDGER occurs, delivery may be uncertain even if the local save failed. Preserve
+the ledger, run status once the private storage is usable, and inspect the memoranda
+review queue. A retained sending intent becomes uncertain and is never resent
+automatically. Follow the recovery/resolve steps above only on the owner's instruction.

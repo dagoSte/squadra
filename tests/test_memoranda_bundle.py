@@ -249,20 +249,13 @@ class BundleContract(unittest.TestCase):
     def test_bundled_helpers_are_exact_source_bytes_and_pin_refuses_modified_code(self):
         for name in ('registry.py', 'plugins.py', 'plugin_settings.py'):
             self.assertEqual((fx.ROOT / name).read_bytes(), (ROOT / 'scripts' / name).read_bytes(), name)
-        module, entry = source.load_registry(fx.ROOT)
+        module, entry = source.load_registry()
         self.assertEqual(hashlib.sha256((fx.ROOT / 'registry.py').read_bytes()).hexdigest(), entry['registry_py_sha256'])
         for kind in entry['kinds']:
             try: module.validate(module.initial(), kind, 'x', {})
             except Exception as exc: self.assertNotEqual(str(exc), 'Unknown event kind', kind)
         with self.assertRaises(Exception) as failure: module.validate(module.initial(), 'unknown.synthetic', 'x', {})
         self.assertEqual(str(failure.exception), 'Unknown event kind')
-        with tempfile.TemporaryDirectory() as tmp:
-            scripts = Path(tmp) / 'scripts'; scripts.mkdir()
-            (scripts / 'registry.py').write_bytes((fx.ROOT / 'registry.py').read_bytes())
-            (scripts.parent / 'SOURCE_COMMIT').write_text(entry['source_commit'])
-            self.assertEqual(source.load_registry(scripts)[1], entry)
-            (scripts.parent / 'SOURCE_COMMIT').write_text('not-the-pinned-commit')
-            with self.assertRaises(Refusal): source.load_registry(scripts)
 
     def test_trial_closed_enum_and_bilingual_price_contract(self):
         with tempfile.TemporaryDirectory() as tmp:

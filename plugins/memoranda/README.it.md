@@ -82,7 +82,9 @@ Anteprime e registri degli invii stanno in `data/` dentro la cartella installata
 `panels/` contiene proiezioni rigenerabili, `settings.json` e `secrets/key` le
 impostazioni e la chiave. I file sono privati; collegamenti simbolici e file non
 sicuri sono rifiutati. Mantieni lo stesso eventuale `--out-root` per tutti i comandi.
-Non azzerare un registro per aggirare un rifiuto.
+Non azzerare un registro per aggirare un rifiuto. La cartella deve appartenerti e
+avere permessi 0700; registro degli invii e lock devono essere file regolari tuoi,
+senza accesso per gruppo o altri. I percorsi non sicuri sono rifiutati prima dell’uso.
 La migrazione accetta i collegamenti di sistema di root soltanto sopra la parte
 del percorso controllata dall'utente; al suo interno li rifiuta, indicando
 il componente collegato nel messaggio di errore.
@@ -112,6 +114,13 @@ Dopo il successo raccogli e leggi gli esiti, verifica la storia, poi riprendi gl
 invii automatici. Non eseguire entrambe le versioni. Un ritorno alla versione
 precedente deve usare il registro degli invii più recente e processi fermi.
 
-Il lettore verifica byte e tipi di evento del registro tramite il pin del bundle.
-Una nuova versione del registro richiede un aggiornamento del pin verificato;
-un numero di versione o SOURCE_COMMIT modificato non basta.
+È supportato soltanto il lettore incluso nel bundle. Prima del normale import,
+il suo SHA-256 è verificato contro il pin: codice modificato viene rifiutato senza
+caricarlo. Non sono accettati lettori esterni. Un nuovo registro richiede un
+aggiornamento verificato del bundle e del pin.
+
+E-LEDGER può significare consegna incerta anche se è fallito il salvataggio locale.
+Conserva il registro, esegui status quando lo spazio privato è utilizzabile e
+controlla la coda di revisione memoranda. Un intento rimasto sending diventa incerto
+e non viene reinviato automaticamente. Segui i passi di recupero/resolve sopra
+soltanto su istruzione del proprietario.
