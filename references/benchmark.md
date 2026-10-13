@@ -10,6 +10,12 @@ expected negative results do not make a product green.
 
 ## Same probe, three sources
 
+This is the standalone command. For **declared defect-fix tasks**, use the
+[task-bound regression workflow](work.md#defect-fixes-show-that-the-regression-detects-the-original):
+the fix's unittest methods run on the registered base and exact candidate,
+without a separate positive control. Its receipt (or a reasoned, independently
+read exception) is required at close; standalone receipts do not satisfy it.
+
 Prepare an immutable Python probe with `check(repo)` that uses real assertions:
 
 ```python

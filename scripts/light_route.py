@@ -32,6 +32,8 @@ def contract(task):
     fields = {k: task.get(k) for k in ("id", "repo", "base", "scope", "proof", "expected",
                                       "requirements", "owner", "reviewer", "depends",
                                       "full_gate", "route", "light_policy")}
+    if "fix" in task:
+        fields["fix"] = task["fix"]
     return digest(canonical(fields).encode())
 
 

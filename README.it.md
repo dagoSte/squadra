@@ -704,6 +704,25 @@ squadra cancel --actor coord --run "RUN-ID"
 
 ## Self-test, sfide ai difetti e banco comparativo
 
+Per un incarico dichiarato con `task --defect-fix`, la chiusura richiede la
+prova che il test rilevi il difetto senza la modifica. Il coordinatore registra
+i metodi unittest del fix e i loro file congelati con `challenge --task T1
+--register --contract-file ... --reason ...`; l'esecutore lancia poi
+`challenge --actor builder --task T1 --output /evidence/challenge-T1`.
+Per esempio, un test che si aspetta il valore 2 fallisce sull'originale con
+valore 1 e passa dopo la correzione. Gli stessi byte del test girano sulla base
+registrata e sul candidato esatto, anche prima del commit. Errori, test saltati,
+ID mancanti e test che passano in entrambe le versioni non valgono come prova.
+
+Il risultato e i log compaiono accanto alla prova. Il coordinatore può dichiarare
+un'eccezione motivata: il lettore indipendente la verifica e non appare mai come
+una verifica riuscita. Modifiche ai sorgenti o all'accordo richiedono nuovi legami;
+anche i fix nel percorso leggero conservano l'obbligo. Restano la prova normale
+e la lettura indipendente. I vecchi incarichi continuano a funzionare; le squadre
+con protocollo congelato devono aggiornare esplicitamente tutti gli scrittori,
+senza garanzia di applicazione delle regole con versioni miste. Vedi
+[l'esempio completo e i limiti](references/work.md#defect-fixes-show-that-the-regression-detects-the-original).
+
 ```sh
 squadra selftest --output /durable/selftest-001
 squadra challenge --actor reader --oracle /evidence/oracle.py \
@@ -717,7 +736,7 @@ squadra bench-score --actor coord --from /evidence/benchmark-run \
 ```
 
 - **`selftest`** controlla Git, SQLite, HTTP locale, JavaScript e client finti, conserva i log nativi e `RESULT.json`, e non chiama alcun modello: mette alla prova il toolkit, non il tuo prodotto né un modello.
-- **`challenge`** esegue una sonda immutabile `check(repo)` su tre radici Git pulite, senza modifiche fuori dai commit, in copie private che non modificano mai gli originali. `matched` richiede un vero fallimento di asserzione sull'originale ed esiti positivi su rimedio e controllo positivo; gli errori dello strumento non sono difetti. È una sfida delimitata, non un audit né una sandbox per codice ostile.
+- **`challenge` autonomo** esegue una sonda immutabile `check(repo)` su tre radici Git pulite, senza modifiche fuori dai commit, in copie private che non modificano mai gli originali. `matched` richiede un vero fallimento di asserzione sull'originale ed esiti positivi su rimedio e controllo positivo; gli errori dello strumento non sono difetti. È una sfida delimitata, non un audit né una sandbox per codice ostile.
 - **Il confronto offline** esegue **client finti** inclusi e fissati, non modelli installati, in quattro combinazioni autore/lettore su quattro casi preparati a mano, con un manifesto registrato in anticipo e una sonda che l'esecuzione non vede mai; non dichiara mai un vincitore. Una prova con modelli reali richiede un'autorizzazione separata del proprietario, un budget esplicito e `bench-run --allow-models --budget-file`, senza nuovi tentativi automatici né consumi o costi inventati; un'esecuzione offline non dimostra mai la superiorità di un modello.
 
 Vedi [i contratti di sfide e confronti](references/benchmark.md).
@@ -796,7 +815,7 @@ Ogni comando, raggruppato per scopo: **46 sottocomandi**, più `--version`. Usa 
 | `review` | Registra il verdetto di un non autore su un piano o sul codice: accettato, correzioni richieste o bloccato. |
 | `check` | Controlla che prova, lettura e candidato corrispondano ancora. |
 | `close` | Solo il coordinatore: registra la fine di un incarico controllato. |
-| `challenge` | Esegue una sonda di asserzioni su sorgente originale, rimedio e controllo positivo. |
+| `challenge` | Dimostra che un fix dichiarato fallisce senza la modifica, oppure esegue la sonda autonoma a tre input. |
 
 ### Proprietario e output
 

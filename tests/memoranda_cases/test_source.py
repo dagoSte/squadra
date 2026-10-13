@@ -130,7 +130,10 @@ class Source(unittest.TestCase):
         run = fx.collect(self.reg, self.tmp / "out")
         self.assertEqual(run.rc, 0, run.stderr)
         self.assertEqual(run.doc["binding"]["last_seq"], supersede)
-        self.assertEqual(run.doc["binding"]["squadra"]["label"], "squadra 3.7.1")
+        pin = json.loads((fx.ROOT / "squadra_memories/pin.json").read_text())
+        reader_sha = hashlib.sha256((fx.ROOT / "registry.py").read_bytes()).hexdigest()
+        entry = next(row for row in pin["accepted"] if row["registry_py_sha256"] == reader_sha)
+        self.assertEqual(run.doc["binding"]["squadra"]["label"], entry["label"])
         self.assertEqual(len(run.doc["candidates"]), 1)
 
     def test_t9b_a_fabricated_unknown_kind_is_refused_whole(self):

@@ -699,6 +699,22 @@ squadra cancel --actor coord --run "RUN-ID"
 
 ## Self-test, defect challenges and comparison harness
 
+For a task declared with `task --defect-fix`, closure requires proof that the
+regression fails without the change. Register its own unittest method IDs and
+frozen test files with `challenge --task T1 --register --contract-file ...
+--reason ...` as coordinator, then run `challenge --actor builder --task T1
+--output /evidence/challenge-T1`. For example, a value regression asserts 2:
+it fails on the original value 1 and passes after the fix. The same test bytes
+run on the registered base and exact candidate, even before commit. Errors,
+skips, missing IDs and a test that passes both versions never qualify.
+
+The result and logs appear next to the proof. A coordinator may declare an
+exception with a reason; the independent reader checks it, and it never appears
+as a passed challenge. Source or agreement changes need fresh bindings; light
+fixes keep the requirement. The normal proof and independent review still apply.
+Old tasks keep working; frozen squads require an explicit upgrade of every writer,
+with no mixed-version enforcement. See the [complete example and limits](references/work.md#defect-fixes-show-that-the-regression-detects-the-original).
+
 ```sh
 squadra selftest --output /durable/selftest-001
 squadra challenge --actor reader --oracle /evidence/oracle.py \
@@ -712,7 +728,7 @@ squadra bench-score --actor coord --from /evidence/benchmark-run \
 ```
 
 - **`selftest`** checks Git, SQLite, local HTTP, JavaScript and fake clients, keeps native logs and `RESULT.json`, and makes no model calls: it tests the toolkit, not your product or a model.
-- **`challenge`** runs one immutable `check(repo)` oracle on three clean, committed roots, in private copies that never modify the originals. `matched` needs a real assertion failure on the original and passes on remedy and positive control; instrument errors are not defects. It is bounded, not an audit or a sandbox for hostile code.
+- **Standalone `challenge`** runs one immutable `check(repo)` oracle on three clean, committed roots, in private copies that never modify the originals. `matched` needs a real assertion failure on the original and passes on remedy and positive control; instrument errors are not defects. It is bounded, not an audit or a sandbox for hostile code.
 - **The offline comparison** runs exact bundled **fake clients**, not installed models, in four author/reader arms over four seeded cases, with a preregistered manifest and an oracle the run never sees; it never claims a winner. A pilot with real models needs the owner's separate authorization, an explicit budget and `bench-run --allow-models --budget-file`, with no automatic retries and no invented usage or cost; an offline run never shows model superiority.
 
 See [challenge and benchmark contracts](references/benchmark.md).
@@ -791,7 +807,7 @@ Every command, grouped by purpose: **46 subcommands**, plus `--version`. Use `sq
 | `review` | Record a non-author verdict on a plan or on the code: accepted, changes required or blocked. |
 | `check` | Check that proof, review and candidate still match. |
 | `close` | Coordinator only: record the end of a checked task. |
-| `challenge` | Run one assertion oracle against original, remedy and positive-control sources. |
+| `challenge` | Prove a declared fix fails without the change, or run a standalone three-input oracle. |
 
 ### Owner and outputs
 

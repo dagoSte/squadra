@@ -181,6 +181,16 @@ def apply(state, event):
         for key in ("candidate", "delivery", "plan"):
             task.pop(key, None)
         task.update(status="working", status_utc=event["utc"])
+    elif kind == "fix":
+        task = state["tasks"][d["task"]]
+        task["fix"] = d["fix"]
+        if "contract" in d:
+            task["contract"] = d["contract"]
+        task.setdefault("fix_history", []).append({**d, "actor": event["actor"], "utc": event["utc"]})
+        for key in ("candidate", "delivery"):
+            task.pop(key, None)
+        if task["status"] != "waiting-ack":
+            task.update(status="working", status_utc=event["utc"])
     elif kind == "supersede":
         # Record replacement after the new task has already been created.
         state["tasks"][d["task"]].update(superseded_by=d["by"], superseded_utc=event["utc"])
@@ -258,6 +268,8 @@ def apply(state, event):
     elif kind in {"save", "restore.check", "challenge", "benchmark"}:
         state[{"save": "saves", "restore.check": "restores", "challenge": "challenges", "benchmark":"benchmarks"}[kind]].append(
             {**d, "actor": event["actor"], "utc": event["utc"]})
+        if kind == "challenge" and d.get("task"):
+            state["tasks"][d["task"]]["fix_result"] = dict(d)
     state["event_count"] += 1
 
 
@@ -434,7 +446,52 @@ def waits(state, at, settings=None):
     return result
 
 
+def fix_binding(task):
+    return digest(canonical({k: task.get(k) for k in
+                             ('id', 'base', 'scope', 'proof', 'contract', 'fix')}).encode())
+
+
+def fix_disposition(task):
+    return digest(canonical(task.get('fix_result')).encode()) if task.get('fix_result') else None
+
+
+def fix_matched(agreement, runs):
+    if not isinstance(runs, list) or not all(isinstance(r, dict) for r in runs) or [r.get('label') for r in runs] != ['original', 'remedy']:
+        return False
+    for r, outcome, rc in zip(runs, ('assertion', 'passed'), (1, 0)):
+        if (r.get('status') != 'completed' or r.get('outcome') != outcome or
+                type(r.get('native_rc')) is not int or r['native_rc'] != rc):
+            return False
+        if agreement['runner'] == 'python-unittest-v1':
+            ids = agreement['ids']
+            if (r.get('ids') != ids or r.get('executed') != ids or r.get('tests') != len(ids) or
+                    any(type(r.get(k)) is not int or r[k] != 0 for k in ('errors', 'skips', 'xfail', 'xpass'))):
+                return False
+            if r.get('assertions') != (sorted(ids) if rc else []) or (r.get('failures', 0) > 0) != bool(rc):
+                return False
+    return True
+
+
+def fix_status(task):
+    if not task.get('fix'):
+        return 'not-required'
+    if task['fix'].get('v') != 1:
+        return 'unsupported'
+    record = task.get('fix_result')
+    if not record:
+        return 'pending'
+    if record.get('binding') != fix_binding(task) or record.get('candidate') != task.get('candidate'):
+        return 'outdated'
+    if record.get('exception'):
+        return 'exception'
+    agreement = task['fix'].get('agreement')
+    return 'matched' if agreement and fix_matched(agreement, record.get('runs')) else 'failed'
+
+
 def contract_matches(task, record):
+    if task.get("fix"):
+        if record.get("fix_binding") != fix_binding(task):
+            return False
     return not task.get("contract") or record.get("contract") == task["contract"]
 
 
@@ -502,6 +559,8 @@ def validate_supersession(state, d):
     old = d["supersedes"]
     require(isinstance(old, str) and old in state["tasks"], "Superseded task must already exist")
     task = state["tasks"][old]
+    require(not task.get("fix") or d.get("fix"),
+            "fix_supersession_requires_defect_fix: replacing a defect fix requires --defect-fix on the replacement")
     require(task["status"] != "done", "A closed task cannot be superseded")
     require(not task.get("superseded_by"), "Task " + old + " is already superseded by " + str(task.get("superseded_by")))
     require(old not in d.get("depends", []), "Una attività non può dipendere da quella che sostituisce")
@@ -529,7 +588,7 @@ def validate_supersede(state, d):
         if name not in reached:
             reached.append(name)
             pending.extend(state["tasks"][name].get("depends", []))
-    validate_supersession(state, {"supersedes": old, "depends": reached})
+    validate_supersession(state, {"supersedes": old, "depends": reached, "fix": state["tasks"][new].get("fix")})
     # Dictionary order follows task creation because IDs are never removed.
     order = list(state["tasks"])
     require(order.index(old) < order.index(new), "The replacement must be a task recorded after " + old)
@@ -824,7 +883,7 @@ def validate(state, kind, actor, d):
                     "review", "close", "output", "run.start", "run.end", "run.cancel", "run.progress",
                     "resource.acquire", "resource.release", "pause", "resume", "legacy", "decision", "ask", "diagnostic",
                     "settings", "save", "restore.check", "restore.freeze", "challenge", "benchmark", "brief",
-                    "availability", "supersede", "route"},
+                    "availability", "supersede", "route", "fix"},
             "Unknown event kind")
     if kind == "init":
         require(not state["workspace"], "Workspace already initialized")
@@ -845,7 +904,7 @@ def validate(state, kind, actor, d):
     require(actor in state["agents"], "Unknown agent: " + actor)
     coordinator = state["agents"][actor]["role"] == "coordinator"
     if kind in {"task", "close", "pause", "resume", "decision", "ask", "settings", "save", "restore.check", "brief",
-                "availability", "supersede", "route"}:
+                "availability", "supersede", "route", "fix"}:
         require(coordinator, "Coordinator role required")
     if kind == "route":
         require(d.get("task") in state["tasks"], "Unknown task")
@@ -930,6 +989,10 @@ def validate(state, kind, actor, d):
             register(d, state)
         else:
             require(not d.get("contract") and not d.get("light_policy"), "Full task cannot forge route metadata")
+    if (kind == "task" and "fix" in d) or kind == "fix" or (kind == "challenge" and d.get("task")) or (
+            kind in {"run.start", "deliver", "review", "close"} and state["tasks"].get(d.get("task"), {}).get("fix")):
+        from fix_challenge import validate_event as validate_fix_event
+        validate_fix_event(state, kind, actor, d)
     if kind == "supersede":
         validate_supersede(state, d)
     if kind in {"plan", "start", "deliver", "review", "close", "run.start"} or (kind == "output" and d.get("task")):
@@ -1046,18 +1109,19 @@ def validate(state, kind, actor, d):
         require(actor == run["agent"] or coordinator, "Run owner/coordinator required")
         require(run["status"] == "running", "Run already ended")
         task = state["tasks"][run["task"]]
-        if kind == "run.end" and task.get("contract"):
-            require(not {"mode", "argv", "before", "task", "contract", "light", "covers", "gate", "expected_rc"}.intersection(d),
+        if kind == "run.end" and (task.get("contract") or task.get("fix")):
+            require(not {"mode", "argv", "before", "task", "contract", "fix_binding", "light", "covers", "gate", "expected_rc"}.intersection(d),
                     "Run contract is immutable")
             if d.get("status") == "passed" and run["mode"] == "proof":
                 require(d.get("native_rc") == 0 and run.get("expected_rc") == 0 and
                         d.get("after") == run["before"] and contract_matches(task, run),
                         "Native proof does not keep its source/contract")
-                from light_route import check_contract, measure
-                check_contract(task)
                 require(d["after"] == snapshot(task["repo"]), "Source changed before proof completion")
-                if task["route"] == "light":
-                    require(run.get("light") == measure(task, d["after"]), "Light proof measurement changed")
+                if task.get("contract"):
+                    from light_route import check_contract, measure
+                    check_contract(task)
+                    if task["route"] == "light":
+                        require(run.get("light") == measure(task, d["after"]), "Light proof measurement changed")
     if kind == "resource.acquire":
         require(d["name"] not in state["resources"], "Resource already reserved; expiry is not release")
     if kind == "resource.release":
@@ -1123,6 +1187,7 @@ class Store:
             state = initial()
             for event in events:
                 apply(state, event)
+            state["root"] = str(self.root)
             previous = events[-1]["hash"] if events else "0" * 64
             saved = []
             for kind, actor, data, event_id in operations:

@@ -152,6 +152,11 @@ def execute(store, actor, task_id, argv=None, mode="proof", prompt=None,
         path = Path(task["plan"]["original"])
         require(path.is_file() and digest(path.read_bytes()) == task["plan"]["sha256"], "Original plan changed; re-register/review it")
     before = snapshot(task["repo"], store.root)
+    if task.get("fix"):
+        from fix_challenge import binding
+        fix_record = {"fix_binding": binding(task)}
+    else:
+        fix_record = {}
     route_record = {}
     if task.get("contract") or task.get("route") == "light":
         from light_route import check_contract, measure
@@ -181,6 +186,7 @@ def execute(store, actor, task_id, argv=None, mode="proof", prompt=None,
     record = {"id": run_id, "task": task_id, "mode": mode, "argv": argv,
               "before": before, "gate": gate, "timeout": timeout, "folder": str(folder), "stage": stage,
               "expected_rc": expected_rc, "requested_model": agent.get("model"), "covers": covers or [], **route_record}
+    record.update(fix_record)
     store.append("run.start", actor, record, "run-start:" + run_id)
     store.project()
     result = {"id": run_id, "status": "failed", "native_rc": None, "started": now()}

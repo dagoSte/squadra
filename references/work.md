@@ -478,3 +478,82 @@ ignore new route metadata, so mixed-version enforcement is not supported, and a
 3.6.x window still shows a task promoted to the full route as light. No
 launcher, installation or workspace version is changed automatically. The change
 that implements this protocol itself takes the full route and full suite.
+
+## Defect fixes: show that the regression detects the original
+
+The coordinator marks a task with `task --defect-fix`. It can register the oracle
+at creation with `--challenge-file`, or later on an open task as below. Marking is
+one-way and coordinator-only; a title containing “fix” is not a declaration.
+Both forms of task replacement refuse to replace a defect fix unless the replacement
+is itself marked as a defect fix, with its own base and oracle agreement.
+
+For a correction of `VALUE = 1` to `VALUE = 2`, the regression's own method reads
+the actual value and asserts 2. After writing the fix and its test, register:
+
+```json
+{"ids":["test_value.ValueTest.test_value"],"files":["tests/test_value.py"]}
+```
+
+```sh
+squadra challenge --actor coord --task T1 --register \
+  --contract-file /evidence/regression.json --reason "Value regression"
+# Run the task's agreed prove command on the frozen candidate, then:
+squadra challenge --actor builder --task T1 --output /evidence/challenge-T1 --timeout 30
+squadra deliver --actor builder --task T1
+```
+
+The default runner is `python-unittest-v1`. `ids` contains complete unittest
+method IDs, not discovery patterns or classes. `files` explicitly lists the test
+and Python test helpers (`tests/**/*.py` or a root `test_*.py`); these exact bytes
+are frozen as artifacts and placed on both private inputs. Include needed
+`__init__.py` files. Each case class and underlying test method must be defined
+in the listed files; an unregistered module with the same name cannot substitute
+for them. Imports use the input root and its `tests` directory. Only
+test files are overlaid: original product bytes come from the registered base,
+never current HEAD. The remedy includes the exact tracked and non-ignored
+untracked candidate, including uncommitted changes. Version 1 admits regular
+files, not symlinks/submodules; unavailable bases and unsupported inputs refuse.
+
+Every selected method must execute and fail by AssertionError in its test body
+on the original and pass on the remedy. A passing original, import/setup/teardown
+error, skipped/expected-failure test, unknown ID, timeout or uncertain cleanup
+does not match. Results come from unittest objects, not a search for “FAIL” in
+stdout. Keep ordinary positive tests in the delivery proof; there is no separate
+control input for task fixes. Native results and both logs are retained on failure.
+Write the oracle against behaviour the base already exposes: importing or calling
+code that the fix adds errors on the base and cannot qualify as an assertion failure.
+
+Custom oracles use `{"runner":"python-check-v1","oracle":"/evidence/oracle.py"}`,
+the existing `check(repo)` interface. An assertion during module loading is an
+instrument error. The agreement pins oracle/runner bytes, interpreter and the
+resolved argv; arbitrary exit codes are not assertion evidence. Oracles are
+trusted code, not sandboxed: the reader must check that they test the defect,
+do not disguise setup failure as an assertion, and use declared dependencies.
+
+The normal proof remains separate. `check` and Store close require a matching
+task/base/contract/candidate receipt and its current independent read. A direct
+Store close cannot waive it. Delivery includes the challenge; recording a new
+receipt or exception after delivery needs redelivery and a fresh read within the
+existing budget. Replacing the agreement needs a coordinator reason and new proof;
+it preserves the base, prior attempts and spent rounds. Source drift invalidates
+the old proof/read/challenge. Light fixes retain this obligation and their 80/4/P2
+limits; promotion to full retains the fix but requires new bindings.
+
+If an automated regression cannot reach the defect, the coordinator records:
+
+```sh
+squadra challenge --actor coord --task T1 --exception \
+  --reason "Hardware-only failure; manual evidence and limits in the report"
+```
+
+The exception is candidate-bound, visible with its reason, and must be checked
+by the independent reader. It waives only the automated red/green demonstration;
+proof, review and publication authority are unchanged. It never says `matched`.
+The dashboard places the result or exception next to the proof, with original
+commit, remedy fingerprint and logs. A fingerprint is not an uncommitted commit.
+
+Tasks without fix metadata and unbound historical challenges keep their behavior;
+old challenge records do not qualify new fix tasks. Existing frozen squads need
+an explicit coordinated upgrade of every writer. Old CLIs ignore these fields;
+mixed-version enforcement is not promised. Unsupported future contracts can be
+read but cannot qualify a close. Nothing installs or migrates a live squad.

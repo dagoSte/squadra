@@ -321,6 +321,48 @@
         "task",
         "transport"
       ]
+    },
+    {
+      "label": "squadra 3.8.0 construction (coordinator replaces at integration)",
+      "registry_py_sha256": "b95625b9ade1bad121d7ef3bd2afb339edf0f3f4e4a5f53bf3d5ab99434aab24",
+      "source_commit": null,
+      "kinds": [
+        "ack",
+        "agent",
+        "ask",
+        "availability",
+        "benchmark",
+        "brief",
+        "challenge",
+        "close",
+        "decision",
+        "deliver",
+        "diagnostic",
+        "fix",
+        "init",
+        "legacy",
+        "message",
+        "output",
+        "pause",
+        "plan",
+        "resource.acquire",
+        "resource.release",
+        "restore.check",
+        "restore.freeze",
+        "resume",
+        "review",
+        "route",
+        "run.cancel",
+        "run.end",
+        "run.progress",
+        "run.start",
+        "save",
+        "settings",
+        "start",
+        "supersede",
+        "task",
+        "transport"
+      ]
     }
   ]
 }

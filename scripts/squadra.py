@@ -55,7 +55,17 @@ def bindings(store, task_id, require_review=True):
         if task["route"] == "light":
             measure(task, current)
     candidate_checks(task, current, require_review)
+    if require_review and task.get("fix"):
+        from fix_challenge import evidence
+        evidence(task, current, store.root, require_review=True)
     return current
+
+
+def fix_review_fields(task):
+    if not task.get("fix"):
+        return {}
+    from fix_challenge import binding, disposition
+    return {"fix_binding": binding(task), "fix_disposition": disposition(task)}
 
 
 def deliver(store, actor, task_id, reconcile=False):
@@ -71,6 +81,9 @@ def deliver(store, actor, task_id, reconcile=False):
 
     operations = []
     data = {"task": task_id, "snapshot": current}
+    if task.get("fix"):
+        from fix_challenge import binding, disposition
+        data.update(fix_binding=binding(task), fix_disposition=disposition(task))
     if task.get("contract"):
         data["contract"] = task["contract"]
         from light_route import check_contract, measure
@@ -87,6 +100,8 @@ def deliver(store, actor, task_id, reconcile=False):
             packet["contract"] = task["contract"]
             if "light" in data:
                 packet["light"] = data["light"]
+        if task.get("fix"):
+            packet.update(fix=task["fix"], fix_result=task.get("fix_result"))
         if previous.get("handoff") and previous.get("packet_data") == packet:
             return {"handoff": previous["handoff"], "packet": previous["packet"], "already_delivered": True}
         require(actor == task["owner"], "Owner must reconcile changed/missing handoff; coordinator may inspect an identical existing packet")
@@ -132,6 +147,8 @@ def parser():
     a.add_argument("--expected", type=int); a.add_argument("--full-gate", action="store_true")
     a.add_argument("--depends", action="append", default=[])
     a.add_argument("--reviewer"); a.add_argument("--requirements-file")
+    a.add_argument("--defect-fix", action="store_true", help="Require a bound original-red/remedy-green challenge before close")
+    a.add_argument("--challenge-file", help="JSON oracle agreement; default runner python-unittest-v1")
     a.add_argument("--route", choices=["full", "light"], default="full", help="Explicit light-v1 small-change contract; default full")
     a.add_argument("--supersedes", help="Existing open task this one replaces; its history stays")
     a = sub.add_parser("route", help="Coordinator promotes light to full, retaining base, history and budgets")
@@ -204,9 +221,13 @@ def parser():
     a = sub.add_parser("restore-check"); a.add_argument("--from", dest="package", required=True)
     a.add_argument("--to", required=True); a.add_argument("--actor")
     a = sub.add_parser("settings"); a.add_argument("--actor", required=True); a.add_argument("--file", required=True)
-    a = sub.add_parser("challenge"); a.add_argument("--actor", required=True); a.add_argument("--oracle", required=True)
-    a.add_argument("--original", required=True); a.add_argument("--remedy", required=True); a.add_argument("--positive", required=True)
-    a.add_argument("--output", required=True); a.add_argument("--timeout", type=int, default=30)
+    a = sub.add_parser("challenge"); a.add_argument("--actor", required=True); a.add_argument("--oracle")
+    a.add_argument("--original"); a.add_argument("--remedy"); a.add_argument("--positive")
+    a.add_argument("--output"); a.add_argument("--timeout", type=int, default=30)
+    a.add_argument("--task"); mode = a.add_mutually_exclusive_group()
+    mode.add_argument("--register", action="store_true", help="Coordinator marks a fix or replaces its oracle agreement")
+    mode.add_argument("--exception", action="store_true", help="Coordinator declares a candidate-bound exception")
+    a.add_argument("--contract-file"); a.add_argument("--reason")
     a = sub.add_parser("bench-example"); a.add_argument("--to", required=True)
     a = sub.add_parser("bench-run"); a.add_argument("--actor", required=True); a.add_argument("--manifest", required=True)
     a.add_argument("--output", required=True); a.add_argument("--allow-models", action="store_true"); a.add_argument("--budget-file")
@@ -253,6 +274,10 @@ def dispatch(a, store):
                 "scope": store.artifact(a.scope_file), "proof": proof, "expected": a.expected,
                 "full_gate": a.full_gate, "depends": a.depends, "reviewer": a.reviewer,
                 "requirements": json.loads(Path(a.requirements_file).read_text()) if a.requirements_file else []}
+        require(not a.challenge_file or a.defect_fix, "--challenge-file requires --defect-fix")
+        if a.defect_fix:
+            from fix_challenge import prepare
+            task["fix"] = prepare(store, task, a.challenge_file)
         if a.route == "light":
             from light_route import POLICY, contract
             task.update(route="light", light_policy=dict(POLICY))
@@ -379,7 +404,8 @@ def dispatch(a, store):
             binding = current["sha256"]
         store.append("review", actor, {"task": a.task, "stage": a.stage, "verdict": a.verdict,
                      "binding": binding, "covers": a.covers, "report": store.artifact(a.report), **extra,
-                     **({"contract": task["contract"]} if task.get("contract") else {})})
+                     **({"contract": task["contract"]} if task.get("contract") else {}),
+                     **fix_review_fields(task)})
     elif command == "output":
         output = {"task": a.task, "text": Path(a.file).read_text(), "next": a.next,
                   "artifacts": [store.artifact(f) for f in a.artifact]}
@@ -443,6 +469,21 @@ def dispatch(a, store):
     elif command == "settings":
         store.append("settings", actor, {"wait_seconds": json.loads(Path(a.file).read_text())})
     elif command == "challenge":
+        if a.task:
+            from fix_challenge import register, execute
+            require(not any((a.original, a.remedy, a.positive, a.oracle)), "Task challenge uses the registered inputs")
+            if a.register:
+                require(not a.output, "Registration does not execute a challenge")
+                register(store, actor, a.task, a.contract_file, a.reason)
+                return {"task": a.task, "registered": True}
+            require(not a.contract_file, "--contract-file requires --register")
+            require(a.exception or (a.output and not a.reason), "Challenge output required; reasons belong to exceptions")
+            require(not a.exception or a.reason, "fix_exception_reason_required")
+            result = execute(store, actor, a.task, a.output, a.timeout, a.reason if a.exception else None)
+            require(result.get("exception") or result["status"] == "matched", "fix_challenge_not_matched; read retained logs")
+            return result
+        require(all((a.oracle, a.original, a.remedy, a.positive, a.output)) and
+                not any((a.register, a.exception, a.contract_file, a.reason)), "Standalone challenge needs oracle/original/remedy/positive/output")
         from challenge import run
         require(not state["paused"], "Workspace paused")
         require(actor in state["agents"], "Registered actor required")

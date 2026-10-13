@@ -330,6 +330,19 @@ reconcile before proceeding: do not claim a save that did not succeed.
   frozen protocol until it receives an explicit version switch.
 
 For original/remedy/positive challenges or benchmarks read `references/benchmark.md`.
+For a defect fix the coordinator records `task --defect-fix` (or marks an open
+task with `challenge --register --task ... --reason ...`). Before close, run the
+registered regression on the original task base and the exact candidate with
+`challenge --task ... --output ...`. The default `python-unittest-v1` runner uses
+the fix's own test IDs and their result objects: every selected method must fail
+by assertion on the base and pass on the candidate. Errors, skipped or unknown
+tests and setup failures do not qualify. The test files are frozen and copied
+unchanged onto both private inputs. No separate positive control is needed for
+task fixes; the standalone command retains all three inputs. A coordinator may
+declare a reasoned exception, visible beside the proof and checked by the
+independent reader; it never appears as a successful challenge. Drift requires
+fresh bindings. Light fixes keep the same obligation; old tasks remain unchanged
+and frozen squads must coordinate a writer upgrade before using the new fields.
 `challenge` distinguishes an assertion from an instrument error; it does not replace a
 delivery proof. `bench-example/run/score` test the comparison with fake clients. A pilot
 with real models requires the owner's budget; no superiority is inferred

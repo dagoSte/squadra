@@ -13,7 +13,7 @@ from urllib.parse import unquote, urlparse
 import webbrowser
 
 from registry import (Store, Error, digest, attention, waits, now, requirement_matrix, initial, apply, decision_graph,
-                      task_progress, presence)
+                      task_progress, presence, fix_status)
 from comms import communications
 from panel import activity
 from reads import read_value
@@ -86,6 +86,9 @@ class VerifiedView:
                 apply(state, event)
             state.update(root=str(self.root), graph=decision_graph(events), progress=task_progress(events),
                          requirements={key: requirement_matrix(task) for key, task in state['tasks'].items()})
+            for task in state['tasks'].values():
+                if task.get('fix'):
+                    task['fix_status'] = fix_status(task)
             compact = {key: compact_records(state[key]) for key in ('tasks', 'runs')}
             value = events, state, compact
             after = self.stamp()
