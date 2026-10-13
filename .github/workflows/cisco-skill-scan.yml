@@ -1,0 +1,68 @@
+name: Cisco static scan
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+      - name: Install pinned scanner
+        run: python -m pip install cisco-ai-skill-scanner==2.2.2
+      - name: Export committed source without tests
+        run: |
+          mkdir -p "$RUNNER_TEMP/skill-source" "$RUNNER_TEMP/cisco-results"
+          git archive --format=tar --output "$RUNNER_TEMP/source.tar" HEAD -- . ':!tests'
+          tar -xf "$RUNNER_TEMP/source.tar" -C "$RUNNER_TEMP/skill-source"
+          test ! -e "$RUNNER_TEMP/skill-source/tests"
+          git rev-parse HEAD > "$RUNNER_TEMP/cisco-results/source-commit.txt"
+          printf 'Scope: committed repository, excluding tests/. Static, behavioral and OSV checks; no LLM. Failure threshold: HIGH or CRITICAL.\n' > "$RUNNER_TEMP/cisco-results/scope.txt"
+      - name: Scan and enforce HIGH threshold
+        run: |
+          cd "$RUNNER_TEMP/skill-source"
+          skill-scanner scan . --policy balanced --use-behavioral --use-osv \
+            --fail-on-severity high --format json --format sarif --format markdown --detailed \
+            --output-json "$RUNNER_TEMP/cisco-results/results.json" \
+            --output-sarif "$RUNNER_TEMP/cisco-results/results.sarif" \
+            --output-markdown "$RUNNER_TEMP/cisco-results/results.md"
+      - name: Summarize results
+        if: always()
+        run: |
+          python - <<'PY'
+          from collections import Counter
+          from pathlib import Path
+          import json, os
+          path = Path(os.environ['RUNNER_TEMP']) / 'cisco-results/results.json'
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as out:
+              out.write('## Cisco static scan\n\nScope: committed repository excluding `tests/`. No LLM analysis.\n\n')
+              if not path.is_file():
+                  out.write('No result file: the scan did not complete.\n')
+                  raise SystemExit(1)
+              result = json.loads(path.read_text())
+              counts = Counter(item['severity'] for item in result['findings'])
+              out.write(f"Findings: **{result['findings_count']}**. Maximum severity: **{result['max_severity']}**.\n\n")
+              out.write('The check fails at HIGH or CRITICAL. Lower-severity findings remain in the report.\n\n')
+              out.write('| Severity | Count |\n|---|---:|\n')
+              for level in ('CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'INFO'):
+                  out.write(f'| {level} | {counts[level]} |\n')
+          PY
+      - name: Preserve reports and scope
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: cisco-skill-scan
+          path: ${{ runner.temp }}/cisco-results/
+          if-no-files-found: error
+          retention-days: 90

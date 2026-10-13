@@ -16,6 +16,10 @@ The most complete team skill for Claude Code, Codex and Cursor.
 
 </div>
 
+[![Cisco security scan](https://img.shields.io/github/actions/workflow/status/dagoSte/squadra/cisco-skill-scan.yml?branch=main&label=Cisco%20security%20scan&logo=cisco)](https://github.com/dagoSte/squadra/actions/workflows/cisco-skill-scan.yml)
+
+Static, behavioral and dependency checks, excluding `tests/`. Passing means no HIGH or CRITICAL findings; lower-severity findings remain in the report. Click the badge for results.
+
 **Watch the 80-second tour — turn the sound on in the player:**
 
 https://github.com/user-attachments/assets/69f512be-775c-40ae-95c2-e1e403b3f5d1
