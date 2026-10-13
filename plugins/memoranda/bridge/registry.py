@@ -12,8 +12,10 @@ import sqlite3
 import subprocess
 import tempfile
 import uuid
+import unicodedata
 
-VERSION = "3.6.0"
+
+VERSION = "3.7.0"
 WAIT_SECONDS = {"ack": 900, "delivered": 3600, "reviewed": 1800, "heartbeat": 1800, "alive": 300}
 CHANNELS = ("typed-here", "relayed")
 REFERENCE_KINDS = ("ask", "decision")
@@ -31,6 +33,31 @@ NEXT_STEPS = {
     "reviewed": "Check e chiusura del coordinatore",
     "done": "Nessun passo pendente",
 }
+
+
+FINDINGS_BYTES = 16 * 1024
+SEVERITIES = ('grave', 'minor', 'info')
+
+
+def validate_findings(value):
+    valid = isinstance(value, list) and len(value) <= 32
+    if valid:
+        for item in value:
+            if not isinstance(item, dict) or set(item) != {'severity', 'title'}:
+                valid = False
+                break
+            title = item['title']
+            if (item['severity'] not in SEVERITIES or not isinstance(title, str)
+                    or not 1 <= len(title) <= 200 or not title.strip()
+                    or any(unicodedata.category(c).startswith('C') or c in '\u2028\u2029' for c in title)):
+                valid = False
+                break
+    if not valid:
+        raise ValueError('Invalid review findings')
+    if len(json.dumps(value, ensure_ascii=False).encode('utf-8')) > FINDINGS_BYTES:
+        raise ValueError('Review findings exceed 16 KiB')
+    return value
+
 
 
 class Error(Exception):
@@ -147,6 +174,13 @@ def apply(state, event):
         if d.get("supersedes"):
             # Keep the replaced task and its history, but remove its next steps and waits.
             state["tasks"][d["supersedes"]].update(superseded_by=d["id"], superseded_utc=event["utc"])
+    elif kind == "route":
+        task = state["tasks"][d["task"]]
+        task.setdefault("route_history", []).append({**d, "utc": event["utc"]})
+        task.update({k: d[k] for k in ("route", "contract", "scope", "proof", "expected", "full_gate")})
+        for key in ("candidate", "delivery", "plan"):
+            task.pop(key, None)
+        task.update(status="working", status_utc=event["utc"])
     elif kind == "supersede":
         # Record replacement after the new task has already been created.
         state["tasks"][d["task"]].update(superseded_by=d["by"], superseded_utc=event["utc"])
@@ -400,11 +434,37 @@ def waits(state, at, settings=None):
     return result
 
 
+def contract_matches(task, record):
+    return not task.get("contract") or record.get("contract") == task["contract"]
+
+
+def current_proofs(task, current):
+    return [p for p in task["proofs"] if p["status"] == "passed" and p["after"] == current
+            and contract_matches(task, p)]
+
+
+def candidate_checks(task, current, require_review=True, delivering=False):
+    if not delivering:
+        require(current == task.get("candidate"), "Candidate drift; deliver/prove the new exact source")
+    proof = current_proofs(task, current)
+    require(bool(proof), "No complete native proof on current candidate")
+    if task.get("full_gate"):
+        require(any(p.get("gate") for p in proof), "Required full gate not complete")
+    ids = {r["id"] for r in task.get("requirements", [])}
+    require(ids <= {i for p in proof for i in p.get("covers", [])}, "Requirement lacks native current proof")
+    if require_review:
+        reviews = [r for r in task["reviews"] if r["stage"] == "code"]
+        require(bool(reviews) and reviews[-1]["verdict"] == "accepted" and
+                reviews[-1]["binding"] == current["sha256"] and contract_matches(task, reviews[-1]),
+                "Independent current code review pending")
+        require(ids <= set(reviews[-1].get("covers", [])), "Requirement lacks independent current review")
+
+
 def requirement_matrix(task):
     current = task.get("candidate", {}).get("sha256")
-    proofs = [p for p in task["proofs"] if p["status"] == "passed" and current and p["after"]["sha256"] == current]
+    proofs = [p for p in task["proofs"] if p["status"] == "passed" and current and p["after"]["sha256"] == current and contract_matches(task, p)]
     code = [r for r in task["reviews"] if r["stage"] == "code"]
-    accepted = code[-1] if code and code[-1]["verdict"] == "accepted" and code[-1]["binding"] == current else {}
+    accepted = code[-1] if code and code[-1]["verdict"] == "accepted" and code[-1]["binding"] == current and contract_matches(task, code[-1]) else {}
     return [{**r, "proofs": [{"id": p["id"], "native_rc": p["native_rc"], "snapshot": current}
                              for p in proofs if r["id"] in p.get("covers", [])],
              "reviewed": r["id"] in accepted.get("covers", [])} for r in task.get("requirements", [])]
@@ -764,7 +824,7 @@ def validate(state, kind, actor, d):
                     "review", "close", "output", "run.start", "run.end", "run.cancel", "run.progress",
                     "resource.acquire", "resource.release", "pause", "resume", "legacy", "decision", "ask", "diagnostic",
                     "settings", "save", "restore.check", "restore.freeze", "challenge", "benchmark", "brief",
-                    "availability", "supersede"},
+                    "availability", "supersede", "route"},
             "Unknown event kind")
     if kind == "init":
         require(not state["workspace"], "Workspace already initialized")
@@ -785,8 +845,12 @@ def validate(state, kind, actor, d):
     require(actor in state["agents"], "Unknown agent: " + actor)
     coordinator = state["agents"][actor]["role"] == "coordinator"
     if kind in {"task", "close", "pause", "resume", "decision", "ask", "settings", "save", "restore.check", "brief",
-                "availability", "supersede"}:
+                "availability", "supersede", "route"}:
         require(coordinator, "Coordinator role required")
+    if kind == "route":
+        require(d.get("task") in state["tasks"], "Unknown task")
+        from light_route import promotion
+        promotion(state, state["tasks"][d["task"]], d)
     if kind == "brief":
         validate_brief(state, d)
     if kind == "availability":
@@ -860,6 +924,12 @@ def validate(state, kind, actor, d):
                     "Registered reviewer required")
             require(not standby(state, reader), "Reviewer is in stand-by; coordinator must record return first")
             require(state["agents"][reader]["identity"] != state["agents"][d["owner"]]["identity"], "Author alias is not independent")
+        require(d.get("route", "full") in {"full", "light"}, "Unknown task route")
+        if d.get("route") == "light":
+            from light_route import register
+            register(d, state)
+        else:
+            require(not d.get("contract") and not d.get("light_policy"), "Full task cannot forge route metadata")
     if kind == "supersede":
         validate_supersede(state, d)
     if kind in {"plan", "start", "deliver", "review", "close", "run.start"} or (kind == "output" and d.get("task")):
@@ -880,10 +950,10 @@ def validate(state, kind, actor, d):
             require(not task.get("reviewer") or not standby(state, task["reviewer"]),
                     "Reviewer is in stand-by; no new review handoff")
             require(any(p["status"] == "passed" and p["after"]["sha256"] == d["snapshot"]["sha256"]
-                        and (not task.get("full_gate") or p.get("gate"))
+                        and contract_matches(task, p) and (not task.get("full_gate") or p.get("gate"))
                         for p in task["proofs"]), "No passing proof on this exact source")
             require({r["id"] for r in task.get("requirements", [])} <=
-                    {c for p in task["proofs"] if p["status"] == "passed" and p["after"] == d["snapshot"]
+                    {c for p in task["proofs"] if p["status"] == "passed" and p["after"] == d["snapshot"] and contract_matches(task, p)
                      for c in p.get("covers", [])}, "Requirement lacks native current proof")
             if task.get("reviewer"):
                 packet = d.get("packet_data", {})
@@ -891,7 +961,7 @@ def validate(state, kind, actor, d):
                         packet.get("plan") == task.get("plan") and packet.get("reviewer") == task["reviewer"],
                         "Handoff packet changed during delivery")
                 require(packet.get("proofs") == [p for p in task["proofs"] if p["status"] == "passed" and
-                        p["after"] == d["snapshot"]], "Handoff proofs changed during delivery")
+                        p["after"] == d["snapshot"] and contract_matches(task, p)], "Handoff proofs changed during delivery")
         if kind == "run.start":
             require(d["id"] not in state["runs"], "Run ID already exists; do not replay")
             require(task["status"] != "waiting-ack", "Assignment has no recipient ACK")
@@ -922,6 +992,8 @@ def validate(state, kind, actor, d):
                 require(not any(r.get("gate") and r["status"] == "running" for r in state["runs"].values()),
                         "A whole gate is already running, including under the same owner")
         if kind == "review":
+            if 'findings' in d:
+                validate_findings(d['findings'])
             author_identities = {state["agents"][a]["identity"] for a in task["authors"]}
             require(state["agents"][actor]["identity"] not in author_identities,
                     "Author cannot independently review own changes, even under another seat ID")
@@ -942,6 +1014,9 @@ def validate(state, kind, actor, d):
                             "Accepted review must cover every requirement explicitly")
         if kind == "close":
             require(task["status"] == "reviewed", "Exact candidate independent review still pending")
+        if task.get("route") == "light" or task.get("contract"):
+            from light_route import validate_event
+            validate_event(state, kind, task, d)
     if kind == "ack":
         require(d["message"] in state["messages"], "Unknown message")
         require(state["messages"][d["message"]]["to"] == actor, "ACK must come from actual recipient seat")
@@ -970,6 +1045,19 @@ def validate(state, kind, actor, d):
         run = state["runs"][d["id"]]
         require(actor == run["agent"] or coordinator, "Run owner/coordinator required")
         require(run["status"] == "running", "Run already ended")
+        task = state["tasks"][run["task"]]
+        if kind == "run.end" and task.get("contract"):
+            require(not {"mode", "argv", "before", "task", "contract", "light", "covers", "gate", "expected_rc"}.intersection(d),
+                    "Run contract is immutable")
+            if d.get("status") == "passed" and run["mode"] == "proof":
+                require(d.get("native_rc") == 0 and run.get("expected_rc") == 0 and
+                        d.get("after") == run["before"] and contract_matches(task, run),
+                        "Native proof does not keep its source/contract")
+                from light_route import check_contract, measure
+                check_contract(task)
+                require(d["after"] == snapshot(task["repo"]), "Source changed before proof completion")
+                if task["route"] == "light":
+                    require(run.get("light") == measure(task, d["after"]), "Light proof measurement changed")
     if kind == "resource.acquire":
         require(d["name"] not in state["resources"], "Resource already reserved; expiry is not release")
     if kind == "resource.release":

@@ -8,7 +8,7 @@ The most complete team skill for Claude Code, Codex and Cursor.
 
 **Free and open source** — MIT licence, no account, everything runs on your machine.
 
-**Version 3.6.1** · Free · MIT · Local toolkit · Python 3.12+ · macOS / POSIX
+**Version 3.7.0** · Free · MIT · Local toolkit · Python 3.12+ · macOS / POSIX
 
 **English** · [Italiano](README.it.md) · [Privacy](PRIVACY.md)
 
@@ -733,7 +733,7 @@ The light route skips a plan read and uses the agreed targeted proof instead of 
 
 The registry remeasures before a proof process, on delivery, check and close, including direct Store writes. An excess or protected path refuses with a `light_*` code and “Full route required”; a second light read is refused too. Only the coordinator can promote with `route --full --scope-file ... --proof-file ... --reason ...` (and `--full-gate` or `--expected` when required). Promotion keeps the base, authors, history and spent counters, invalidates old proof/read bindings, and has no reverse. It cannot reset an exhausted budget.
 
-Existing tasks without a route keep their behavior. A frozen squad must explicitly coordinate an upgrade of **every writer** before registering light tasks; installing this release does not migrate it. Older CLIs ignore this new metadata: mixed-version enforcement is not promised. Unknown future policies remain readable but cannot qualify work.
+Existing tasks without a route keep their behavior. A frozen squad must explicitly coordinate an upgrade of **every writer** before registering light tasks; installing this release does not migrate it. Older CLIs ignore this new metadata: mixed-version enforcement is not promised, and a 3.6.x window in such a squad still shows a task promoted to the full route as light. Unknown future policies remain readable but cannot qualify work.
 
 <a id="commands"></a>
 ## Squadra commands

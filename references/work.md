@@ -474,6 +474,7 @@ semantic disguises are still the coordinator's responsibility, not a classifier.
 No-route tasks and historical projections keep their existing behavior. Unknown
 future light policies are readable but cannot qualify work. A frozen squad must
 coordinate every writer's explicit upgrade before opting in: older CLI versions
-ignore new route metadata, so mixed-version enforcement is not supported. No
+ignore new route metadata, so mixed-version enforcement is not supported, and a
+3.6.x window still shows a task promoted to the full route as light. No
 launcher, installation or workspace version is changed automatically. The change
 that implements this protocol itself takes the full route and full suite.

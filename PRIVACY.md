@@ -49,6 +49,14 @@ services you configure. Authorized Git operations, browser actions, message
 transports and proof commands have their own effects. Review those tools'
 permissions, destinations and privacy notices before using them.
 
+The memoranda plugin offered in the Store is one of these optional plugins. It
+sends nothing until you install it and set your own memoranda.dev key. From then
+on it sends the items your agents declared worth remembering to the memoranda.dev
+address you configure, as proposals for your review: each item's sentence, kind,
+scope, confidence, tags and references to its evidence in the registry (event
+numbers, artifact names and hashes), not the evidence files themselves.
+memoranda.dev handles them under its own privacy notice.
+
 ## Retention, removal and shared copies
 
 Local records remain until you remove them; there is no automatic retention

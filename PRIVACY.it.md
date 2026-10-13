@@ -52,6 +52,15 @@ le azioni nel browser, i trasporti dei messaggi e i comandi di prova autorizzati
 hanno i propri effetti. Prima di usarli, controlla permessi, destinazioni e
 informative dei relativi strumenti.
 
+Il plugin memoranda, disponibile nello Store, è uno di questi plugin facoltativi.
+Non invia nulla finché non lo installi e non imposti la tua chiave di
+memoranda.dev. Da quel momento invia all'indirizzo memoranda.dev che configuri le
+voci che i tuoi agenti hanno dichiarato da ricordare, come proposte da rivedere:
+per ogni voce la frase, il tipo, l'ambito, la confidenza, le etichette e i
+riferimenti alle prove nel registro (numeri di evento, nomi e hash degli
+allegati), non i file delle prove. memoranda.dev le tratta secondo la propria
+informativa.
+
 ## Conservazione, rimozione e copie condivise
 
 I dati locali restano finché non li rimuovi; non esiste una scadenza automatica

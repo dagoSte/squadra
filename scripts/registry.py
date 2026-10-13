@@ -15,7 +15,7 @@ import uuid
 import unicodedata
 
 
-VERSION = "3.6.1"
+VERSION = "3.7.0"
 WAIT_SECONDS = {"ack": 900, "delivered": 3600, "reviewed": 1800, "heartbeat": 1800, "alive": 300}
 CHANNELS = ("typed-here", "relayed")
 REFERENCE_KINDS = ("ask", "decision")

@@ -8,7 +8,7 @@ La skill di squadra più completa per Claude Code, Codex e Cursor.
 
 **Gratuita e open source** — licenza MIT, nessun account, tutto gira sul tuo computer.
 
-**Versione 3.6.1** · Gratuita · MIT · Toolkit locale · Python 3.12+ · macOS / POSIX
+**Versione 3.7.0** · Gratuita · MIT · Toolkit locale · Python 3.12+ · macOS / POSIX
 
 [English](README.md) · **Italiano** · [Privacy](PRIVACY.it.md)
 
@@ -738,7 +738,7 @@ Il percorso leggero salta la lettura del piano e usa la prova mirata concordata 
 
 Il registro rimisura prima del processo di prova, alla consegna, al check e alla chiusura, anche nelle scritture dirette Store. Un eccesso o percorso protetto produce un codice `light_*` e “Full route required”; anche una seconda lettura leggera è rifiutata. Solo il coordinatore promuove con `route --full --scope-file ... --proof-file ... --reason ...` (e `--full-gate` o `--expected` quando richiesti). La promozione conserva base, autori, storia e contatori spesi, invalida i vecchi binding di prova/lettura e non si può invertire. Non azzera budget esauriti.
 
-Gli incarichi senza route conservano il comportamento precedente. Una squadra congelata deve coordinare esplicitamente l'aggiornamento di **tutti gli scrittori** prima di registrare incarichi leggeri; installare la release non la migra. Le vecchie CLI ignorano i nuovi metadati: nessuna promessa di enforcement tra versioni miste. Policy future sconosciute restano leggibili ma non possono qualificare il lavoro.
+Gli incarichi senza route conservano il comportamento precedente. Una squadra congelata deve coordinare esplicitamente l'aggiornamento di **tutti gli scrittori** prima di registrare incarichi leggeri; installare la release non la migra. Le vecchie CLI ignorano i nuovi metadati: nessuna promessa di enforcement tra versioni miste, e in una squadra mista una finestra 3.6.x mostra ancora come leggero un incarico promosso al percorso completo. Policy future sconosciute restano leggibili ma non possono qualificare il lavoro.
 
 <a id="commands"></a>
 ## Comandi di squadra
