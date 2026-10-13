@@ -220,7 +220,7 @@ class PrivateStorage(unittest.TestCase):
 class BundledReader(unittest.TestCase):
     def test_only_bundled_reader_is_imported_after_pin_and_tampered_code_never_runs(self):
         with tempfile.TemporaryDirectory() as tmp:
-            base = Path(tmp); bridge = base / 'bridge'
+            base = Path(tmp).resolve(); bridge = base / 'bridge'
             shutil.copytree(ROOT / 'plugins/memoranda/bridge', bridge)
             marker = base / 'executed'
             code = "import sys;sys.path.insert(0,sys.argv[1]);from squadra_memories.source import load_registry,Refusal\ntry:\n m,e=load_registry();print(m.__file__)\nexcept Refusal as e:\n print(e.code);sys.exit(3)"
