@@ -139,9 +139,9 @@ Il coordinatore affida subito lavoro indipendente a ogni finestra disponibile (C
 
 Ogni aggiornamento al proprietario mostra la tabella di `squadra board`: **In corso**, **Da fare** e **Fatti**, colonne **Finestra | Lavoro | Stato | Tempo (circa)**, «Realizzati X su Y» in fondo, poi «Tu adesso: …». I tempi sono misurati, le stime sono segnate come stime, nessuna percentuale inventata.
 
-### Regole 3–8: metodo
+### Regole 3–9: metodo
 
-Leggi prima di citare; registra la decisione prima di cambiare un test che fissa un requisito; ogni corsia parallela ha i suoi file; dichiara costo e tetto prima di spendere; la modalità di revisione la sceglie il proprietario; e ogni chiusura dice come far andare più veloce l'incarico successivo. Tutte le regole per intero: la [skill](SKILL.md).
+Leggi prima di citare; registra la decisione prima di cambiare un test che fissa un requisito; ogni corsia parallela ha i suoi file; dichiara costo e tetto prima di spendere; la modalità di revisione la sceglie il proprietario; ogni chiusura dice come far andare più veloce l'incarico successivo; e il rilascio parte in orario: un'ora limite due ore dopo che il contenuto è fissato, riletture finali limitate all'unione quando ogni corsia è già stata letta, la prova in parallelo come prova di rilascio, e una lettura ferma passa a un lettore libero. Tutte le regole per intero: la [skill](SKILL.md).
 
 <a id="prompts"></a>
 ## Prompt di esempio

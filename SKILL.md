@@ -73,7 +73,7 @@ Before the table one sentence says where things stand and what the owner needs; 
 it, «You now: …» («Tu adesso: …» in Italian). No invented percentages: a state
 declared but not recorded is written as such.
 
-## Rules 3–8 — method
+## Rules 3–9 — method
 
 - **Rule 3 — read before you cite.** A count, a commit, task, message or proof id, or a
   file path enters a report only after it was read from a command's output in this step,
@@ -97,6 +97,24 @@ declared but not recorded is written as such.
   time went (the dashboard measures waiting for the acknowledgement, building, waiting
   for the read and fix rounds), writes one line «Faster next time: …» in its closing
   output, and applies it to the next assignment.
+- **Rule 9 — the release leaves on time.** These are rules, not coordinator choices.
+  - **Cut-off.** When a release's scope is fixed, its cut-off is set two hours later,
+    unless the owner names a time, and recorded as a decision. At the cut-off only lanes
+    with an accepted non-author code read and a green proof enter the release. The others
+    move to the next patch release, recorded as deferred with «missed cut-off». Only the
+    owner's word extends a cut-off.
+  - **Scoped final reads.** When every lane already has its own accepted non-author code
+    read, the two final reads cover the integration seams only: conflict resolutions,
+    version, pins, mirrors and release docs, from the lane heads to the release head.
+    The whole-suite proof still runs on the release head. Small light tasks registered
+    `--read-at-gate` have no read of their own, so the release task (`--release-gate`)
+    must cover each of them.
+  - **Release proof.** When the repository has the parallel runner
+    (`tools/parallel_tests.py`), it is the release's whole-suite proof, with collected
+    equal to executed.
+  - **Stalled reads.** A delivery left without an acknowledgement for 15 minutes, while
+    another non-author reader is free, moves to that reader. A reviewer pool
+    (`task --reviewer` repeated) does this by itself: the first free member claims it.
 
 ## What it is
 
