@@ -3760,7 +3760,7 @@ function skillsRender(content){
  for(const el of skillsUI.controls)focusKey(el,el.getAttribute('data-focus-key'));
  if(skillsUI.attempt!==state&&!skillsUI.running)skillsFetch();
 }
-document.addEventListener('keydown',event=>{const active=document.activeElement,tag=(active?.tagName||active?.tag||'').toLowerCase();if(tab==='SystemSkills'&&event.key==='/'&&!['input','textarea','select'].includes(tag)&&active?.getAttribute?.('contenteditable')!=='true'){event.preventDefault?.();skillsUI.search?.focus()}});
+if(typeof document.addEventListener==='function')document.addEventListener('keydown',event=>{const active=document.activeElement,tag=(active?.tagName||active?.tag||'').toLowerCase();if(tab==='SystemSkills'&&event.key==='/'&&!['input','textarea','select'].includes(tag)&&active?.getAttribute?.('contenteditable')!=='true'){event.preventDefault?.();skillsUI.search?.focus()}});
 </script>
 
 </body></html>
