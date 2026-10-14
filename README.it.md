@@ -28,26 +28,24 @@ Si installa con `/plugin` in Claude Code e Codex. **Per installarla:** vedi [Ins
 
 ## Cosa la rende diversa
 
-- **Un solo registro, in cui scrivono tutte le finestre.** Incarichi, messaggi, prove, letture, decisioni e parole del proprietario finiscono in un unico archivio durevole sul tuo computer, con una catena di hash che rivela le modifiche accidentali. Niente dipende da quello che una chat ricorda ancora.
-- **Per ogni modifica, un lettore che non l'ha scritta.** Le letture sono registrate da un'identità diversa dagli autori; un alias non vale mai come secondo lettore.
-- **Prove legate al codice esatto.** `prove` esegue il comando concordato sui file congelati e `deliver` consegna un pacchetto immutabile. Qualunque modifica successiva annulla prova e lettura.
-- **Prima la conferma, poi il lavoro.** Un messaggio in coda non è un messaggio ricevuto: solo l'ACK del destinatario fa partire il lavoro.
-- **Una dashboard locale, dal vivo e in parole semplici**, in italiano o in inglese, chiara o scura: una scheda e una storia per ogni incarico, grafici, un grafo delle decisioni, chi scrive a chi, un suono e un avviso quando si chiude un passo, una melodia quando il lavoro è finito.
-- **Domande al proprietario con la frase da dire.** Opzioni, una raccomandazione e le parole esatte per rispondere; ogni risposta conserva il suo canale e i suoi collegamenti, e il grafo la segue fino al risultato.
-- **Checkpoint, salvataggio e ripristino.** Gli agenti fanno i checkpoint da soli, i pacchetti completi di Git e del lavoro in corso si dimostrano ripristinandoli davvero, e i passaggi a un contesto pulito conservano identità, budget e paternità del lavoro.
-- **Claude, Codex e Cursor nella stessa squadra**, con plugin locali che aggiungono una propria pagina, e un self-test e dei banchi offline che non chiamano alcun modello.
-- **Aperta ai plugin della community.** Il formato dei plugin è aperto e documentato: chiunque può costruire un plugin, gratuito o a pagamento, che porta i propri dati nella dashboard, con una sua pagina, le sue impostazioni e un'azione facoltativa.
+- **Un solo registro per tutte le finestre.** Incarichi, prove e decisioni restano sul tuo computer, non nella memoria di una chat.
+- **Chi scrive non si rilegge.** Ogni modifica la controlla una finestra che non l'ha scritta.
+- **Prove legate al codice esatto.** Se il codice cambia dopo la prova, prova e lettura non valgono più.
+- **Prima la conferma, poi il lavoro.** Un incarico parte solo quando chi lo riceve conferma di averlo ricevuto.
+- **Domande con la frase pronta.** Quando serve una tua decisione, ricevi le opzioni, una raccomandazione e le parole esatte per rispondere.
+- **Una dashboard in parole semplici**, in italiano o in inglese, per seguire tutto dal vivo.
+- **Claude, Codex e Cursor insieme**, e aperta ai plugin della community.
 
 ## Cosa fa Squadra
 
-Squadra fa lavorare più finestre di agenti AI sullo stesso progetto come una squadra che puoi seguire: una finestra coordina, un'altra fa la modifica e una terza, mai l'autrice, la controlla. È pensata per i momenti in cui il lavoro degli agenti di solito si inceppa: un autore che rilegge il proprio lavoro, un test verde eseguito su un codice diverso, una conferma che nessuno ha dato, una decisione persa in una conversazione lunga, una sessione che si chiude a metà. Tre parti lavorano insieme: **la skill**, che gli agenti seguono; **la CLI**, che registra ogni passo; **la dashboard**, dove leggi il registro. Ogni finestra può lavorare su una propria copia del codice, un *checkout*, e tutte condividono un unico registro.
+Squadra fa lavorare più finestre di agenti AI sullo stesso progetto come una squadra che puoi seguire: una finestra coordina, un'altra fa la modifica e una terza, mai l'autrice, la controlla. È pensata per i punti in cui il lavoro degli agenti di solito si inceppa: un autore che rilegge il proprio lavoro, un test verde eseguito su un codice diverso, una decisione persa in una conversazione lunga. Tre parti lavorano insieme: **la skill**, che gli agenti seguono; **la CLI**, che registra ogni passo; **la dashboard**, dove leggi il registro. Ogni finestra può lavorare su una propria copia del codice, un *checkout*, e tutte condividono un unico registro.
 
-**Le finestre Cursor lavorano solo in modo interattivo.** Sei tu ad aprire l'agente Cursor (`cursor-agent`), che poi usa la CLI di squadra come ogni altra finestra. Squadra non avvia mai Cursor da sola, perché Cursor esegue gli hook del team, dell'utente e dell'azienda fuori da qualunque sandbox e non permette di disattivarli.
+**Le finestre Cursor lavorano solo in modo interattivo:** sei tu ad aprire l'agente Cursor (`cursor-agent`), che poi usa la CLI di squadra come ogni altra finestra. Squadra non lo avvia mai da sola, perché Cursor esegue gli hook del team, dell'utente e dell'azienda fuori da qualunque sandbox e non permette di disattivarli.
 
 **Come funziona.**
-1. **Installala** e di' alla prima finestra: «Usa squadra per questo progetto. Usa il registro in `/percorso/del/registro`. Trova le altre finestre e presentati; descrivi il lavoro in parole semplici.» Continua a usare lo stesso registro durevole.
-2. **Apri le altre finestre** su quel registro. La prima coordina e affida alle altre costruzione e controllo; ogni finestra conferma il proprio incarico prima di cominciare.
-3. **Apri la pagina** con `squadra dash --root /percorso/del/registro --open` (se hai installato il plugin, chiedi all'agente di aprire la dashboard) e segui ogni incarico: conferma → lavoro → verifica eseguita → lettura di un'altra finestra → chiusura del coordinatore.
+1. **Installala** e di' alla prima finestra: «Usa squadra per questo progetto. Usa il registro in `/percorso/del/registro`. Trova le altre finestre e presentati; descrivi il lavoro in parole semplici.»
+2. **Apri le altre finestre** su quel registro. La prima coordina; ogni finestra conferma il proprio incarico prima di cominciare.
+3. **Apri la dashboard** con `squadra dash --root /percorso/del/registro --open` (se hai installato il plugin, chiedi all'agente di aprirla) e segui ogni incarico: conferma → lavoro → verifica eseguita → lettura di un'altra finestra → chiusura del coordinatore.
 4. **Quando Serve a te chiede il tuo parere**, rispondi al coordinatore; il tempo che passa non è una risposta. Il lavoro chiuso non viene mai pubblicato da solo.
 
 **Parole che incontrerai.**
@@ -56,12 +54,11 @@ Squadra fa lavorare più finestre di agenti AI sullo stesso progetto come una sq
 |---|---|
 | ACK | La conferma esplicita del destinatario; un messaggio in coda non è ancora confermato. |
 | Candidato / lettura | Una versione fissata del lavoro / un controllo fatto da chi non l'ha scritto. |
-| ID / hash | Il nome tecnico di un record / un'impronta del contenuto esatto controllato. |
-| Log / exit | L'output registrato di un comando / il suo codice di uscita. Vanno letti insieme. |
 | Checkpoint / WIP | Una copia del registro per il ripristino / modifiche al codice non ancora finite. Un checkpoint da solo non copia il codice. |
-| UTC / PID / cwd | Ora universale / numero del processo / cartella di lavoro. Dati tecnici, non prove di attività. |
 | Briefing | Una breve descrizione in parole semplici del progetto o di un incarico, scritta dal coordinatore; il briefing di un incarico gli dà il nome sulla pagina. |
 | Ping / stand-by | Una chiamata di presenza che chiede a una finestra di confermare che risponde ancora / la registrazione, fatta dal coordinatore, che una finestra per ora non riceve nuovi incarichi. Lo stand-by non ferma nulla di ciò che è in esecuzione. |
+
+Altri termini, come log ed exit, UTC, PID e cwd: [la guida della pagina](references/recovery.md#dashboard-page), in inglese.
 
 <a id="start"></a>
 ## Installazione e primo registro
@@ -97,38 +94,26 @@ export PATH="$HOME/.local/bin:$PATH"
 squadra --version
 ```
 
-Installa da un checkout pulito, senza modifiche fuori dai commit, con una **nuova cartella di backup** ogni volta. L'installatore congela una copia legata al commit, collega la skill per Codex, Claude e Cursor (`~/.cursor/skills/squadra`) e prepara `~/.local/bin/squadra` (tieni quella cartella nel PATH), conservando le skill e il programma di avvio precedenti. Per tornare indietro, sostituisci solo le quattro destinazioni elencate in `INSTALL.json` con le versioni precedenti registrate. Senza installare, usa `python3 -B scripts/squadra.py <comando>`. L'installazione non migra mai una squadra al lavoro: ognuna tiene la versione con cui è partita finché non la cambi esplicitamente.
+Installa da un checkout pulito, senza modifiche fuori dai commit, con una **nuova cartella di backup** ogni volta; l'installatore conserva le skill e il comando precedenti, così puoi tornare indietro. Senza installare, usa `python3 -B scripts/squadra.py <comando>`. [Dettagli e ritorno alla versione precedente](references/start.md#install-and-join-details), in inglese.
 
 ### Aggiornare
 
 **Con /plugin.** In Claude Code esegui `/plugin marketplace update squadra`, poi `/plugin update squadra@squadra`, poi riavvia Claude Code. Per Codex esegui `codex plugin marketplace upgrade`, poi di nuovo `codex plugin add squadra@squadra`.
 
-**Con l'installatore autonomo.** Ogni versione viene pubblicata come un unico commit che sostituisce la storia precedente, quindi `git pull` non riesce ad aggiornare la tua copia. Scarica la versione, riallinea la copia e poi esegui di nuovo l'installatore, ogni volta con una cartella di backup nuova. Il riallineamento cancella le modifiche locali fatte in quella copia:
+**Con l'installatore autonomo.** Dalla 3.6.1 in poi le versioni conservano la loro storia: esegui `git pull`, poi di nuovo l'installatore, con una nuova cartella di backup ogni volta. Un checkout della 3.6.0 o precedente richiede invece `git fetch origin` e `git reset --hard origin/main`, che cancella le modifiche locali di quel checkout.
 
 ```sh
-git fetch origin
-git reset --hard origin/main
+git pull
 python3 -B scripts/install.py \
   --backup "$HOME/.local/state/squadra/install-backup-002"
 squadra --version
 ```
 
-Ogni rilascio alza il numero di versione. I plugin installati dallo Store mantengono la loro versione finché non esegui di nuovo `squadra plugin install <name>` dalla nuova release ([Plugin inclusi nella release](#plugin-store)). Le finestre già aperte usano la versione che hanno letto finché non le riavvii, e una squadra al lavoro mantiene il suo protocollo finché non la passi esplicitamente alla nuova versione.
+Ogni rilascio alza il numero di versione. I plugin installati dallo Store mantengono la loro versione finché `squadra plugin install <nome>` non viene rieseguito dalla nuova release ([Plugin inclusi nella release](#plugin-store)). Le finestre già aperte mantengono la versione letta finché non si riavviano, e una squadra al lavoro mantiene il suo protocollo finché non la cambi esplicitamente.
 
 ### Regola 0: trovare le finestre e presentarsi
 
-La prima finestra che applica la skill a questo lavoro diventa il coordinatore: i suoi primi atti sono trovare ogni finestra Codex, Claude o Cursor del progetto e presentarsi a ciascuna. È il modo di lavorare degli agenti, non un'elezione fatta da un comando qualsiasi della CLI. Un coordinatore già presente nello stesso registro che risponde a un ping tiene il ruolo: presentati e aspetta un ruolo. Un ping in attesa o scaduto non trasferisce mai la guida né le risorse; un coordinatore che non risponde si riconcilia esplicitamente.
-
-```sh
-# Il censimento non scrive nulla, nemmeno prima di init. Usa sempre lo stesso --root condiviso.
-squadra census --root /path/to/registry --project /path/to/project
-# Per entrare in una squadra esistente: registra la finestra reale come esecutore, poi chiama il coordinatore.
-squadra agent --id arrival --identity actual-session --role executor --client codex --repo /path/to/project
-squadra ping --actor arrival --to coord
-squadra transport --actor arrival --message PING-ID --via manual
-```
-
-Sostituisci `PING-ID` con l'ID restituito e aspetta l'ACK reale. Il censimento confronta i nomi degli eseguibili e le cartelle di lavoro, può non vedere wrapper, client grafici o remoti e processi terminati, e lascia visibili gli errori della scansione; aggiungi l'elenco dei peer di Claude e i file di sessione di Codex. Processi, registrazioni e ricevute di coda non dimostrano che una finestra risponda, e l'identità non si deduce mai da un PID o da una cartella condivisa. Ogni presentazione (identità, ruolo, registro, prossimo passo) parte con `send` e `transport`: `--via codex-queue` per un posto Codex registrato con `agent --session`, la messaggistica nativa fra peer di Claude con una ricevuta conservata, altrimenti `--via manual`. Le presentazioni senza risposta restano in sospeso. Dettagli in [avvio e presentazione](references/start.md).
+La prima finestra che applica la skill diventa il coordinatore: trova ogni finestra Codex, Claude o Cursor del progetto e si presenta a ciascuna. Un coordinatore già presente nello stesso registro, che risponde a un ping, mantiene il ruolo; un ping in attesa o scaduto non trasferisce mai la guida o le risorse. La regola completa è nella [skill](SKILL.md); i limiti del censimento e come entrare in una squadra sono in [avvio e presentazione](references/start.md#install-and-join-details), in inglese.
 
 Poi crea un unico registro durevole, fuori dalle cartelle temporanee:
 
@@ -145,25 +130,18 @@ squadra status
 squadra dash --open
 ```
 
-Ogni finestra usa lo stesso `SQUADRA_ROOT` o `--root`; i checkout separati non creano mai poste separate. `agent --skill` registra percorso e hash di ogni skill letta davvero, `--session` una sessione nota, `--model` un modello richiesto; ciò che un client non espone resta sconosciuto. **Un'identità non è un ruolo:** due alias della stessa finestra non fanno un lettore indipendente, e identità e ruolo di un posto non si riscrivono, quindi una finestra diversa richiede un posto nuovo. Esiste anche il ruolo `executor`. Aggiungi costruttori solo per perimetri indipendenti.
-
 <a id="rule-1"></a>
 ### Regola 1: lavoro in parallelo
 
-Il valore della squadra è il lavoro in parallelo: il coordinatore affida il lavoro indipendente a tutte le finestre disponibili insieme (Codex, Claude, Cursor interattivo), e nessuna resta ferma finché ce n'è. Un costruttore per albero; le letture di incarichi diversi procedono insieme su copie congelate; i lavori grandi si dividono per area una volta scritto il contratto comune; la lettura finale di un rilascio la fanno un lettore Claude e un lettore Codex nello stesso momento, nessuno dei due autore di ciò che legge. Il coordinatore legge la posta del registro a ogni passo, perché una finestra può ricevere lavoro direttamente dal proprietario e riferirlo solo lì. Dipendenze, riserve, budget e indipendenza dei lettori restano validi.
+Il coordinatore affida subito lavoro indipendente a ogni finestra disponibile (Codex, Claude, Cursor interattivo), e nessuna finestra resta ferma mentre c'è lavoro: un costruttore per albero, letture su copie congelate, e la lettura finale di un rilascio fatta da un lettore Claude e da un lettore Codex nello stesso momento. Il coordinatore legge la posta del registro a ogni passo, perché una finestra può ricevere lavoro direttamente dal proprietario e riferirlo solo lì.
 
 ### Regola 2: la tabella sempre visibile
 
-Ogni aggiornamento al proprietario, da qualunque finestra, mostra il lavoro preso da `squadra board`: **In corso**, **Da fare** e **Fatti**, colonne **Finestra | Lavoro | Stato | Tempo (circa)**, «Realizzati X su Y» in fondo. Una frase prima dice a che punto siamo e cosa deve fare il proprietario; dopo viene «Tu adesso: …». Nessuna percentuale inventata; uno stato dichiarato ma non registrato è indicato come tale. La tabella misura il tempo trascorso, arrotondato in minuti, ore o giorni: dall’assegnazione alla chiusura per i Fatti, dal primo avvio registrato (o dall’assegnazione) per quelli In corso, «—» per i Da fare. Il coordinatore aggiunge una stima approssimativa, indicata esplicitamente come stima: del tempo rimanente per gli In corso, dell’intera attività per i Da fare.
+Ogni aggiornamento al proprietario mostra la tabella di `squadra board`: **In corso**, **Da fare** e **Fatti**, colonne **Finestra | Lavoro | Stato | Tempo (circa)**, «Realizzati X su Y» in fondo, poi «Tu adesso: …». I tempi sono misurati, le stime sono segnate come stime, nessuna percentuale inventata.
 
 ### Regole 3–8: metodo
 
-- **Leggi prima di citare:** conteggi e identificativi in un resoconto si copiano dall'uscita di un comando, mai a memoria.
-- **Prima la decisione, poi il test:** un requisito ritirato si registra come decisione; poi test e codice cambiano insieme.
-- **Corsie parallele con i loro file:** ogni corsia sa quali file può toccare; la coordinatrice unisce e controlla che il lavoro di ogni corsia ci sia.
-- **Il costo prima della spesa:** prima di una chiamata a pagamento la finestra dichiara costo previsto e tetto, e si ferma al tetto. Nessuna chiave in chat.
-- **La modalità di revisione la sceglie il proprietario:** una lettura per ogni corsia, oppure un'unica revisione finale di Claude e Codex insieme quando conta la velocità.
-- **Più veloce la prossima volta:** a ogni chiusura la coordinatrice guarda dove è andato il tempo, scrive una riga su come risparmiarlo e la applica all'incarico successivo.
+Leggi prima di citare; registra la decisione prima di cambiare un test che fissa un requisito; ogni corsia parallela ha i suoi file; dichiara costo e tetto prima di spendere; la modalità di revisione la sceglie il proprietario; e ogni chiusura dice come far andare più veloce l'incarico successivo. Tutte le regole per intero: la [skill](SKILL.md).
 
 <a id="prompts"></a>
 ## Prompt di esempio
@@ -196,6 +174,16 @@ La prova è l'intera suite di test. Scrivi un briefing che dica perché l'incari
 per chi è e quando sarà finito. Poi consegnalo e aspetta l'ACK del costruttore.
 ```
 
+**A che punto siamo?**
+
+```text
+Mostrami la tabella dell'avanzamento presa dal registro: in corso, da fare e fatti, con chi fa cosa.
+Dimmi in una frase cosa è fermo e se c'è qualcosa che devo decidere io.
+```
+
+<details>
+<summary><strong>Altri prompt:</strong> costruire, leggere e chiudere, dashboard, decisioni, pausa e ripresa, cambio di contesto, plugin, cose da ricordare, le regole in pratica</summary>
+
 **Costruire e consegnare (finestra costruttrice)**
 
 ```text
@@ -217,13 +205,6 @@ Bloccano solo i rilievi gravi; elenca gli altri come attività da seguire, ognun
 ```text
 Controlla che prova e lettura riguardino lo stesso candidato, poi chiudi l'incarico T1.
 Fai un checkpoint e mostrami la tabella dell'avanzamento. Non pubblicare nulla.
-```
-
-**A che punto siamo?**
-
-```text
-Mostrami la tabella dell'avanzamento presa dal registro: in corso, da fare e fatti, con chi fa cosa.
-Dimmi in una frase cosa è fermo e se c'è qualcosa che devo decidere io.
 ```
 
 **Aprire la dashboard**
@@ -315,24 +296,15 @@ Per questo rilascio fai un'unica revisione finale: unisci le corsie man mano che
 poi un lettore Claude e un lettore Codex leggono tutto insieme.
 ```
 
+</details>
+
 ## Cosa hanno fermato le letture
 
-Apri **Letture** nella dashboard per vedere i verdetti su piani e codice, in totale
-e per incarico, e le nuove versioni presentate dopo una richiesta di modifiche.
-Ogni voce apre il rapporto e la storia dell’incarico. Sono conteggi di letture e
-versioni successive, non di difetti evitati o correzioni riuscite; letture e
-osservazioni ripetute restano registrazioni distinte. Sono inclusi anche gli
-incarichi chiusi o sostituiti.
+Apri **Letture** nella dashboard per vedere i verdetti su piani e codice, in totale e per incarico, e le nuove versioni presentate dopo una richiesta di modifiche, ognuna collegata al suo rapporto e alla storia dell'incarico. Sono conteggi di letture e di versioni successive, non di difetti evitati o correzioni riuscite; le letture ripetute restano registrazioni distinte, e gli incarichi chiusi o sostituiti restano inclusi.
 
 ![La vista Letture: i verdetti registrati in totale e per incarico, con le osservazioni fornite dai lettori](docs/images/dashboard-reads-it.png)
 
-Il lettore può aggiungere `review --findings-file findings.json` con osservazioni
-limitate (`severity`: `grave`, `minor` o `info`; `title`: una riga senza contenuti
-privati). Vedi [il comando di lettura](references/work.md). I dati assenti sono
-**Non registrato**; `[]` dichiara esplicitamente nessuna osservazione. La vista
-mostra quante letture hanno fornito questi dati. **Accettate con condizioni** non
-è registrato dal protocollo a tre verdetti. I metadati opzionali non cambiano
-approvazioni, regole di chiusura o protocolli congelati.
+Il lettore può aggiungere osservazioni limitate con `review --findings-file`; vedi [i dettagli](references/work.md#readme-protocol-details), in inglese.
 
 <a id="first-steps"></a>
 ## Primi passi
@@ -340,17 +312,22 @@ approvazioni, regole di chiusura o protocolli congelati.
 È la prima volta con Squadra? Prova questi dodici passi una volta, dall'inizio alla fine, su un progetto di prova. Una **finestra** è una sessione di lavoro: un agente Codex, Claude o Cursor, oppure una persona. Tutte le finestre usano lo stesso registro.
 
 1. **Installa** e imposta `export SQUADRA_ROOT=...` in ogni finestra.
-2. **Crea il registro e registra ogni finestra** con `init` e `agent`, come sopra.
-3. **Trova le finestre e presentati (regola 0):** `census` elenca i processi Codex, Claude e Cursor (`cursor-agent`) del progetto senza scrivere nulla; `send` e `transport` consegnano una presentazione, e ogni finestra risponde con `ack`.
-4. **Racconta in parole semplici di cosa si tratta** con `brief --project`; la dashboard lo mostra per primo.
-5. **Assegna il primo incarico e spiegalo:** `task` lo assegna; `brief --task` gli dà un titolo leggibile e dice perché esiste, per chi è e quando sarà finito.
-6. **Il costruttore conferma e comincia:** `ack` («ho ricevuto»), poi `start` («sto costruendo»).
-7. **Il costruttore prova e consegna:** `prove` esegue la verifica concordata sui file esatti; `deliver` li passa alla lettura.
-8. **Legge qualcun altro:** un lettore che non ha scritto il lavoro conferma il passaggio e registra il verdetto con `review`.
-9. **Il coordinatore chiude:** `check` verifica che prova e lettura riguardino la stessa versione; `close` registra la fine.
-10. **Controlla chi risponde ancora:** `ping --all` chiama ogni altra finestra, e ognuna risponde con `ack`; `ping --sweep` mette in stand-by una finestra che non ha risposto entro l'attesa `alive` (300 secondi, salvo diversa scelta con `settings`). Non riceve nuovi incarichi, e niente di ciò che esegue viene fermato.
+2. **Crea il registro e registra ogni finestra** con `init` e `agent`.
+3. **Trova le finestre e presentati:** `census` le elenca senza scrivere nulla; `send` e `transport` consegnano la presentazione; ogni finestra risponde con `ack`.
+4. **Racconta in parole semplici di cosa si tratta** con `brief --project`.
+5. **Assegna il primo incarico e spiegalo** con `task` e `brief --task`.
+6. **Il costruttore conferma e comincia:** `ack`, poi `start`.
+7. **Il costruttore prova e consegna:** `prove` esegue la verifica concordata sui file esatti; `deliver` li consegna.
+8. **Legge qualcun altro:** un lettore che non ha scritto il lavoro registra il verdetto con `review`.
+9. **Il coordinatore chiude:** `check`, poi `close`.
+10. **Controlla chi risponde ancora:** `ping --all`; `ping --sweep` mette in stand-by una finestra che non ha risposto, senza fermare nulla di ciò che esegue.
 11. **Apri la dashboard** con `dash --open`; «Come leggere questa pagina» spiega ogni termine.
-12. **Registra quello che dice il proprietario, con i suoi collegamenti:** `decision` con `--owner-words`, `--channel` e `--task`; poi seleziona il suo riquadro nella vista Decisioni.
+12. **Registra quello che dice il proprietario** con `decision`, `--owner-words`, `--channel` e `--task`.
+
+Ogni passo più in dettaglio: [avvio e presentazione](references/start.md#install-and-join-details), in inglese.
+
+<details>
+<summary><strong>I dodici passi come comandi</strong></summary>
 
 ```sh
 squadra census --project /path/to/project
@@ -378,74 +355,26 @@ squadra decision --actor coord --reason "Istruzione del proprietario" --task T1 
 squadra dash --open
 ```
 
+</details>
+
 <a id="dashboard"></a>
 ## Dashboard: il lavoro a colpo d'occhio
 
 ![Quadro di Squadra in italiano: una frase su dove è il lavoro, indicatori in parole e una scheda per ogni lavoro](docs/images/dashboard-overview-it.png)
 
-*Il Quadro su un registro dimostrativo, Atlas ([in inglese](docs/images/dashboard-overview-en.png), [tema scuro](docs/images/dashboard-overview-dark-it.png)). I testi registrati, come briefing, parole del proprietario e messaggi, restano come sono stati scritti. Gli esempi non contengono dati di clienti e non misurano la qualità dei modelli.*
+*Il Quadro su un registro dimostrativo, Atlas ([in inglese](docs/images/dashboard-overview-en.png), [tema scuro](docs/images/dashboard-overview-dark-it.png)). I testi registrati, come i briefing, le parole del proprietario e i messaggi, restano come sono stati scritti. Gli esempi non contengono dati di clienti e non misurano la qualità dei modelli.*
 
-`squadra dash --open` si apre sul **Quadro**. Una frase e quattro indicatori dicono a che punto è il lavoro: incarichi chiusi, in corso, da correggere o fermi, e finestre attive (con quante sono in stand-by). **Serve a te** compare solo quando per il proprietario è registrata una domanda, un budget esaurito o una pausa. Poi una scheda per ogni incarico: il titolo del briefing e i sei passi registrati, chi costruisce e chi legge («Costruisce: Claude · Legge: un'altra finestra Claude»), l'ultimo evento e il prossimo passo che il registro si aspetta, e a parte il prossimo passo dichiarato da una finestra, finché una decisione o un briefing successivi non vi rispondono. Ogni scheda apre la **storia** dell'incarico in ordine di tempo: briefing, piani e loro letture, prove, consegne, domande, decisioni e messaggi, con i documenti da aprire per nome. Sotto vengono i cinque grafici di **Andamento**; gli incarichi chiusi e sostituiti, la panoramica a cinque domande e gli indicatori tecnici stanno in fondo, richiusi. Gli identificativi restano in «Dettagli tecnici», che resta aperto, con il punto in cui stai leggendo, mentre arrivano eventi nuovi; un campo vuoto non viene mai stampato.
+`squadra dash --open` si apre sul **Quadro**: una frase e quattro indicatori dicono a che punto è il lavoro, **Serve a te** compare solo quando qualcosa aspetta il proprietario, e una scheda per incarico mostra i suoi passi, chi costruisce e chi legge, e il prossimo passo. Ogni scheda apre la **storia** dell'incarico in ordine di tempo.
 
 ![La storia di un incarico: la sua storia in ordine di tempo, aperta dalla scheda](docs/images/dashboard-story-it.png)
 
-- **Menù e barra in alto.** Un menù laterale, riducibile alle sole icone, che sul telefono diventa un pannello (☰; si chiude con Esc, con × o scegliendo una vista). La barra in alto contiene il progetto, la ricerca, IT / EN, il tema (Automatico, Chiaro, Scuro), il pulsante **Suoni** e il collegamento al registro. Lingua e tema restano solo in questo browser, e la pagina funziona anche quando il browser rifiuta di salvarli. Le parole registrate non vengono mai tradotte; «Come leggere questa pagina» spiega ogni termine.
-- **Cinque grafici:** incarichi per stato; avanzamento di ogni incarico (una croce rossa segna un passo raggiunto con correzioni richieste); attività nelle ultime 24 ore o negli ultimi 14 giorni, contata dal server a quarti d'ora e mostrata nel tuo fuso orario (o in UTC, con una nota), esclusi i segnali di vita delle esecuzioni; prove superate e fallite; letture e verdetti entro il budget di ogni incarico. Ognuno dice il suo risultato in una frase e può mostrare i dati in tabella; il significato lo portano ✓, ✗, ■ e i cerchi vuoti, mai il colore da solo.
-- **Tabelle** per Incarichi, Finestre, Prove e Posta: si ordinano, si filtrano e si cercano, 100 righe alla volta; gli identificativi restano nei «Dettagli» di ogni riga, e il fuoco della tastiera non si perde con l'aggiornamento. I **testi lunghi**, ovunque, mostrano poche righe e un pulsante «Leggi» che apre il testo completo, come testo e mai come markup, in una finestra che si chiude con Esc.
+Grafici, tabelle ordinabili, una finestra «Leggi» per i testi lunghi, suoni e avvisi quando si chiude un passo, IT / EN e tema chiaro o scuro: [ogni parte della pagina, vista per vista](references/recovery.md#dashboard-page), in inglese, con ogni schermata in entrambe le lingue.
 
-![La finestra «Leggi»: il testo lungo di un incarico aperto per intero; Esc o il pulsante di chiusura riportano alla tabella](docs/images/dashboard-read-dialog-it.png)
+Viste: **Quadro**, **Finestre**, **Incarichi**, **Posta**, **Comunicazioni**, **Decisioni**, **Prove**, **Output**, **Cronologia** e **Storico**; che cosa mostra ognuna è nella [guida della pagina](references/recovery.md#dashboard-page).
 
-- **Suoni e avvisi.** Un suono breve e «Passo fatto: <titolo incarico>» quando si chiude un incarico («Passi fatti: N» se sono diversi); una melodia in salita e «Lavoro completato: nessun incarico aperto» quando si chiude l'ultimo. Gli avvisi spariscono dopo qualche secondo, si possono chiudere, se ne vedono al massimo tre e compaiono anche con i suoni spenti. I suoni sono accesi all'inizio e partono solo dopo il tuo primo clic nella pagina («Audio dopo un clic nella pagina.»), mai all'apertura, e una scheda nascosta può saltarne uno. Li genera il browser, senza file audio e senza richieste in rete.
-- **I collegamenti di un incarico**, da ogni scheda, aprono le sue decisioni, i messaggi, le verifiche, le letture, i risultati e le comunicazioni, scegliendo l'incarico per la sua identità registrata anche quando i titoli si ripetono; una fascia spiega il contesto, **Torna all'incarico** riapre la sua storia e **Mostra la vista completa** toglie il contesto.
-- **Piè di pagina:** «Vista locale in sola lettura, salvo le impostazioni dei plugin e le selezioni salvate · nessuna azione sui client.», e la firma «Sviluppato da Stefano D'Agostino · GitHub», con il collegamento al [progetto su GitHub](https://github.com/dagoSte/squadra).
-- **Aspetto e contenuto.** Superfici crema e bianco carta con testo color inchiostro, un tema scuro su espresso, l'arancione evidenziatore come unico accento, il carattere Geist, colori di stato distinguibili anche da chi non distingue bene i colori e WCAG AA in entrambi i temi. Reboot 5.3.8, 40 icone di Bootstrap Icons 1.13.1 (MIT) e due caratteri (SIL Open Font License 1.1) sono copiati byte per byte e serviti da `squadra dash` stessa ([file, versioni, licenze e hash](assets/vendor/VENDOR.md)). Niente JavaScript di Bootstrap e niente dalla rete: la Content-Security-Policy aggiunge solo `font-src 'self'`.
-
-| Vista (nome inglese) | Cosa puoi controllare |
-|---|---|
-| Quadro (Summary) | Stato, indicatori, Serve a te, schede e storie degli incarichi, attese e presenza, Andamento; in fondo, richiusi, la panoramica, gli indicatori tecnici, le riserve e le decisioni recenti. |
-| Finestre (Windows) | Le finestre indicate a parole: ruolo, incarichi, ultimo output, skill, prossimo passo; identità, sessione, modello e hash delle skill nei Dettagli; poi il pannello di presenza. |
-| Incarichi (Tasks) | Ogni incarico sotto il titolo del suo briefing: stato, costruttore e lettore, ultima prova, prossimo passo; descrizione, dipendenze, letture, requisiti e artefatti nei Dettagli. |
-| Posta (Mail) | Chi ha scritto a chi su quale incarico, l'inizio del messaggio, ACK e consegna. |
-| Comunicazioni (Communications) | Chi parla con chi e perché, in tempo reale, in parole semplici. |
-| Decisioni (Decisions) | Il grafo delle decisioni, con dettagli, filtro per incarico e zoom. |
-| Prove (Runs) | Incarico, chi, tipo, esito, durata; comando, esito nativo, log e stato di timeout o interruzione nei Dettagli. |
-| Output (Outputs) | Aggiornamenti salvati e prossimi passi dichiarati. |
-| Cronologia (Timeline) | Gli ultimi 120 eventi; la storia completa resta in `events.jsonl`. |
-| Storico (History) | Vecchi record importati come copie storiche, non verificate. |
-
-![La vista Incarichi con prova, lettura e documenti collegati](docs/images/dashboard-tasks-it.png)
-
-![La vista Finestre: la squadra e il pannello di presenza con una finestra in stand-by](docs/images/dashboard-presence-it.png)
-
-*Due finestre hanno confermato la chiamata del coordinatore; una non ha risposto ed è stata messa in stand-by. Le etichette dei ruoli mostrano il protocollo, non la qualità di un modello; registrazione, segnale di vita e risposte non dimostrano che un processo sia in esecuzione.*
-
-**Presenza.** Il pannello di presenza indica ogni finestra con il suo ruolo e il suo incarico (la prima riga del briefing, altrimenti il titolo registrato) e spiega a parole chiamate, risposte e stand-by, tenendo distinte una risposta mancante e uno stop esplicito del coordinatore. Il pannello della squadra raggruppa i ruoli della stessa finestra; una presenza registrata non dice che un processo stia lavorando in questo momento.
-
-**Comunicazioni** risponde a «chi sta parlando con chi, e a che punto è?». I filtri stanno sempre in alto (Periodo, Quanti, Incarico, Finestra, Cerca, «Azzera filtri»). «Chi parla con chi» ha una riga per ogni coppia di finestre, contata su tutto il registro; sceglierne una filtra la cronologia. La cronologia disegna una freccia per ogni messaggio con una frase semplice, come «Il coordinatore (Claude) ha scritto al revisore (Codex) sull'incarico «Pagina web delle chiavi per i clienti» — inviato, non ancora letto.», insieme a chiamate di presenza e stand-by. Inviato non vuol dire letto e messo in coda non vuol dire consegnato: solo una conferma registrata prova la lettura. Ogni stato è scritto a parole e ha il suo stile di linea; il testo di un messaggio si apre solo quando lo chiedi; gli aggiornamenti conservano il punto di lettura, le righe aperte e i filtri.
+**Comunicazioni** mostra chi parla con chi, in frasi semplici. Inviato non vuol dire letto: solo una conferma registrata dimostra la lettura.
 
 ![La vista Comunicazioni: filtri in alto, chi parla con chi e una cronologia con frasi in parole semplici](docs/images/dashboard-comms-it.png)
-
-![Comunicazioni filtrate su una coppia: la riga scelta filtra la cronologia](docs/images/dashboard-comms-pair-it.png)
-
-Ogni schermata esiste in entrambe le lingue:
-
-| Vista | Inglese | Italiano |
-|---|---|---|
-| Quadro | [EN](docs/images/dashboard-overview-en.png) | [IT](docs/images/dashboard-overview-it.png) |
-| Quadro, tema scuro | [EN](docs/images/dashboard-overview-dark-en.png) | [IT](docs/images/dashboard-overview-dark-it.png) |
-| Telefono | [EN, scuro](docs/images/dashboard-phone-en.png) | [IT, menù](docs/images/dashboard-phone-it.png) |
-| Storia di un incarico | [EN](docs/images/dashboard-story-en.png) | [IT](docs/images/dashboard-story-it.png) |
-| Finestra «Leggi» | [EN](docs/images/dashboard-read-dialog-en.png) | [IT](docs/images/dashboard-read-dialog-it.png) |
-| Incarichi | [EN](docs/images/dashboard-tasks-en.png) | [IT](docs/images/dashboard-tasks-it.png) |
-| Finestre e presenza | [EN](docs/images/dashboard-presence-en.png) | [IT](docs/images/dashboard-presence-it.png) |
-| Comunicazioni | [EN](docs/images/dashboard-comms-en.png) | [IT](docs/images/dashboard-comms-it.png) |
-| Comunicazioni, una coppia | [EN](docs/images/dashboard-comms-pair-en.png) | [IT](docs/images/dashboard-comms-pair-it.png) |
-| Decisioni | [EN](docs/images/dashboard-decisions-en.png) | [IT](docs/images/dashboard-decisions-it.png) |
-| Letture | [EN](docs/images/dashboard-reads-en.png) | [IT](docs/images/dashboard-reads-it.png) |
-| Pagina di un plugin | [EN](docs/images/dashboard-plugins-en.png) | [IT](docs/images/dashboard-plugins-it.png) |
-| Impostazioni di un plugin | [EN](docs/images/dashboard-plugin-settings-en.png) | [IT](docs/images/dashboard-plugin-settings-it.png) |
-| Memorie di un plugin | [EN](docs/images/dashboard-plugin-memories-en.png) | [IT](docs/images/dashboard-plugin-memories-it.png) |
-| Store dei plugin | [EN](docs/images/dashboard-plugin-store-en.png) | [IT](docs/images/dashboard-plugin-store-it.png) |
 
 **Aggiornamento e sicurezza.** La pagina si aggiorna ogni due secondi, sospende gli aggiornamenti quando la scheda è nascosta e si aggiorna subito al ritorno. Offre la ricerca nel testo e apre gli artefatti registrati in una finestra. È **in sola lettura salvo impostazioni e selezioni dichiarate dei plugin installati**; le azioni sul registro passano dalla CLI. Ascolta su `127.0.0.1`, verifica Host e token, controlla Origin per il salvataggio di impostazioni e selezioni, e non carica script remoti né CDN. `--port` sceglie una porta (senza, ne cerca una libera); `Ctrl-C` chiude il server della dashboard, non gli agenti; se si disconnette, la pagina conserva l'ultima vista con un avviso.
 
@@ -454,11 +383,7 @@ Ogni schermata esiste in entrambe le lingue:
 
 Un **plugin** porta nella dashboard i dati di un altro strumento: una cartella `$HOME/.squadra/plugins/<name>/` con un manifesto `plugin.json`, in cui un programma separato, il *produttore* del plugin, scrive i pannelli di dati. Il gruppo **Plugin** del menù elenca ogni manifesto installato, oppure dice «Nessun plugin installato» e spiega dove si installano; scegline uno per vedere i suoi dati per il registro aperto.
 
-HOME, `.squadra`, `plugins` e ogni cartella di plugin devono appartenere all'utente
-corrente e non essere scrivibili da gruppo o altri. Elenco, lettura dei pannelli,
-impostazioni e azioni rifiutano le cartelle non sicure con `unsafe_permissions`.
-Le cartelle dell'utente con permessi 0700 o 0755 funzionano; lo Store crea cartelle
-private con permessi 0700.
+Le cartelle dei plugin devono appartenere a te e non essere scrivibili da gruppo o altri; lo Store le crea private.
 
 **Costruisci il tuo.** Il formato è aperto: chiunque nella community può pubblicare un plugin per squadra, gratuito o a pagamento. Un plugin è fatto di dati e di un programma separato. La dashboard e la CLI non eseguono mai il codice dei plugin; gli agenti lo eseguono solo come indicato nell'`AGENTS.md` del plugin, rispettando le [condizioni di affidabilità del file e i permessi già concessi dall'utente](references/plugins.md#agent-instructions). Parti dal [formato dei plugin](references/plugins.md).
 
@@ -466,15 +391,7 @@ private con permessi 0700.
 
 ![La pagina di un plugin installato: intestazione con autore e versione, e le schede Panoramica, Impostazioni e Memorie](docs/images/dashboard-plugins-it.png)
 
-- **Dati, non codice.** La dashboard non esegue mai il codice dei plugin. La homepage HTTPS dichiarata si apre in una nuova scheda solo al tuo clic; i riferimenti a incarichi ed esecuzioni aprono la vista corrispondente del registro; un logo PNG locale facoltativo compare senza richieste remote; i badge di stato non danno alcuna autorità sul registro. La pagina `about` facoltativa (autore, versione, presentazione, fino a otto sezioni) è una descrizione del produttore, mai contenuto eseguibile né un'identità verificata.
-- **Impostazioni.** Fino a quattro campi dichiarati, che si salvano con **Salva**; **Cancella** ha effetto al salvataggio, e una password lasciata vuota conserva il segreto salvato. I segreti non vengono mai precompilati né restituiti, e i gestori di password restano fuori dal controllo di Squadra. I file vanno nella **HOME dell'utente che esegue `squadra dash`** (una dashboard avviata da un agente con una HOME privata salva lì, non nella tua), come file locali in chiaro `settings.json` e `secrets/<id>` (0600): non una cassaforte cifrata, e mai nel registro. Le scritture sono atomiche file per file, quindi una risposta persa può voler dire un salvataggio parziale: rileggi lo stato e invia di nuovo con intenzione; non dedurre mai il successo da una risposta mancante.
-
-![La scheda Impostazioni: i campi dichiarati, un segreto che non viene più mostrato, e Salva](docs/images/dashboard-plugin-settings-it.png)
-
-- **Risultati per ogni servizio.** Un plugin può dare un nome alla propria sezione di dati, per esempio «Collaudi», e spiegare gli stati dei risultati nelle due lingue. I plugin precedenti conservano «Memorie». Le voci possono collegarsi a un incarico esistente o a una sua esecuzione registrata: sono associazioni dichiarate dal produttore, non prove di successo o approvazione.
-- **Selezionare le bozze.** Un plugin può dichiarare un'azione, per esempio «Richiedi un collaudo» o «Invia per revisione». Nella sua sezione di dati spunti le bozze e premi il pulsante: viene salvata solo la tua scelta. I suoi elementi mostrano «In attesa di invio»; selezione e invio restano disabilitati finché la richiesta viene consumata o usi «Annulla richiesta». L'annullamento non interrompe un lavoro già avviato. Parole e colori distinguono gli esiti comunicati dal plugin; gli elementi inviati, approvati e rifiutati compaiono sotto «Già inviate», con il loro conteggio. La dashboard non invia né esegue nulla.
-
-![La scheda Memorie: le voci del plugin con il loro stato; le bozze si selezionano e si inviano per revisione, e una richiesta in attesa si può annullare](docs/images/dashboard-plugin-memories-it.png)
+Impostazioni, risultati per ogni servizio, selezione delle bozze e regole di aggiornamento dello Store: [la pagina del plugin in dettaglio](references/plugins.md#plugin-page), in inglese.
 
 <a id="plugin-agent-instructions"></a>
 **Chi esegue la richiesta?** Un plugin installato può fornire `$HOME/.squadra/plugins/<name>/AGENTS.md` con istruzioni per gli agenti. La finestra coordinatrice lo legge all’avvio e alla ripresa ed esegue solo i comandi indicati, nei permessi già autorizzati: il produttore dopo una chiusura, il consumatore quando la dashboard mostra una richiesta in attesa, poi riferisce l’esito. Vale solo un file regolare di proprietà dell’utente, non scrivibile da gruppo o altri e non un link simbolico. Senza un file valido, la richiesta resta in attesa e la coordinatrice lo segnala: non devi lanciare comandi. La dashboard non legge, non scrive e non esegue questo file. Questo file non amplia mai i permessi e non autorizza installazioni, push, pubblicazioni o decisioni riservate all’utente; per qualunque richiesta oltre a eseguire il produttore o il consumatore di quel plugin, fermarsi e riferire.
@@ -484,15 +401,11 @@ Schemi, dimensioni, limiti e codici di rifiuto esatti: [contratto dei plugin](re
 <a id="plugin-store"></a>
 ### Plugin inclusi nella release
 
-L’installazione rende disponibili alla coordinatrice anche le [istruzioni per gli agenti](#plugin-agent-instructions): le legge al prossimo avvio o alla ripresa ed esegue il produttore o il consumatore nei momenti documentati, entro i permessi già autorizzati.
-
 Apri **Plugin → Store** per vedere il catalogo della release in esecuzione, i comandi di installazione e lo stato locale. Si aggiorna solo all'apertura o con **Aggiorna catalogo**; non c'è un pulsante per installare. I siti dei plugin si aprono al clic in una nuova scheda. Chiedi al coordinatore di eseguire il comando mostrato, che usa questa installazione di Squadra.
 
 ![La pagina Store: i plugin inclusi nella release in esecuzione, prima quelli basati su MCP, ognuno con autore, versione, licenza, prezzo, data della revisione e il comando di installazione per il coordinatore](docs/images/dashboard-plugin-store-it.png)
 
-`squadra plugin list` elenca il catalogo accettato della release locale, prima i plugin basati su MCP, con lo stato d'installazione e la release installata e corrente. `squadra plugin install <name>` copia un plugin incluso: non scarica né esegue codice. Con l'installazione `/plugin` non c'è il comando autonomo: chiedi al coordinatore di usare `python3 <cartella della release>/scripts/squadra.py plugin list` o `plugin install <name>`.
-
-Ripetere l'installazione applica esplicitamente il pacchetto di quella release e riporta le versioni **da X a Y**, segnalando anche un ritorno a una versione precedente. Impostazioni, segreti, selezioni salvate e pannelli restano intatti. Prima dell'aggiornamento ferma produttore e consumatore. Una cartella preesistente non gestita dallo store non viene adottata: salva `settings.json` e `secrets/`, sposta la cartella, poi installa; ripristina la configurazione solo dopo aver verificato lo schema del nuovo plugin. Per disinstallare, ferma produttore e consumatore, salva la configurazione e rimuovi solo la cartella di quel plugin. Una copia interrotta risulta incompleta: riprova con lo stesso pacchetto. L'aggiornamento dell'intera cartella non è atomico. Vedi [metadati e controlli dello store](references/plugins.md#release-local-plugin-store).
+`squadra plugin list` mostra il catalogo della release e `squadra plugin install <nome>` copia un plugin incluso; nulla viene scaricato o eseguito. Con un'installazione tramite `/plugin`, chiedi al coordinatore di eseguirli con `python3 <cartella della release>/scripts/squadra.py`.
 
 I plugin si propongono tramite PR o email di contatto del manutentore, che li analizza dando precedenza a quelli basati su MCP. Inclusione e data della lettura valgono solo per la versione accettata. Il catalogo è locale alla release: non è un marketplace remoto e non esegue nulla automaticamente.
 
@@ -532,8 +445,6 @@ Atlas tiene in ordine le chiavi d'accesso dei clienti. Questa fase porta in prod
 - JEV: verifica del motore dei lavori
 ```
 
-Il briefing del progetto comincia con il suo obiettivo; `## Passi` e `## Glossario` (o `## Steps`, `## Glossary`) sono facoltativi, e i passi restano un'affermazione del briefing, mostrata a parte rispetto alle chiusure che il registro registra. La prima riga del briefing di un incarico diventa il suo titolo in tutta la pagina, e il resto dice perché esiste, per chi è e quando sarà finito; senza briefing, l'incarico tiene il titolo registrato e compare come «descrizione non ancora scritta». Solo il coordinatore registra i briefing: UTF-8, al massimo 8192 byte, conservati come artefatti. Un briefing nuovo prende il posto del precedente sulla pagina, ogni versione resta nella storia, e un briefing non cambia mai lo stato di un incarico.
-
 **Collegamenti registrati.**
 
 ```sh
@@ -543,25 +454,18 @@ squadra decision --actor coord --id D-SCOPE --task T1 \
   --reason "Istruzione del proprietario riferita dal coordinatore"
 ```
 
-`--id` dà un nome alla decisione (altrimenti `dec-e<numero dell'evento>`, una forma riservata). `--task` collega incarichi esistenti; `--follows` indica un `ask:<id>` o una `decision:<id>` precedente, mai un nome senza prefisso, e viene fissato quando la decisione è scritta. Un'istruzione del proprietario senza domanda può portare `--channel typed-here` o `relayed` con `--owner-words` non vuoto; senza canale la pagina dice «canale non registrato». `--choice` richiede `--answers`, e un'istruzione, una menzione o un `--follows` non chiudono mai una domanda.
-
-**Sostituire un incarico.** `task ... --supersedes T0` registra che un incarico nuovo sostituisce l'incarico aperto T0; `supersede --actor coord --task T0 --by T1 --reason "..."` la registra dopo, quando il lavoro si è già spostato su un T1 esistente, più recente, che non aspetta T0. T0 esce dai prossimi passi e dalle attese e conserva tutta la sua storia; gli incarichi che dipendono da T0 restano bloccati, e niente viene annullato, rilasciato, completato o riassegnato. Entrambi sono rifiutati finché T0 ha un'esecuzione in corso o con un arresto non verificato, un responsabile che tiene una riserva o una domanda aperta, e un incarico non può dipendere da quello che sostituisce; `supersede` richiede anche una motivazione non vuota.
-
-**Leggere il grafo.** Ogni riquadro è un fatto registrato, i più vecchi a sinistra. Le **linee continue** sono collegamenti registrati; le **linee tratteggiate** dicono solo «dopo, nello stesso incarico», mai una ragione. I riquadri del proprietario mostrano sempre il canale: «scritto qui», «riferito da un'altra finestra» o «canale non registrato»; i verdetti sono scritti a parole oltre che a colori. Seleziona un riquadro (clic, Invio o Spazio) per vedere chi, quando, le parole complete e i collegamenti nelle due direzioni; filtra per incarico e usa lo zoom. Gli aggiornamenti conservano selezione, filtro, zoom e fuoco, e dicono «elemento non più presente» quando un elemento non c'è più. Sul telefono il grafo diventa un elenco in ordine di tempo, rispettando la riduzione del movimento; i collegamenti circolari, possibili solo in un registro alterato, sono elencati sotto «Collegamenti non ordinabili». Le regole complete sono in [lavoro, prova e lettura](references/work.md).
+Ogni riquadro del grafo è un fatto registrato; le linee continue sono collegamenti registrati, le tratteggiate dicono solo «dopo, nello stesso incarico». Le regole per briefing, collegamenti delle decisioni, sostituzione di un incarico e lettura del grafo sono nei [dettagli](references/work.md#readme-protocol-details), in inglese.
 
 <a id="workflow"></a>
 ## Incarico, prova, lettura indipendente e chiusura
 
-**Scegli il percorso.** Alla creazione, e davanti a un rilievo o a un cambio di perimetro, il costruttore propone un percorso, il lettore non autore lo conferma o dissente, e il coordinatore decide con una motivazione registrata, rispondendo alle cinque domande della [pagina di triage IT/EN](references/work.md#triage-in-una-pagina): tocca sicurezza, dati dei clienti, chiavi, permessi, integrità delle prove o azioni difficili da annullare; ne capiamo tutto l'effetto e possiamo annullarla; è una correzione delimitata, dimostrata da una verifica mirata; quale comportamento richiesto potrebbe restare scoperto; un errore potrebbe restare nascosto. Nessuna regex, nessun modello di percorso e nessun punteggio scelgono il percorso; risposte e scelta si registrano in una riga del perimetro o del rapporto.
+**Scegli il percorso.** Il costruttore propone un percorso, il lettore non autore lo conferma o non è d'accordo, e il coordinatore decide con una ragione registrata, rispondendo alle cinque domande della [pagina di triage IT/EN](references/work.md#triage-in-una-pagina). Nessuna regex, nessun modello di percorso e nessun punteggio sceglie il percorso.
 
 - **Correggi subito con prova:** reversibile, Q1 no e Q3 sì; un breve controllo di un non autore prima della chiusura.
 - **Una lettura del codice:** una scelta ordinaria e delimitata, con perimetro, prova vincolata e una lettura indipendente.
 - **Percorso completo:** Q1 sì o incerta, Q2 irrisolta, un danno silenzioso rilevante in Q5, o un mandato esistente: un piano accettato prima della costruzione, poi prova, lettura di un non autore e le verifiche richieste.
 
-**Le regole della lettura.**
-- **Blocca solo un rilievo grave**, comprese prove di sicurezza obbligatorie mancanti o non valide; il resto si corregge subito, con un controllo di un non autore sul cambiamento e sul caso originale, oppure, se medio o basso, diventa un'attività da seguire. Ognuna ha un suo incarico, o una decisione che nomina l'incarico responsabile, con un evento osservabile o una scadenza e una verifica di accettazione, ed è collegata dal rapporto finché non viene chiusa. Un requisito rimandato non è soddisfatto, e i requisiti di sicurezza obbligatori restano.
-- **I lettori** sono non autori disponibili, scelti con `task --reviewer`, che lavorano in parallelo su copie congelate, con gate, porte e database condivisi riservati. Il passaggio generato da `deliver` è il via alla lettura assegnata una volta che il destinatario ne dà l'ACK; la CLI non invoca mai un client da sola. Una lettura correttiva consuma lo stesso budget, e nessun alias o incarico nuovo azzera i giri spesi.
-- **I passi con browser o installazioni** richiedono prima una capacità dimostrata dalla ricevuta di una sonda nel contesto giusto (per il browser: una connessione DevTools con nome, timeout, risorse private, pulizia di ciò che si è avviato). Senza, dichiara il passo **non eseguito**, cita l'ultima esecuzione valida e avvisa il coordinatore. **Non passare mai comandi al proprietario**, e nessuna capacità scavalca i permessi di esecuzione.
+**Le regole della lettura:** blocca solo un rilievo grave; il resto si corregge subito con una verifica di un non autore o si registra come attività da seguire, con un responsabile e un'occasione di verifica. **Mai passare comandi al proprietario.** Tutte le regole: [dettagli](references/work.md#readme-protocol-details), in inglese.
 
 **Contratto, prova, lettura e chiusura.** Tieni le prove fuori dal checkout consegnato: `scope.md` (comportamento, percorsi posseduti, dipendenze, risorse, verifiche, confini del rilascio), `argv.json` come elenco esatto di argomenti, non una stringa di shell (`["python3", "-B", "-m", "unittest", "discover", "-s", "tests", "-v"]`), e un `requirements.json` facoltativo (`[{"id": "R1", "text": "I valori si sommano correttamente"}]`).
 
@@ -589,10 +493,7 @@ squadra check --actor coord --task T1
 squadra close --actor coord --task T1
 ```
 
-- **Opzioni e budget:** `--depends T0` (incarichi da cui dipende, chiusi prima in modo indipendente), `--expected N` (numero di test riconosciuti), `--full-gate` (una prova marcata come gate); nessuna dimostra che una suite sia completa, quindi concorda con il progetto il comando davvero richiesto. Di base tre letture del piano, due letture del codice e tre tentativi di costruzione nel runner facoltativo (`init --plan-rounds/--review-rounds`); l'accettazione è legata ai byte dell'ultimo piano; i budget esauriti richiedono una decisione esplicita, mai un azzeramento. Le modifiche piccole ricevono verifiche proporzionate.
-- **`prove`** conserva esito nativo, durata, output e impronte prima e dopo dei file tracciati e non ignorati; le dipendenze ignorate richiedono prove proprie. **`deliver`** richiede una prova superata sui sorgenti esatti attuali, congela un pacchetto immutabile, restituisce un ID `review-…` e non invoca mai un modello.
-- **`review`** registra `accepted`, `changes-required` o `blocked`. `probe` registra test indipendenti e controlli negativi (`--expected-rc 1`; un negativo riuscito non è una prova superata del prodotto); i mutanti vanno in copie isolate. `--covers` registra la copertura, non l'adeguatezza dei test, che giudica il lettore.
-- **`check`** ricollega candidato, piano, prova, artefatti e copertura prima di `close`. Una modifica ai sorgenti annulla la vecchia prova e la vecchia lettura. `advance` riconcilia un passaggio già consegnato senza costruire, approvare o svegliare client; senza `--reviewer` vale il protocollo manuale di lettura.
+Opzioni, budget e che cosa registrano `prove`, `deliver`, `review` e `check`: [dettagli](references/work.md#readme-protocol-details), in inglese.
 
 **Il completamento non dà l'autorità di pubblicare.** Il protocollo completo è in [lavoro, prova e lettura](references/work.md).
 
@@ -607,7 +508,7 @@ squadra output --actor coord --task T1 --file /evidence/update.md \
   --next "Lettura indipendente del candidato congelato" --artifact /evidence/result.json
 ```
 
-`--reply-to` risponde; `--to-new waiting-reader` crea un destinatario atteso, non un'identità: registra il posto vero prima del suo ACK. `transport --via manual` restituisce un'istruzione di passaggio in sospeso, e un successo con `--via codex-queue` vuol dire messo in coda, non letto né sveglio. Il protocollo non autorizza alcuna messaggistica esterna. Salva **un output sostanziale per ogni passo completato**: un esito, una decisione, un blocco o un passaggio che aggiunge informazioni (ometti `--task` per il coordinamento dell'intera area). Il prossimo passo dichiarato non dimostra che qualcosa sia avvenuto. Il normale avanzamento si legge nel registro, quindi niente messaggi manuali «pronto» e niente racconti di una prova già registrata; ACK reali, decisioni, pause e ricevute restano obbligatori.
+Salva **un output sostanziale per ogni passo completato**; il prossimo passo che dichiara non prova che sia successo qualcosa. Risposte, destinatari attesi e trasporti: [dettagli](references/work.md#readme-protocol-details), in inglese.
 
 | Finestra / ruolo | Incarico / candidato | Esito / prova | Skill | Traccia / prossimo passo |
 |---|---|---|---|---|
@@ -615,9 +516,7 @@ squadra output --actor coord --task T1 --file /evidence/update.md \
 
 ### Da ricordare alla chiusura (facoltativo)
 
-**Da ricordare.** Questo incarico ha prodotto qualcosa che vale oltre la sua chiusura: una decisione e chi l'ha presa, un vincolo, una trappola già pagata? Se sì, una frase per ciascuna, la prova (numero di evento o rapporto registrato) e quanto ne sei sicuro (sicuro / probabile). La frase contiene segreti, dati personali o percorsi privati? Se sì, riscrivila senza; se non puoi, non scrivere la frase: indica solo la prova e `private_content: yes`.
-
-Allega un artefatto chiamato esattamente `da-ricordare.json` (`form: "da-ricordare/1"`, ID dell'incarico, `answer: "yes"` oppure `"no"`, `items`) al consueto `squadra output --artifact ...` dell'agente che chiude; vedi [lo schema e gli esempi](references/work.md#da-ricordare-at-close). Non segue da sola alcuna proposta o approvazione. **Se usi un servizio di memoria, dichiara alla chiusura e non proporre lo stesso elemento attraverso un altro canale.** **Mai** segreti, dati personali o percorsi privati nella dichiarazione: gli artefatti registrati sono immutabili, e un segreto scritto per errore non si può rimuovere. Un plugin consumatore può trasformare le dichiarazioni in bozze; l'API delle azioni salva solo la scelta dell'utente, non la invia e non esegue plugin ([contratto delle azioni](references/plugins.md#action-requests)).
+Alla chiusura, registra quello che vale la pena ricordare (una decisione e chi l'ha presa, un vincolo, una trappola già pagata) in `da-ricordare.json`, allegato all'output di chiusura, ognuno con la sua prova e quanto ne sei sicuro. **Mai** inserire segreti, dati personali o percorsi privati: gli artefatti registrati sono immutabili, quindi un segreto inserito per errore non si può più togliere. Se è in uso un servizio di memoria, dichiara alla chiusura e non proporre la stessa voce attraverso un altro canale; nulla viene proposto o approvato da solo. Vedi [lo schema e gli esempi](references/work.md#da-ricordare-at-close), in inglese.
 
 ## Domande e decisioni del proprietario
 
@@ -640,30 +539,13 @@ squadra decision --actor coord --reason "Il proprietario ha scelto il perimetro 
   --owner-words "Continua con il perimetro già letto"
 ```
 
-`--channel relayed` conserva parole riportate da un'altra finestra. `decision --withdraws Q1` chiude una domanda superata senza inventare una risposta; un `decision --reason` senza collegamenti conserva una motivazione senza chiudere domande. Risposte e ritiri sono esclusivi e non si ripetono. Testo della chat, prosa della posta e `output.next` non vengono mai letti in silenzio come decisioni o come autorità.
+Parole riferite, ritiri e che cosa non vale mai come decisione: [dettagli](references/work.md#readme-protocol-details), in inglese.
 
 ## Attese, risorse e presenza
 
-L'età delle attese si calcola quando una vista viene letta. Valori predefiniti, in secondi: **ACK 900**, **delivered 3600**, **reviewed 1800**, **heartbeat 1800**, **alive 300**; `cleanup-unknown` è sempre visibile. `settings --actor coord --file /evidence/thresholds.json` imposta le chiavi scelte, per esempio `{"ack": 600, "alive": 300}` (zero avvisa subito); sostituisce i valori personalizzati precedenti, e le chiavi omesse tornano ai predefiniti. Un avviso non ritenta, non riassegna e non rilascia mai nulla.
+Le attese si calcolano quando una vista viene letta; valori predefiniti in secondi: **ACK 900**, **delivered 3600**, **reviewed 1800**, **heartbeat 1800**, **alive 300**. Un avviso non riprova, non riassegna e non rilascia nulla. Riserva gate, porte e database prima di usarli. **Lo stand-by non ferma nulla:** non annulla processi, non rilascia risorse, non trasferisce ruoli e non riassegna lavoro.
 
-```sh
-squadra resource acquire --actor builder --name gate --reason "Candidato congelato"
-# Per un incarico full-gate, esegui la prova concordata con prove --gate.
-# Rilascia solo dopo l'esito finale e la riconciliazione delle risorse.
-squadra resource release --actor builder --name gate --reason "Esecuzione finita"
-squadra ping --actor coord --to builder
-# Inoltra ogni ID restituito (codex-queue richiede un posto Codex registrato con --session); ping non invoca alcun client.
-squadra transport --actor coord --message PING-ID --via codex-queue
-squadra standby --actor coord --agent builder --reason "Finestra non disponibile"
-squadra standby --actor coord --agent builder --resume --reason "Disponibilità confermata"
-```
-
-- **Risorse:** riserva gate, porte e database prima di usarli, e rispetta le riserve delle altre finestre. Un segnale di vita vecchio o un timeout non dimostrano che un processo si sia fermato, né liberano le sue risorse.
-- **Presenza:** `ping --all` chiama una volta ogni altra identità attiva, escluse quelle in stand-by; un ping in attesa viene riusato e non viene mai prorogato. `--to` può chiamare una finestra in stand-by, che con un ACK reale può tornare al controllo successivo del coordinatore; ACK vecchi, alias e nuove registrazioni non bastano.
-- **Solo il coordinatore cambia la disponibilità**, con `ping --sweep` (ricontrollato dentro la transazione) o con `standby`. Tutti gli alias di una finestra ne condividono lo stand-by, durante il quale nuovi incarichi e passaggi di lettura verso quella finestra sono rifiutati.
-- **Lo stand-by non ferma nulla:** **non annulla processi, non rilascia risorse, non trasferisce ruoli e non riassegna lavoro**; il ritorno non riavvia nulla; nessun timer e nessuna vista della pagina cambiano lo stato; un ping senza risposta non prova un'assenza.
-
-Tutte le finestre che scrivono nello stesso registro dovrebbero usare la stessa versione di Squadra, altrimenti alcune regole potrebbero non essere applicate; portare una squadra al lavoro su un'altra versione è un passo esplicito e autorizzato.
+Soglie, chiamate di presenza e perché tutte le finestre dovrebbero usare la stessa versione: [dettagli](references/work.md#readme-protocol-details), in inglese.
 
 <a id="checkpoints"></a>
 ## Checkpoint, ripristino e contesti puliti
@@ -685,63 +567,23 @@ squadra doctor
 squadra resume --actor coord --reason "Il proprietario ha ripreso esplicitamente"
 ```
 
-- **`checkpoint`** copia **solo il registro**, i suoi artefatti e le viste derivate. **`save`**, riservato al coordinatore, aggiunge ogni radice Git registrata (bundle della storia, HEAD, branch, patch di index e worktree, file non tracciati) in una destinazione nuova, fuori da registro e sorgenti (`--temporary` per quelle usa e getta); `--repo` crea un pacchetto dichiaratamente parziale e `--include` aggiunge file ignorati dentro un repository selezionato. Sorgenti che cambiano nel frattempo rifiutano un pacchetto verde. Costruttori e lettori lo chiedono al coordinatore nel perimetro già autorizzato, senza chiedere di nuovo al proprietario.
-- **`restore-check`** verifica i checksum prima di aprire qualunque cosa, ripristina in una cartella nuova e confronta il risultato; la copia ripristinata è in pausa, le vecchie accettazioni sono storiche, niente riparte da solo, e `--root` con `--actor` registra la ricevuta nel registro vivo.
-- **Quando il contesto si riempie**, a un vero segnale del client o quando i vincoli non si ricostruiscono più in modo affidabile, l'agente salva un passaggio di consegne **prima di continuare**: incarico, identità, branch e SHA, rilievi aperti, ACK in sospeso, budget, risorse e un solo prossimo passo, esatto. Non inventa mai percentuali di token. Una sessione nuova dà l'ACK, esegue `doctor` e riconcilia sorgenti e risorse prima di scrivere; un prompt preparato non dimostra che una finestra sia stata aperta. La stessa finestra conserva l'identità e aggiorna `agent --session`; una finestra diversa richiede un posto nuovo. **Non esiste un comando che passi un incarico a un altro responsabile**: tieni un solo scrittore, non duplicare mai un incarico per cancellarne il budget, e i costruttori precedenti restano autori.
-- **Una pausa** blocca nuovo lavoro, letture, esecuzioni e consegne e lascia possibili consultazione e ripristino, mentre un checkpoint da solo non mette in pausa nulla. Ferma solo i processi che possiedi; si riprende solo su parola del proprietario, dopo aver riconciliato processi e stato. Le altre squadre non vengono mai migrate né riprese.
+`checkpoint` copia **solo il registro**; `save`, solo per il coordinatore, aggiunge ogni repository Git registrato con il suo lavoro non finito; `restore-check` dimostra un pacchetto ripristinandolo davvero in una cartella nuova. Quando il contesto si riempie, l'agente salva un passaggio di consegne **prima di continuare**. [Dettagli](references/recovery.md#checkpoint-details), in inglese.
 
 **Limiti del ripristino:** i filtri per i segreti sono parziali, **non** una scansione completa di storia e artefatti; una copia sullo stesso disco non sopravvive a un guasto del disco; `--declared-offsite` è una dichiarazione, non un archivio remoto verificato. Il contratto completo è in [ripristino e passaggio di contesto](references/recovery.md).
 
 ## Runner nativi facoltativi
 
-```sh
-squadra run --actor builder --task T1 --mode build \
-  --prompt-file /evidence/build.txt --timeout 600
-squadra run --actor reader --task T1 --mode read --stage code \
-  --prompt-file /evidence/read.txt --timeout 180
-squadra cancel --actor coord --run "RUN-ID"
-```
-
-`run` avvia un nuovo turno non interattivo di Codex o Claude e non si collega mai a una finestra aperta; i prompt passano da stdin, i modelli non sono mai scritti nel codice, e i turni reali consumano la quota del client entro il budget concordato. **Cursor è rifiutato:** il turno di un posto `cursor` si ferma prima di qualunque processo con «Squadra non avvia cursor-agent: Cursor esegue gli hook di team, utente e azienda senza sandbox. Le finestre Cursor lavorano in modo interattivo» (lo stesso messaggio riporta anche il testo inglese), finché una versione di Cursor non documenterà un interruttore che disattiva tutti gli hook e MCP, confermato da una lettura di un non autore e da una vera sonda. Un esito valido richiede una sessione reale, un turno completato, l'uscita attesa e una lettura strutturata: un'uscita 0 da sola non basta, e il verdetto di un client non è la lettura registrata. Pausa, interruzione e timeout agiscono sul gruppo di processi posseduto; un segnale rifiutato lascia `cleanup-unknown`, da riconciliare prima di rilasciare le risorse. Discendenti staccati, Windows e compatibilità con i client reali vanno qualificati a parte. Leggi [i contratti dei runner](references/runtime.md) prima di invocarli in automatico.
+`run` avvia un nuovo turno non interattivo di Codex o Claude e non si collega mai a una finestra aperta; un exit 0 da solo non è un esito valido. **Cursor viene rifiutato:** Squadra non avvia `cursor-agent`. Vedi [il riassunto](references/runtime.md#readme-runner-summary) e [i contratti di esecuzione](references/runtime.md), in inglese, prima di usare i runner in automatico.
 
 ## Self-test, sfide ai difetti e banco comparativo
 
-Per un incarico dichiarato con `task --defect-fix`, la chiusura richiede la
-prova che il test rilevi il difetto senza la modifica. Il coordinatore registra
-i metodi unittest del fix e i loro file congelati con `challenge --task T1
---register --contract-file ... --reason ...`; l'esecutore lancia poi
-`challenge --actor builder --task T1 --output /evidence/challenge-T1`.
-Per esempio, un test che si aspetta il valore 2 fallisce sull'originale con
-valore 1 e passa dopo la correzione. Gli stessi byte del test girano sulla base
-registrata e sul candidato esatto, anche prima del commit. Errori, test saltati,
-ID mancanti e test che passano in entrambe le versioni non valgono come prova.
-
-Il risultato e i log compaiono accanto alla prova. Il coordinatore può dichiarare
-un'eccezione motivata: il lettore indipendente la verifica e non appare mai come
-una verifica riuscita. Modifiche ai sorgenti o all'accordo richiedono nuovi legami;
-anche i fix nel percorso leggero conservano l'obbligo. Restano la prova normale
-e la lettura indipendente. I vecchi incarichi continuano a funzionare; le squadre
-con protocollo congelato devono aggiornare esplicitamente tutti gli scrittori,
-senza garanzia di applicazione delle regole con versioni miste. Vedi
-[l'esempio completo e i limiti](references/work.md#defect-fixes-show-that-the-regression-detects-the-original).
+Per un incarico dichiarato con `task --defect-fix`, la chiusura richiede la prova che il test rilevi il difetto senza la modifica: gli stessi byte del test falliscono per un'asserzione sulla base registrata e passano sul candidato esatto. Il coordinatore può dichiarare un'eccezione motivata; il lettore indipendente la verifica, e non compare mai come una verifica riuscita. Vedi [l'esempio completo e i limiti](references/work.md#defect-fixes-show-that-the-regression-detects-the-original), in inglese.
 
 ```sh
 squadra selftest --output /durable/selftest-001
-squadra challenge --actor reader --oracle /evidence/oracle.py \
-  --original /checkouts/original --remedy /checkouts/remedy \
-  --positive /checkouts/positive --output /evidence/challenge-001 --timeout 30
-squadra bench-example --to /evidence/benchmark-example
-squadra bench-run --actor coord \
-  --manifest /evidence/benchmark-example/manifest.json --output /evidence/benchmark-run
-squadra bench-score --actor coord --from /evidence/benchmark-run \
-  --oracle /evidence/benchmark-example/oracle.json
 ```
 
-- **`selftest`** controlla Git, SQLite, HTTP locale, JavaScript e client finti, conserva i log nativi e `RESULT.json`, e non chiama alcun modello: mette alla prova il toolkit, non il tuo prodotto né un modello.
-- **`challenge` autonomo** esegue una sonda immutabile `check(repo)` su tre radici Git pulite, senza modifiche fuori dai commit, in copie private che non modificano mai gli originali. `matched` richiede un vero fallimento di asserzione sull'originale ed esiti positivi su rimedio e controllo positivo; gli errori dello strumento non sono difetti. È una sfida delimitata, non un audit né una sandbox per codice ostile.
-- **Il confronto offline** esegue **client finti** inclusi e fissati, non modelli installati, in quattro combinazioni autore/lettore su quattro casi preparati a mano, con un manifesto registrato in anticipo e una sonda che l'esecuzione non vede mai; non dichiara mai un vincitore. Una prova con modelli reali richiede un'autorizzazione separata del proprietario, un budget esplicito e `bench-run --allow-models --budget-file`, senza nuovi tentativi automatici né consumi o costi inventati; un'esecuzione offline non dimostra mai la superiorità di un modello.
-
-Vedi [i contratti di sfide e confronti](references/benchmark.md).
+`selftest` mette alla prova il toolkit senza chiamare alcun modello, non il tuo prodotto né un modello; il confronto offline usa client finti e non proclama mai un vincitore. Vedi [il riassunto](references/benchmark.md#readme-selftest-summary) e [i contratti di sfide e confronti](references/benchmark.md), in inglese.
 
 ## Stato durevole e integrità
 
@@ -754,24 +596,19 @@ Vedi [i contratti di sfide e confronti](references/benchmark.md).
 | `squadra-posta.md` | Vista della posta comune. |
 | `posta/exchange-YYYY-MM-DD.md` | Vista giornaliera in UTC, comune a tutte le finestre. |
 
-Scrivi sempre attraverso la CLI, mai nei file generati. `export` rigenera le viste, `status` mostra incarichi, richieste per il proprietario e attese, e `doctor` controlla catena e artefatti e segnala ACK in sospeso o esecuzioni incerte. L'integrità non è una prova che le affermazioni siano vere, né un'autenticazione crittografica delle identità. `legacy --actor coord --path /old/packet` importa i record come **copie storiche non verificate**, senza toccare gli originali, creare incarichi o ACK, o concedere un'accettazione.
+Scrivi sempre attraverso la CLI, mai nei file generati; `doctor` controlla la catena e gli artefatti. L'integrità non prova che le affermazioni siano vere, né autentica crittograficamente le identità. [Altro](references/recovery.md#checkpoint-details), in inglese.
 
 ### Piccole modifiche: il percorso leggero
 
-Il coordinatore può dichiarare `task --route light` per una modifica circoscritta e reversibile, dopo il consueto triage a domande. La policy **light-v1 / P2** ammette al massimo **80 righe aggiunte più cancellate in quattro file**, dalla base Git originaria pulita, inclusi test e documenti. Sostituire una riga conta due; un commit durante l'incarico non azzera il conteggio. File binari, symlink, cambi di tipo/modo, base mancante, sorgenti instabili e modifiche vuote sono rifiutati. Niente compressione per rientrare.
-
-P2 ammette Markdown descrittivo in docs/references, README IT/EN, test e `assets/dashboard.html`. Script, bundle plugin, configurazioni client/CI/build/dipendenze, file d'istruzioni e contratti normativi restano protetti; anche i percorsi sconosciuti sono protetti. Le esclusioni esatte sono nel [metodo](references/work.md#light-route). Impatti di sicurezza o gate completi obbligatori richiedono il percorso completo: dimensione e percorsi non danno permessi.
-
-Il percorso leggero salta la lettura del piano e usa la prova mirata concordata invece della suite intera; consente un solo giro di lettura del codice. Restano lettore non autore, ACK di incarico/passaggio, binding esatti a sorgenti e contratto, risultati nativi, copertura esplicita dei requisiti, pause, riserve, budget e prove richieste. Non cambiano le letture finali del rilascio né la parola del proprietario digitata per pubblicare. Esempio: il fix del refresh stabile modificava **23 righe aggiunte/cancellate in due file**, compreso il test; poteva usare i sei test del caricamento, conservando la misura browser richiesta.
-
-Il registro rimisura prima del processo di prova, alla consegna, al check e alla chiusura, anche nelle scritture dirette Store. Un eccesso o percorso protetto produce un codice `light_*` e “Full route required”; anche una seconda lettura leggera è rifiutata. Solo il coordinatore promuove con `route --full --scope-file ... --proof-file ... --reason ...` (e `--full-gate` o `--expected` quando richiesti). La promozione conserva base, autori, storia e contatori spesi, invalida i vecchi binding di prova/lettura e non si può invertire. Non azzera budget esauriti.
-
-Gli incarichi senza route conservano il comportamento precedente. Una squadra congelata deve coordinare esplicitamente l'aggiornamento di **tutti gli scrittori** prima di registrare incarichi leggeri; installare la release non la migra. Le vecchie CLI ignorano i nuovi metadati: nessuna promessa di enforcement tra versioni miste, e in una squadra mista una finestra 3.6.x mostra ancora come leggero un incarico promosso al percorso completo. Policy future sconosciute restano leggibili ma non possono qualificare il lavoro.
+Il coordinatore può dichiarare `task --route light` per una modifica delimitata e reversibile: al massimo **80 righe aggiunte più eliminate in quattro file** (criterio **light-v1 / P2**), contate dalla base Git originale pulita. Script, pacchetti dei plugin, file di istruzioni e contratti normativi restano protetti, e un impatto sulla sicurezza o un gate completo richiesto portano comunque al percorso completo. Il percorso leggero salta la lettura del piano e usa la prova mirata concordata; restano la lettura di un non autore, i legami e i budget. Solo il coordinatore può promuovere un incarico al percorso completo, e la promozione non azzera mai un budget. Vedi [il percorso leggero](references/work.md#light-route) e [i dettagli](references/work.md#readme-protocol-details), in inglese.
 
 <a id="commands"></a>
 ## Comandi di squadra
 
 Ogni comando, raggruppato per scopo: **47 sottocomandi**, più `--version`. Usa `squadra <comando> --help` per le opzioni; i comandi del registro accettano `--root` o `SQUADRA_ROOT`. «Solo il coordinatore» segna ciò che solo il coordinatore può registrare: `task`, `route`, `supersede`, `brief`, `close`, `ask`, `decision`, `settings`, `pause`, `resume`, `save`, `standby`, `ping --sweep`, e la ricevuta che `restore-check` scrive nel registro vivo. Senza installare, gli stessi comandi girano come `python3 -B scripts/squadra.py <comando>`.
+
+<details>
+<summary><strong>Tutti i 46 comandi, raggruppati per scopo</strong></summary>
 
 ### Avvio e squadra
 
@@ -865,6 +702,8 @@ Ogni comando, raggruppato per scopo: **47 sottocomandi**, più `--version`. Usa 
 | `bench-example` | Scrive l'esempio del confronto offline con client finti. |
 | `bench-run` | Esegue un confronto registrato in anticipo. |
 | `bench-score` | Assegna i punteggi a un confronto con la sua sonda separata. |
+
+</details>
 
 ## Confini operativi
 

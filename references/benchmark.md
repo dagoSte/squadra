@@ -98,3 +98,25 @@ without a network or filesystem sandbox for hostile code.
 Quota, tokens, actual model and cost may remain unknown; do not invent them.
 Repeated samples and positive/negative controls are necessary for quality inferences;
 one turn or the self-test does not demonstrate Squadra's superiority.
+
+<a id="readme-selftest-summary"></a>
+
+## Self-test, challenge and comparison: the README summary
+
+*Moved from the README, word for word.*
+
+```sh
+squadra selftest --output /durable/selftest-001
+squadra challenge --actor reader --oracle /evidence/oracle.py \
+  --original /checkouts/original --remedy /checkouts/remedy \
+  --positive /checkouts/positive --output /evidence/challenge-001 --timeout 30
+squadra bench-example --to /evidence/benchmark-example
+squadra bench-run --actor coord \
+  --manifest /evidence/benchmark-example/manifest.json --output /evidence/benchmark-run
+squadra bench-score --actor coord --from /evidence/benchmark-run \
+  --oracle /evidence/benchmark-example/oracle.json
+```
+
+- **`selftest`** checks Git, SQLite, local HTTP, JavaScript and fake clients, keeps native logs and `RESULT.json`, and makes no model calls: it tests the toolkit, not your product or a model.
+- **Standalone `challenge`** runs one immutable `check(repo)` oracle on three clean, committed roots, in private copies that never modify the originals. `matched` needs a real assertion failure on the original and passes on remedy and positive control; instrument errors are not defects. It is bounded, not an audit or a sandbox for hostile code.
+- **The offline comparison** runs exact bundled **fake clients**, not installed models, in four author/reader arms over four seeded cases, with a preregistered manifest and an oracle the run never sees; it never claims a winner. A pilot with real models needs the owner's separate authorization, an explicit budget and `bench-run --allow-models --budget-file`, with no automatic retries and no invented usage or cost; an offline run never shows model superiority.

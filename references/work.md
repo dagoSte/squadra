@@ -642,3 +642,87 @@ these kinds, so mixed-version enforcement is not promised.
 | `lesson_actor_required` | `lesson` without `--actor`, except `--list` (CLI) |
 | `lens_unknown` | a lens other than `rasoio` |
 | `net_lines_requires_lens`, `net_lines_invalid` | `net_lines` without the lens, or not an integer from 0 to 1,000,000 |
+
+<a id="readme-protocol-details"></a>
+
+## Protocol details from the README
+
+*Moved from the README, word for word; the README keeps a summary of each part and links here.*
+
+Readers may supply `review --findings-file findings.json` with bounded observations
+(`severity`: `grave`, `minor` or `info`; a safe one-line `title`). See
+[the review command](work.md). Missing observations say **Not recorded**;
+`[]` explicitly means none. The view shows how many reads supplied this data.
+**Accepted with conditions** is not recorded by the three-verdict protocol.
+The optional metadata does not change approval, closing rules or frozen protocols.
+
+A project brief starts with its goal; `## Steps` and `## Glossary` (or `## Passi`, `## Glossario`) are optional, and their steps stay the brief's own claim, shown apart from the closures the registry records. A task brief's first line becomes the task's title everywhere on the page, and the rest says why it exists, for whom and when it is finished; without one, the task keeps its recorded title and reads «descrizione non ancora scritta» (description not written yet). Only the coordinator records briefs: UTF-8, at most 8192 bytes, kept as artifacts. A new brief replaces the old one on the page, every version stays in the history, and a brief never changes a task's state.
+
+`--id` names the decision (otherwise `dec-e<event number>`, a reserved form). `--task` links existing tasks; `--follows` names an earlier `ask:<id>` or `decision:<id>`, never a bare name, and is fixed when written. An owner instruction without a question may carry `--channel typed-here` or `relayed` with non-empty `--owner-words`; without one the page says «canale non registrato» (channel not recorded). `--choice` requires `--answers`, and an instruction, a mention or a `--follows` never closes a question.
+
+**Replacing a task.** `task ... --supersedes T0` records that a new task replaces the open task T0; `supersede --actor coord --task T0 --by T1 --reason "..."` records it afterwards, when the work already moved to an existing, later T1 that does not wait for T0. T0 leaves the next steps and waits and keeps its whole history; tasks that depend on it stay blocked, and nothing is cancelled, released, completed or reassigned. Both are refused while T0 has a run still running or with an unverified stop, an owner holding a reservation, or an open question, and a task cannot depend on the task it replaces; `supersede` also needs a non-empty reason.
+
+**Reading the graph.** Each box is a recorded fact, earlier on the left. **Solid lines** are recorded links; **dashed lines** only mean "later, in the same task", never a reason. Owner boxes always show the channel: «scritto qui» (typed here), «riferito da un'altra finestra» (relayed by another window) or «canale non registrato»; verdicts are written in words as well as colours. Select a box (click, Enter or Space) for who, when, the full words and the links both ways; filter by task and zoom. Refreshes keep selection, filter, zoom and focus, and say «elemento non più presente» when an item is gone. On a phone the graph becomes a list in time order, with reduced motion respected; circular links, possible only in an altered registry, are listed under «Collegamenti non ordinabili». The full rules are in [work, proof and review](work.md).
+
+**The rules of the read.**
+- **Block only on a grave finding**, including missing or invalid mandatory safety evidence; fix the rest now with a non-author check of the delta and the original case, or record medium and low findings as follow-ups. Each follow-up has its own task, or a decision naming the responsible one, with an observable trigger or deadline and an acceptance check, linked from the report until closed. A deferred requirement is not satisfied, and mandatory safety requirements are kept.
+- **Readers** are available non-authors chosen with `task --reviewer`, working in parallel on frozen copies, with shared gates, ports and databases reserved. The handoff that `deliver` generates is the go for the assigned read once its recipient ACKs it; the CLI never invokes a client by itself. A corrective read uses the same budget, and no alias or new task resets spent rounds.
+- **Browser and installation steps** need the capability proven first by a probe receipt in the right context (for a browser: a named DevTools connection, timeouts, private resources, owned cleanup). Without it, declare the step **not run**, cite the last valid run and inform the coordinator. **Never hand commands to the owner**, and no capability bypasses execution permissions.
+
+- **Options and budgets:** `--depends T0` (prerequisites closed independently first), `--expected N` (recognized test count), `--full-gate` (a gate-labelled proof); none of them proves a suite complete, so agree the real command with the project. By default three plan reads, two code reads and three build attempts in the optional runner (`init --plan-rounds/--review-rounds`); acceptance binds to the latest plan bytes; exhausted budgets need an explicit disposition, never a reset. Small changes get proportionate checks.
+- **`prove`** keeps the native status, duration, output and before/after fingerprints of tracked and non-ignored files; ignored dependencies need their own evidence. **`deliver`** needs a passing proof on the exact current source, freezes an immutable packet, returns a `review-…` ID and never invokes a model.
+- **`review`** records `accepted`, `changes-required` or `blocked`. `probe` records independent tests and negative controls (`--expected-rc 1`; a matched negative is not a product pass); mutants go in isolated copies. `--covers` records coverage, not test adequacy, which the reader judges.
+- **`check`** binds candidate, plan, proof, artifacts and coverage again before `close`. A source change voids the old proof and review. `advance` reconciles a delivered handoff without building, approving or waking clients; without `--reviewer` the manual review protocol applies.
+
+`--reply-to` answers; `--to-new waiting-reader` creates an expected recipient, not an identity: register the real seat before its ACK. `transport --via manual` returns a pending handoff instruction, and success with `--via codex-queue` means queued, not read or awake. The protocol authorizes no external messaging. Save **one substantive output per completed step**: a result, decision, blocker or handoff that adds information (omit `--task` for area-wide coordination). Its declared next step is not evidence that anything happened. Routine progress comes from the registry, so no manual "ready" messages and no retelling of an existing proof; real ACKs, decisions, pauses and receipts stay required.
+
+Attach an artifact named exactly `da-ricordare.json` (`form: "da-ricordare/1"`, task ID, `answer: "yes"` or `"no"`, `items`) to the closing agent's usual `squadra output --artifact ...`; see [the schema and examples](work.md#da-ricordare-at-close). Nothing is proposed or approved by itself. **If a memory service is in use, declare at close and do not propose the same item through another channel.** **Never** put secrets, personal data or private paths in it: registered artifacts are immutable, so an accidental secret cannot be removed. Plugin consumers may turn declarations into drafts; the action API only saves the user's selection and never sends it or runs a plugin ([action contract](plugins.md#action-requests)).
+
+`--channel relayed` keeps words reported by another window. `decision --withdraws Q1` closes an obsolete question without inventing an answer; a `decision --reason` without links keeps a reason without closing a question. Answers and withdrawals are exclusive and never repeated. Chat text, mail prose and `output.next` are never silently read as decisions or authority.
+
+Wait ages are computed when a view is read. Defaults, in seconds: **ACK 900**, **delivered 3600**, **reviewed 1800**, **heartbeat 1800**, **alive 300**; `cleanup-unknown` is always shown. `settings --actor coord --file /evidence/thresholds.json` sets chosen keys, such as `{"ack": 600, "alive": 300}` (zero warns at once); it replaces earlier custom values, and omitted keys use the defaults. A warning never retries, reassigns or releases anything.
+
+```sh
+squadra resource acquire --actor builder --name gate --reason "Frozen candidate"
+# For a full-gate task, run its agreed proof with prove --gate.
+# Release only after the terminal result and resource reconciliation.
+squadra resource release --actor builder --name gate --reason "Run ended"
+squadra ping --actor coord --to builder
+# Forward each returned ID (codex-queue needs a Codex seat registered with --session); ping invokes no client.
+squadra transport --actor coord --message PING-ID --via codex-queue
+squadra standby --actor coord --agent builder --reason "Window unavailable"
+squadra standby --actor coord --agent builder --resume --reason "Availability confirmed"
+```
+
+- **Resources:** reserve gates, ports and databases before use, and respect other windows' reservations. A stale heartbeat or a timeout does not prove a process stopped, nor does it free its resources.
+- **Presence:** `ping --all` calls each other active identity once, skipping stand-by; a pending ping is reused and never extended. `--to` can call a window in stand-by, whose real ACK lets it return at the next sweep; old ACKs, aliases and new registrations never do.
+- **Only the coordinator changes availability**, with `ping --sweep` (re-checked inside the transaction) or `standby`. All aliases of a window share its stand-by, during which new assignments and review handoffs to it are refused.
+- **Stand-by stops nothing:** it **does not cancel processes, release resources, transfer roles or reassign work**; return restarts nothing; no timer or page view changes the state; an unanswered ping proves no absence.
+
+Every window writing to one registry should run the same Squadra version, or some rules may not be enforced; moving a working squad to another version is an explicit, authorized step.
+
+For a task declared with `task --defect-fix`, closure requires proof that the
+regression fails without the change. Register its own unittest method IDs and
+frozen test files with `challenge --task T1 --register --contract-file ...
+--reason ...` as coordinator, then run `challenge --actor builder --task T1
+--output /evidence/challenge-T1`. For example, a value regression asserts 2:
+it fails on the original value 1 and passes after the fix. The same test bytes
+run on the registered base and exact candidate, even before commit. Errors,
+skips, missing IDs and a test that passes both versions never qualify.
+
+The result and logs appear next to the proof. A coordinator may declare an
+exception with a reason; the independent reader checks it, and it never appears
+as a passed challenge. Source or agreement changes need fresh bindings; light
+fixes keep the requirement. The normal proof and independent review still apply.
+Old tasks keep working; frozen squads require an explicit upgrade of every writer,
+with no mixed-version enforcement. See the [complete example and limits](work.md#defect-fixes-show-that-the-regression-detects-the-original).
+
+The coordinator may declare `task --route light` for a bounded, reversible change after the usual questions. Policy **light-v1 / P2** allows at most **80 added plus deleted lines in four files**, counted from the original clean Git base, including tests and documents. Replacing one line counts as two; commits during the task do not reset the count. Binary files, symlinks, type/mode changes, missing bases, unstable snapshots and empty changes refuse. No compression to qualify.
+
+P2 admits descriptive Markdown under docs/references, README EN/IT, tests and `assets/dashboard.html`. All scripts, plugin bundles, client/CI/build/dependency files, instruction files and normative contracts stay protected; unknown paths are protected too. The exact exclusions are in [the workflow](work.md#light-route). A security impact or required whole gate still takes the full route: size and paths never grant permission.
+
+The light route skips a plan read and uses the agreed targeted proof instead of a whole suite; it allows one code-read round. A non-author reader, assignment/handoff ACKs, exact source and contract bindings, native results, explicit requirement coverage, pauses, reservations, budgets and required evidence remain. Release final reads and the owner's typed publication permission do not change. Example: the steady refresh fix changed **23 added/deleted lines in two files** including its test; it could use the six loading-contract tests, while its required browser measurement remains.
+
+The registry remeasures before a proof process, on delivery, check and close, including direct Store writes. An excess or protected path refuses with a `light_*` code and “Full route required”; a second light read is refused too. Only the coordinator can promote with `route --full --scope-file ... --proof-file ... --reason ...` (and `--full-gate` or `--expected` when required). Promotion keeps the base, authors, history and spent counters, invalidates old proof/read bindings, and has no reverse. It cannot reset an exhausted budget.
+
+Existing tasks without a route keep their behavior. A frozen squad must explicitly coordinate an upgrade of **every writer** before registering light tasks; installing this release does not migrate it. Older CLIs ignore this new metadata: mixed-version enforcement is not promised, and a 3.6.x window in such a squad still shows a task promoted to the full route as light. Unknown future policies remain readable but cannot qualify work.

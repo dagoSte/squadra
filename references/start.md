@@ -104,3 +104,37 @@ session. For recipients not yet identified, retain the discovery and pending han
 without registering fictional identities. Delivery is not an ACK. Keep the census
 and recipients current throughout the work.
 See [keep-alive and stand-by](work.md#keep-alive-e-stand-by).
+
+<a id="install-and-join-details"></a>
+
+## Installing and joining: details from the README
+
+*Moved from the README, word for word.*
+
+Install from a clean, committed checkout with a **new backup directory** each time. The installer freezes a copy by commit, links the skill for Codex, Claude and Cursor (`~/.cursor/skills/squadra`) and prepares `~/.local/bin/squadra` (keep it in PATH), preserving the previous skills and launcher. To roll back, replace only the four targets listed in `INSTALL.json` with their recorded predecessors. Without installing, run `python3 -B scripts/squadra.py <command>`. Installing never migrates a working squad: each keeps its version until you switch it explicitly.
+
+1. **Install** and set `export SQUADRA_ROOT=...` in every window.
+2. **Create the registry and register each window** with `init` and `agent`, as above.
+3. **Find the windows and introduce yourself (rule 0):** `census` lists the project's Codex, Claude and Cursor (`cursor-agent`) processes without writing; `send` and `transport` deliver an introduction, and each window answers with `ack`.
+4. **Say what the project is** in plain words with `brief --project`; the dashboard shows it first.
+5. **Assign and explain the first task:** `task` assigns it; `brief --task` gives it a readable title and says why it exists, for whom, and when it is finished.
+6. **The builder confirms and starts:** `ack` («I have received it»), then `start` («I am building»).
+7. **The builder proves and delivers:** `prove` runs the agreed check on the exact files; `deliver` hands them over.
+8. **Someone else reads:** a reader who did not write the work confirms the handoff and records a verdict with `review`.
+9. **The coordinator closes:** `check` verifies that proof and read concern the same version; `close` records the end.
+10. **Check who still answers:** `ping --all` calls every other window, and each answers with `ack`; `ping --sweep` puts in stand-by a window whose call went unanswered past the `alive` wait (300 seconds unless `settings` changes it). It gets no new assignments, and nothing it runs is stopped.
+11. **Open the dashboard** with `dash --open`; «How to read this page» explains every term.
+12. **Record what the owner says, with its links:** `decision` with `--owner-words`, `--channel` and `--task`; then select its box in the Decisions view.
+
+Replace `PING-ID` with the returned ID and wait for the real ACK. Census matches executable names and working directories, can miss wrappers, graphical or remote clients and exited processes, and keeps scan errors visible; add Claude's peer list and the Codex session files. Processes, registrations and queue receipts do not prove that a window answers, and identity is never inferred from a PID or a shared directory. Each introduction (identity, role, registry, next step) goes out with `send` and `transport`: `--via codex-queue` for a Codex seat registered with `agent --session`, Claude's native peer messaging with a kept receipt, otherwise `--via manual`. Unanswered introductions stay pending. Details in [startup and presentation](start.md).
+
+```sh
+# Census writes nothing, even before init. Use the same shared --root throughout.
+squadra census --root /path/to/registry --project /path/to/project
+# Joining an existing squad: register the real window as an executor, then call the coordinator.
+squadra agent --id arrival --identity actual-session --role executor --client codex --repo /path/to/project
+squadra ping --actor arrival --to coord
+squadra transport --actor arrival --message PING-ID --via manual
+```
+
+Every window uses the same `SQUADRA_ROOT` or `--root`; separate checkouts never create separate mailboxes. `agent --skill` records the path and hash of each skill actually read, `--session` a known session, `--model` a requested model; what a client does not expose stays unknown. **An identity is not a role:** two aliases of one window are not an independent reader, and a seat's identity and role cannot be rewritten, so a different window needs a new seat. The `executor` role also exists. Add builders only for independent scopes.

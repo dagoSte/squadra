@@ -69,3 +69,19 @@ owned processes and retain a reconciliation receipt before releasing resources; 
 turn this state green. A POSIX process group does not include children that change sessions.
 Windows/taskkill and real model turns require specific qualification: macOS tests do not
 qualify them.
+
+<a id="readme-runner-summary"></a>
+
+## Native runners: the README summary
+
+*Moved from the README, word for word.*
+
+```sh
+squadra run --actor builder --task T1 --mode build \
+  --prompt-file /evidence/build.txt --timeout 600
+squadra run --actor reader --task T1 --mode read --stage code \
+  --prompt-file /evidence/read.txt --timeout 180
+squadra cancel --actor coord --run "RUN-ID"
+```
+
+`run` starts a new non-interactive Codex or Claude turn and never attaches to an open window; prompts go through stdin, models are never hardcoded, and real turns spend the client's quota within the agreed budget. **Cursor is refused:** a `cursor` seat's turn stops before any process with «Squadra does not launch cursor-agent: Cursor runs team, user and enterprise hooks unsandboxed. Cursor seats work interactively», until a Cursor release documents a switch that disables all hooks and MCP, confirmed by a non-author read and a real probe. A valid result needs a real session, a completed turn, the expected exit and a structured read: exit 0 alone is not enough, and a client's verdict is not the recorded review. Pause, cancel and timeout act on the owned process group; a refused signal leaves `cleanup-unknown`, to reconcile before releasing resources. Detached descendants, Windows and real-client compatibility are qualified separately. See [runtime contracts](runtime.md) before invoking them automatically.

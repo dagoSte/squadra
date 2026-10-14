@@ -628,3 +628,30 @@ example, producer/consumer responsibilities, compatibility checks and packaging.
 The [Italian overview](../docs/plugin-authoring.it.md) links to the English rules.
 The optional [Playwright browser-check plugin](../plugins/playwright/README.md)
 provides a concrete bridge to an agent's MCP tools; it is not auto-installed.
+
+<a id="plugin-page"></a>
+
+## The plugin page in the dashboard
+
+*Moved from the README, word for word.*
+
+- **Data, not code.** The dashboard never runs plugin code. The declared HTTPS homepage opens by your click in a new tab; task/run associations open the matching registry view; an optional local PNG logo appears without a remote request; status badges grant no authority over the registry. The optional `about` page (publisher, version, tagline, up to eight sections) is the producer's own description, never executable content or a verified identity.
+- **Settings.** Up to four declared fields, stored with **Save**; **Clear** takes effect on save, and a blank password keeps the saved secret. Secrets are never prefilled or returned, and password managers remain outside Squadra's control. Files go to the **HOME of the user who runs `squadra dash`** (a dash started by an agent with a private HOME saves there, not in yours), as local plaintext `settings.json` and `secrets/<id>` (0600): not an encrypted vault, and never in the registry. Writes are atomic per file, so a lost reply can mean a partial save: re-read the status and submit again deliberately; never infer success from a missing reply.
+
+![The Settings tab: declared fields, a secret that is never shown again, and Save](../docs/images/dashboard-plugin-settings-en.png)
+
+- **Results for each service.** A plugin can name its data section, for example «Browser checks», and explain its result states in both languages. Older plugins keep «Memories». Items can link to an existing task or one of its recorded runs; these are producer-supplied associations, not proof of success or approval.
+- **Selecting drafts.** A plugin can declare one action, such as «Request a browser check» or «Send for review». In its data section you tick drafts and press the button: only your choice is saved. Its items show «Waiting to be sent»; selection and sending stay disabled until the request is consumed or you use «Cancel request». Cancellation does not stop work already started. Status words and colours distinguish the outcomes reported by the plugin; sent, approved and rejected items appear under «Already sent», with their count. The dashboard never sends or runs anything.
+
+![The Memories tab: the plugin's items with their status; drafts can be selected and sent for review, and a pending request cancelled](../docs/images/dashboard-plugin-memories-en.png)
+
+HOME, `.squadra`, `plugins` and each plugin folder must belong to the current user
+and must not be writable by group or others. Discovery, panel reads, settings and
+actions refuse unsafe folders with `unsafe_permissions`. Owned 0700 or 0755 folders
+work; the Store creates private 0700 plugin folders.
+
+Installation also makes the bundled [agent instructions](../README.md#plugin-agent-instructions) available to the coordinator: it reads them at the next start or resume and runs the producer or consumer at the documented triggers, within existing permissions.
+
+`squadra plugin list` lists the local release's accepted catalogue, MCP-based plugins first, with installed status and both the installed and running release. `squadra plugin install <name>` copies a bundled plugin; it does not download or run code. With a `/plugin` installation there is no standalone launcher: ask the coordinator to use `python3 <release root>/scripts/squadra.py plugin list` or `plugin install <name>`.
+
+Repeat install explicitly applies that release's bundle and reports the versions **from X to Y**, including a downgrade. Settings, secrets, saved selections and panels stay untouched. Stop the plugin's producer/consumer before updating. A legacy folder is never adopted: save its `settings.json` and `secrets/`, move the folder aside, then install; restore configuration only after checking the new plugin's schema. To uninstall, stop its producer/consumer, save configuration and remove only that plugin's folder. An interrupted copy is reported as incomplete; retry the same bundle. There is no atomic whole-folder upgrade. See [store metadata and safeguards](plugins.md#release-local-plugin-store).

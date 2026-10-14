@@ -207,3 +207,93 @@ a new installation does not migrate them.
 headroom for the full suite. Synthetic tests, no model quota or product gate. Node.js is
 required: the dashboard's JavaScript contracts fail without Node; they are not skipped.
 Comparative quality requires the separate harness in [benchmark.md](benchmark.md).
+
+<a id="dashboard-page"></a>
+
+## The dashboard page, view by view
+
+*Moved from the README, word for word; the README keeps the summary, the views table and the safety paragraph.*
+
+`squadra dash --open` opens on the **Summary** (Quadro). One sentence and four tiles say where the work stands: tasks closed, in progress, to fix or stuck, and active windows (with how many are in stand-by). **Needs you** (Serve a te) appears only when a question, an exhausted budget or a pause is recorded for the owner. Then one card per task: its brief title and six recorded steps, who builds and who reads («Builds: Claude · Reads: another Claude window»), the latest event and the next step the registry expects, and, apart, the next step a window declared, until a later decision or brief answers it. Each card opens the task's **story** in time order: brief, plans and their reads, proofs, deliveries, questions, decisions and messages, with documents opened by name. Below come the five **Trends** charts; closed and replaced tasks, the five-question overview and the technical tiles are folded at the bottom. Identifiers stay in «Technical details», which stays open with your reading position while events arrive; an empty field is never printed.
+
+- **Menu and top bar.** A side menu, collapsible to icons, becomes a drawer on a phone (☰; Esc, × or a choice closes it). The top bar holds the project, search, IT / EN, the theme (Automatic, Light, Dark), the **Sounds** switch and the registry connection. Language and theme are remembered in this browser only, and the page still works when storage is refused. Recorded words are never translated; «How to read this page» explains every term.
+- **Five charts:** tasks by state; how far each task has gone (a red cross marks a step reached with changes required); activity in the last 24 hours or 14 days, counted by the server in quarter hours and shown in your time zone (or in UTC, with a note), run heartbeats excluded; proofs passed and failed; reads and verdicts within each task's budget. Each states its result in a sentence and can show its data as a table; ✓, ✗, ■ and empty circles carry the meaning, never colour alone.
+- **Tables** for Tasks, Windows, Runs and Mail sort, filter and search 100 rows at a time; identifiers stay in each row's «Details», and keyboard focus survives a refresh. **Long texts** anywhere show a few lines and a «Read» button that opens the whole text, as text and never as markup, in a dialog that Esc closes.
+
+![The «Read» dialog: a long task text opened in full; Esc or the close button returns to the table](../docs/images/dashboard-read-dialog-en.png)
+
+- **Sounds and notices.** A short chime and «Step done: <task title>» when a task closes («Steps done: N» for several); a rising melody and «Work complete: no open task» when the last one does. Notices fade after a few seconds, can be closed, stack at most three and appear even with sounds off. Sounds are on by default and play only after your first click in the page («Audio after a click in the page.»), never as it opens, and a hidden tab may skip one. The browser generates them, with no audio files and no network request.
+- **Task links** on every card open its decisions, messages, checks, reviews, results and communications, selecting the task by its recorded identity even when titles repeat; a banner explains the context, **Back to the task** reopens its history and **Show the complete view** removes the context.
+- **Footer:** «Local view, read-only except plugin settings and saved selections · no actions on clients.», and the credit «Developed by Stefano D'Agostino · GitHub», linking to [the project on GitHub](https://github.com/dagoSte/squadra).
+- **Look and contents.** Cream and paper surfaces with ink text, a dark espresso theme, highlighter orange as the only accent, Geist type, colour-blind-safe status colours and WCAG AA in both themes. Reboot 5.3.8, 40 Bootstrap Icons 1.13.1 (MIT) and two typefaces (SIL Open Font License 1.1) are copied byte for byte and served by `squadra dash` itself ([files, versions, licences and hashes](../assets/vendor/VENDOR.md)). No Bootstrap JavaScript, nothing from the network: the Content-Security-Policy adds only `font-src 'self'`.
+
+![The Tasks view with proof, read and linked documents](../docs/images/dashboard-tasks-en.png)
+
+![The Windows view: the team and the presence panel with one window in stand-by](../docs/images/dashboard-presence-en.png)
+
+*Two windows confirmed the coordinator's call; one did not and was put in stand-by. Role labels demonstrate the protocol, not a model's quality; registration, heartbeat and answers do not prove that a process is running.*
+
+**Presence.** The presence panel names each window by role and task (the brief's first line, otherwise the recorded title) and explains calls, replies and stand-by in plain words, keeping a missing reply and an explicit coordinator hold apart. The team panel groups the roles of one window; registered presence is not a claim that a process is working right now.
+
+**Communications** answers «who is talking to whom, and where does it stand?». Filters stay on top (Period, How many, Task, Window, Search, «Reset filters»). «Who talks to whom» has one row per pair of windows, counted on the whole registry; selecting one filters the timeline. The timeline draws one arrow per message with a plain sentence, such as «The coordinator (Claude) wrote to the reviewer (Codex) about the task titled “Pagina web delle chiavi per i clienti” — sent, not read yet.», alongside presence calls and stand-by. Sent is not read and queued is not delivered: only a recorded confirmation proves reading. States are written in words with their own line style; a message text opens only when you ask; refreshes keep your position, open rows and filters.
+
+![Communications filtered to one pair: the selected row filters the timeline](../docs/images/dashboard-comms-pair-en.png)
+
+Every screenshot exists in both languages:
+
+| View | English | Italian |
+|---|---|---|
+| Summary | [EN](../docs/images/dashboard-overview-en.png) | [IT](../docs/images/dashboard-overview-it.png) |
+| Summary, dark theme | [EN](../docs/images/dashboard-overview-dark-en.png) | [IT](../docs/images/dashboard-overview-dark-it.png) |
+| Phone | [EN, dark](../docs/images/dashboard-phone-en.png) | [IT, menu](../docs/images/dashboard-phone-it.png) |
+| Task story | [EN](../docs/images/dashboard-story-en.png) | [IT](../docs/images/dashboard-story-it.png) |
+| Read dialog | [EN](../docs/images/dashboard-read-dialog-en.png) | [IT](../docs/images/dashboard-read-dialog-it.png) |
+| Tasks | [EN](../docs/images/dashboard-tasks-en.png) | [IT](../docs/images/dashboard-tasks-it.png) |
+| Windows and presence | [EN](../docs/images/dashboard-presence-en.png) | [IT](../docs/images/dashboard-presence-it.png) |
+| Communications | [EN](../docs/images/dashboard-comms-en.png) | [IT](../docs/images/dashboard-comms-it.png) |
+| Communications, one pair | [EN](../docs/images/dashboard-comms-pair-en.png) | [IT](../docs/images/dashboard-comms-pair-it.png) |
+| Decisions | [EN](../docs/images/dashboard-decisions-en.png) | [IT](../docs/images/dashboard-decisions-it.png) |
+| Reads | [EN](../docs/images/dashboard-reads-en.png) | [IT](../docs/images/dashboard-reads-it.png) |
+| Plugin page | [EN](../docs/images/dashboard-plugins-en.png) | [IT](../docs/images/dashboard-plugins-it.png) |
+| Plugin settings | [EN](../docs/images/dashboard-plugin-settings-en.png) | [IT](../docs/images/dashboard-plugin-settings-it.png) |
+| Plugin memories | [EN](../docs/images/dashboard-plugin-memories-en.png) | [IT](../docs/images/dashboard-plugin-memories-it.png) |
+| Plugin store | [EN](../docs/images/dashboard-plugin-store-en.png) | [IT](../docs/images/dashboard-plugin-store-it.png) |
+
+| View (Italian name) | What you can inspect |
+|---|---|
+| Summary (Quadro) | Status, tiles, Needs you, task cards and stories, waits and presence, Trends; folded below, the overview, technical tiles, reservations and recent decisions. |
+| Windows (Finestre) | Windows named in words: role, tasks, latest output, skills, next step; identity, session, model and skill hashes in Details; then the presence panel. |
+| Tasks (Incarichi) | Each task under its brief title: status, builder and reviewer, latest proof, next step; description, dependencies, reviews, requirements and artifacts in Details. |
+| Mail (Posta) | Who wrote to whom about which task, the start of the message, ACK and delivery. |
+| Communications (Comunicazioni) | Who talks to whom and why, live, in plain words. |
+| Decisions (Decisioni) | The decision graph, with details, task filter and zoom. |
+| Runs (Prove) | Task, who, kind, result, duration; command, native result, logs and timeout or cancel state in Details. |
+| Outputs (Output) | Saved updates and declared next steps. |
+| Timeline (Cronologia) | The latest 120 events; the full history stays in `events.jsonl`. |
+| History (Storico) | Old records imported as historical, unverified copies. |
+
+**Words used below.**
+
+| Term | Meaning |
+|---|---|
+| ACK | The recipient's explicit confirmation; a queued message is not yet confirmed. |
+| Candidate / review | A fixed version of the work / a check by someone who did not write it. |
+| ID / hash | A technical name for a record / a fingerprint of the exact contents checked. |
+| Log / exit | A command's recorded output / its termination code. Read both together. |
+| Checkpoint / WIP | A copy of the registry for recovery / unfinished code changes. A checkpoint alone does not copy the code. |
+| UTC / PID / cwd | Universal time / process number / working directory. Technical data, not proof of activity. |
+| Brief | A short plain-words description of the project or of a task, written by the coordinator; a task's brief gives it its name on the page. |
+| Ping / stand-by | A presence call asking a window to confirm it still answers / the coordinator's record that a window gets no new assignments for now. Stand-by stops nothing that is running. |
+
+<a id="checkpoint-details"></a>
+
+## Checkpoint, save, restore and handover: the README summary
+
+*Moved from the README, word for word.*
+
+- **`checkpoint`** copies **only the registry**, its artifacts and projections. **`save`**, coordinator only, adds every registered Git root (history bundles, HEAD, branch, index and worktree patches, untracked files) into a new destination outside registry and sources (`--temporary` for throwaway ones); `--repo` makes a declared partial package and `--include` adds ignored files inside a selected repository. Sources that change meanwhile refuse a green package. Builders and readers ask the coordinator for it within the existing scope, without asking the owner again.
+- **`restore-check`** verifies checksums before opening anything, restores into a new folder and compares the result; the restored copy is paused, old acceptances are historical, nothing restarts by itself, and `--root` with `--actor` records the receipt in the live registry.
+- **When context fills up**, on a real client signal or when constraints can no longer be reliably reconstructed, the agent saves a handover **before continuing**: task, identity, branch and SHA, open findings, pending ACKs, budgets, resources and one exact next step. It never invents token percentages. A fresh session ACKs, runs `doctor` and reconciles sources and resources before writing; a prepared prompt does not prove that a window started. The same window keeps its identity and updates `agent --session`; a different window needs a new seat. There is **no command that moves a task to another owner**: keep one writer, never duplicate a task to erase a budget, and earlier builders stay authors.
+- **A pause** blocks new work, reviews, runs and deliveries and keeps consultation and recovery, while a checkpoint alone pauses nothing. Stop only the processes you own; resume only on the owner's word, after reconciling processes and state. Other squads are never migrated or resumed.
+
+Always write through the CLI, never into the generated files. `export` regenerates the projections, `status` shows tasks, input and waits, and `doctor` checks the chain and the artifacts and reports pending ACKs or uncertain runs. Integrity is not proof that claims are true, nor cryptographic authentication of identities. `legacy --actor coord --path /old/packet` imports records as **historical, unverified copies**, never touching the originals, creating tasks or ACKs, or granting acceptance.
