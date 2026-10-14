@@ -7,7 +7,7 @@ import subprocess
 import tempfile
 import unicodedata
 
-from registry import Error, canonical, digest, git, require, snapshot
+from registry import Error, canonical, digest, git, pool_claim, read_at_gate, require, snapshot
 
 POLICY = {"version": "light-v1", "lines": 80, "files": 4, "profile": "P2"}
 PROTECTED = (
@@ -32,8 +32,9 @@ def contract(task):
     fields = {k: task.get(k) for k in ("id", "repo", "base", "scope", "proof", "expected",
                                       "requirements", "owner", "reviewer", "depends",
                                       "full_gate", "route", "light_policy")}
-    if "fix" in task:
-        fields["fix"] = task["fix"]
+    for key in ("fix", "pool", "read_at_gate", "release_gate"):
+        if key in task:
+            fields[key] = task[key]
     return digest(canonical(fields).encode())
 
 
@@ -172,7 +173,8 @@ def measure(task, candidate=None):
 
 def register(task, state):
     check_contract(task)
-    if (task.get("route") != "light" or not task.get("requirements") or not task.get("reviewer") or
+    reader = task.get("reviewer") or task.get("pool") or task.get("read_at_gate") is True
+    if (task.get("route") != "light" or not task.get("requirements") or not reader or
             task.get("full_gate") or not isinstance(task.get("scope"), dict) or
             not task["scope"].get("sha256") or not task["scope"].get("bytes") or
             not isinstance(task.get("proof"), list) or not task["proof"] or
@@ -200,6 +202,9 @@ def validate_event(state, kind, task, data):
         require(assignment.get("ack", {}).get("agent") == task["owner"] if assignment.get("ack") else False,
                 "Assignment has no recipient ACK")
     if task["route"] == "light":
+        require(not (read_at_gate(task) and ((kind == "review" and data.get("stage") == "code") or
+                                              (kind == "run.start" and data.get("mode") == "read"))),
+                "read_at_gate_no_own_read: this task is read at the release gate, not on its own")
         if kind == "plan" or (kind in {"review", "run.start"} and data.get("stage") == "plan"):
             refuse("light_plan_requires_full")
         reads = [r for r in state["runs"].values()
@@ -212,7 +217,9 @@ def validate_event(state, kind, task, data):
     if kind in {"review", "run.start", "deliver"}:
         require(data.get("contract") == task["contract"], "Task contract changed; new proof and read required")
     if kind == "run.start" and data["mode"] == "read":
-        require(task.get("delivery", {}).get("handoff"), "Exact delivery handoff required before read")
+        delivery = task.get("delivery", {})
+        require(delivery.get("handoff") or (delivery.get("handoffs") and pool_claim(state, task)),
+                "Exact delivery handoff required before read")
         from registry import candidate_checks
         candidate_checks(task, snapshot(task["repo"]), require_review=False)
     if kind == "run.start" and data["mode"] == "proof":
@@ -226,10 +233,13 @@ def validate_event(state, kind, task, data):
         if task["route"] == "light":
             measured = measure(task, current)
             if kind == "deliver":
-                require(data.get("light") == measured and data.get("packet_data", {}).get("light") == measured,
+                # A read-at-gate delivery has no reader, so no packet: only its own measurement.
+                require(data.get("light") == measured and (read_at_gate(task) or
+                        data.get("packet_data", {}).get("light") == measured),
                         "Light delivery measurement changed")
         from registry import candidate_checks
-        candidate_checks(task, current, require_review=kind == "close", delivering=kind == "deliver")
+        candidate_checks(task, current, require_review=kind == "close" and not read_at_gate(task),
+                         delivering=kind == "deliver")
 
 
 def promotion(state, task, data):

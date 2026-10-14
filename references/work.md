@@ -405,6 +405,37 @@ and closure refuse missing requirements; unknown IDs are refused before the
 proof starts. The dashboard shows the requirement, proof IDs/results and read.
 Test sufficiency needs independent judgment: `--covers` alone does not establish it.
 
+<a id="reviewer-pool"></a>
+## Reviewer pool
+
+Repeat `--reviewer` to name 2 to 4 eligible readers instead of one. Each member must
+be a registered reviewer or coordinator, not in stand-by, and of an identity other
+than the owner's; one invalid member refuses the whole registration
+(`review_pool_member`), and five or more refuse it as `review_pool_size`. One
+`--reviewer` is the single-reader task exactly as before.
+
+`deliver` saves one immutable packet and one handoff message per member, all named
+after that packet. The first valid ACK claims the read: another member's ACK, code
+review or read run on the same packet is refused with `review_claimed` and changes
+nothing; only the claimant's verdict counts toward check and close. Repeating the same
+packet (`deliver` or `advance`) keeps its ACKs and claim; a new packet (new bytes or
+new proofs) starts unclaimed, and an ACK on an earlier packet claims nothing. Budgets
+and history are kept. Delivery refuses while any member is in stand-by: changing the
+pool's availability stays a coordinator action. Until the claim, waits show one
+entry listing every member; nothing is reassigned, retried or released by the wait.
+Plan reads are not tied to a handoff and work as before.
+
+```sh
+squadra task --actor coord --id T2 --title "Retry limit" --owner builder --repo /work/repo \
+  --scope-file /evidence/t2.md --reviewer reader-a --reviewer reader-b --reviewer reader-c
+squadra deliver --actor builder --task T2          # returns three handoffs, one per member
+squadra ack --actor reader-b --message "review-<packet>-reader-b"   # reader-b claims the read
+squadra ack --actor reader-a --message "review-<packet>-reader-a"   # refused: review_claimed
+squadra review --actor reader-b --task T2 --verdict accepted --report /evidence/t2-read.md
+squadra check --actor coord --task T2
+squadra close --actor coord --task T2
+```
+
 <a id="attese-e-finestre-ancora-da-registrare"></a>
 ## Waits and windows not yet registered
 
@@ -547,6 +578,55 @@ ignore new route metadata, so mixed-version enforcement is not supported, and a
 3.6.x window still shows a task promoted to the full route as light. No
 launcher, installation or workspace version is changed automatically. The change
 that implements this protocol itself takes the full route and full suite.
+
+<a id="read-at-gate"></a>
+### Read at the gate
+
+A light task may be registered with `--read-at-gate` and no `--reviewer`. It keeps
+every light-v1 rule above; it simply closes without its own code read, once its
+assignment is ACKed, its native proof on the exact bytes covers every requirement and,
+for a defect fix, its challenge has matched. A defect fix closed by a recorded exception
+needs a reader for that exception: promote it to the full route for its own read
+(`read_at_gate_fix_exception_needs_read`). It cannot have its own read
+(`read_at_gate_no_own_read`); a full-route task, or a light task after promotion,
+always has its own read (`read_at_gate_requires_light`). Until a gate reads it, status,
+board, `stato.md` and the dashboard show it as **closed — read at the gate**, never as
+read, with its own count.
+
+A release gate is an ordinary task the coordinator registers with `--release-gate`,
+usually the integration of the batch. Its `check` and `close` refuse, naming each task,
+while any outstanding read-at-gate task lacks the gate's current accepted code read
+covering it from a reader who is not its author (`gate_read_missing`), or while a path
+that task changed does not have its exact delivered bytes in the gate's candidate
+(`gate_bytes_missing`). The gate reader lists what the read covers with
+`--gate-covers`; a task that is not outstanding, or whose author is the reader, is
+refused (`gate_covers_invalid`). Equality is per whole file, including mode and
+deletion: a later change to the same file can keep the earlier task outstanding, and
+only a deferral then lets the gate close.
+
+Only the coordinator defers, with a reason, one outstanding task from one named open
+gate (`decision --defer-read ... --gate ...`; otherwise `gate_defer_invalid`). The
+deferral shows in status; the task stays outstanding and the next gate must cover or
+defer it again. Nothing is ever deferred implicitly.
+
+```sh
+squadra task --actor coord --id D1 --title "Typo" --owner builder --repo /work/repo --route light \
+  --read-at-gate --scope-file /evidence/d1.md --proof-file /evidence/d1-proof.json --requirements-file /evidence/d1-req.json
+squadra prove --actor builder --task D1 --covers R1 -- python3 -B -m unittest tests.test_docs -v
+squadra deliver --actor builder --task D1
+squadra close --actor coord --task D1              # status: closed — read at the gate
+squadra task --actor coord --id REL --title "Release batch" --owner integrator --repo /work/repo \
+  --scope-file /evidence/rel.md --reviewer reader --release-gate
+# ... prove and deliver REL; the reader ACKs its handoff ...
+squadra review --actor reader --task REL --verdict accepted --report /evidence/rel-read.md --gate-covers D1
+squadra check --actor coord --task REL
+squadra close --actor coord --task REL             # D1 is now read
+# Instead of covering D1, the coordinator may defer it from REL to the next gate:
+squadra decision --actor coord --defer-read D1 --gate REL --reason "Docs only; next release"
+```
+
+Older windows ignore pool and read-at-gate metadata: every writer of a squad upgrades
+together before using them.
 
 ## Defect fixes: show that the regression detects the original
 

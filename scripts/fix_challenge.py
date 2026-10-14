@@ -7,7 +7,7 @@ import sys
 import time
 import uuid
 
-from registry import (canonical, digest, require, snapshot, fix_binding as binding,
+from registry import (canonical, digest, read_at_gate, require, snapshot, fix_binding as binding,
                       fix_disposition as disposition, fix_matched as matched)
 
 RUNNER = Path(__file__).with_name('challenge_runner.py')
@@ -186,6 +186,12 @@ def evidence(task, current, root, require_review=False):
     return record
 
 
+def gate_exception(task):
+    """A read-at-gate fix closes without its own read only on a matched challenge, never on an exception."""
+    require(not (read_at_gate(task) and (task.get('fix_result') or {}).get('exception')),
+            'read_at_gate_fix_exception_needs_read: an exception needs its own read; promote the task to the full route')
+
+
 def validate_event(state, kind, actor, data):
     task = state['tasks'].get(data.get('task'))
     root = state['root']
@@ -230,7 +236,7 @@ def validate_event(state, kind, actor, data):
         require(data.get('fix_binding') == binding(task), 'fix_contract_changed')
     if kind == 'deliver':
         require(data.get('fix_disposition') == disposition(task), 'fix_disposition_changed')
-        if task.get('reviewer'):
+        if task.get('reviewer') or task.get('pool'):
             require(data['packet_data'].get('fix') == task['fix'] and
                     data['packet_data'].get('fix_result') == task.get('fix_result'), 'fix_handoff_changed')
     if kind == 'review' and data['stage'] == 'code':
@@ -241,8 +247,10 @@ def validate_event(state, kind, actor, data):
     if kind == 'close':
         from registry import candidate_checks
         current = snapshot(task['repo'])
-        candidate_checks(task, current)
-        evidence(task, current, root, require_review=True)
+        # A read-at-gate fix closes without its own read only on its matched challenge.
+        gate_exception(task)
+        candidate_checks(task, current, require_review=not read_at_gate(task))
+        evidence(task, current, root, require_review=not read_at_gate(task))
 
 
 def register(store, actor, task_id, filename, reason):

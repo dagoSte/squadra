@@ -150,6 +150,34 @@ def decision_id(data, seq):
     return data.get("id") or (None if seq is None else "dec-e" + str(seq))
 
 
+def read_at_gate(task):
+    """A light task registered to be read at a release gate instead of on its own."""
+    return task.get("read_at_gate") is True and task.get("route") == "light"
+
+
+def gate_pending(task):
+    """A read-at-gate task closed without a read and not yet covered by a release gate."""
+    return read_at_gate(task) and task["status"] == "done" and not task.get("gate_read")
+
+
+def gate_deferred(task, gate):
+    return any(x.get("gate") == gate for x in task.get("gate_deferrals", []))
+
+
+def pool_claim(state, task):
+    """The pool member whose ACK took the current delivery packet's read, or None."""
+    for handoff in task.get("delivery", {}).get("handoffs") or []:
+        message = state["messages"].get(handoff)
+        if message and message["ack"]:
+            return {"agent": message["ack"]["agent"], "handoff": handoff, "utc": message["ack"]["utc"]}
+    return None
+
+
+def last_code_read(task):
+    reads = [r for r in task["reviews"] if r["stage"] == "code"]
+    return reads[-1] if reads else {}
+
+
 def apply(state, event):
     d, kind = event["data"], event["kind"]
     refs = state.setdefault("refs", {"ask": {}, "decision": {}})
@@ -178,7 +206,7 @@ def apply(state, event):
         task = state["tasks"][d["task"]]
         task.setdefault("route_history", []).append({**d, "utc": event["utc"]})
         task.update({k: d[k] for k in ("route", "contract", "scope", "proof", "expected", "full_gate")})
-        for key in ("candidate", "delivery", "plan"):
+        for key in ("candidate", "delivery", "plan", "claim"):
             task.pop(key, None)
         task.update(status="working", status_utc=event["utc"])
     elif kind == "fix":
@@ -187,7 +215,7 @@ def apply(state, event):
         if "contract" in d:
             task["contract"] = d["contract"]
         task.setdefault("fix_history", []).append({**d, "actor": event["actor"], "utc": event["utc"]})
-        for key in ("candidate", "delivery"):
+        for key in ("candidate", "delivery", "claim"):
             task.pop(key, None)
         if task["status"] != "waiting-ack":
             task.update(status="working", status_utc=event["utc"])
@@ -206,6 +234,9 @@ def apply(state, event):
         if task:
             state["tasks"][task]["status"] = "ready"
             state["tasks"][task]["status_utc"] = event["utc"]
+        related = state["tasks"].get(state["messages"][d["message"]].get("related_task"))
+        if state["messages"][d["message"]].get("pool") and related and pool_claim(state, related):
+            related["claim"] = pool_claim(state, related)
     elif kind == "message":
         state["messages"][d["id"]] = {**d, "from": event["actor"], "utc": event["utc"], "ack": None}
     elif kind == "transport":
@@ -216,8 +247,15 @@ def apply(state, event):
         state["tasks"][d["task"]]["status"] = "working"
         state["tasks"][d["task"]]["status_utc"] = event["utc"]
     elif kind == "deliver":
-        state["tasks"][d["task"]].update(status="delivered", candidate=d["snapshot"], delivery=d,
-                                        status_utc=event["utc"], delivered_utc=event["utc"])
+        task = state["tasks"][d["task"]]
+        task.update(status="delivered", candidate=d["snapshot"], delivery=d,
+                    status_utc=event["utc"], delivered_utc=event["utc"])
+        # A claim belongs to the packet: an identical redelivery keeps it, a new packet starts unclaimed.
+        claim = pool_claim(state, task)
+        if claim:
+            task["claim"] = claim
+        else:
+            task.pop("claim", None)
     elif kind == "review":
         task = state["tasks"][d["task"]]
         task["reviews"].append({**d, "reviewer": event["actor"], "utc": event["utc"]})
@@ -226,8 +264,15 @@ def apply(state, event):
             task["status"] = "reviewed" if d["verdict"] == "accepted" else "changes-required"
             task["status_utc"] = event["utc"]
     elif kind == "close":
-        state["tasks"][d["task"]]["status"] = "done"
-        state["tasks"][d["task"]]["status_utc"] = event["utc"]
+        task = state["tasks"][d["task"]]
+        task["status"] = "done"
+        task["status_utc"] = event["utc"]
+        if task.get("release_gate") is True:
+            read = last_code_read(task)
+            for other in state["tasks"].values():
+                if (gate_pending(other) and not gate_deferred(other, task["id"])
+                        and other["id"] in read.get("gate_covers", [])):
+                    other["gate_read"] = {"gate": task["id"], "reviewer": read["reviewer"], "utc": event["utc"]}
     elif kind == "output":
         state["outputs"].append({**d, "agent": event["actor"], "utc": event["utc"], "event": event["id"]})
     elif kind == "run.start":
@@ -263,6 +308,9 @@ def apply(state, event):
         if target:
             state["asks"][target].update(status="answered" if d.get("answers") else "withdrawn",
                                          resolution=state["decisions"][-1])
+        if d.get("defer_read"):
+            state["tasks"][d["defer_read"]["task"]].setdefault("gate_deferrals", []).append(
+                {"gate": d["defer_read"]["gate"], "reason": d["reason"], "actor": event["actor"], "utc": event["utc"]})
     elif kind == "settings":
         state["workspace"]["wait_seconds"] = d["wait_seconds"]
     elif kind in {"save", "restore.check", "challenge", "benchmark"}:
@@ -351,18 +399,26 @@ def next_step(task):
     phase, text = status, NEXT_STEPS[status]
     role = "coordinator" if status == "reviewed" else "reviewer" if status == "delivered" else "builder"
     who = task.get("coordinator") if status == "reviewed" else task.get("reviewer") if status == "delivered" else task["owner"]
+    if status == "delivered" and task.get("pool"):
+        who = [task["claim"]["agent"]] if task.get("claim") else list(task["pool"])
     if status == "done":
         who = None
+        if gate_pending(task):
+            phase, text = "gate-read", "Chiuso senza lettura: da leggere al gate"
+            deferral = (task.get("gate_deferrals") or [None])[-1]
+            if deferral:
+                text += " · rinviato da " + deferral["gate"] + " (" + deferral["actor"] + "): " + deferral["reason"]
     elif task.get("plan"):
         review = current_plan_review(task)
         if not review:
-            phase, text, who = "plan-read", "Piano in attesa di lettura non autore", task.get("reviewer")
+            phase, text, who = "plan-read", "Piano in attesa di lettura non autore", task.get("reviewer") or task.get("pool")
             role = "reviewer"
         elif review["verdict"] != "accepted":
             phase = "plan-fix" if review["verdict"] == "changes-required" else "plan-blocked"
             text = "Correzione del piano" if phase == "plan-fix" else "Lettura del piano bloccata"
             role, who = "builder", task["owner"]
-    return {"task": task["id"], "status": status, "phase": phase, "role": role, "text": text, "who": [who] if who else []}
+    who = (list(who) if isinstance(who, list) else [who]) if who else []
+    return {"task": task["id"], "status": status, "phase": phase, "role": role, "text": text, "who": who}
 
 
 def attention(state):
@@ -375,7 +431,8 @@ def attention(state):
     # and every open ask stay visible; dependents of it stay blocked.
     superseded = {t["id"]: t for t in state["tasks"].values() if t.get("superseded_by")}
     for message in state["messages"].values():
-        if not message["ack"] and message.get("task") not in superseded:
+        # Pool handoffs wait once per delivery, below; a claimed pool's siblings stay unacknowledged.
+        if not message["ack"] and message.get("task") not in superseded and not message.get("pool"):
             waiting.append({"kind": "ack", "id": message["id"], "who": [message["to"]],
                             "utc": message["utc"], "text": "Presa in carico da confermare"})
     for task in state["tasks"].values():
@@ -391,6 +448,13 @@ def attention(state):
         readers = [a["id"] for a in state["agents"].values()
                    if a["role"] in {"reviewer", "coordinator"} and a["identity"] not in author_ids
                    and not standby(state, a["id"])]
+        if task.get("pool"):
+            readers = [task["claim"]["agent"]] if task.get("claim") else list(task["pool"])
+        handoffs = task.get("delivery", {}).get("handoffs")
+        if handoffs and not task.get("claim"):
+            waiting.append({**common, "kind": "ack", "id": handoffs[0], "handoffs": list(handoffs),
+                            "who": list(task["pool"]), "utc": task.get("delivered_utc"),
+                            "text": "Lettura in pool: il primo ACK la prende"})
         if status in {"ready", "delivered", "changes-required", "reviewed"}:
             waiting.append({**common, "kind": status, "text": NEXT_STEPS[status],
                             "who": readers if status == "delivered" else [task.get("coordinator")]
@@ -534,6 +598,83 @@ def candidate_checks(task, current, require_review=True, delivering=False):
                 reviews[-1]["binding"] == current["sha256"] and contract_matches(task, reviews[-1]),
                 "Independent current code review pending")
         require(ids <= set(reviews[-1].get("covers", [])), "Requirement lacks independent current review")
+
+
+def check_pool(state, d):
+    """Refuse the whole registration if the pool's size or any member is invalid."""
+    pool = d["pool"]
+    require(isinstance(pool, list) and 2 <= len(pool) <= 4 and d.get("reviewer") is None,
+            "review_pool_size: a pool names 2 to 4 readers; one reader uses a single --reviewer")
+    owner = state["agents"][d["owner"]]["identity"]
+    for member in pool:
+        agent = state["agents"].get(member) if isinstance(member, str) else None
+        problem = ("named twice" if pool.count(member) > 1 else
+                   "registered reviewer required" if not agent or agent["role"] not in {"reviewer", "coordinator"} else
+                   "in stand-by" if standby(state, member) else
+                   "author alias is not independent" if agent["identity"] == owner else None)
+        require(problem is None, "review_pool_member: " + str(member) + ": " + str(problem))
+
+
+def require_claim(state, task, actor, action):
+    """Only the member whose ACK claimed the current pool packet may read it."""
+    claim = pool_claim(state, task)
+    require(claim is None or claim["agent"] == actor,
+            "review_claimed: " + str(claim and claim["agent"]) + " holds the read of " + task["id"])
+    require(claim is not None, "Configured reviewer must ACK exact handoff before " + action)
+
+
+def check_gate_covers(state, gate, actor, d):
+    covers = d["gate_covers"]
+    require(gate.get("release_gate") is True and d.get("stage") == "code" and isinstance(covers, list) and bool(covers),
+            "gate_covers_invalid: only a release gate's code read lists the tasks it covers")
+    reader = state["agents"][actor]["identity"]
+    for position, name in enumerate(covers):
+        task = state["tasks"].get(name) if isinstance(name, str) else None
+        require(task is not None and name not in covers[:position] and gate_pending(task),
+                "gate_covers_invalid: " + str(name) + ": not an outstanding read-at-gate task")
+        require(reader not in {state["agents"][a]["identity"] for a in task["authors"]},
+                "gate_covers_invalid: " + name + ": the reader is its author")
+
+
+def check_deferral(state, d):
+    target = d["defer_read"]
+    require(isinstance(target, dict) and set(target) == {"task", "gate"} and
+            all(isinstance(target[k], str) for k in target) and
+            not (d.get("answers") or d.get("withdraws") or d.get("choice")),
+            "gate_defer_invalid: a deferral names one task and one gate, outside an answer or withdrawal")
+    task, gate = state["tasks"].get(target["task"]), state["tasks"].get(target["gate"])
+    require(task is not None and gate_pending(task),
+            "gate_defer_invalid: " + target["task"] + " is not an outstanding read-at-gate task")
+    require(gate is not None and gate.get("release_gate") is True and gate["status"] != "done",
+            "gate_defer_invalid: " + target["gate"] + " is not an open release gate")
+    require(not gate_deferred(task, gate["id"]),
+            "gate_defer_invalid: " + task["id"] + " is already deferred from " + gate["id"])
+
+
+def gate_checks(state, gate, current):
+    """Refuse a release gate while an outstanding read-at-gate task is neither covered nor deferred.
+
+    Covered means: the gate's current accepted code read lists the task, from a reader who is
+    not its author, and every path the task changed has its exact delivered bytes in the gate.
+    """
+    read = last_code_read(gate)
+    if read.get("verdict") != "accepted" or read.get("binding") != current["sha256"]:
+        read = {}
+    reader = state["agents"].get(read.get("reviewer"), {}).get("identity")
+    rows = {r["path"]: r for r in current["files"] if r["kind"] != "deleted"}
+    unread, missing = [], []
+    for task in state["tasks"].values():
+        if not gate_pending(task) or gate_deferred(task, gate["id"]):
+            continue
+        if (task["id"] not in read.get("gate_covers", []) or reader is None or
+                reader in {state["agents"][a]["identity"] for a in task["authors"]}):
+            unread.append(task["id"])
+        delivered = {r["path"]: r for r in task["candidate"]["files"] if r["kind"] != "deleted"}
+        missing += [task["id"] + " (" + c["path"] + ")" for c in task["delivery"]["light"]["changes"]
+                    if delivered.get(c["path"]) != rows.get(c["path"])]
+    problems = (["gate_read_missing: " + ", ".join(unread)] if unread else []) + (
+        ["gate_bytes_missing: " + ", ".join(missing)] if missing else [])
+    require(not problems, "; ".join(problems))
 
 
 def requirement_matrix(task):
@@ -879,11 +1020,16 @@ def task_progress(events):
                              else note("bad", "code-accepted-old", last))
             else:
                 notes.append(note("bad", "code-to-fix" if last["verdict"] == "changes-required" else "code-blocked", last))
-        put("code-read", code_reads[-1] if code_reads else None, notes)
+        gate = task.get("gate_read")
+        if gate and not code_reads:
+            notes.append({"tone": "good", "code": "gate-read", "utc": gate["utc"], "gate": gate["gate"]})
+        put("code-read", code_reads[-1] if code_reads else {"utc": gate["utc"]} if gate else None, notes)
         put("closed", f["closes"][-1] if f["closes"] else None, [])
         plan_to_fix = bool(plan_reads) and plan_reads[-1]["verdict"] != "accepted" and plan_reads[-1]["binding"] == current_plan
         if task.get("superseded_by"):
             situation = {"id": "superseded", "by": task["superseded_by"], "utc": task.get("superseded_utc")}
+        elif gate_pending(task):
+            situation = {"id": "closed-unread", "utc": task.get("status_utc"), "deferrals": task.get("gate_deferrals", [])}
         elif task["status"] == "done":
             situation = {"id": "closed", "utc": task.get("status_utc")}
         elif task["status"] == "changes-required":
@@ -982,6 +1128,8 @@ def validate(state, kind, actor, d):
                 require(isinstance(d.get("owner_words"), str) and bool(d["owner_words"].strip()),
                         "A channel without an answer needs nonblank owner words")
         require(d.get("owner_words") is None or isinstance(d["owner_words"], str), "Owner words must be text")
+        if "defer_read" in d:
+            check_deferral(state, d)
         validate_decision_links(state, d)
     if kind in {"start", "deliver", "run.start", "resource.acquire", "review"}:
         require(not state["paused"], "Workspace paused; explicit coordinator resume required")
@@ -1003,6 +1151,12 @@ def validate(state, kind, actor, d):
                     "Registered reviewer required")
             require(not standby(state, reader), "Reviewer is in stand-by; coordinator must record return first")
             require(state["agents"][reader]["identity"] != state["agents"][d["owner"]]["identity"], "Author alias is not independent")
+        if d.get("pool") is not None:
+            check_pool(state, d)
+        if d.get("read_at_gate") is True:
+            require(d.get("route") == "light", "read_at_gate_requires_light: a full-route task always has its own read")
+            require(not d.get("reviewer") and not d.get("pool") and d.get("release_gate") is not True,
+                    "read_at_gate_no_own_read: a read-at-gate task names no reader and is not a release gate")
         require(d.get("route", "full") in {"full", "light"}, "Unknown task route")
         if d.get("route") == "light":
             from light_route import register
@@ -1035,17 +1189,25 @@ def validate(state, kind, actor, d):
         if kind == "deliver":
             require(not task.get("reviewer") or not standby(state, task["reviewer"]),
                     "Reviewer is in stand-by; no new review handoff")
+            for member in task.get("pool") or []:
+                require(not standby(state, member), "Reviewer is in stand-by; no new review handoff: " + member)
             require(any(p["status"] == "passed" and p["after"]["sha256"] == d["snapshot"]["sha256"]
                         and contract_matches(task, p) and (not task.get("full_gate") or p.get("gate"))
                         for p in task["proofs"]), "No passing proof on this exact source")
             require({r["id"] for r in task.get("requirements", [])} <=
                     {c for p in task["proofs"] if p["status"] == "passed" and p["after"] == d["snapshot"] and contract_matches(task, p)
                      for c in p.get("covers", [])}, "Requirement lacks native current proof")
-            if task.get("reviewer"):
+            if task.get("reviewer") or task.get("pool"):
                 packet = d.get("packet_data", {})
                 require(packet.get("candidate") == d["snapshot"] and packet.get("scope") == task["scope"] and
-                        packet.get("plan") == task.get("plan") and packet.get("reviewer") == task["reviewer"],
+                        packet.get("plan") == task.get("plan") and packet.get("reviewer") == task["reviewer"] and
+                        packet.get("pool") == task.get("pool"),
                         "Handoff packet changed during delivery")
+                if task.get("pool"):
+                    # One handoff per member, each named after this exact packet.
+                    key = "review-" + digest(canonical(packet).encode()) + "-"
+                    require(d.get("handoffs") == [key + member for member in task["pool"]],
+                            "Pool handoffs must name every member for this exact packet")
                 require(packet.get("proofs") == [p for p in task["proofs"] if p["status"] == "passed" and
                         p["after"] == d["snapshot"] and contract_matches(task, p)], "Handoff proofs changed during delivery")
         if kind == "run.start":
@@ -1072,6 +1234,8 @@ def validate(state, kind, actor, d):
                 if handoff and stage == "code":
                     require(actor == task["reviewer"] and state["messages"][handoff]["ack"] is not None,
                             "Configured reviewer must ACK exact handoff before read")
+                elif task.get("delivery", {}).get("handoffs") and stage == "code":
+                    require_claim(state, task, actor, "read")
             if d.get("gate"):
                 require(state["resources"].get("gate", {}).get("owner") == actor,
                         "Acquire exclusive gate resource first")
@@ -1100,11 +1264,18 @@ def validate(state, kind, actor, d):
                 if handoff:
                     require(actor == task["reviewer"] and state["messages"][handoff]["ack"] is not None,
                             "Configured reviewer must ACK exact handoff before review")
+                elif task.get("delivery", {}).get("handoffs"):
+                    require_claim(state, task, actor, "review")
                 if d["verdict"] == "accepted":
                     require(set(d.get("covers", [])) == {r["id"] for r in task.get("requirements", [])},
                             "Accepted review must cover every requirement explicitly")
+            if "gate_covers" in d:
+                check_gate_covers(state, task, actor, d)
         if kind == "close":
-            require(task["status"] == "reviewed", "Exact candidate independent review still pending")
+            require(task["status"] == "reviewed" or (read_at_gate(task) and task["status"] == "delivered"),
+                    "Exact candidate independent review still pending")
+            if task.get("release_gate") is True:
+                gate_checks(state, task, snapshot(task["repo"], state.get("root")))
         if task.get("route") == "light" or task.get("contract"):
             from light_route import validate_event
             validate_event(state, kind, task, d)
@@ -1112,11 +1283,20 @@ def validate(state, kind, actor, d):
         require(d["message"] in state["messages"], "Unknown message")
         require(state["messages"][d["message"]]["to"] == actor, "ACK must come from actual recipient seat")
         require(state["messages"][d["message"]]["ack"] is None, "Message already acknowledged")
+        siblings = state["messages"][d["message"]].get("pool") or []
+        winner = next((state["messages"][m]["ack"]["agent"] for m in siblings
+                       if m != d["message"] and state["messages"].get(m, {}).get("ack")), None)
+        require(winner is None, "review_claimed: " + str(winner) + " holds the read of "
+                + str(state["messages"][d["message"]].get("related_task")))
     if kind == "message":
         require(isinstance(d.get("to"), str) and d["to"].strip(), "Nonempty recipient required")
         require(d["to"] not in state["agents"] if d.get("awaited") else d["to"] in state["agents"],
                 "Awaited recipient already registered" if d.get("awaited") else "Recipient not registered")
         require(d["id"] not in state["messages"], "Message ID already exists")
+        if d.get("pool") is not None:
+            related = state["tasks"].get(d.get("related_task"), {})
+            require(d["pool"] == related.get("delivery", {}).get("handoffs") and d["id"] in d["pool"],
+                    "Pool handoff must belong to the current pool delivery")
         if d.get("ping"):
             require(d["ping"] is True and not d.get("awaited") and not d.get("task") and not d.get("related_task"),
                     "Ping is a registered presence challenge, not an assignment")
@@ -1393,6 +1573,7 @@ def board(state, lang=None, read_at=None, events=(), *, live=True):
         "plan-read": ("piano in lettura", "plan review"),
         "plan-fix": ("piano da correggere", "plan to be fixed"),
         "plan-blocked": ("lettura del piano bloccata", "plan review blocked"),
+        "gate-read": ("chiuso — da leggere al gate", "closed — read at the gate"),
     }
     roles = {"builder": ("costruttore", "builder"), "reviewer": ("lettore", "reader"),
              "coordinator": ("coordinatore", "coordinator"), "executor": ("esecutore", "executor")}
@@ -1412,9 +1593,9 @@ def board(state, lang=None, read_at=None, events=(), *, live=True):
         lines += ["## " + heading, "", "| Window | Work | State | Time (approx.) |" if en else "| Finestra | Lavoro | Stato | Tempo (circa) |", "|---|---|---|---|"]
         for task in rows:
             step = next_step(task)
-            holder = task["owner"] if task["status"] == "done" else next(iter(step["who"]), None)
-            agent = state["agents"].get(holder)
-            window = (holder + " (" + roles[step["role"]][en] + ")") if agent else ("Reader to assign" if en else "Lettore da assegnare")
+            names = [task["owner"]] if task["status"] == "done" else step["who"]
+            agent = state["agents"].get(next(iter(names), None))
+            window = (" / ".join(names) + " (" + roles[step["role"]][en] + ")") if agent else ("Reader to assign" if en else "Lettore da assegnare")
             elapsed = "—" if rows is todo or (rows is active and not live) else board_time(task, times.get(task["id"], {}), clock, en)
             lines.append("| " + " | ".join(cell(v) for v in (window, task["title"], labels[step["phase"]][en], elapsed)) + " |")
         if not rows:
@@ -1423,6 +1604,10 @@ def board(state, lang=None, read_at=None, events=(), *, live=True):
     if len(done) > 10:
         lines += [("and " + str(len(done) - 10) + " more") if en else ("e altri " + str(len(done) - 10)), ""]
     lines.append(f"Done {len(done)} of {len(tasks)}" if en else f"Realizzati {len(done)} su {len(tasks)}")
+    unread = sum(gate_pending(t) for t in done)
+    if unread:
+        lines.append(f"Closed without a read, to be read at the gate: {unread}" if en
+                     else f"Chiusi senza lettura, da leggere al gate: {unread}")
     return "\n".join(lines)
 
 

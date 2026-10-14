@@ -12,7 +12,7 @@ import uuid
 
 from registry import (Store, Error, VERSION, BRIEF_BYTES, REFERENCE_KINDS, canonical, digest, require, snapshot, table, board, now,
                       git, waits, requirement_matrix, presence, standby, latest_ping, return_ping,
-                      current_proofs, candidate_checks)
+                      current_proofs, candidate_checks, gate_checks, read_at_gate)
 
 
 def resolve_follows(state, values):
@@ -40,7 +40,8 @@ def workspace_path(value=None):
 
 
 def bindings(store, task_id, require_review=True):
-    task = store.state()["tasks"][task_id]
+    state = store.state()
+    task = state["tasks"][task_id]
     current = snapshot(task["repo"], store.root)
     require(current == task.get("candidate"), "Candidate drift; deliver/prove the new exact source")
     store.verify_artifacts()
@@ -54,10 +55,13 @@ def bindings(store, task_id, require_review=True):
         check_contract(task)
         if task["route"] == "light":
             measure(task, current)
-    candidate_checks(task, current, require_review)
+    candidate_checks(task, current, require_review and not read_at_gate(task))
     if require_review and task.get("fix"):
-        from fix_challenge import evidence
-        evidence(task, current, store.root, require_review=True)
+        from fix_challenge import evidence, gate_exception
+        gate_exception(task)
+        evidence(task, current, store.root, require_review=not read_at_gate(task))
+    if require_review and task.get("release_gate") is True:
+        gate_checks(state, task, current)
     return current
 
 
@@ -76,7 +80,7 @@ def deliver(store, actor, task_id, reconcile=False):
     previous = task.get("delivery", {})
     if reconcile:
         require(task.get("candidate") == current, "Candidate drift; owner must prove and deliver again")
-        if not task.get("reviewer"):
+        if not task.get("reviewer") and not task.get("pool"):
             return {"manual_review": True, "reason": "No configured reader; existing independent review protocol applies"}
 
     operations = []
@@ -91,8 +95,9 @@ def deliver(store, actor, task_id, reconcile=False):
         if task["route"] == "light":
             data["light"] = measure(task, current)
     reader = task.get("reviewer")
-    if reader:
-        packet = {"task": task_id, "candidate": current, "reviewer": reader, "base": task["base"],
+    if reader or task.get("pool"):
+        packet = {"task": task_id, "candidate": current, "base": task["base"],
+                  **({"pool": list(task["pool"])} if task.get("pool") else {"reviewer": reader}),
                   "scope": task["scope"], "plan": task.get("plan"), "requirements": task.get("requirements", []),
                   "proofs": current_proofs(task, current),
                   "instructions": "ACK this exact message, read frozen candidate in an isolated copy, record independent verdict and limitations; never publish or edit the candidate."}
@@ -104,13 +109,24 @@ def deliver(store, actor, task_id, reconcile=False):
             packet.update(fix=task["fix"], fix_result=task.get("fix_result"))
         if previous.get("handoff") and previous.get("packet_data") == packet:
             return {"handoff": previous["handoff"], "packet": previous["packet"], "already_delivered": True}
+        if previous.get("handoffs") and previous.get("packet_data") == packet:
+            # The same packet keeps its handoffs, ACKs and claim.
+            return {"handoffs": previous["handoffs"], "packet": previous["packet"], "already_delivered": True}
         require(actor == task["owner"], "Owner must reconcile changed/missing handoff; coordinator may inspect an identical existing packet")
         key = digest(canonical(packet).encode())
         message = "review-" + key
         artifact = store.artifact_bytes((canonical(packet) + "\n").encode(), message + ".json", "generated-handoff:" + message)
-        data.update(packet=artifact, packet_data=packet, handoff=message)
-        operations.append(("message", task["coordinator"], {"id": message, "to": reader, "related_task": task_id,
-                           "body": "Read exact candidate " + current["head"] + " for " + task_id + ".\nImmutable packet " + artifact["sha256"] + " in " + str(store.root / "artifacts") + ".\nActual recipient ACK required before independent review."}, message))
+        body = "Read exact candidate " + current["head"] + " for " + task_id + ".\nImmutable packet " + artifact["sha256"] + " in " + str(store.root / "artifacts") + ".\nActual recipient ACK required before independent review."
+        if task.get("pool"):
+            handoffs = [message + "-" + member for member in task["pool"]]
+            data.update(packet=artifact, packet_data=packet, handoffs=handoffs)
+            for member, handoff in zip(task["pool"], handoffs):
+                operations.append(("message", task["coordinator"], {"id": handoff, "to": member, "related_task": task_id,
+                                   "pool": handoffs, "body": body + "\nThe first ACK in the pool takes the read."}, handoff))
+        else:
+            data.update(packet=artifact, packet_data=packet, handoff=message)
+            operations.append(("message", task["coordinator"], {"id": message, "to": reader, "related_task": task_id,
+                               "body": body}, message))
     from precheck import run as precheck
     checked = precheck(store, actor, task, current)
     if checked:
@@ -121,7 +137,10 @@ def deliver(store, actor, task_id, reconcile=False):
                 ", now " + final["sha256"][:12] + "); deliver again")
     operations.insert(0, ("deliver", actor, data, None))
     store.batch(operations)
-    result = {"handoff": data.get("handoff"), "packet": data.get("packet"), "snapshot": current["sha256"]}
+    if "handoffs" in data:
+        result = {"handoffs": data["handoffs"], "packet": data["packet"], "snapshot": current["sha256"]}
+    else:
+        result = {"handoff": data.get("handoff"), "packet": data.get("packet"), "snapshot": current["sha256"]}
     if checked:
         result["precheck"] = checked[1]
     return result
@@ -159,7 +178,10 @@ def parser():
     a.add_argument("--scope-file", required=True); a.add_argument("--proof-file", help="JSON argv, not a shell string")
     a.add_argument("--expected", type=int); a.add_argument("--full-gate", action="store_true")
     a.add_argument("--depends", action="append", default=[])
-    a.add_argument("--reviewer"); a.add_argument("--requirements-file")
+    a.add_argument("--reviewer", action="append", help="Reader; repeat for a pool of 2-4 where the first ACK takes the read")
+    a.add_argument("--requirements-file")
+    a.add_argument("--read-at-gate", action="store_true", help="Light only: close without its own read; a release gate reads it")
+    a.add_argument("--release-gate", action="store_true", help="Check/close require every outstanding read-at-gate task covered or deferred")
     a.add_argument("--defect-fix", action="store_true", help="Require a bound original-red/remedy-green challenge before close")
     a.add_argument("--challenge-file", help="JSON oracle agreement; default runner python-unittest-v1")
     a.add_argument("--route", choices=["full", "light"], default="full", help="Explicit light-v1 small-change contract; default full")
@@ -195,6 +217,7 @@ def parser():
     a.add_argument("--covers", action="append", default=[])
     a.add_argument("--lens", choices=["rasoio"], help="Optional lean-code lens (references/skills/rasoio.md)")
     a.add_argument("--net-lines", type=int, help="With --lens: declared lines that could be removed")
+    a.add_argument("--gate-covers", action="append", default=[], help="Release gate read: an outstanding read-at-gate task this read covers")
     a = sub.add_parser("lesson", help="Record, retire, mark ineffective or list errata lessons")
     a.add_argument("--actor"); a.add_argument("--task"); a.add_argument("--source-event", type=int)
     a.add_argument("--text"); a.add_argument("--path", action="append", default=[]); a.add_argument("--word", action="append", default=[])
@@ -231,6 +254,8 @@ def parser():
             a.add_argument("--id", help="Stable decision ID; default dec-e<event number>")
             a.add_argument("--task", action="append", default=[], help="Existing task this decision concerns")
             a.add_argument("--follows", action="append", default=[], help="Earlier ask:<id> or decision:<id>")
+            a.add_argument("--defer-read", help="Outstanding read-at-gate task deferred past --gate")
+            a.add_argument("--gate", help="Open release gate the --defer-read task is deferred from")
     a = sub.add_parser("ask"); a.add_argument("--actor", required=True); a.add_argument("--id", required=True)
     a.add_argument("--question", required=True); a.add_argument("--options-file", required=True)
     a.add_argument("--recommended"); a.add_argument("--task"); a.add_argument("--waiting", action="append", default=[])
@@ -330,8 +355,15 @@ def dispatch(a, store):
         require(proof is None or (isinstance(proof, list) and proof and all(isinstance(x, str) and x for x in proof)), "Proof file must contain a nonempty argv array")
         task = {"id": a.id, "title": a.title, "owner": a.owner, "repo": base["repo"], "base": base["head"],
                 "scope": store.artifact(a.scope_file), "proof": proof, "expected": a.expected,
-                "full_gate": a.full_gate, "depends": a.depends, "reviewer": a.reviewer,
+                "full_gate": a.full_gate, "depends": a.depends,
+                "reviewer": a.reviewer[0] if a.reviewer and len(a.reviewer) == 1 else None,
                 "requirements": json.loads(Path(a.requirements_file).read_text()) if a.requirements_file else []}
+        if a.reviewer and len(a.reviewer) > 1:
+            task["pool"] = a.reviewer
+        if a.read_at_gate:
+            task["read_at_gate"] = True
+        if a.release_gate:
+            task["release_gate"] = True
         require(not a.challenge_file or a.defect_fix, "--challenge-file requires --defect-fix")
         if a.defect_fix:
             from fix_challenge import prepare
@@ -467,6 +499,7 @@ def dispatch(a, store):
         lens = {k: v for k, v in (("lens", a.lens), ("net_lines", a.net_lines)) if v is not None}
         event = store.append("review", actor, {"task": a.task, "stage": a.stage, "verdict": a.verdict,
                      "binding": binding, "covers": a.covers, "report": store.artifact(a.report), **extra,
+                     **({"gate_covers": a.gate_covers} if a.gate_covers else {}),
                      **({"contract": task["contract"]} if task.get("contract") else {}),
                      **fix_review_fields(task), **lens})
         if a.stage == "code" and a.verdict == "changes-required":
@@ -513,6 +546,10 @@ def dispatch(a, store):
         if command == "decision":
             data.update({k: getattr(a, k) for k in ("answers", "choice", "channel", "owner_words", "withdraws", "id")
                          if getattr(a, k) is not None})
+            require(bool(a.defer_read) == bool(a.gate), "gate_defer_invalid: --defer-read and --gate go together")
+            if a.defer_read:
+                data["defer_read"] = {"task": a.defer_read, "gate": a.gate}
+                a.task = list(dict.fromkeys(a.task + [a.defer_read, a.gate]))
             if a.task:
                 data["tasks"] = a.task
             if a.follows:
