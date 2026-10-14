@@ -30,7 +30,7 @@ It installs with `/plugin` in Claude Code and Codex. **Install:** see [Installat
 ## What's new
 
 **3.9.0**
-- **System skills that activate on their own.** *errata* brings back the lessons the squad recorded after a failed proof, a read that asked for changes or a closed defect fix, when a new task touches the same files or words. *rasoio* is a lean-code lens for code reads that declares how many lines could go. *previsione* compares a new task with similar finished ones and suggests a route. Each activation is recorded.
+- **System skills that activate on their own.** *errata* brings back the lessons the squad recorded after a failed proof, a read that asked for changes or a closed defect fix, when a new task touches the same files or words. *rasoio* is a lean-code lens for code reads that declares how many lines could go. *previsione* compares a new task with similar finished ones and suggests a route. errata and rasoio record each activation in the registry; previsione is computed on demand and records nothing.
 - **A System skills page in the dashboard** lists the three skills with what they do, their recorded activity and the security scan result for their files.
 - **Faster whole-suite proofs.** `tools/parallel_tests.py` runs the suite across processes and fails if any collected test did not run: about three times faster on our test machine.
 - **Reviewer pool.** A task can name up to four readers; the first to confirm takes the read. Small light changes can be read once at the release gate, and they show as closed but not yet read until then.
