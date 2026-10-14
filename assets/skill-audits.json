@@ -1,0 +1,91 @@
+{
+  "schema": 1,
+  "records": [
+    {
+      "skill": "errata",
+      "scanner": "cisco-ai-skill-scanner",
+      "version": "2.2.2",
+      "policy": {
+        "name": "balanced",
+        "behavioral": true,
+        "osv": true,
+        "fail_on_severity": "high"
+      },
+      "scanned_at": "2026-10-14T10:54:42.886338+00:00",
+      "result": "warn",
+      "findings": {
+        "critical": 0,
+        "high": 0,
+        "medium": 1,
+        "low": 0
+      },
+      "files": {
+        "SKILL.md": "436f8f6e23c2e2f2a86a1da44cdbb2de8fddb508adebfe0fda4375b6de41da5a",
+        "scripts/registry.py": "4e4ee2cfb33b512a3f4869558818ad1a128c2a249ab21719378ba4a573268f63",
+        "scripts/squadra.py": "e082947fb334b5416e0d159a7ed35c323122d0d059a9b419cf571863b8a5cd27",
+        "scripts/dashboard.py": "972f885c64c9e23061797d55695ef34786ba36ff5699c6b8c47890786f737930",
+        "scripts/system_skills.py": "4e904556c790b4d660a8698f0c1dddb360d3377793b1ce6ec6579e2d5739cb68",
+        "assets/dashboard.html": "b8679952b719edbaab9aa540079c39f4270322efdebcd90975503e33983dd595",
+        "references/skills/errata.md": "2a486d47946b59fd78794ed8978dba19cd6e0550b85093b96e8e79c7ca747272",
+        "scripts/errata.py": "0db6699770ad7a6e4dbdf5c50eb1a2144b0b8b242bd358939c33d3d89a93d6fa"
+      }
+    },
+    {
+      "skill": "previsione",
+      "scanner": "cisco-ai-skill-scanner",
+      "version": "2.2.2",
+      "policy": {
+        "name": "balanced",
+        "behavioral": true,
+        "osv": true,
+        "fail_on_severity": "high"
+      },
+      "scanned_at": "2026-10-14T10:54:42.886338+00:00",
+      "result": "warn",
+      "findings": {
+        "critical": 0,
+        "high": 0,
+        "medium": 1,
+        "low": 0
+      },
+      "files": {
+        "SKILL.md": "436f8f6e23c2e2f2a86a1da44cdbb2de8fddb508adebfe0fda4375b6de41da5a",
+        "scripts/registry.py": "4e4ee2cfb33b512a3f4869558818ad1a128c2a249ab21719378ba4a573268f63",
+        "scripts/squadra.py": "e082947fb334b5416e0d159a7ed35c323122d0d059a9b419cf571863b8a5cd27",
+        "scripts/dashboard.py": "972f885c64c9e23061797d55695ef34786ba36ff5699c6b8c47890786f737930",
+        "scripts/system_skills.py": "4e904556c790b4d660a8698f0c1dddb360d3377793b1ce6ec6579e2d5739cb68",
+        "assets/dashboard.html": "b8679952b719edbaab9aa540079c39f4270322efdebcd90975503e33983dd595",
+        "references/skills/previsione.md": "c6310aff2a0284c9e75f848b122cf04567a23fde4963586d64e8ae12aa9efdbe",
+        "scripts/forecast.py": "cca3b7ae89d328f163c7d877df4ca45b1b9582a7b2f1aab9619b1efcd12e7d7f"
+      }
+    },
+    {
+      "skill": "rasoio",
+      "scanner": "cisco-ai-skill-scanner",
+      "version": "2.2.2",
+      "policy": {
+        "name": "balanced",
+        "behavioral": true,
+        "osv": true,
+        "fail_on_severity": "high"
+      },
+      "scanned_at": "2026-10-14T10:54:42.886338+00:00",
+      "result": "warn",
+      "findings": {
+        "critical": 0,
+        "high": 0,
+        "medium": 1,
+        "low": 0
+      },
+      "files": {
+        "SKILL.md": "436f8f6e23c2e2f2a86a1da44cdbb2de8fddb508adebfe0fda4375b6de41da5a",
+        "scripts/registry.py": "4e4ee2cfb33b512a3f4869558818ad1a128c2a249ab21719378ba4a573268f63",
+        "scripts/squadra.py": "e082947fb334b5416e0d159a7ed35c323122d0d059a9b419cf571863b8a5cd27",
+        "scripts/dashboard.py": "972f885c64c9e23061797d55695ef34786ba36ff5699c6b8c47890786f737930",
+        "scripts/system_skills.py": "4e904556c790b4d660a8698f0c1dddb360d3377793b1ce6ec6579e2d5739cb68",
+        "assets/dashboard.html": "b8679952b719edbaab9aa540079c39f4270322efdebcd90975503e33983dd595",
+        "references/skills/rasoio.md": "cd47402b57aa2ec04f602bb4d71c578f7e404e81bc65552d8c2f079dc88be7df"
+      }
+    }
+  ]
+}
