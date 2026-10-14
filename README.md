@@ -158,9 +158,9 @@ The coordinator gives independent work to every available window at once (Codex,
 
 Every update to the owner shows the table from `squadra board`: **In progress**, **To do** and **Done**, columns **Window | Work | State | Time (approx.)**, «Done X of Y» at the end, then «Tu adesso: …» (what you do now). Times are measured; estimates are marked as estimates; no made-up percentages.
 
-### Rules 3–9: method
+### Rules 3–10: method
 
-Read before you cite; record a decision before a pinned test changes; parallel lanes own their files; state the cost and a cap before spending; the owner chooses the review mode; every close says how the next task can go faster; and a release leaves on time: a cut-off two hours after its scope is fixed, final reads scoped to the integration when every lane was already read, the parallel runner as release proof, and a stalled read moved to a free reader. Every rule in full: [the skill](SKILL.md).
+Read before you cite; record a decision before a pinned test changes; parallel lanes own their files; state the cost and a cap before spending; the owner chooses the review mode; every close says how the next task can go faster; and a release leaves on time: a cut-off two hours after its scope is fixed, final reads scoped to the integration when every lane was already read, the parallel runner as release proof, and a stalled read moved to a free reader; a fix round fixes only the problem, read only by whoever raised it. Every rule in full: [the skill](SKILL.md).
 
 <a id="prompts"></a>
 ## Example prompts

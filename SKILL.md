@@ -73,7 +73,7 @@ Before the table one sentence says where things stand and what the owner needs; 
 it, «You now: …» («Tu adesso: …» in Italian). No invented percentages: a state
 declared but not recorded is written as such.
 
-## Rules 3–9 — method
+## Rules 3–10 — method
 
 - **Rule 3 — read before you cite.** A count, a commit, task, message or proof id, or a
   file path enters a report only after it was read from a command's output in this step,
@@ -108,13 +108,24 @@ declared but not recorded is written as such.
     version, pins, mirrors and release docs, from the lane heads to the release head.
     The whole-suite proof still runs on the release head. Small light tasks registered
     `--read-at-gate` have no read of their own, so the release task (`--release-gate`)
-    must cover each of them.
+    must cover each of them, or the coordinator explicitly defers one
+    (`decision --defer-read … --gate …`).
   - **Release proof.** When the repository has the parallel runner
     (`tools/parallel_tests.py`), it is the release's whole-suite proof, with collected
     equal to executed.
   - **Stalled reads.** A delivery left without an acknowledgement for 15 minutes, while
     another non-author reader is free, moves to that reader. A reviewer pool
     (`task --reviewer` repeated) does this by itself: the first free member claims it.
+- **Rule 10 — a fix round fixes only the problem.** When a read asks for a change:
+  - the fix is one small task on the same branch carrying only that change;
+  - the reader who raised the problem reads only that delta, and the reads already
+    accepted on the rest stand, recorded by the coordinator as a decision;
+  - the proof is the parallel whole-suite runner when the repository has it: it is
+    complete and faster than a serial subset (measured on 2026-10-14: 953 tests in
+    about 105 s, against 228 s for the 416 tests that read the changed files).
+    Without it, run the tests that read the changed files, and the whole suite when
+    code changes;
+  - the reader is told at once, and a reviewer pool lets the first free member take it.
 
 ## What it is
 
