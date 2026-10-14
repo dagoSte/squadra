@@ -206,6 +206,32 @@ gate --reason ...`, then `prove --gate`, finally `resource release` after the
 terminal receipt. The label does not prove the command is the whole suite:
 the coordinator must agree on the correct command and project reservations.
 
+### Parallel whole-suite proof
+
+For this repository, the coordinator may agree on
+`["python3", "-B", "tools/parallel_tests.py"]` as the whole-suite proof argv.
+The serial `python3 -B -m unittest discover -s tests -v` remains available; a
+task's registered argv must still match its proof exactly. The parallel runner
+uses unittest discovery, including `load_tests`, and runs modules in fresh
+processes with separate synthetic HOME, CODEX_HOME, CLAUDE_CONFIG_DIR and temporary
+directories. It compares collected and executed IDs including multiplicity;
+missing tests, worker crashes and skips cannot yield a passing complete proof.
+
+The default is `min(cpu count, 8)` concurrent modules; `--jobs N` overrides it.
+Each module and the discovery process has a **300-second timeout**, overridden
+with `--timeout SECONDS`. A timed-out module is named with its elapsed time and
+fails the run. Any modules that require serial execution are listed in the
+runner's `SERIAL_MODULES` mapping with a reason and announced before execution.
+There is no silent serial retry. Module fixtures stay together.
+
+Logs, structured receipts and profiles are kept in a temporary directory printed
+at startup, or a new `--output DIRECTORY` outside the source tree. Python runs
+with bytecode writes disabled. Each module's output retains failing test names
+and tracebacks; the final summary gives collected, executed, failed, errors,
+skipped and wall seconds. A test is counted as executed when unittest starts it;
+a crash after that point still fails through its native exit or missing receipt.
+Keep the logs as evidence and inspect the summary, not only the exit code.
+
 The optional `review --findings-file findings.json` records observations for the
 **Reads** dashboard view. The file is a UTF-8 JSON array, at most 16 KiB and 32
 items; each item has exactly `severity` (`grave`, `minor`, `info`) and `title`
