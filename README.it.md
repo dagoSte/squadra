@@ -8,7 +8,7 @@ La skill di squadra più completa per Claude Code, Codex e Cursor.
 
 **Gratuita e open source** — licenza MIT, nessun account, tutto gira sul tuo computer.
 
-**Versione 3.8.0** · Gratuita · MIT · Toolkit locale · Python 3.12+ · macOS / POSIX
+**Versione 3.9.0** · Gratuita · MIT · Toolkit locale · Python 3.12+ · macOS / POSIX
 
 [English](README.md) · **Italiano** · [Privacy](PRIVACY.it.md)
 

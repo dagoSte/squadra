@@ -153,7 +153,7 @@ any needed local observations and associations; removal deletes them and the
 pending selection. It does not delete Sentry issues or Squadra tasks. No other
 plugin folder or client configuration is involved.
 
-Validation uses the Squadra 3.8.0 test suite with synthetic HOMEs, Store install
+Validation uses the Squadra 3.9.0 test suite with synthetic HOMEs, Store install
 and reinstall, the real dashboard scripts and a synthetic MCP journey; synthetic
 tool names are deliberately labelled synthetic. Validation with a real Sentry
 account remains pending.
