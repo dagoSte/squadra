@@ -12,7 +12,7 @@ La skill di squadra più completa per Claude Code, Codex e Cursor.
 
 [English](README.md) · **Italiano** · [Privacy](PRIVACY.it.md)
 
-[Inizia](#start) · [Prompt di esempio](#prompts) · [Primi passi](#first-steps) · [Dashboard](#dashboard) · [Plugin](#plugins) · [Decisioni](#decisions) · [Flusso di lavoro](#workflow) · [Checkpoint](#checkpoints) · [Comandi](#commands) · [Comunità](#community)
+[Novità](#news) · [Inizia](#start) · [Prompt di esempio](#prompts) · [Primi passi](#first-steps) · [Dashboard](#dashboard) · [Plugin](#plugins) · [Decisioni](#decisions) · [Flusso di lavoro](#workflow) · [Checkpoint](#checkpoints) · [Comandi](#commands) · [Comunità](#community)
 
 </div>
 
@@ -25,6 +25,25 @@ Controlli statici, comportamentali e delle dipendenze, con `tests/` esclusa. Il 
 https://github.com/user-attachments/assets/d0a696da-9562-4a84-9eea-0fda7b8c75d1
 
 Si installa con `/plugin` in Claude Code e Codex. **Per installarla:** vedi [Installazione](#start).
+
+<a id="news"></a>
+## Novità
+
+**3.9.0**
+- **Skill di sistema che si attivano da sole.** *errata* riporta a galla le lezioni che la squadra ha registrato dopo una prova fallita, una lettura che chiedeva modifiche o la chiusura di una correzione, quando un nuovo incarico tocca gli stessi file o le stesse parole. *rasoio* è una lente per il codice snello nelle letture del codice, che dichiara quante righe si potrebbero togliere. *previsione* confronta un nuovo incarico con quelli simili già chiusi e suggerisce un percorso. Ogni attivazione resta registrata.
+- **Una pagina «Skill di sistema» nella dashboard** elenca le tre skill con cosa fanno, la loro attività registrata e l'esito del controllo di sicurezza sui loro file.
+- **Prove sull'intera suite più veloci.** `tools/parallel_tests.py` esegue la suite su più processi e fallisce se un test raccolto non è stato eseguito: circa tre volte più veloce sulla nostra macchina di prova.
+- **Più lettori a disposizione.** Un incarico può indicare fino a quattro lettori; il primo che conferma prende la lettura. Le piccole modifiche leggere si possono leggere una sola volta, al controllo di rilascio, e fino ad allora risultano chiuse ma non ancora lette.
+- **Controlli rapidi prima della prova e della consegna.** Un progetto può dichiarare controlli veloci, per esempio che i file copiati siano identici, eseguiti sui file esatti prima di `prove` e `deliver`.
+- **Un README più leggero.** Stesse sezioni, circa metà della lettura; i dettagli sono passati nelle guide.
+- **Il rilascio parte in orario.** È una regola, non una scelta: l'ora limite è due ore dopo che il contenuto è fissato; le riletture finali guardano solo come sono state unite le corsie quando ognuna è già stata letta; una lettura che nessuno prende passa a un lettore libero.
+- Plugin: memoranda 1.0.3, Playwright 1.0.4, Sentry 0.1.1.
+
+**3.8.0**
+- **Le correzioni di difetti dimostrano che il loro test fallisce senza di loro.** Dichiara una correzione con `task --defect-fix`; prima della chiusura, `challenge` esegue i test concordati sul codice originale e su quello consegnato.
+- **Plugin Sentry (anteprima).** Porta in Squadra riepiloghi ripuliti degli errori. Gratis · Sviluppo finanziato da memoranda. Provato solo con una connessione simulata.
+- **Una vista Letture più comoda.** Mantiene lo scorrimento della tabella, mostra schede sul telefono e perde lo spazio vuoto; i passi numerati dei plugin hanno un solo segno.
+- Plugin: memoranda 1.0.2, Playwright 1.0.3, Sentry 0.1.0.
 
 ## Cosa la rende diversa
 

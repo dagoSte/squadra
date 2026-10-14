@@ -12,7 +12,7 @@ The most complete team skill for Claude Code, Codex and Cursor.
 
 **English** · [Italiano](README.it.md) · [Privacy](PRIVACY.md)
 
-[Get started](#start) · [Example prompts](#prompts) · [First steps](#first-steps) · [Dashboard](#dashboard) · [Plugins](#plugins) · [Decisions](#decisions) · [Workflow](#workflow) · [Checkpoints](#checkpoints) · [Commands](#commands) · [Community](#community)
+[What's new](#news) · [Get started](#start) · [Example prompts](#prompts) · [First steps](#first-steps) · [Dashboard](#dashboard) · [Plugins](#plugins) · [Decisions](#decisions) · [Workflow](#workflow) · [Checkpoints](#checkpoints) · [Commands](#commands) · [Community](#community)
 
 </div>
 
@@ -25,6 +25,25 @@ Static, behavioral and dependency checks, excluding `tests/`. Passing means no H
 https://github.com/user-attachments/assets/69f512be-775c-40ae-95c2-e1e403b3f5d1
 
 It installs with `/plugin` in Claude Code and Codex. **Install:** see [Installation](#start).
+
+<a id="news"></a>
+## What's new
+
+**3.9.0**
+- **System skills that activate on their own.** *errata* brings back the lessons the squad recorded after a failed proof, a read that asked for changes or a closed defect fix, when a new task touches the same files or words. *rasoio* is a lean-code lens for code reads that declares how many lines could go. *previsione* compares a new task with similar finished ones and suggests a route. Each activation is recorded.
+- **A System skills page in the dashboard** lists the three skills with what they do, their recorded activity and the security scan result for their files.
+- **Faster whole-suite proofs.** `tools/parallel_tests.py` runs the suite across processes and fails if any collected test did not run: about three times faster on our test machine.
+- **Reviewer pool.** A task can name up to four readers; the first to confirm takes the read. Small light changes can be read once at the release gate, and they show as closed but not yet read until then.
+- **Quick checks before proof and delivery.** A project can declare fast checks, such as mirrored files being identical, that run on the exact files before `prove` and `deliver`.
+- **A lighter README.** Same sections, about half the reading; the details moved to the guides.
+- **The release leaves on time.** A rule, not a choice: the cut-off is two hours after the scope is fixed; final reads look only at how the lanes were joined when each lane was already read; a read nobody picks up moves to a free reader.
+- Plugins: memoranda 1.0.3, Playwright 1.0.4, Sentry 0.1.1.
+
+**3.8.0**
+- **Defect fixes show that their test fails without them.** Declare a fix with `task --defect-fix`; before it closes, `challenge` runs the agreed tests on the original and on the delivered code.
+- **Sentry plugin (preview).** It brings sanitised error summaries into Squadra. FREE · Sponsored by memoranda. Tested with a synthetic connection only.
+- **A friendlier Reads view.** It keeps the table's scroll position, shows cards on phones and loses the blank band; numbered plugin steps show one marker.
+- Plugins: memoranda 1.0.2, Playwright 1.0.3, Sentry 0.1.0.
 
 ## What makes it different
 
