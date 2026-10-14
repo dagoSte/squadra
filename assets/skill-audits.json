@@ -11,7 +11,7 @@
         "osv": true,
         "fail_on_severity": "high"
       },
-      "scanned_at": "2026-10-14T10:54:42.886338+00:00",
+      "scanned_at": "2026-10-14T11:32:43.146597+00:00",
       "result": "warn",
       "findings": {
         "critical": 0,
@@ -20,7 +20,7 @@
         "low": 0
       },
       "files": {
-        "SKILL.md": "436f8f6e23c2e2f2a86a1da44cdbb2de8fddb508adebfe0fda4375b6de41da5a",
+        "SKILL.md": "a5190e720bc96264e881fe3629b0cbd743072aa1de766aac7d989c7c346d833d",
         "scripts/registry.py": "4e4ee2cfb33b512a3f4869558818ad1a128c2a249ab21719378ba4a573268f63",
         "scripts/squadra.py": "e082947fb334b5416e0d159a7ed35c323122d0d059a9b419cf571863b8a5cd27",
         "scripts/dashboard.py": "972f885c64c9e23061797d55695ef34786ba36ff5699c6b8c47890786f737930",
@@ -40,7 +40,7 @@
         "osv": true,
         "fail_on_severity": "high"
       },
-      "scanned_at": "2026-10-14T10:54:42.886338+00:00",
+      "scanned_at": "2026-10-14T11:32:43.146597+00:00",
       "result": "warn",
       "findings": {
         "critical": 0,
@@ -49,7 +49,7 @@
         "low": 0
       },
       "files": {
-        "SKILL.md": "436f8f6e23c2e2f2a86a1da44cdbb2de8fddb508adebfe0fda4375b6de41da5a",
+        "SKILL.md": "a5190e720bc96264e881fe3629b0cbd743072aa1de766aac7d989c7c346d833d",
         "scripts/registry.py": "4e4ee2cfb33b512a3f4869558818ad1a128c2a249ab21719378ba4a573268f63",
         "scripts/squadra.py": "e082947fb334b5416e0d159a7ed35c323122d0d059a9b419cf571863b8a5cd27",
         "scripts/dashboard.py": "972f885c64c9e23061797d55695ef34786ba36ff5699c6b8c47890786f737930",
@@ -69,7 +69,7 @@
         "osv": true,
         "fail_on_severity": "high"
       },
-      "scanned_at": "2026-10-14T10:54:42.886338+00:00",
+      "scanned_at": "2026-10-14T11:32:43.146597+00:00",
       "result": "warn",
       "findings": {
         "critical": 0,
@@ -78,7 +78,7 @@
         "low": 0
       },
       "files": {
-        "SKILL.md": "436f8f6e23c2e2f2a86a1da44cdbb2de8fddb508adebfe0fda4375b6de41da5a",
+        "SKILL.md": "a5190e720bc96264e881fe3629b0cbd743072aa1de766aac7d989c7c346d833d",
         "scripts/registry.py": "4e4ee2cfb33b512a3f4869558818ad1a128c2a249ab21719378ba4a573268f63",
         "scripts/squadra.py": "e082947fb334b5416e0d159a7ed35c323122d0d059a9b419cf571863b8a5cd27",
         "scripts/dashboard.py": "972f885c64c9e23061797d55695ef34786ba36ff5699c6b8c47890786f737930",
