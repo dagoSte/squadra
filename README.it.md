@@ -771,7 +771,7 @@ Gli incarichi senza route conservano il comportamento precedente. Una squadra co
 <a id="commands"></a>
 ## Comandi di squadra
 
-Ogni comando, raggruppato per scopo: **46 sottocomandi**, più `--version`. Usa `squadra <comando> --help` per le opzioni; i comandi del registro accettano `--root` o `SQUADRA_ROOT`. «Solo il coordinatore» segna ciò che solo il coordinatore può registrare: `task`, `route`, `supersede`, `brief`, `close`, `ask`, `decision`, `settings`, `pause`, `resume`, `save`, `standby`, `ping --sweep`, e la ricevuta che `restore-check` scrive nel registro vivo. Senza installare, gli stessi comandi girano come `python3 -B scripts/squadra.py <comando>`.
+Ogni comando, raggruppato per scopo: **47 sottocomandi**, più `--version`. Usa `squadra <comando> --help` per le opzioni; i comandi del registro accettano `--root` o `SQUADRA_ROOT`. «Solo il coordinatore» segna ciò che solo il coordinatore può registrare: `task`, `route`, `supersede`, `brief`, `close`, `ask`, `decision`, `settings`, `pause`, `resume`, `save`, `standby`, `ping --sweep`, e la ricevuta che `restore-check` scrive nel registro vivo. Senza installare, gli stessi comandi girano come `python3 -B scripts/squadra.py <comando>`.
 
 ### Avvio e squadra
 
@@ -818,6 +818,7 @@ Ogni comando, raggruppato per scopo: **46 sottocomandi**, più `--version`. Usa 
 | `check` | Controlla che prova, lettura e candidato corrispondano ancora. |
 | `close` | Solo il coordinatore: registra la fine di un incarico controllato. |
 | `challenge` | Dimostra che un fix dichiarato fallisce senza la modifica, oppure esegue la sonda autonoma a tre input. |
+| `lesson` | Registra quello che un esito negativo ha insegnato (errata), segna una lezione come inefficace o la ritira, oppure elenca le lezioni; briefing e avvio mostrano quelle pertinenti. |
 
 ### Proprietario e output
 

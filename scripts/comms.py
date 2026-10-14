@@ -9,7 +9,7 @@ OTHER_KNOWN = {"init", "agent", "task", "plan", "start", "deliver", "review", "c
                "run.start", "run.end", "run.cancel", "run.progress", "resource.acquire",
                "resource.release", "pause", "resume", "legacy", "decision", "ask", "diagnostic",
                "settings", "save", "restore.check", "restore.freeze", "challenge", "benchmark", "brief",
-               "supersede", "route", "fix"}
+               "supersede", "route", "fix", "lesson", "lesson.retire", "lesson.recall", "lesson.ineffective"}
 AVAILABILITY = {"active", "stand-by"}
 LIMIT = 500
 

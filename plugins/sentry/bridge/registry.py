@@ -270,6 +270,25 @@ def apply(state, event):
             {**d, "actor": event["actor"], "utc": event["utc"]})
         if kind == "challenge" and d.get("task"):
             state["tasks"][d["task"]]["fix_result"] = dict(d)
+    elif kind == "lesson":
+        state.setdefault("lessons", {})[d["id"]] = {**d, "author": event["actor"], "utc": event["utc"],
+                                                   "seq": event.get("seq"), "retired": None, "recalls": [],
+                                                   "recalled_tasks": [], "ineffective": []}
+    elif kind == "lesson.retire":
+        state["lessons"][d["lesson"]]["retired"] = {"reason": d["reason"], "actor": event["actor"],
+                                                    "utc": event["utc"], "seq": event.get("seq")}
+    elif kind == "lesson.recall":
+        state.setdefault("lesson_recalls", []).append({**d, "actor": event["actor"], "utc": event["utc"],
+                                                       "seq": event.get("seq")})
+        for name in d["lessons"]:
+            lesson = state["lessons"][name]
+            lesson["recalls"].append(event.get("seq"))
+            if d["task"] not in lesson["recalled_tasks"]:
+                lesson["recalled_tasks"].append(d["task"])
+    elif kind == "lesson.ineffective":
+        state["lessons"][d["lesson"]]["ineffective"].append({"recall": d["recall"], "reason": d["reason"],
+                                                             "actor": event["actor"], "utc": event["utc"],
+                                                             "seq": event.get("seq")})
     state["event_count"] += 1
 
 
@@ -883,7 +902,8 @@ def validate(state, kind, actor, d):
                     "review", "close", "output", "run.start", "run.end", "run.cancel", "run.progress",
                     "resource.acquire", "resource.release", "pause", "resume", "legacy", "decision", "ask", "diagnostic",
                     "settings", "save", "restore.check", "restore.freeze", "challenge", "benchmark", "brief",
-                    "availability", "supersede", "route", "fix"},
+                    "availability", "supersede", "route", "fix",
+                    "lesson", "lesson.retire", "lesson.recall", "lesson.ineffective"},
             "Unknown event kind")
     if kind == "init":
         require(not state["workspace"], "Workspace already initialized")
@@ -993,6 +1013,9 @@ def validate(state, kind, actor, d):
             kind in {"run.start", "deliver", "review", "close"} and state["tasks"].get(d.get("task"), {}).get("fix")):
         from fix_challenge import validate_event as validate_fix_event
         validate_fix_event(state, kind, actor, d)
+    if kind.startswith("lesson"):
+        from errata import validate_event as validate_lesson_event
+        validate_lesson_event(state, kind, actor, d)
     if kind == "supersede":
         validate_supersede(state, d)
     if kind in {"plan", "start", "deliver", "review", "close", "run.start"} or (kind == "output" and d.get("task")):
@@ -1057,6 +1080,11 @@ def validate(state, kind, actor, d):
         if kind == "review":
             if 'findings' in d:
                 validate_findings(d['findings'])
+            if 'net_lines' in d:
+                require('lens' in d, "net_lines_requires_lens")
+                require(type(d['net_lines']) is int and 0 <= d['net_lines'] <= 1000000, "net_lines_invalid")
+            if 'lens' in d:
+                require(d['lens'] == "rasoio", "lens_unknown")
             author_identities = {state["agents"][a]["identity"] for a in task["authors"]}
             require(state["agents"][actor]["identity"] not in author_identities,
                     "Author cannot independently review own changes, even under another seat ID")

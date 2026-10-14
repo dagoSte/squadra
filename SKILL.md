@@ -287,6 +287,23 @@ reconcile before proceeding: do not claim a save that did not succeed.
 
 `squadra board [--lang it|en]` shows the tables by window, work and state, also at the top of `status` and `stato.md`.
 
+## Built-in skills: errata and rasoio
+
+Both activate by themselves at fixed moments; the agent follows the guide without asking
+the owner, and every activation leaves a registry event.
+
+- **errata** ([guide](references/skills/errata.md)). At `brief --task` and `start` the
+  CLI shows the matching lessons and records a `lesson.recall`: read them and apply them.
+  After a code read that asks for changes, a failed proof or a closed defect fix, the
+  output asks the agent who ran the command for a lesson: record it at once with
+  `squadra lesson` (`lesson` event), or say in the output why no trigger can be named.
+  When a mistake comes back after its lesson was shown, mark it with
+  `lesson --ineffective` (`lesson.ineffective` event) and record a better one.
+- **rasoio** ([guide](references/skills/rasoio.md)). Every code read whose candidate
+  changes code, not only prose, applies the lens: `review --lens rasoio --net-lines N`,
+  with the guide's tags and its closing net figure. The lens adds observations; it never
+  changes a verdict, check or close rule.
+
 ## Dashboard, stop and continuity
 
 - **Autonomous checkpoints:** do not wait for the owner to ask for them. After a

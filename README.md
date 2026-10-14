@@ -763,7 +763,7 @@ Existing tasks without a route keep their behavior. A frozen squad must explicit
 <a id="commands"></a>
 ## Squadra commands
 
-Every command, grouped by purpose: **46 subcommands**, plus `--version`. Use `squadra <command> --help` for the flags; registry commands accept `--root` or `SQUADRA_ROOT`. «Coordinator only» marks what only the coordinator can record: `task`, `route`, `supersede`, `brief`, `close`, `ask`, `decision`, `settings`, `pause`, `resume`, `save`, `standby`, `ping --sweep`, and the receipt that `restore-check` writes into the live registry. Without installing, the same commands run as `python3 -B scripts/squadra.py <command>`.
+Every command, grouped by purpose: **47 subcommands**, plus `--version`. Use `squadra <command> --help` for the flags; registry commands accept `--root` or `SQUADRA_ROOT`. «Coordinator only» marks what only the coordinator can record: `task`, `route`, `supersede`, `brief`, `close`, `ask`, `decision`, `settings`, `pause`, `resume`, `save`, `standby`, `ping --sweep`, and the receipt that `restore-check` writes into the live registry. Without installing, the same commands run as `python3 -B scripts/squadra.py <command>`.
 
 ### Start and team
 
@@ -810,6 +810,7 @@ Every command, grouped by purpose: **46 subcommands**, plus `--version`. Use `sq
 | `check` | Check that proof, review and candidate still match. |
 | `close` | Coordinator only: record the end of a checked task. |
 | `challenge` | Prove a declared fix fails without the change, or run a standalone three-input oracle. |
+| `lesson` | Record what a red taught (errata), mark a lesson ineffective or retire it, or list lessons; brief and start show the matching ones. |
 
 ### Owner and outputs
 

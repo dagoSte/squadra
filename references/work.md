@@ -583,3 +583,62 @@ old challenge records do not qualify new fix tasks. Existing frozen squads need
 an explicit coordinated upgrade of every writer. Old CLIs ignore these fields;
 mixed-version enforcement is not promised. Unsupported future contracts can be
 read but cannot qualify a close. Nothing installs or migrates a live squad.
+
+<a id="errata-and-rasoio"></a>
+
+## Lessons (errata) and the rasoio lens
+
+The two built-in skills record their activations as registry events. The guides are
+[errata](skills/errata.md) and [rasoio](skills/rasoio.md).
+
+| Kind | Actor | Fields |
+|---|---|---|
+| `lesson` | the author | `id` (`L` + at least 4 digits, unique), `text` (1–1000 characters), `trigger` `{"paths": [glob…], "words": [word…]}` (each list at most 10, at least one entry overall), `source` `{"task", "event", "eligible"}` |
+| `lesson.retire` | the coordinator or the lesson's author | `lesson`, `reason` (1–500 characters) |
+| `lesson.recall` | the actor of `brief --task` or `start` | `task`, `at` (`brief` or `start`), `lessons` (1–5 distinct ids, none retired) |
+| `lesson.ineffective` | any seat | `lesson`, `recall` (the seq of a `lesson.recall` that showed it), `reason` |
+| `review` | unchanged | optional `lens` (`rasoio`) and `net_lines` (integer 0–1,000,000, only with `lens`) |
+
+`squadra lesson --task T --source-event N --text … --path GLOB --word WORD` records a
+lesson. The source must be one of the task's reds: a code review with `changes-required`, the
+`run.end` of a failed proof, or the `close` of a task with `fix`. `--any-source` accepts
+another event of the task and records `"eligible": false`. `--retire ID --reason …`,
+`--ineffective ID --recall SEQ --reason …` and the read-only `--list` complete it.
+`review --lens rasoio --net-lines N` declares the lens.
+
+`brief --task` and `start` show at most five matching lessons: 3 points per trigger glob
+matching a path named in the task's title, scope, requirements or brief, 1 per trigger word
+found there, and 1 more if the lesson is already ineffective. Retired lessons are excluded;
+ties go to the newest. When at least one matches, the `brief` or `start` event and a
+`lesson.recall` are appended in one transaction; otherwise output and events are those of
+3.8.0. A code read with `changes-required`, a failed `prove` and the `close` of a defect fix
+add an `errata` object to their output: `record_lesson`, `task`, `source_event`,
+`responsible` (the actor who ran the command), `reason` and a `command` template whose text
+the agent writes. The registry never writes a lesson by itself.
+
+Derived state, created on the first lesson event only: `state["lessons"][id]` with `retired`,
+`recalls` (recall seqs), `recalled_tasks` (distinct tasks) and `ineffective`;
+`state["lesson_recalls"]`. A lesson's status is `retired`, `ineffective`, `active` (shown) or
+`new`. `lesson --list` returns the lessons with their status and the counts
+`lesson_events`, `recall_events`, `recalled_pairs` (distinct task and lesson pairs),
+`ineffective_marks`, `rasoio_reads` and `net_lines_declared`. Older Squadra windows ignore
+these kinds, so mixed-version enforcement is not promised.
+
+| Refusal | When |
+|---|---|
+| `lesson_text_required` | empty, blank, too long or control-character text |
+| `lesson_trigger_required` | no glob and no word |
+| `lesson_trigger_invalid` | a malformed glob or word, or more than 10 of either |
+| `lesson_source_required` | missing or unknown task, an event outside the registry, no `eligible` |
+| `lesson_source_not_eligible` | the cited event is not a red of the task (CLI; `--any-source` allows it) |
+| `lesson_source_unrelated` | the cited event concerns another task (CLI) |
+| `lesson_id_invalid`, `lesson_id_taken` | a malformed or reused id |
+| `lesson_fields_invalid` | unknown fields |
+| `lesson_unknown` | retire or ineffective on an unknown lesson |
+| `lesson_already_retired`, `lesson_retire_not_allowed` | a second retirement, or by a seat that is neither the coordinator nor the author |
+| `lesson_reason_required` | an empty reason |
+| `lesson_recall_invalid` | a recall with an unknown stage, no lessons, more than five, repeats, retired or unknown lessons |
+| `lesson_recall_unknown` | an ineffective mark citing a recall that did not show the lesson |
+| `lesson_actor_required` | `lesson` without `--actor`, except `--list` (CLI) |
+| `lens_unknown` | a lens other than `rasoio` |
+| `net_lines_requires_lens`, `net_lines_invalid` | `net_lines` without the lens, or not an integer from 0 to 1,000,000 |

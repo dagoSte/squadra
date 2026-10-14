@@ -180,6 +180,15 @@ def parser():
     a.add_argument("--report", required=True)
     a.add_argument("--findings-file", help="Optional bounded JSON observations (severity and one-line title)")
     a.add_argument("--covers", action="append", default=[])
+    a.add_argument("--lens", choices=["rasoio"], help="Optional lean-code lens (references/skills/rasoio.md)")
+    a.add_argument("--net-lines", type=int, help="With --lens: declared lines that could be removed")
+    a = sub.add_parser("lesson", help="Record, retire, mark ineffective or list errata lessons")
+    a.add_argument("--actor"); a.add_argument("--task"); a.add_argument("--source-event", type=int)
+    a.add_argument("--text"); a.add_argument("--path", action="append", default=[]); a.add_argument("--word", action="append", default=[])
+    a.add_argument("--any-source", action="store_true", help="Cite an event of the task that is not a red")
+    form = a.add_mutually_exclusive_group()
+    form.add_argument("--retire"); form.add_argument("--ineffective"); form.add_argument("--list", action="store_true")
+    a.add_argument("--recall", type=int); a.add_argument("--reason")
     a = sub.add_parser("output"); a.add_argument("--actor", required=True); a.add_argument("--task")
     a.add_argument("--file", required=True); a.add_argument("--next", required=True)
     a.add_argument("--artifact", action="append", default=[])
@@ -243,6 +252,42 @@ def parser():
     for child in sub.choices.values():
         child.add_argument("--root", default=argparse.SUPPRESS, help="Shared persistent workspace")
     return p
+
+
+def seq_of(store, event_id):
+    return store.db.execute("SELECT seq FROM events WHERE id=?", (event_id,)).fetchone()[0]
+
+
+def recall(store, state, actor, task, at, operation, extra=""):
+    """Append brief/start, plus the lessons it showed; without a match nothing differs from before."""
+    from errata import select
+    shown = select(state, store.root, task, extra) if task in state["tasks"] and state.get("lessons") else []
+    if not shown:
+        store.batch([operation])
+        return None
+    saved = store.batch([operation, ("lesson.recall", actor, {"task": task, "at": at,
+                                     "lessons": [s["id"] for s in shown]}, None)])
+    return {"lessons": shown, "recall": seq_of(store, saved[1])}
+
+
+def lesson(store, state, a):
+    import errata
+    if a.list:
+        return errata.listing(state)
+    require(bool(a.actor), "lesson_actor_required")
+    if a.retire:
+        event = store.append("lesson.retire", a.actor, {"lesson": a.retire, "reason": a.reason})
+        return {"lesson": a.retire, "retired": True, "event": seq_of(store, event)}
+    if a.ineffective:
+        event = store.append("lesson.ineffective", a.actor, {"lesson": a.ineffective, "recall": a.recall, "reason": a.reason})
+        return {"lesson": a.ineffective, "ineffective": True, "event": seq_of(store, event)}
+    require(a.task in state["tasks"] and a.source_event is not None, "lesson_source_required")
+    eligible = errata.source_check(state, store.events(), a.task, a.source_event, a.any_source)
+    name = errata.next_id(state)
+    trigger = {k: v for k, v in (("paths", a.path), ("words", a.word)) if v}
+    event = store.append("lesson", a.actor, {"id": name, "text": a.text, "trigger": trigger,
+                         "source": {"task": a.task, "event": a.source_event, "eligible": eligible}})
+    return {"lesson": name, "event": seq_of(store, event), "source_eligible": eligible}
 
 
 def dispatch(a, store):
@@ -383,14 +428,18 @@ def dispatch(a, store):
     elif command == "plan":
         store.append("plan", actor, {"task": a.task, "artifact": store.artifact(a.file)})
     elif command == "start":
-        store.append("start", actor, {"task": a.task})
+        return recall(store, state, actor, a.task, "start", ("start", actor, {"task": a.task}, None))
     elif command in {"deliver", "advance"}:
         return deliver(store, actor, a.task, reconcile=command == "advance")
     elif command in {"check", "close"}:
         current = bindings(store, a.task)
+        result = {"task": a.task, "verified": True, "snapshot": current["sha256"], "publication_authorized": False}
         if command == "close":
-            store.append("close", actor, {"task": a.task})
-        return {"task": a.task, "verified": True, "snapshot": current["sha256"], "publication_authorized": False}
+            event = store.append("close", actor, {"task": a.task})
+            if state["tasks"][a.task].get("fix"):
+                from errata import hint
+                result["errata"] = hint(a.task, seq_of(store, event), actor, "defect fix closed")
+        return result
     elif command == "review":
         from reads import load_findings
         extra = {'findings': load_findings(a.findings_file)} if a.findings_file is not None else {}
@@ -402,10 +451,14 @@ def dispatch(a, store):
         else:
             current = bindings(store, a.task, require_review=False)
             binding = current["sha256"]
-        store.append("review", actor, {"task": a.task, "stage": a.stage, "verdict": a.verdict,
+        lens = {k: v for k, v in (("lens", a.lens), ("net_lines", a.net_lines)) if v is not None}
+        event = store.append("review", actor, {"task": a.task, "stage": a.stage, "verdict": a.verdict,
                      "binding": binding, "covers": a.covers, "report": store.artifact(a.report), **extra,
                      **({"contract": task["contract"]} if task.get("contract") else {}),
-                     **fix_review_fields(task)})
+                     **fix_review_fields(task), **lens})
+        if a.stage == "code" and a.verdict == "changes-required":
+            from errata import hint
+            return {"errata": hint(a.task, seq_of(store, event), actor, "code read asked for changes")}
     elif command == "output":
         output = {"task": a.task, "text": Path(a.file).read_text(), "next": a.next,
                   "artifacts": [store.artifact(f) for f in a.artifact]}
@@ -419,6 +472,12 @@ def dispatch(a, store):
                          timeout=a.timeout, gate=getattr(a, "gate", False), executable=getattr(a, "cli", None),
                          stage=getattr(a, "stage", "code"), expected_rc=getattr(a, "expected_rc", 0), covers=getattr(a, "covers", []))
         if result["status"] not in {"passed", "matched"}:
+            if command == "prove":
+                from errata import hint
+                end = next((e for e in reversed(store.events()) if e["kind"] == "run.end"
+                            and e["data"].get("id") == result.get("id")), None)
+                if end:
+                    result["errata"] = hint(a.task, end["seq"], actor, "proof failed")
             raise Error(json.dumps(result, ensure_ascii=False))
         return result
     elif command == "cancel":
@@ -446,7 +505,13 @@ def dispatch(a, store):
         text = body.decode("utf-8")
         data = {"project": True} if a.project else {"task": a.task}
         # The registered artifact is exactly the bytes whose text is recorded.
-        store.append("brief", actor, {**data, "text": text, "artifact": store.artifact_bytes(body, path.name, str(path))})
+        operation = ("brief", actor, {**data, "text": text, "artifact": store.artifact_bytes(body, path.name, str(path))}, None)
+        if a.project or a.task not in state["tasks"]:
+            store.batch([operation])
+        else:
+            return recall(store, state, actor, a.task, "brief", operation, extra=text)
+    elif command == "lesson":
+        return lesson(store, state, a)
     elif command == "legacy":
         path = Path(a.path).resolve(strict=True)
         files = []
