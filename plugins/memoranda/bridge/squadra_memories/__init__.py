@@ -4,7 +4,7 @@ import sys
 
 sys.dont_write_bytecode = True
 
-VERSION = "1.0.3"
+VERSION = "1.0.4"
 FORMAT = "squadra-memory-candidates"
 FORMAT_VERSION = 1
 DECLARATION_FORM = "da-ricordare/1"

@@ -8,7 +8,7 @@ La skill di squadra più completa per Claude Code, Codex e Cursor.
 
 **Gratuita e open source** — licenza MIT, nessun account, tutto gira sul tuo computer.
 
-**Versione 3.9.0** · Gratuita · MIT · Toolkit locale · Python 3.12+ · macOS / POSIX
+**Versione 3.9.1** · Gratuita · MIT · Toolkit locale · Python 3.12+ · macOS / POSIX
 
 [English](README.md) · **Italiano** · [Privacy](PRIVACY.it.md)
 
@@ -28,6 +28,10 @@ Si installa con `/plugin` in Claude Code e Codex. **Per installarla:** vedi [Ins
 
 <a id="news"></a>
 ## Novità
+
+**3.9.1**
+- **Ritocchi all'interfaccia.** Più spazio nella pagina «Skill di sistema» e tra i suoi blocchi; il grassetto nelle descrizioni delle skill appare come grassetto; l'obiettivo del progetto e la guida alla lettura compaiono solo nella panoramica; più badge in cima a questa pagina.
+- Plugin: memoranda 1.0.4, Playwright 1.0.5, Sentry 0.1.2.
 
 **3.9.0**
 - **Skill di sistema che si attivano da sole.** *errata* riporta a galla le lezioni che la squadra ha registrato dopo una prova fallita, una lettura che chiedeva modifiche o la chiusura di una correzione, quando un nuovo incarico tocca gli stessi file o le stesse parole. *rasoio* è una lente per il codice snello nelle letture del codice, che dichiara quante righe si potrebbero togliere. *previsione* confronta un nuovo incarico con quelli simili già chiusi e suggerisce un percorso. errata e rasoio registrano ogni attivazione nel registro; previsione viene calcolata al momento e non registra nulla.

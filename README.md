@@ -8,7 +8,7 @@ The most complete team skill for Claude Code, Codex and Cursor.
 
 **Free and open source** — MIT licence, no account, everything runs on your machine.
 
-**Version 3.9.0** · Free · MIT · Local toolkit · Python 3.12+ · macOS / POSIX
+**Version 3.9.1** · Free · MIT · Local toolkit · Python 3.12+ · macOS / POSIX
 
 **English** · [Italiano](README.it.md) · [Privacy](PRIVACY.md)
 
@@ -28,6 +28,10 @@ It installs with `/plugin` in Claude Code and Codex. **Install:** see [Installat
 
 <a id="news"></a>
 ## What's new
+
+**3.9.1**
+- **Interface fixes.** More room on the System skills page and between its blocks; bold text in skill descriptions shows as bold; the project goal and the reading help appear on the overview only; more badges at the top of this page.
+- Plugins: memoranda 1.0.4, Playwright 1.0.5, Sentry 0.1.2.
 
 **3.9.0**
 - **System skills that activate on their own.** *errata* brings back the lessons the squad recorded after a failed proof, a read that asked for changes or a closed defect fix, when a new task touches the same files or words. *rasoio* is a lean-code lens for code reads that declares how many lines could go. *previsione* compares a new task with similar finished ones and suggests a route. errata and rasoio record each activation in the registry; previsione is computed on demand and records nothing.
