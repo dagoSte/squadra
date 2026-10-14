@@ -256,10 +256,12 @@ const scenarios={
   const view=one(app.content(),e=>hasClass(e,'dec-graph'));
   assert.ok(at[0]>40,'the followed node is beyond the first screen');
   assert.deepEqual([view.scrollLeft,view.scrollTop],[Math.max(0,at[0]-40),Math.max(0,at[1]-40)],'the followed decision is scrolled into view');
-  const strip=app.doc.getElementById('overview').children[0];
-  assert.match(text(strip),/Atlas tiene in ordine/);
-  one(strip,e=>e.tag==='button'&&e.textContent==='Apri la panoramica').onclick();await settle();
-  assert.equal(app.doc.getElementById('overview').children[0].children[0].textContent,'Panoramica');
+  // D-STRIP-OVERVIEW-ONLY: other pages carry no project strip; the goal stays on the overview.
+  assert.equal(app.doc.getElementById('overview').children.length,0);
+  one(app.doc.getElementById('tabs'),e=>e.tag==='button'&&e.textContent.includes('Quadro')).onclick();await settle();
+  const overview=app.doc.getElementById('overview').children[0];
+  assert.equal(overview.children[0].textContent,'Panoramica');
+  assert.match(text(overview),/Atlas tiene in ordine/);
  },
  async cards(){
   const app=await boot({language:'it-IT'});
