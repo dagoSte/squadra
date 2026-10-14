@@ -132,6 +132,8 @@ def parser():
     p.add_argument("--root", help="Shared persistent workspace; or SQUADRA_ROOT")
     p.add_argument("--version", action="version", version=VERSION)
     sub = p.add_subparsers(dest="command", required=True)
+    a = sub.add_parser("forecast", help="Read-only comparison with similar completed tasks; no estimate below three samples")
+    a.add_argument("--task", required=True)
     a = sub.add_parser("init"); a.add_argument("--name", required=True); a.add_argument("--project", required=True)
     a.add_argument("--lang", choices=["it", "en"], help="Workspace board language (default it)")
     a.add_argument("--temporary", action="store_true", help="Explicit disposable test/demo workspace")
@@ -602,6 +604,12 @@ def main(argv=None):
     a = parser().parse_args(argv)
     store = None
     try:
+        if a.command == "forecast":
+            from forecast import calculate
+            store = Store(workspace_path(a.root), read_only=True)
+            events = store.events()
+            print(json.dumps(calculate(store.state(events), events, a.task), ensure_ascii=False, indent=2))
+            return 0
         if a.command == "board":
             store = Store(workspace_path(a.root), read_only=True)
             events = store.events()
@@ -664,9 +672,13 @@ def main(argv=None):
                 print(json.dumps(visible, ensure_ascii=False, indent=2))
             if a.command not in {"inbox", "doctor"}:
                 print(table(state, read_at=now(), events=events))
+            forecast_task = a.id if a.command == 'task' else getattr(a, 'task', None)
+            if a.command in {'task', 'brief', 'start'} and forecast_task:
+                from forecast import calculate
+                print(json.dumps({'forecast': calculate(state, events, forecast_task)}, ensure_ascii=False, indent=2))
         return 0
     except (Error, OSError, ValueError, KeyError, RuntimeError) as exc:
-        if store and a.command not in {"census", "board"}:
+        if store and a.command not in {"census", "board", "forecast"}:
             try:
                 diagnostic = {"command": a.command, "error": str(exc), "utc": now()}
                 if isinstance(getattr(a, "task", None), str):

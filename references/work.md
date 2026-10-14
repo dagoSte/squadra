@@ -1,5 +1,16 @@
 # Task, proof, review and output
 
+## Forecast from comparable work
+
+`squadra forecast --task TASK --root REGISTRY` verifies and reads an existing
+registry without exporting it or writing an event. Task creation, briefing and
+start also print this comparison. Follow [the previsione guide](skills/previsione.md)
+for cohort selection, the three-sample minimum and elapsed-time interpretation.
+The coordinator follows the suggested route or records a reason to deviate;
+the forecast itself cannot change a route, reviewer, budget or permission.
+The System skills page explains the automatic trigger and shows **Computed on
+demand**, because no historical activation counter is recorded for forecasts.
+
 <a id="triage-in-una-pagina"></a>
 ## Triage on one page
 

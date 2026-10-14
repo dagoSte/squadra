@@ -163,6 +163,17 @@ The installed command is `squadra`. Without the launcher use
 
 ## Work, verification and limits
 
+### Previsione: use comparable history before choosing a route
+
+At task creation, briefing and start, read the automatically printed forecast and
+follow [previsione](references/skills/previsione.md). The coordinator follows the
+suggested route unless it records a reason to deviate in a decision linked to the
+task. A historical estimate never overrides triage, permissions or light-route
+eligibility. Missing scope or fewer than three complete comparable tasks means no
+numeric estimate. `squadra forecast --task ID` is read-only and records no activation;
+the System skills page labels it **Computed on demand** rather than inventing a count.
+
+
 Read `references/work.md` for tasks, plan, proofs and review. Read
 `references/runtime.md` only if you must invoke a client automatically.
 For the dashboard plugins' data and declared settings read [folders, schemas and limits](references/plugins.md); their labels do not authorize actions on the registry.

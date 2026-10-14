@@ -21,6 +21,8 @@ import plugins
 import plugin_settings
 import plugin_actions
 import plugin_store
+import system_skills
+import forecast
 
 SETTINGS_BODY_TIMEOUT = 5.0
 SETTINGS_STATUS = {'host_refused': 403, 'token_required': 401, 'origin_refused': 403,
@@ -185,7 +187,12 @@ def make_server(root, port=0):
                     return
                 events, recorded, compact = view.read()
                 state = dict(recorded)
-                if path == "/api/state":
+                if path == '/api/skills':
+                    self.answer(200, json.dumps(system_skills.catalogue(events, recorded), ensure_ascii=False).encode())
+                elif path == '/api/forecast':
+                    task_id = unquote(self.headers.get('X-Squadra-Record', ''))
+                    self.answer(200, json.dumps(forecast.calculate(recorded, events, task_id), ensure_ascii=False).encode())
+                elif path == "/api/state":
                     key = remember_key(events)
                     state["plugins"] = {**plugin_actions.discover(plugin_home, key), "key": key}
                     state["attention"] = attention(state)
