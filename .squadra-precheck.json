@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "total_seconds": 30,
+  "checks": [
+    {"name": "bridge-copies", "timeout_seconds": 10,
+     "argv": ["python3", "-B", "tests/precheck_checks.py", "bridge-copies"]},
+    {"name": "versions", "timeout_seconds": 10,
+     "argv": ["python3", "-B", "tests/precheck_checks.py", "versions",
+              "scripts/registry.py",
+              "plugins/memoranda/bridge/registry.py", "plugins/playwright/bridge/registry.py", "plugins/sentry/bridge/registry.py",
+              ".claude-plugin/plugin.json", ".codex-plugin/plugin.json",
+              "README.md", "README.it.md"]},
+    {"name": "readme-headings", "timeout_seconds": 10,
+     "argv": ["python3", "-B", "tests/precheck_checks.py", "readme-headings"]},
+    {"name": "pin-label", "timeout_seconds": 10,
+     "argv": ["python3", "-B", "tests/precheck_checks.py", "pin-label"]},
+    {"name": "plugin-versions", "timeout_seconds": 10,
+     "argv": ["python3", "-B", "tests/precheck_checks.py", "plugin-versions",
+              "plugins/memoranda/bridge/squadra_memories/__init__.py"]}
+  ]
+}

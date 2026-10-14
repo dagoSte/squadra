@@ -139,7 +139,8 @@ def terminate(proc):
 
 
 def execute(store, actor, task_id, argv=None, mode="proof", prompt=None,
-            timeout=120, gate=False, executable=None, run_id=None, stage="code", expected_rc=0, covers=None):
+            timeout=120, gate=False, executable=None, run_id=None, stage="code", expected_rc=0, covers=None,
+            *, checked=None):
     state = store.state()
     require(task_id in state["tasks"], "Unknown task")
     task = state["tasks"][task_id]
@@ -152,6 +153,10 @@ def execute(store, actor, task_id, argv=None, mode="proof", prompt=None,
         path = Path(task["plan"]["original"])
         require(path.is_file() and digest(path.read_bytes()) == task["plan"]["sha256"], "Original plan changed; re-register/review it")
     before = snapshot(task["repo"], store.root)
+    # A passed precheck binds the proof to the exact bytes it checked, before any record or process.
+    require(checked is None or before == checked,
+            "precheck_failed: source changed after the checks (checked " + str((checked or {}).get("sha256", ""))[:12] +
+            ", now " + before["sha256"][:12] + "); prove again")
     if task.get("fix"):
         from fix_challenge import binding
         fix_record = {"fix_binding": binding(task)}

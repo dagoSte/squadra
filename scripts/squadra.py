@@ -111,9 +111,14 @@ def deliver(store, actor, task_id, reconcile=False):
         data.update(packet=artifact, packet_data=packet, handoff=message)
         operations.append(("message", task["coordinator"], {"id": message, "to": reader, "related_task": task_id,
                            "body": "Read exact candidate " + current["head"] + " for " + task_id + ".\nImmutable packet " + artifact["sha256"] + " in " + str(store.root / "artifacts") + ".\nActual recipient ACK required before independent review."}, message))
+    from precheck import run as precheck
+    checked = precheck(store, actor, task, current)
     operations.insert(0, ("deliver", actor, data, None))
     store.batch(operations)
-    return {"handoff": data.get("handoff"), "packet": data.get("packet"), "snapshot": current["sha256"]}
+    result = {"handoff": data.get("handoff"), "packet": data.get("packet"), "snapshot": current["sha256"]}
+    if checked:
+        result["precheck"] = checked[1]
+    return result
 
 
 def parser():
@@ -467,10 +472,15 @@ def dispatch(a, store):
     elif command in {"prove", "probe", "run"}:
         from runtime import execute
         argv = a.argv[1:] if command != "run" and a.argv and a.argv[0] == "--" else getattr(a, "argv", None)
+        checked = None
+        if command == "prove" and a.task in state["tasks"]:
+            from precheck import run as precheck
+            checked = precheck(store, actor, state["tasks"][a.task])
         result = execute(store, actor, a.task, argv=argv, mode=a.mode if command == "run" else "proof" if command == "prove" else "probe",
                          prompt=Path(a.prompt_file).read_text() if command == "run" else None,
                          timeout=a.timeout, gate=getattr(a, "gate", False), executable=getattr(a, "cli", None),
-                         stage=getattr(a, "stage", "code"), expected_rc=getattr(a, "expected_rc", 0), covers=getattr(a, "covers", []))
+                         stage=getattr(a, "stage", "code"), expected_rc=getattr(a, "expected_rc", 0), covers=getattr(a, "covers", []),
+                         checked=checked[0] if checked else None)
         if result["status"] not in {"passed", "matched"}:
             if command == "prove":
                 from errata import hint
@@ -479,6 +489,8 @@ def dispatch(a, store):
                 if end:
                     result["errata"] = hint(a.task, end["seq"], actor, "proof failed")
             raise Error(json.dumps(result, ensure_ascii=False))
+        if checked:
+            result["precheck"] = checked[1]
         return result
     elif command == "cancel":
         store.append("run.cancel", actor, {"id": a.run})

@@ -232,6 +232,38 @@ skipped and wall seconds. A test is counted as executed when unittest starts it;
 a crash after that point still fails through its native exit or missing receipt.
 Keep the logs as evidence and inspect the summary, not only the exit code.
 
+### Quick checks before proof and delivery
+
+A repository can declare quick checks in one tracked file at its root,
+`.squadra-precheck.json`. `prove` and `deliver` run every declared check on the
+exact candidate before the proof process starts or the delivery and handoff are
+written. Without the file nothing changes.
+
+```json
+{"schema": 1, "total_seconds": 30, "checks": [
+  {"name": "pin-label", "argv": ["python3", "-B", "tests/precheck_checks.py", "pin-label"], "timeout_seconds": 10}
+]}
+```
+
+- `argv` is a list run without a shell, from the repository root, with a private
+  HOME and TMPDIR. A shell string is refused.
+- Each check has its own `timeout_seconds` (1–60). `total_seconds` (1–120) is a
+  deadline that starts before any precheck work: no check starts after it, and a
+  running check is stopped at it. Cleanup, the last snapshot and the record finish
+  afterwards; the reported `seconds` include them.
+- Names are unique (`a-z`, `0-9`, `.`, `_`, `-`). There are at most 32 checks, the
+  file is at most 16 KiB, and duplicate or unknown keys are refused.
+- Each check is recorded like a probe, as a run of mode `precheck`: argv, exit
+  code, logs, seconds, and the candidate fingerprint before and after. A precheck
+  never counts as a proof.
+- A check that exits nonzero, times out, cannot start, or changes the source
+  refuses the command with `precheck_failed`, naming every failing check. An
+  untracked, ignored, symlinked or malformed declaration refuses with
+  `precheck_invalid` and is never skipped.
+- After the checks pass, `prove` runs the proof only if the source is still the
+  one that was checked. Otherwise it refuses with `precheck_failed: source changed
+  after the checks`, before any run or process.
+
 The optional `review --findings-file findings.json` records observations for the
 **Reads** dashboard view. The file is a UTF-8 JSON array, at most 16 KiB and 32
 items; each item has exactly `severity` (`grave`, `minor`, `info`) and `title`
