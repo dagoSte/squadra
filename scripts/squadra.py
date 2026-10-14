@@ -113,6 +113,12 @@ def deliver(store, actor, task_id, reconcile=False):
                            "body": "Read exact candidate " + current["head"] + " for " + task_id + ".\nImmutable packet " + artifact["sha256"] + " in " + str(store.root / "artifacts") + ".\nActual recipient ACK required before independent review."}, message))
     from precheck import run as precheck
     checked = precheck(store, actor, task, current)
+    if checked:
+        # The delivered bytes must still be the checked ones when the delivery is written.
+        final = snapshot(task["repo"], store.root)
+        require(final == checked[0] and final == current,
+                "precheck_failed: source changed after the checks (checked " + checked[0]["sha256"][:12] +
+                ", now " + final["sha256"][:12] + "); deliver again")
     operations.insert(0, ("deliver", actor, data, None))
     store.batch(operations)
     result = {"handoff": data.get("handoff"), "packet": data.get("packet"), "snapshot": current["sha256"]}

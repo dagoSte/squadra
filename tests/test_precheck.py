@@ -206,6 +206,57 @@ class Precheck(unittest.TestCase):
         self.assertEqual(rc, 0, err)
         self.assertTrue(self.marker.exists())
 
+    def test_delivery_refuses_source_changed_after_the_checks(self):
+        self.reviewed_task()
+        self.declare([check("only", py("print('ok')"))])
+        self.assertEqual(self.prove("V")[0], 0)
+        real = precheck.run
+
+        def checked_then_changed(*args, **kwargs):
+            result = real(*args, **kwargs)
+            (self.repo / "code.py").write_text("VALUE = 2\n")
+            return result
+
+        with patch("precheck.run", checked_then_changed):
+            rc, out, err = self.cli("deliver", "--actor", "A", "--task", "V")
+        self.assertEqual(rc, 1)
+        self.assertIn("precheck_failed: source changed after the checks", err)
+        self.assertFalse(any(e["kind"] == "deliver" for e in self.store.events()))
+        self.assertFalse(any(m.startswith("review-") for m in self.store.state()["messages"]))
+        (self.repo / "code.py").write_text("VALUE = 1\n")
+        rc, out, err = self.cli("deliver", "--actor", "A", "--task", "V")
+        self.assertEqual(rc, 0, err)
+        self.assertEqual(self.get("V")["delivery"]["snapshot"], snapshot(self.repo, self.root))
+        self.assertTrue(any(m.startswith("review-") for m in self.store.state()["messages"]))
+
+    def test_setup_delay_past_the_deadline_starts_no_process(self):
+        marker = self.base / "check-started"
+        command = py("open(" + repr(str(marker)) + ", 'w').write('ran')")
+        self.declare([check("only", command, 1)], total=1)
+        real_mkdir, real_popen, spawned = Path.mkdir, precheck.subprocess.Popen, []
+
+        def slow_setup(path, *args, **kwargs):
+            if path.name == "tmp" and path.parent.parent == self.root / "runs":
+                time.sleep(1.5)
+            return real_mkdir(path, *args, **kwargs)
+
+        def popen(argv, *args, **kwargs):
+            if argv == command:
+                spawned.append(argv)
+            return real_popen(argv, *args, **kwargs)
+
+        with patch.object(Path, "mkdir", slow_setup), patch("precheck.subprocess.Popen", popen):
+            with self.assertRaisesRegex(Error, r"precheck_failed: only \(interrupted, rc None, run \w+: deadline reached before start"):
+                precheck.run(self.store, "A", self.get())
+        self.assertEqual(spawned, [])
+        self.assertFalse(marker.exists())
+        self.assertEqual([r["status"] for r in self.runs("precheck")], ["interrupted"])
+        with patch("precheck.subprocess.Popen", popen):
+            checked, summary = precheck.run(self.store, "A", self.get())
+        self.assertEqual(summary["checks"][0]["status"], "passed")
+        self.assertEqual(spawned, [command])
+        self.assertTrue(marker.exists())
+
     def test_execute_refuses_a_stale_checked_snapshot_before_any_record(self):
         stale = snapshot(self.repo, self.root)
         (self.repo / "code.py").write_text("VALUE = 2\n")

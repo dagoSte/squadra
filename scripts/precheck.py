@@ -90,7 +90,7 @@ def _mark(source):
     return {"head": source["head"], "sha256": source["sha256"]}
 
 
-def _check(store, repo, folder, argv, wait, before):
+def _check(store, repo, folder, argv, timeout, deadline, before):
     """Run one check in its own process group; never raises an ordinary exception."""
     from runtime import terminate
     result = {"status": "failed", "native_rc": None, "started": now()}
@@ -104,17 +104,22 @@ def _check(store, repo, folder, argv, wait, before):
         env.update(HOME=str(home), TMPDIR=str(tmp), PYTHONDONTWRITEBYTECODE="1")
         options = {"start_new_session": True} if os.name != "nt" else {"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP}
         with (folder / "stdout.log").open("wb") as stdout, (folder / "stderr.log").open("wb") as stderr:
-            try:
-                proc = subprocess.Popen(argv, cwd=repo, env=env, stdout=stdout, stderr=stderr,
-                                        stdin=subprocess.DEVNULL, **options)
-            except OSError as exc:
-                result["error"] = "unrunnable: " + type(exc).__name__ + ": " + str(exc)
+            # Setup takes time too: no process starts once the total deadline has passed.
+            if deadline - time.monotonic() <= 0:
+                result.update(status="interrupted", error="deadline reached before start; not started")
             else:
                 try:
-                    result["native_rc"] = proc.wait(timeout=wait)
-                    result["status"] = "passed" if result["native_rc"] == 0 else "failed"
-                except subprocess.TimeoutExpired:
-                    result.update(status="timeout", error="timed out after " + str(round(wait, 3)) + " s")
+                    proc = subprocess.Popen(argv, cwd=repo, env=env, stdout=stdout, stderr=stderr,
+                                            stdin=subprocess.DEVNULL, **options)
+                except OSError as exc:
+                    result["error"] = "unrunnable: " + type(exc).__name__ + ": " + str(exc)
+                else:
+                    wait = max(0.0, min(timeout, deadline - time.monotonic()))
+                    try:
+                        result["native_rc"] = proc.wait(timeout=wait)
+                        result["status"] = "passed" if result["native_rc"] == 0 else "failed"
+                    except subprocess.TimeoutExpired:
+                        result.update(status="timeout", error="timed out after " + str(round(wait, 3)) + " s")
     except Exception as exc:
         result.update(status="failed", error="check could not run: " + type(exc).__name__ + ": " + str(exc))
     finally:
@@ -198,7 +203,7 @@ def run(store, actor, task, current=None):
                                        "error": stop or "deadline reached before start; not started"}
                 continue
             result = _check(store, repo, item["folder"], item["check"]["argv"],
-                            min(item["check"]["timeout_seconds"], remaining), before)
+                            item["check"]["timeout_seconds"], deadline, before)
             if result.pop("changed", False):
                 stop = "not started: the source changed during an earlier check"
             results[item["id"]] = result
