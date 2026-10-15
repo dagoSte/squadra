@@ -1611,7 +1611,7 @@ def board(state, lang=None, read_at=None, events=(), *, live=True):
     return "\n".join(lines)
 
 
-def table(state, read_at=None, events=()):
+def table(state, read_at=None, events=(), *, compact=False):
     tasks = list(state["tasks"].values())
     view = attention(state)
     lines = [board(state, read_at=read_at, events=events, live=read_at is not None), "", "Serve a te:"]
@@ -1623,7 +1623,62 @@ def table(state, read_at=None, events=()):
         lines.append("Nessuna richiesta registrata — una domanda fatta solo in chat non compare qui.")
     if read_at is not None:
         lines += ["", "Attese calcolate al " + str(read_at) + ":"]
-        lines += ["- " + w["kind"] + " · " + str(w.get("task", w.get("id", ""))) + " · " + str(w["seconds"]) + "s · " + w["text"] for w in waits(state, read_at)]
+        waiting = waits(state, read_at)
+        if compact:
+            counts = {kind: sum(w['kind'] == kind for w in waiting)
+                      for kind in sorted({w['kind'] for w in waiting})}
+            lines.append(str(len(waiting)) + " totali · " + ", ".join(k + ": " + str(v) for k, v in counts.items()))
+            active = {state['agents'][actor]['identity'] for step in view['next_steps']
+                      if state['tasks'][step['task']]['status'] != 'done'
+                      for actor in step['who'] if actor in state['agents']}
+
+            def blocking(wait):
+                if wait['kind'] == 'alive':
+                    return any(state['agents'].get(actor, {}).get('identity') in active
+                               for actor in wait['who'])
+                if wait['kind'] != 'ack':
+                    return True
+                message = state['messages'].get(wait['id'], {})
+                task = state['tasks'].get(wait.get('task') or message.get('task') or message.get('related_task'), {})
+                if not task or task.get('superseded_by') or task['status'] == 'done':
+                    return False
+                if message.get('task') and task['status'] == 'waiting-ack':
+                    return True
+                delivery = task.get('delivery', {})
+                return task['status'] == 'delivered' and (wait['id'] == delivery.get('handoff')
+                    or wait['id'] in delivery.get('handoffs', []))
+
+            grouped = {}
+            for wait in waiting:
+                if not blocking(wait):
+                    continue
+                message = state['messages'].get(wait.get('id'), {})
+                task = wait.get('task') or message.get('task') or message.get('related_task')
+                key = (wait['kind'], task or wait.get('id', ''))
+                previous = grouped.get(key)
+                oldest = wait if previous is None or wait['seconds'] > previous['seconds'] else previous
+                grouped[key] = {**oldest, 'count': 1 + (previous['count'] if previous else 0)}
+            priority = {'ack': 0, 'delivered': 0, 'reviewed': 0, 'alive': 1, 'cleanup-unknown': 2, 'heartbeat': 3}
+            waiting = sorted(grouped.values(), key=lambda w: (priority.get(w['kind'], 2),
+                             -w['seconds'], w['kind'], str(w.get('task', w.get('id', '')))))[:5]
+        lines += ["- " + w["kind"] + " · " + str(w.get("task", w.get("id", ""))) + " · " + str(w["seconds"]) + "s"
+                  + (" (" + str(w['count']) + " attese, la più vecchia)" if w.get('count', 1) > 1 else "")
+                  + " · " + w["text"] for w in waiting]
+        if compact:
+            lines.append("Tutte le attese e i dettagli: squadra status --all.")
+    if compact:
+        steps = [item for item in view['next_steps'] if item['status'] != 'done']
+        lines += ["", "Prossimo passo per incarico:",
+                  "| Incarico | Finestra / ruolo | Prossimo passo |", "|---|---|---|"]
+        for item in steps[:5]:
+            who = ', '.join(item['who']) or 'Da assegnare'
+            lines.append('| ' + ' | '.join(cell(value) for value in
+                         (item['task'], who + ' / ' + item['role'], item['text'])) + ' |')
+        if not steps:
+            lines.append('| — | — | Nessun passo pendente |')
+        if len(steps) > 5:
+            lines.append('Altri ' + str(len(steps) - 5) + ' passi: squadra status --all.')
+        return "\n".join(lines)
     lines += ["", "Prossimo passo per incarico:"]
     lines += ["- " + item["task"] + ": " + item["text"] for item in view["next_steps"]]
     if view["superseded"]:

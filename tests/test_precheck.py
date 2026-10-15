@@ -418,11 +418,11 @@ class SquadraChecks(unittest.TestCase):
         argv = [sys.executable, *self.argv[name][1:], *(["--root", str(root)] if root else [])]
         return subprocess.run(argv, cwd=ROOT, capture_output=True, text=True, timeout=30)
 
-    def edit(self, name, old, new):
+    def edit(self, name, old, new, count=1):
         path = self.copy / name
         text = path.read_text(encoding="utf-8")
         self.assertIn(old, text)
-        path.write_text(text.replace(old, new, 1), encoding="utf-8")
+        path.write_text(text.replace(old, new, count), encoding="utf-8")
 
     def assertRed(self, name, *phrases):
         result = self.run_check(name, self.copy)
@@ -482,7 +482,7 @@ class SquadraChecks(unittest.TestCase):
 
     def test_pin_label_catches_a_missing_current_entry(self):
         self.edit("plugins/memoranda/bridge/squadra_memories/pin.json", '"label": "squadra ' + self.version + '"',
-                  '"label": "squadra ' + self.version + '-old"')
+                  '"label": "squadra ' + self.version + '-old"', count=-1)
         self.assertRed("pin-label", 'no accepted entry labelled "squadra ' + self.version + '"')
 
     def test_plugin_versions_catches_a_package_or_store_left_behind(self):
