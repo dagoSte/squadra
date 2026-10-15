@@ -93,7 +93,7 @@ class BackgroundAudit(unittest.TestCase):
 
         with patch.object(Store, 'audit', failed):
             self.request_while_blocked(entered, release)
-            self.assertIn('Synthetic full audit failure', str(self.wait_for(409)))
+            self.assertEqual(self.wait_for(409), {'error': 'registry_invalid'})
         self.store.append('diagnostic', 'system', {'reason': 'A new event cannot erase a failed full audit'})
         for route, headers in (('/api/state', {}), ('/api/state', {'X-Squadra-View': 'compact'}),
                                ('/api/detail/task', {'X-Squadra-Record': self.task_id}),

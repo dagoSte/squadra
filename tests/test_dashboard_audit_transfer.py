@@ -96,7 +96,7 @@ class AuditTransferAPI(unittest.TestCase):
                     break
                 self.assertLess(time.monotonic(), deadline, value)
                 time.sleep(.01)
-            self.assertIn('Synthetic combined audit failure', value['error'])
+            self.assertEqual(value, {'error': 'registry_invalid'})
             self.assertNotIn('not_modified', value)
             code, _, raw = self.get('/api/detail/view', {'X-Squadra-State-Head': first['registry_head']['hash'],
                 'X-Squadra-Section': 'story', 'X-Squadra-Record': self.task_id})

@@ -36,7 +36,9 @@ const tests={
    assert.equal(app.doc.getElementById('artifact').open,false);assert.equal(banner.hidden,true);
    assert.equal(app.doc.getElementById('loading').hidden,false);
    assert.match(text(app.doc.getElementById('loading-title')),/integrità/);
+   assert.match(text(app.doc.getElementById('loading-title')),/squadra doctor/);
    app.run("setLanguage('en')");assert.match(text(app.doc.getElementById('loading-title')),/integrity/);
+   assert.match(text(app.doc.getElementById('loading-title')),/squadra doctor/);
    assert.equal(app.doc.getElementById('loading-retry').hidden,true);
    late(reply({body:'OLD-DETAIL-CANARY'}));await rejected;
    assert.equal(poll(app).length,0,'a failed integrity audit stops polling');

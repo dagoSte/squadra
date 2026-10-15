@@ -333,8 +333,12 @@ def make_server(root, port=0):
             pass
 
         def answer(self, status, body, content="application/json; charset=utf-8"):
-            if status == 200 and urlparse(self.path).path.startswith('/api/'):
-                view.audit_info()
+            if status not in (401, 403, 405) and urlparse(self.path).path.startswith('/api/'):
+                try:
+                    view.audit_info()
+                except Error:
+                    status, body = 409, b'{"error":"registry_invalid"}'
+                    content = "application/json; charset=utf-8"
             self.send_response(status)
             self.send_header("Content-Type", content)
             self.send_header("Content-Length", str(len(body)))
@@ -359,8 +363,8 @@ def make_server(root, port=0):
                 self.answer(401, b'{"error":"token required"}'); return
             try:
                 view.audit_info()
-            except Error as exc:
-                self.answer(409, json.dumps({"error": str(exc)}).encode())
+            except Error:
+                self.answer(409, b'{"error":"registry_invalid"}')
                 return
             if path == "/api/plugin-store":
                 try:
@@ -481,8 +485,8 @@ def make_server(root, port=0):
                     self.answer(404, b'{"error":"not found"}')
             except plugins.Refused as exc:
                 self.answer(409, json.dumps({"error": exc.code}).encode())
-            except (Error, OSError, ValueError, sqlite3.Error) as exc:
-                self.answer(409, json.dumps({"error": str(exc)}).encode())
+            except (Error, OSError, ValueError, sqlite3.Error):
+                self.answer(409, b'{"error":"registry_invalid"}')
 
         def plugin_answer(self, path):
             store = None

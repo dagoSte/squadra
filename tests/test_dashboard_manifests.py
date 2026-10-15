@@ -150,7 +150,7 @@ class DashboardManifests(unittest.TestCase):
             with self.subTest(route=route):
                 status, _, body = self.get(route, headers)
                 self.assertEqual(status, 409, body)
-                self.assertIn(b'manifest', body.lower())
+                self.assertEqual(json.loads(body), {'error': 'registry_invalid'})
         path.write_bytes(original)
         self.assert_full(self.state())
 
