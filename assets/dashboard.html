@@ -2700,14 +2700,96 @@ Object.assign(I18N,{
  'balance.intro':{it:'Suggerimenti su quali finestre e modelli sono più liberi, con i numeri su cui si basano. Non assegna nulla: decide il coordinatore, che segue il suggerimento oppure registra perché sceglie altro.',en:'Advice on which windows and models are freest, with the numbers behind it. It assigns nothing: the coordinator follows the advice or records why it chooses otherwise.'},
  'balance.loading':{it:'Calcolo del bilanciamento…',en:'Computing the balance…'},'balance.error':{it:'Il bilanciamento non è disponibile. Riprova.',en:'Balance is unavailable. Try again.'},'balance.retry':{it:'Riprova',en:'Retry'},
  'balance.suggestions':{it:'Suggerimenti per modello',en:'Suggestions per model'},'balance.noSuggestions':{it:'Nessun suggerimento: nessuna regola scatta con i dati disponibili.',en:'No suggestions: no rule fires with the available data.'},
+ 'balance.span.week':{it:'della quota settimanale',en:'of the weekly quota'},
+ 'balance.span.h5':{it:'della quota delle 5 ore',en:'of the 5-hour quota'},
+ 'balance.span.min':{it:'della quota di {n} minuti',en:'of the {n}-minute quota'},
+ 'balance.span.estH5':{it:'delle 5 ore',en:'of the 5 hours'},
+ 'balance.span.estWeek':{it:'della settimana',en:'of the week'},
+ 'balance.short.week':{it:'settimana',en:'week'},
+ 'balance.short.h5':{it:'5 ore',en:'5 hours'},
+ 'balance.short.min':{it:'{n} min',en:'{n} min'},
+ 'balance.reset.time':{it:'si azzera alle {time}',en:'resets at {time}'},
+ 'balance.reset.day':{it:'si azzera il {day}',en:'resets on {day}'},
+ 'balance.reset.unknown':{it:'azzeramento non noto',en:'reset not known'},
+ 'balance.status.measured':{it:'misurato',en:'measured'},
+ 'balance.status.partial':{it:'parziale',en:'partial'},
+ 'balance.status.not_measured':{it:'non misurato',en:'not measured'},
+ 'balance.status.stale':{it:'non più attuale',en:'no longer current'},
+ 'balance.status.expired':{it:'scaduto',en:'expired'},
+ 'balance.status.collecting':{it:'in raccolta',en:'being collected'},
+ 'balance.status.other':{it:'non disponibile',en:'not available'},
+ 'balance.span':{it:'Fascia',en:'Window'},
+ 'balance.reset':{it:'Azzeramento',en:'Reset'},
+ 'balance.hint':{it:'Passa sopra o con il tasto Tab su una barra per leggere il valore esatto.',en:'Hover or Tab to a bar to read its exact value.'},
+ 'usage.hint':{it:'Passa sopra o con il tasto Tab su un elemento del grafico per leggere il valore esatto.',en:'Hover or Tab to a chart element to read its exact value.'},
+ 'balance.aria.load':{it:'{name}: {owned} incarichi aperti, {reads} letture in attesa',en:'{name}: {owned} open tasks, {reads} pending reads'},
+ 'balance.aria.strip':{it:'{model}: {n} token nelle ultime 24 ore; frecce sinistra e destra per le singole ore',en:'{model}: {n} tokens in the last 24 h; left and right arrows for each hour'},
+ 'balance.tokens.hour':{it:'{n} token',en:'{n} tokens'},
+ 'balance.tokens.rate':{it:'{n} token all’ora',en:'{n} tokens per hour'},
+ 'balance.tokens.unknown':{it:'token all’ora non misurati',en:'tokens per hour not measured'},
+ 'balance.role.build':{it:'costruisce',en:'builds'},
+ 'balance.role.read':{it:'legge',en:'reads'},
+ 'balance.role.coord':{it:'coordina',en:'coordinates'},
+ 'balance.windows':{it:'Le finestre',en:'The windows'},
+ 'balance.missing':{it:'Cosa non può vedere',en:'What it cannot see'},
+ 'balance.missing.none':{it:'Vede tutti i dati che usa.',en:'It sees all the data it uses.'},
+ 'balance.miss.notCollected':{it:'Token e quote non raccolti in questo momento: si aggiornano da soli tra poco.',en:'Tokens and quotas not collected at this moment: they refresh on their own shortly.'},
+ 'balance.miss.busy':{it:'La raccolta dei consumi è occupata da un’altra richiesta: restano gli ultimi numeri.',en:'Usage collection is busy with another request: the last figures stay.'},
+ 'balance.miss.collecting':{it:'La raccolta dei consumi è in corso: alcuni numeri sono ancora parziali.',en:'Usage collection is in progress: some figures are still partial.'},
+ 'balance.miss.noQuota':{it:'Quota di {name} non ancora osservata.',en:'Quota of {name} not observed yet.'},
+ 'balance.miss.stale':{it:'L’ultima quota osservata di {name} ({when}) non è più attuale.',en:'The last observed quota of {name} ({when}) is no longer current.'},
+ 'balance.miss.expired':{it:'La quota osservata di {name} ({when}) si è già azzerata.',en:'The observed quota of {name} ({when}) has already reset.'},
+ 'balance.miss.noQuotaClient':{it:'{name}: la quota di questo client non è disponibile.',en:'{name}: the quota of this client is not available.'},
+ 'balance.miss.tokens':{it:'Consumi di {name} non ancora letti: la raccolta è in corso.',en:'Usage of {name} not read yet: collection is in progress.'},
+ 'balance.miss.noReference':{it:'La quota di Claude non si può stimare: manca il riferimento (in fondo alla pagina).',en:'Claude quota cannot be estimated: no reference is set (at the bottom of the page).'},
+ 'balance.miss.partialEstimate':{it:'La stima della quota di Claude è incompleta: alcune finestre non sono ancora lette.',en:'The Claude quota estimate is incomplete: some windows are not read yet.'},
+ 'balance.verdict.balanced':{it:'La squadra è in equilibrio: oggi nessun consiglio.',en:'The squad is balanced: no advice today.'},
+ 'balance.verdict.one':{it:'1 consiglio.',en:'1 piece of advice.'},
+ 'balance.verdict.many':{it:'{n} consigli.',en:'{n} pieces of advice.'},
+ 'balance.verdict.incomplete':{it:'Nessun consiglio con i dati disponibili: mancano alcune misure, elencate sotto.',en:'No advice from the available data: some figures are missing, listed below.'},
+ 'balance.verdict.blocked':{it:'Nessun consiglio applicabile: {detail}',en:'No applicable advice: {detail}'},
+ 'balance.verdict.alsoMissing':{it:'Mancano anche alcune misure, elencate sotto.',en:'Some figures are also missing, listed below.'},
+ 'balance.blocked.reads':{it:'{name} ha {n} letture in attesa, ma nessun lettore indipendente è libero.',en:'{name} holds {n} pending reads, but no independent reader is free.'},
+ 'balance.blocked.tasks':{it:'{name} ha {n} incarichi aperti, ma nessuna finestra dello stesso tipo è libera.',en:'{name} owns {n} open tasks, but no window of the same kind is free.'},
+ 'balance.rules':{it:'Cosa controlla',en:'What it checks'},
+ 'balance.col.when':{it:'Quando scatta',en:'When it fires'},
+ 'balance.col.example':{it:'Esempio di consiglio',en:'Example of advice'},
+ 'balance.col.today':{it:'Oggi',en:'Today'},
+ 'balance.col.state':{it:'Stato',en:'State'},
+ 'balance.when.reads':{it:'Un lettore ha {n} o più letture in attesa',en:'A reader holds {n} or more pending reads'},
+ 'balance.when.quota':{it:'Una quota arriva all’{n}%',en:'A quota reaches {n}%'},
+ 'balance.when.tasks':{it:'Un costruttore ha {n} o più incarichi aperti',en:'A builder owns {n} or more open tasks'},
+ 'balance.when.idle':{it:'Un modello è fermo mentre altri sono carichi',en:'A model is idle while others are loaded'},
+ 'balance.example.reads':{it:'«Sposta una lettura a un lettore libero e indipendente»',en:'“Move a read to a free, independent reader”'},
+ 'balance.example.quota':{it:'«È vicina al limite: pianifica prima dell’azzeramento»',en:'“It is near its limit: plan before the reset”'},
+ 'balance.example.tasks':{it:'«Affida il prossimo incarico a una finestra libera dello stesso tipo»',en:'“Give the next task to a free window of the same kind”'},
+ 'balance.example.idle':{it:'«Usa il modello libero»',en:'“Use the idle model”'},
+ 'balance.today.max':{it:'al massimo {n}, {name}',en:'at most {n}, {name}'},
+ 'balance.today.quota':{it:'al massimo {n}%, {name}',en:'at most {n}%, {name}'},
+ 'balance.today.quotaShared':{it:'al massimo {n}%, stima condivisa delle finestre Claude sul riferimento dichiarato',en:'at most {n}%, shared estimate of the Claude windows against the declared reference'},
+ 'balance.today.unknownSome':{it:'non misurata per {n} finestre',en:'not measured for {n} windows'},
+ 'balance.today.unknown':{it:'non misurato',en:'not measured'},
+ 'balance.today.none':{it:'nessuna finestra attiva per questa regola',en:'no active window for this rule'},
+ 'balance.today.idleYes':{it:'un modello è fermo mentre altri sono carichi',en:'a model is idle while others are loaded'},
+ 'balance.today.idleNo':{it:'nessun modello fermo mentre altri sono carichi',en:'no model idle while others are loaded'},
+ 'balance.state.fires':{it:'scatta',en:'fires'},
+ 'balance.state.blocked':{it:'oltre la soglia, nessuna destinazione libera',en:'over the threshold, no free destination'},
+ 'balance.state.unknown':{it:'non misurato',en:'not measured'},
+ 'balance.state.partial':{it:'incompleto: mancano misure',en:'incomplete: figures missing'},
+ 'balance.state.ok':{it:'ok',en:'ok'},
+ 'balance.fresh.ok':{it:'Aggiornato alle {time}; si aggiorna da solo ogni 15 secondi mentre la pagina è aperta.',en:'Updated at {time}; it refreshes itself every 15 seconds while the page is open.'},
+ 'balance.fresh.retained':{it:'Ultimo aggiornamento alle {time}; nuovo tentativo alle {next}.',en:'Last update at {time}; next attempt at {next}.'},
+ 'balance.fresh.none':{it:'Nessun aggiornamento riuscito finora; nuovo tentativo alle {next}.',en:'No successful update yet; next attempt at {next}.'},
+ 'balance.load.owned':{it:'{n} incarichi aperti',en:'{n} open tasks'},'balance.load.owned1':{it:'1 incarico aperto',en:'1 open task'},'balance.load.reads':{it:'{n} letture in attesa',en:'{n} pending reads'},'balance.load.reads1':{it:'1 lettura in attesa',en:'1 pending read'},'balance.today.unknownOne':{it:'non misurata per 1 finestra',en:'not measured for 1 window'},
+ 'balance.rank.steps':{it:'{n} passi in attesa',en:'{n} next steps held'},'balance.rank.step1':{it:'1 passo in attesa',en:'1 next step held'},'balance.rank.near':{it:'vicina al limite di quota',en:'near its quota'},'balance.rank.nearEstimate':{it:'vicina al limite di quota (stima)',en:'near its quota (estimated)'},'balance.rank.built':{it:'{n} lavori simili costruiti',en:'{n} similar tasks built'},'balance.rank.built1':{it:'1 lavoro simile costruito',en:'1 similar task built'},'balance.rank.read':{it:'{n} lavori simili letti',en:'{n} similar tasks read'},'balance.rank.read1':{it:'1 lavoro simile letto',en:'1 similar task read'},
  'balance.model.none':{it:'Modello non dichiarato',en:'Model not declared'},
  'balance.basis.largest':{it:'{model}, il più usato tra quelli misurati: {models}',en:'{model}, the most used of the measured models: {models}'},'balance.basis.declared':{it:'{model} (dichiarato, non misurato)',en:'{model} (declared, not measured)'},
  'balance.S1':{it:'{window} ha {pending} letture in attesa; {to} ne ha 0 e può leggere «{task}» in modo indipendente.',en:'{window} holds {pending} pending reads; {to} holds 0 and can read “{task}” independently.'},
  'balance.S2':{it:'{window} è vicina al limite: {detail}. Passi in attesa: {steps}.',en:'{window} is near its limit: {detail}. Next steps held: {steps}.'},
  'balance.S3':{it:'{window} ha {owned} incarichi aperti; {to}, dello stesso client, non ne ha.',en:'{window} owns {owned} open tasks; {to}, same client, owns none.'},
  'balance.S4':{it:'Il modello {model} è libero ({windows} finestre senza incarichi) mentre {busy} è carico.',en:'Model {model} is idle ({windows} windows without tasks) while {busy} is busy.'},
- 'balance.slot':{it:'{percent}% della finestra di {minutes} min, azzeramento {reset}',en:'{percent}% of the {minutes}-minute window, resets {reset}'},
- 'balance.slotEstimate':{it:'stima {percent}% ({slot})',en:'estimate {percent}% ({slot})'},
+ 'balance.slot':{it:'{percent}% {span}, {reset}',en:'{percent}% {span}, {reset}'},
+ 'balance.slotEstimate':{it:'stima {percent}% {span}',en:'estimate {percent}% {span}'},
  'chart.balance-load.title':{it:'Carico per finestra',en:'Load per window'},'chart.balance-load.sub':{it:'Incarichi aperti di cui è titolare e letture in attesa, dal registro.',en:'Open tasks it owns and reads waiting on it, from the registry.'},
  'chart.balance-tokens.title':{it:'Token per ora, ultime 24 ore',en:'Tokens per hour, last 24 h'},'chart.balance-tokens.sub':{it:'Un piccolo grafico per modello. L’ultima ora è parziale; le ore non misurate restano vuote.',en:'One small chart per model. The last hour is partial; unmeasured hours stay empty.'},
  'chart.balance-quota.title':{it:'Quota',en:'Quota'},'chart.balance-quota.sub':{it:'Codex: misurata per finestra e per fascia. Claude: stima rispetto al riferimento che dichiari, tratteggiata.',en:'Codex: measured per window and slot. Claude: an estimate against the reference you declare, hatched.'},
@@ -2718,7 +2800,7 @@ Object.assign(I18N,{
  'balance.noHourly':{it:'Non misurato: serie oraria non disponibile.',en:'Not measured: hourly series unavailable.'},
  'balance.estimate':{it:'stima',en:'estimate'},'balance.assumption':{it:'Si assume che tutte le finestre Claude registrate condividano un account.',en:'All registered Claude windows are assumed to share one account.'},
  'balance.noReference':{it:'Stima non disponibile: nessun riferimento dichiarato. Ultime 5 ore: {h5} token · ultimi 7 giorni: {d7} token.',en:'Estimate unavailable: no reference declared. Last 5 h: {h5} tokens · last 7 days: {d7} tokens.'},
- 'balance.partial':{it:'Stima non completa ({reasons}). Somme note, parziali: ultime 5 ore {h5} token · ultimi 7 giorni {d7} token.',en:'Estimate incomplete ({reasons}). Known partial sums: last 5 h {h5} tokens · last 7 days {d7} tokens.'},
+ 'balance.partial':{it:'Stima non completa: alcune finestre Claude non sono ancora lette. Somme note, parziali: ultime 5 ore {h5} token · ultimi 7 giorni {d7} token.',en:'Estimate incomplete: some Claude windows are not read yet. Known partial sums: last 5 h {h5} tokens · last 7 days {d7} tokens.'},
  'balance.reference':{it:'Riferimento Claude (solo in questo browser)',en:'Claude reference (this browser only)'},'balance.refH5':{it:'Token per 5 ore',en:'Tokens per 5 h'},'balance.refWeek':{it:'Token per settimana',en:'Tokens per week'},
  'balance.refSave':{it:'Usa il riferimento',en:'Use reference'},'balance.refClear':{it:'Togli il riferimento',en:'Clear reference'},'balance.refInvalid':{it:'Inserisci due numeri interi positivi.',en:'Enter two positive whole numbers.'},
  'balance.perTask':{it:'Per incarico',en:'Per task'},'balance.pickTask':{it:'Incarico aperto',en:'Open task'},'balance.noOpen':{it:'Nessun incarico aperto.',en:'No open tasks.'},'balance.choose':{it:'Scegli un incarico',en:'Choose a task'},
@@ -3995,110 +4077,204 @@ if(typeof document.addEventListener==='function')document.addEventListener('keyd
 .sq-balance-num{font-variant-numeric:tabular-nums;font-weight:600}.sq-balance-est{font-style:italic}
 .sq-balance-list{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:8px}.sq-balance-list li{border-top:1px solid var(--sq-border,var(--line));padding-top:8px;min-width:0;overflow-wrap:anywhere}
 .sq-balance-form{display:flex;flex-wrap:wrap;gap:10px;align-items:end;margin-top:10px}.sq-balance-form label{display:grid;gap:4px;font-size:13px;min-width:0}.sq-balance-form input{width:12em;max-width:100%}
-.sq-balance select{max-width:100%}.sq-balance .sq-crow svg.sq-strip{grid-column:1/-1;width:100%;height:40px}.sq-balance .sq-strip rect.none{fill:none;stroke:var(--sq-border-strong,var(--line));stroke-dasharray:2 2}
+.sq-balance select{max-width:100%}.sq-balance-verdict-text{font-size:18px;line-height:1.4;font-weight:600;margin:8px 0}.sq-balance .sq-crow>.sq-viz{grid-column:1/-1}.sq-balance-line{margin:2px 0 0}.sq-balance .sq-crow svg.sq-strip{grid-column:1/-1;width:100%;height:40px}.sq-balance .sq-strip rect.none{fill:none;stroke:var(--sq-border-strong,var(--line));stroke-dasharray:2 2}
 .sq-balance:focus-visible,.sq-balance button:focus-visible,.sq-balance input:focus-visible,.sq-balance select:focus-visible{outline:2px solid var(--sq-accent);outline-offset:4px}
-@media(max-width:699.98px){.sq-balance h2{font-size:26px}.sq-balance-form{flex-direction:column;align-items:stretch}.sq-balance-form input{width:100%}}
+@media(max-width:699.98px){.sq-balance [data-balance-rules] :is(table,tbody,tr,td){display:block;width:100%}.sq-balance [data-balance-rules] tr:first-child{display:none}.sq-balance [data-balance-rules] tr{padding:10px 0;border-top:1px solid var(--sq-border,var(--line))}.sq-balance [data-balance-rules] td{padding:2px 0}.sq-balance [data-balance-rules] td::before{content:attr(data-label) ': ';font-weight:600}.sq-balance h2{font-size:26px}.sq-balance-form{flex-direction:column;align-items:stretch}.sq-balance-form input{width:100%}}
 </style>
 <script id="squadra-balance">
 'use strict';
 function balanceNav(){
  const links=$('balance-links');if(!links)return;$('balance-nav').setAttribute('aria-label',tr('tab.Bilanciamento'));
- const b=node('button',tr('tab.Bilanciamento'),tab==='Bilanciamento'?'active':'');panelTab(b,'Bilanciamento');b.onclick=()=>{connectedReset();tab='Bilanciamento';balanceUI.attempt=null;panelNavigate();render()};links.replaceChildren(b);
+ const b=node('button',tr('tab.Bilanciamento'),tab==='Bilanciamento'?'active':'');panelTab(b,'Bilanciamento');b.onclick=()=>{connectedReset();tab='Bilanciamento';balanceUI.immediate=true;panelNavigate();render()};links.replaceChildren(b);
 }
-const balanceUI={data:null,attempt:null,running:false,error:false,task:'',reference:null,refError:false,signature:null,element:null,controls:[]};
+// One cadence gates every routine fetch; opening the page, a task or reference change and retry are the explicit immediate cases.
+const BALANCE_CADENCE=15000;
+const balanceUI={data:null,running:false,status:'idle',lastAttempt:0,lastDone:0,lastOk:0,immediate:true,task:'',refError:false,signature:null,element:null,controls:[]};
 const BALANCE_STORE='squadra.usage.settings.v1';
 function balanceStored(){try{const raw=panelStore(BALANCE_STORE);const value=raw?JSON.parse(raw):null;if(value&&typeof value==='object'&&!Array.isArray(value)&&value.schema===1)return value}catch(e){}return {schema:1,prices:null,balance:{}}}
 function balanceReference(){const ref=balanceStored().balance?.reference;return ref&&Number.isInteger(ref.h5)&&Number.isInteger(ref.week)&&ref.h5>0&&ref.week>0&&ref.h5<=1e12&&ref.week<=1e12?{claude:{h5:ref.h5,week:ref.week}}:null}
 function balanceSaveReference(ref){const value=balanceStored(),own={...(value.balance&&typeof value.balance==='object'?value.balance:{})};if(ref)own.reference=ref;else delete own.reference;panelStore(BALANCE_STORE,JSON.stringify({...value,schema:1,balance:own}))}
 function balanceNum(n){return typeof n==='number'?n.toLocaleString(uiLocale()):'—'}
 function balanceButton(text,key,action){const b=node('button',text);b.onclick=action;focusKey(b,key);balanceUI.controls.push(b);return b}
-async function balanceFetch(){
+function balanceNow(){return Date.now()}
+// The cadence counts from the end of the last attempt, so a slow run is never followed at once by another.
+function balanceDue(){return !balanceUI.running&&(balanceUI.immediate||balanceNow()-balanceUI.lastDone>=BALANCE_CADENCE)}
+// The one entry for routine refresh: safe on every 2-second tick, it enforces the cadence and a single request in flight.
+function balancePoll(){if(tab!=='Bilanciamento'||document.hidden===true)return;if(balanceDue())balanceRequest()}
+// Callers outside this block that still use the old name go through the same gate.
+function balanceFetch(){balancePoll()}
+function balanceAgain(){balanceUI.immediate=true;balanceUI.signature=null;render()}
+function balanceBusy(data){const reasons=data?.usage?.coverage?.reasons;return Array.isArray(reasons)&&reasons.includes('collector_busy')}
+async function balanceRequest(){
  if(tab!=='Bilanciamento'||document.hidden===true||balanceUI.running)return;
- balanceUI.running=true;balanceUI.error=false;balanceUI.attempt=state;
+ balanceUI.running=true;balanceUI.immediate=false;balanceUI.lastAttempt=balanceNow();
  try{const headers={'X-Squadra-Record':encodeURIComponent(balanceUI.task||'')},ref=balanceReference();if(ref)headers['X-Squadra-Balance-Reference']=JSON.stringify(ref);
-  const data=await(await api('/api/balance',headers)).json();if(!Array.isArray(data.windows)||data.assigns!==false)throw Error('balance response');balanceUI.data=data}
- catch(e){balanceUI.error=true}
- finally{balanceUI.running=false;if(tab==='Bilanciamento')render()}
+  const data=await(await api('/api/balance',headers)).json();if(!Array.isArray(data.windows)||data.assigns!==false)throw Error('balance response');
+  if(balanceBusy(data)&&balanceUI.data)balanceUI.status='busy';
+  else{balanceUI.data=data;balanceUI.status=balanceBusy(data)?'busy':'ok';if(balanceUI.status==='ok')balanceUI.lastOk=balanceNow()}}
+ catch(e){balanceUI.status='error'}
+ finally{balanceUI.running=false;balanceUI.lastDone=balanceNow();if(tab==='Bilanciamento')render()}
 }
+function balanceClock(t){return new Date(t).toLocaleTimeString(uiLocale(),{hour:'2-digit',minute:'2-digit',second:'2-digit'})}
+function balanceWindowName(identity){const m=/^(codex-thread|claude-window)-([0-9a-f]{8})/.exec(String(identity||''));return m?(m[1]==='codex-thread'?'Codex ':'Claude ')+m[2]:String(identity||'')}
 function balanceModel(m){return m||tr('balance.model.none')}
 function balanceModelLabel(r){const list=Array.isArray(r.measured_models)?r.measured_models:[];if(r.model_source==='measured_largest_of_several'&&list.length>1)return tr('balance.basis.largest',{model:r.model,models:list.join(', ')});if(r.model_source==='declared'&&r.model)return tr('balance.basis.declared',{model:r.model});return balanceModel(r.model)}
-function balanceSlotText(slot){return slot.percent!==undefined?tr('balance.slotEstimate',{percent:Math.round(slot.percent),slot:slot.slot}):tr('balance.slot',{percent:balanceNum(slot.used_percent),minutes:balanceNum(slot.window_minutes),reset:date(slot.resets_at)})}
+function balanceStatusWord(s){return tr(I18N['balance.status.'+s]?'balance.status.'+s:'balance.status.other')}
+function balanceSpan(minutes){return minutes===10080?tr('balance.span.week'):minutes===300?tr('balance.span.h5'):tr('balance.span.min',{n:balanceNum(minutes)})}
+function balanceSpanShort(minutes){return minutes===10080?tr('balance.short.week'):minutes===300?tr('balance.short.h5'):tr('balance.short.min',{n:balanceNum(minutes)})}
+function balanceReset(at){const t=Date.parse(at);if(!Number.isFinite(t))return tr('balance.reset.unknown');return t-Date.now()<86400000?tr('balance.reset.time',{time:new Date(t).toLocaleTimeString(uiLocale(),{hour:'2-digit',minute:'2-digit'})}):tr('balance.reset.day',{day:new Date(t).toLocaleDateString(uiLocale(),{day:'numeric',month:'long'})})}
+function balanceEstimateSpan(slot){return tr(slot==='h5'?'balance.span.estH5':'balance.span.estWeek')}
+function balanceSlotText(slot){return slot.percent!==undefined?tr('balance.slotEstimate',{percent:Math.round(slot.percent),span:balanceEstimateSpan(slot.slot)}):tr('balance.slot',{percent:balanceNum(slot.used_percent),span:balanceSpan(slot.window_minutes),reset:balanceReset(slot.resets_at)})}
 function balanceSuggestion(s){
- const metrics=s.metrics||{};
- if(s.id==='S1')return tr('balance.S1',{window:s.window,pending:metrics.pending_reads,to:s.to,task:taskTitle(s.task)});
- if(s.id==='S2')return tr('balance.S2',{window:s.window,detail:(metrics.slots||[]).map(balanceSlotText).join('; '),steps:metrics.steps});
- if(s.id==='S3')return tr('balance.S3',{window:s.window,owned:metrics.owned_open,to:s.to});
+ const metrics=s.metrics||{},w=balanceWindowName(s.window),to=balanceWindowName(s.to);
+ if(s.id==='S1')return tr('balance.S1',{window:w,pending:metrics.pending_reads,to,task:taskTitle(s.task)});
+ if(s.id==='S2')return tr('balance.S2',{window:w,detail:(metrics.slots||[]).map(balanceSlotText).join('; '),steps:metrics.steps});
+ if(s.id==='S3')return tr('balance.S3',{window:w,owned:metrics.owned_open,to});
  return tr('balance.S4',{model:balanceModel(s.model),windows:metrics.windows,busy:(metrics.busy_models||[]).map(balanceModel).join(', ')});
 }
 function balanceSuggestions(data){
- const box=node('section');box.append(node('h3',tr('balance.suggestions')));
- if(!data.suggestions.length){box.append(node('p',tr('balance.noSuggestions'),'sub'));return box}
+ const box=node('div');if(!data.suggestions.length)return box;box.append(node('h3',tr('balance.suggestions')));
  const groups=new Map();for(const s of data.suggestions){const key=s.model||'';if(!groups.has(key))groups.set(key,[]);groups.get(key).push(s)}
  const cards=node('div',undefined,'sq-balance-cards');
  for(const [model,items] of groups){const card=node('article',undefined,'sq-balance-card');card.setAttribute('data-balance-model',model);card.append(node('h4',balanceModel(model)));const list=node('ul',undefined,'sq-balance-list');
   for(const s of items){const li=node('li',balanceSuggestion(s));li.setAttribute('data-suggestion',s.id);if(s.metrics?.estimate)li.classList?.add?.('sq-balance-est');list.append(li)}card.append(list);cards.append(card)}
  box.append(cards);return box;
 }
-function balanceBar(parts,max,label){
- const svg=svgEl('svg',{viewBox:'0 0 100 14',preserveAspectRatio:'none',role:'img','aria-label':label});let x=0;
- for(const [value,cls] of parts){if(!value)continue;const w=Math.max(1,value/max*100);svg.append(svgEl('rect',{x:x.toFixed(2),y:0,width:Math.max(0,w-(x+w<100?2:0)).toFixed(2),height:14,rx:3,class:cls}));x+=w}
- return svg;
+function balanceQuotaPercent(w){const q=w.quota||{};if(q.kind==='measured'){const f=(q.slots||[]).filter(s=>s.fresh&&typeof s.used_percent==='number');return f.length?Math.max(...f.map(s=>s.used_percent)):null}if(q.kind==='estimate'){const p=(q.slots||[]).map(s=>s.percent).filter(v=>typeof v==='number');return p.length?Math.max(...p):null}return null}
+function balanceMissing(data){
+ const out=[],u=data.usage||{},reasons=u.coverage?.reasons||[];
+ if(u.status==='not_collected')out.push(tr('balance.miss.notCollected'));else if(reasons.includes('collector_busy'))out.push(tr('balance.miss.busy'));else if(u.coverage?.status==='collecting')out.push(tr('balance.miss.collecting'));
+ if(u.status!=='not_collected')for(const w of data.windows||[]){
+  if(!w.available)continue;const name=balanceWindowName(w.identity),q=w.quota||{};
+  if(q.kind==='measured'){if(!(q.slots||[]).length)out.push(tr('balance.miss.noQuota',{name}));else for(const s of q.slots)if(!s.fresh)out.push(tr(s.status==='expired'?'balance.miss.expired':'balance.miss.stale',{name,when:date(s.observed_at)}))}
+  else if(!q.kind)out.push(tr('balance.miss.noQuotaClient',{name}));
+  if(w.tokens_per_hour===null)out.push(tr('balance.miss.tokens',{name}));
+ }
+ const est=data.claude_estimate;if(est&&est.reason==='no_reference')out.push(tr('balance.miss.noReference'));else if(est&&est.state==='unknown'&&est.reason&&est.reason!=='no_claude_window')out.push(tr('balance.miss.partialEstimate'));
+ return [...new Set(out)];
+}
+// A measured quota keeps its window (equal values: the lower identity); the Claude estimate is one figure shared by every Claude window, so it names none.
+function balanceQuotaTop(wins){
+ let best=null;
+ for(const w of wins){
+  const v=balanceQuotaPercent(w),shared=(w.quota||{}).kind==='estimate';if(typeof v!=='number')continue;
+  const tie=best!==null&&v===best.v&&!shared&&(best.shared||String(w.identity)<String(best.w.identity));
+  if(best===null||v>best.v||tie)best={v,w:shared?null:w,shared};
+ }
+ return best;
+}
+function balanceFacts(data){
+ const c=data.constants||{},wins=data.windows||[],fired=id=>data.suggestions.some(s=>s.id===id),has=(w,roles)=>w.available&&(w.roles||[]).some(r=>roles.includes(r));
+ const top=(list,f)=>list.reduce((best,w)=>{const v=f(w);return typeof v==='number'&&(best===null||v>best.v)?{v,w}:best},null);
+ const readers=wins.filter(w=>has(w,['reviewer','coordinator'])),builders=wins.filter(w=>has(w,['builder','executor'])),avail=wins.filter(w=>w.available);
+ const reads=top(readers,w=>w.read_steps),owned=top(builders,w=>w.owned_open),quota=balanceQuotaTop(avail),unknown=avail.filter(w=>(w.quota||{}).state==='unknown').length;
+ return {missing:balanceMissing(data),rules:[
+  {id:'reads',threshold:c.pending_reads,best:reads,fired:fired('S1'),blocked:!fired('S1')&&!!reads&&reads.v>=c.pending_reads,unknown:0},
+  {id:'quota',threshold:c.near_quota_percent,best:quota,fired:fired('S2'),blocked:false,unknown},
+  {id:'tasks',threshold:c.open_tasks,best:owned,fired:fired('S3'),blocked:!fired('S3')&&!!owned&&owned.v>=c.open_tasks,unknown:0},
+  {id:'idle',threshold:null,best:null,fired:fired('S4'),blocked:false,unknown:0}]};
+}
+function balanceVerdict(data,facts){
+ const n=data.suggestions.length,blocked=facts.rules.filter(r=>r.blocked),incomplete=facts.missing.length>0||facts.rules.some(r=>r.unknown);
+ const kind=n?'advice':blocked.length?'blocked':incomplete?'incomplete':'balanced';
+ const box=node('section',undefined,'sq-balance-verdict');box.setAttribute('data-balance-verdict',kind);
+ const text=kind==='advice'?tr(n===1?'balance.verdict.one':'balance.verdict.many',{n}):kind==='blocked'?tr('balance.verdict.blocked',{detail:blocked.map(r=>tr('balance.blocked.'+r.id,{name:balanceWindowName(r.best.w.identity),n:r.best.v})).join(' ')})+(incomplete?' '+tr('balance.verdict.alsoMissing'):''):kind==='incomplete'?tr('balance.verdict.incomplete'):tr('balance.verdict.balanced');
+ box.append(node('p',text,'sq-balance-verdict-text'),balanceSuggestions(data));return box;
+}
+function balanceRules(data,facts){
+ const box=node('section');box.setAttribute('data-balance-rules','table');box.append(node('h3',tr('balance.rules')));
+ const table=node('table'),head=node('tr');for(const h of ['when','example','today','state'])head.append(node('th',tr('balance.col.'+h)));table.append(head);
+ for(const r of facts.rules){
+  const row=node('tr');row.setAttribute('data-balance-rule',r.id);
+  const today=r.id==='idle'?tr(r.fired?'balance.today.idleYes':'balance.today.idleNo'):r.best?(r.best.shared?tr('balance.today.quotaShared',{n:Math.round(r.best.v)}):tr(r.id==='quota'?'balance.today.quota':'balance.today.max',{n:r.id==='quota'?Math.round(r.best.v):r.best.v,name:balanceWindowName(r.best.w.identity)}))+(r.unknown?' · '+tr(r.unknown===1?'balance.today.unknownOne':'balance.today.unknownSome',{n:r.unknown}):''):tr(r.unknown?'balance.today.unknown':'balance.today.none');
+  const stateKey=r.fired?'fires':r.blocked?'blocked':r.unknown?(r.best?'partial':'unknown'):'ok';
+  [tr('balance.when.'+r.id,{n:r.threshold}),tr('balance.example.'+r.id),today,tr('balance.state.'+stateKey)].forEach((cell,i)=>{const td=node('td',cell);td.setAttribute('data-label',tr('balance.col.'+['when','example','today','state'][i]));row.append(td)});
+  row.setAttribute('data-balance-state',stateKey);table.append(row);
+ }
+ const scroll=node('div',undefined,'scroll');scroll.append(table);box.append(scroll);return box;
+}
+function balanceRoles(w){const words=[];if((w.roles||[]).some(r=>r==='builder'||r==='executor'))words.push(tr('balance.role.build'));if((w.roles||[]).includes('reviewer'))words.push(tr('balance.role.read'));if((w.roles||[]).includes('coordinator'))words.push(tr('balance.role.coord'));return words.join(', ')}
+function balanceWindowsPlain(data){
+ const box=node('section');box.setAttribute('data-balance-windows','list');box.append(node('h3',tr('balance.windows')));
+ if(!(data.windows||[]).length){box.append(node('p',tr('balance.noWindows')));return box}
+ const list=node('ul',undefined,'sq-balance-list');
+ for(const w of data.windows){
+  const li=node('li');li.setAttribute('data-balance-plain',w.identity);const who=[balanceRoles(w),balanceModelLabel(w)].filter(Boolean),parts=[],q=w.quota||{};
+  if(q.kind==='measured')for(const s of q.slots||[])if(s.fresh)parts.push(tr('balance.slot',{percent:balanceNum(s.used_percent),span:balanceSpan(s.window_minutes),reset:balanceReset(s.resets_at)}));
+  if(q.kind==='estimate')for(const s of q.slots||[])if(typeof s.percent==='number')parts.push(tr('balance.slotEstimate',{percent:Math.round(s.percent),span:balanceEstimateSpan(s.slot)}));
+  const work=[w.tokens_per_hour===null?tr('balance.tokens.unknown'):tr('balance.tokens.rate',{n:balanceNum(Math.round(w.tokens_per_hour))})];
+  work.push(tr(w.owned_open===1?'balance.load.owned1':'balance.load.owned',{n:w.owned_open})+', '+tr(w.read_steps===1?'balance.load.reads1':'balance.load.reads',{n:w.read_steps}));if(!w.available)work.push(tr('balance.reason.stand-by'));
+  li.append(node('strong',balanceWindowName(w.identity)));for(const line of [who,parts,work])if(line.length)li.append(node('p',line.join(' · '),'sq-balance-line'));list.append(li);
+ }
+ box.append(list);return box;
+}
+function balanceMissingView(facts){const box=node('section');box.setAttribute('data-balance-missing','list');box.append(node('h3',tr('balance.missing')));if(!facts.missing.length){box.append(node('p',tr('balance.missing.none'),'sub'));return box}const list=node('ul',undefined,'sq-balance-list');for(const m of facts.missing)list.append(node('li',m));box.append(list);return box}
+function balanceFreshness(){
+ const p=node('p',undefined,'sub');p.setAttribute('data-balance-freshness',balanceUI.status);
+ if(balanceUI.status==='ok'&&balanceUI.lastOk)p.textContent=tr('balance.fresh.ok',{time:balanceClock(balanceUI.lastOk)});
+ else if(balanceUI.status==='busy'||balanceUI.status==='error')p.textContent=tr(balanceUI.lastOk?'balance.fresh.retained':'balance.fresh.none',{time:balanceUI.lastOk?balanceClock(balanceUI.lastOk):'',next:balanceClock(balanceUI.lastDone+BALANCE_CADENCE)});
+ return p;
 }
 function balanceLoad(data){
- const rows=data.windows,max=Math.max(1,...rows.map(r=>r.owned_open+r.read_steps));
- const sentence=rows.length?rows.map(r=>r.identity+': '+r.owned_open+' / '+r.read_steps).join(' · '):tr('balance.noWindows');
- const body=panelPlot(sentence);
- if(!rows.length)body.append(node('p',tr('balance.noWindows')));
- for(const r of rows){const row=node('div',undefined,'sq-brow');row.setAttribute('data-balance-window',r.identity);row.append(node('span',r.identity),balanceBar([[r.owned_open,'sq-mark-acc'],[r.read_steps,'sq-mark-neutral']],max,r.identity),node('span',r.owned_open+' · '+r.read_steps,'v'));body.append(row)}
- const legend=node('ul',undefined,'sq-legend');for(const [cls,key] of [['sq-mark-acc','balance.owned'],['sq-mark-neutral','balance.reads']]){const li=node('li'),svg=svgEl('svg',{width:14,height:14,viewBox:'0 0 14 14','aria-hidden':'true'});svg.append(svgEl('rect',{x:0,y:0,width:14,height:14,rx:3,class:cls}));li.append(svg,node('span',tr(key)));legend.append(li)}
- return panelCard('balance-load',{body,legend,sentence,table:panelTable([tr('balance.window'),tr('balance.model'),tr('balance.owned'),tr('balance.reads'),tr('balance.steps')],rows.map(r=>[r.identity,balanceModelLabel(r),r.owned_open,r.read_steps,r.read_steps+r.build_steps]))});
+ const rows=data.windows,sentence=rows.length?rows.map(r=>balanceWindowName(r.identity)+': '+r.owned_open+' / '+r.read_steps).join(' · '):tr('balance.noWindows');
+ const body=rows.length?sqVizBars('balance-load',rows.map(r=>({key:r.identity,label:balanceWindowName(r.identity),value:r.owned_open+r.read_steps,valueText:r.owned_open+' · '+r.read_steps,
+  aria:tr('balance.aria.load',{name:balanceWindowName(r.identity),owned:r.owned_open,reads:r.read_steps}),attrs:{'data-balance-window':r.identity},
+  segments:[{key:'owned',value:r.owned_open,cls:'sq-viz-c0'},{key:'reads',value:r.read_steps,cls:'sq-viz-c4'}]})),{summary:sentence,hint:tr('balance.hint')}):node('p',tr('balance.noWindows'));
+ const legend=node('ul',undefined,'sq-viz-legend');for(const [cls,key] of [['sq-viz-c0','balance.owned'],['sq-viz-c4','balance.reads']]){const li=node('li'),sw=node('span',undefined,'sq-viz-swatch '+cls);sw.setAttribute('aria-hidden','true');li.append(sw,node('span',tr(key)));legend.append(li)}
+ return panelCard('balance-load',{body,legend,sentence,table:panelTable([tr('balance.window'),tr('balance.model'),tr('balance.owned'),tr('balance.reads'),tr('balance.steps')],rows.map(r=>[balanceWindowName(r.identity),balanceModelLabel(r),r.owned_open,r.read_steps,r.read_steps+r.build_steps]))});
 }
+function balanceHourText(model,b){const t=Date.parse(b.hour),h=Number.isFinite(t)?new Date(t).toLocaleTimeString(uiLocale(),{hour:'2-digit',minute:'2-digit'}):'';return balanceModel(model)+' · '+h+': '+(typeof b.total==='number'?tr('balance.tokens.hour',{n:balanceNum(b.total)}):tr('balance.status.not_measured'))}
 function balanceTokens(data){
- const notes=[],tableRows=[];
- if(data.usage.status==='not_collected')notes.push(tr('balance.notCollected'));
- const series=data.models.filter(m=>m.hourly.length);
- const body=panelPlot(series.length?series.map(m=>balanceModel(m.model)).join(' · '):tr('balance.noHourly'));
+ const notes=[],tableRows=[];if(data.usage.status==='not_collected')notes.push(tr('balance.notCollected'));
+ const series=data.models.filter(m=>m.hourly.length),body=node('div',undefined,'sq-rows');body.setAttribute('aria-label',series.length?series.map(m=>balanceModel(m.model)).join(' · '):tr('balance.noHourly'));
  if(!series.length)body.append(node('p',tr('balance.noHourly')));
- for(const m of series){const max=Math.max(1,...m.hourly.map(b=>typeof b.total==='number'?b.total:0));const row=node('div',undefined,'sq-crow');row.setAttribute('data-balance-model',m.model||'');row.append(node('span',balanceModel(m.model),'t'));
-  const svg=svgEl('svg',{viewBox:'0 0 240 40',class:'sq-strip',role:'img','aria-label':balanceModel(m.model)});
-  m.hourly.forEach((b,i)=>{const measured=typeof b.total==='number';const h=measured?Math.max(1,b.total/max*38):38;const rect=svgEl('rect',{x:i*10,y:40-h,width:8,height:h,rx:2,class:measured?'sq-bar':'none'});const t=svgEl('title',{});t.textContent=date(b.hour)+' · '+(measured?balanceNum(b.total):tr('balance.notMeasured'));rect.append(t);svg.append(rect);tableRows.push([balanceModel(m.model),date(b.hour),measured?b.total:tr('balance.notMeasured'),b.status])});
-  row.append(svg);body.append(row)}
+ for(const m of series){const row=node('div',undefined,'sq-crow');row.setAttribute('data-balance-model',m.model||'');row.append(node('span',balanceModel(m.model),'t'));
+  const total=m.hourly.reduce((s,b)=>s+(typeof b.total==='number'?b.total:0),0);
+  row.append(sqVizStrip('balance-tokens/'+(m.model||''),m.model||'',balanceModel(m.model),m.hourly,{text:b=>balanceHourText(m.model,b),summary:tr('balance.aria.strip',{model:balanceModel(m.model),n:balanceNum(total)})}));body.append(row);
+  for(const b of m.hourly)tableRows.push([balanceModel(m.model),date(b.hour),typeof b.total==='number'?b.total:tr('balance.notMeasured'),balanceStatusWord(b.status)])}
  return panelCard('balance-tokens',{body,sentence:series.length?tr('chart.balance-tokens.sub'):tr('balance.noHourly'),notes,table:panelTable([tr('balance.model'),tr('balance.hour'),tr('balance.tokens'),tr('balance.status')],tableRows)});
 }
-function balanceHatch(svg,id){const defs=svgEl('defs',{}),pattern=svgEl('pattern',{id,width:6,height:6,patternUnits:'userSpaceOnUse',patternTransform:'rotate(45)'});pattern.append(svgEl('rect',{x:0,y:0,width:3,height:6,class:'sq-bar'}));defs.append(pattern);svg.append(defs)}
 function balanceQuota(data){
- const body=panelPlot(tr('chart.balance-quota.sub')),notes=[],tableRows=[];
- if(data.usage.status==='not_collected')notes.push(tr('balance.notCollected'));
+ const notes=[],tableRows=[],rows=[];if(data.usage.status==='not_collected')notes.push(tr('balance.notCollected'));
  for(const r of data.windows.filter(w=>w.quota.kind==='measured')){
-  if(!r.quota.slots.length){const row=node('div',undefined,'sq-brow');row.append(node('span',r.identity),node('span',tr('balance.notMeasured')),node('span','—','v'));body.append(row);tableRows.push([r.identity,'—',tr('balance.notMeasured'),'—']);continue}
-  for(const s of r.quota.slots){const row=node('div',undefined,'sq-brow');row.setAttribute('data-balance-quota',r.identity);const known=s.fresh&&typeof s.used_percent==='number';
-   row.append(node('span',r.identity+' · '+balanceNum(s.window_minutes)+' min'),known?balanceBar([[s.used_percent,'sq-bar']],100,balanceSlotText(s)):node('span',tr('balance.notMeasured')),node('span',known?Math.round(s.used_percent)+'%':'—','v'));body.append(row);
-   tableRows.push([r.identity,balanceNum(s.window_minutes)+' min',known?s.used_percent+'%':tr('balance.notMeasured')+' ('+s.status+')',date(s.resets_at)])}
+  const name=balanceWindowName(r.identity);
+  if(!r.quota.slots.length){rows.push({key:r.identity+'/none',label:name,value:null,valueText:'—',aria:name+': '+tr('balance.notMeasured'),attrs:{'data-balance-quota':r.identity}});tableRows.push([name,'—',tr('balance.notMeasured'),'—']);continue}
+  for(const s of r.quota.slots){const known=s.fresh&&typeof s.used_percent==='number';
+   rows.push({key:r.identity+'/'+(s.limit||'')+'/'+s.window_minutes,label:name+' · '+balanceSpanShort(s.window_minutes),value:known?s.used_percent:null,valueText:known?Math.round(s.used_percent)+'%':'—',
+    aria:name+' · '+balanceSpanShort(s.window_minutes)+': '+(known?balanceSlotText(s):balanceStatusWord(s.status)),attrs:{'data-balance-quota':r.identity}});
+   tableRows.push([name,balanceSpanShort(s.window_minutes),known?s.used_percent+'%':balanceStatusWord(s.status),balanceReset(s.resets_at)])}
  }
  const est=data.claude_estimate;
  if(est){notes.push(tr('balance.assumption'));
   if(est.reason==='no_reference')notes.push(tr('balance.noReference',{h5:balanceNum(est.sums.h5.total),d7:balanceNum(est.sums.d7.total)}));
-  else if(est.reason&&est.reason!=='no_claude_window')notes.push(tr('balance.partial',{reasons:[...new Set([...est.sums.h5.reasons,...est.sums.d7.reasons])].join(', ')||est.reason,h5:balanceNum(est.sums.h5.total),d7:balanceNum(est.sums.d7.total)}));
-  est.slots.forEach((s,i)=>{const row=node('div',undefined,'sq-brow');row.setAttribute('data-balance-estimate',s.slot);const label='Claude · '+tr('balance.estimate')+' · '+s.slot;
-   if(typeof s.percent==='number'){const svg=balanceBar([[Math.min(100,s.percent),'sq-bar']],100,label),id='sq-balance-hatch-'+i;balanceHatch(svg,id);for(const rect of [...svg.children].filter(c=>(c.tagName||c.tag)==='rect'))rect.setAttribute('style','fill:url(#'+id+')');row.append(node('span',label,'sq-balance-est'),svg,node('span',tr('balance.estimate')+' '+Math.round(s.percent)+'%','v'))}
-   else row.append(node('span',label,'sq-balance-est'),node('span',tr('balance.notMeasured')),node('span','—','v'));
-   body.append(row);tableRows.push(['Claude ('+tr('balance.estimate')+')',s.slot,typeof s.percent==='number'?Math.round(s.percent)+'% · '+balanceNum(est.sums[s.slot].total)+' / '+balanceNum(s.reference):tr('balance.notMeasured'),'—'])})}
- return panelCard('balance-quota',{body,sentence:tr('chart.balance-quota.sub'),notes,table:panelTable([tr('balance.window'),'',tr('balance.status'),'Reset'],tableRows)});
+  else if(est.reason&&est.reason!=='no_claude_window')notes.push(tr('balance.partial',{h5:balanceNum(est.sums.h5.total),d7:balanceNum(est.sums.d7.total)}));
+  for(const s of est.slots){const label='Claude · '+tr('balance.estimate')+' · '+tr(s.slot==='h5'?'balance.short.h5':'balance.short.week'),known=typeof s.percent==='number';
+   rows.push({key:'claude/'+s.slot,label,value:known?Math.min(100,s.percent):null,valueText:known?tr('balance.estimate')+' '+Math.round(s.percent)+'%':'—',aria:label+': '+(known?Math.round(s.percent)+'%':tr('balance.notMeasured')),hatch:known,attrs:{'data-balance-estimate':s.slot}});
+   tableRows.push(['Claude ('+tr('balance.estimate')+')',balanceEstimateSpan(s.slot),known?Math.round(s.percent)+'% · '+balanceNum(est.sums[s.slot].total)+' / '+balanceNum(s.reference):tr('balance.notMeasured'),'—'])}}
+ const body=rows.length?sqVizBars('balance-quota',rows,{summary:tr('chart.balance-quota.sub'),hint:tr('balance.hint'),max:100}):node('p',tr('balance.notMeasured'));
+ return panelCard('balance-quota',{body,sentence:tr('chart.balance-quota.sub'),notes,table:panelTable([tr('balance.window'),tr('balance.span'),tr('balance.status'),tr('balance.reset')],tableRows)});
 }
 function balanceReferenceForm(){
  const box=node('section'),form=node('div',undefined,'sq-balance-form'),current=balanceReference()?.claude;box.append(node('h3',tr('balance.reference')));
  const inputs={};for(const [key,label] of [['h5','balance.refH5'],['week','balance.refWeek']]){const l=node('label',tr(label)),input=node('input');input.setAttribute('type','number');input.setAttribute('min','1');input.setAttribute('step','1');input.setAttribute('inputmode','numeric');input.value=current?String(current[key]):'';focusKey(input,'balance:ref:'+key);balanceUI.controls.push(input);inputs[key]=input;l.append(input);form.append(l)}
- form.append(balanceButton(tr('balance.refSave'),'balance:ref:save',()=>{const h5=Number(inputs.h5.value),week=Number(inputs.week.value);if(!Number.isInteger(h5)||!Number.isInteger(week)||h5<=0||week<=0||h5>1e12||week>1e12){balanceUI.refError=true;balanceUI.signature=null;render();return}balanceUI.refError=false;balanceSaveReference({h5,week});balanceUI.attempt=null;balanceUI.signature=null;render()}),
-  balanceButton(tr('balance.refClear'),'balance:ref:clear',()=>{balanceSaveReference(null);balanceUI.refError=false;balanceUI.attempt=null;balanceUI.signature=null;render()}));
+ form.append(balanceButton(tr('balance.refSave'),'balance:ref:save',()=>{const h5=Number(inputs.h5.value),week=Number(inputs.week.value);if(!Number.isInteger(h5)||!Number.isInteger(week)||h5<=0||week<=0||h5>1e12||week>1e12){balanceUI.refError=true;balanceUI.signature=null;render();return}balanceUI.refError=false;balanceSaveReference({h5,week});balanceAgain()}),
+  balanceButton(tr('balance.refClear'),'balance:ref:clear',()=>{balanceSaveReference(null);balanceUI.refError=false;balanceAgain()}));
  box.append(form);if(balanceUI.refError)box.append(node('p',tr('balance.refInvalid'),'sub'));return box;
 }
 function balanceSlot(list,slot){
  const box=node('div');box.setAttribute('data-balance-slot',slot);box.append(node('h4',tr('balance.'+slot)));
  box.append(node('p',tr('balance.order',{order:list.order.map(d=>tr('balance.dim.'+d)).join(' > ')}),'sub'));
- for(const o of list.omitted)box.append(node('p',tr('balance.omitted',{dimension:tr('balance.dim.'+o.dimension),windows:o.windows.join(', ')}),'sub'));
- const ol=node('ol',undefined,'sq-balance-list');for(const r of list.rows){const li=node('li');li.setAttribute('data-balance-rank',r.identity);li.append(node('strong',r.position+'. '+r.identity+' · '+balanceModelLabel(r)),node('p',r.sentence[UI_LANG]||r.sentence.en));ol.append(li)}box.append(ol);
- for(const e of list.excluded){const p=node('p',e.identity+' — '+tr('balance.excluded',{reason:tr('balance.reason.'+e.reason)}),'sub');p.setAttribute('data-balance-excluded',e.identity);box.append(p)}
+ for(const o of list.omitted)box.append(node('p',tr('balance.omitted',{dimension:tr('balance.dim.'+o.dimension),windows:o.windows.map(balanceWindowName).join(', ')}),'sub'));
+ const ol=node('ol',undefined,'sq-balance-list');for(const r of list.rows){const li=node('li');li.setAttribute('data-balance-rank',r.identity);li.append(node('strong',r.position+'. '+balanceWindowName(r.identity)+' · '+balanceModelLabel(r)),node('p',balanceRankSentence(r,slot)));ol.append(li)}box.append(ol);
+ for(const e of list.excluded){const p=node('p',balanceWindowName(e.identity)+' — '+tr('balance.excluded',{reason:tr('balance.reason.'+e.reason)}),'sub');p.setAttribute('data-balance-excluded',e.identity);box.append(p)}
  return box;
+}
+// The ranking reason, written on the page from the row's fields so the wording follows singular and plural.
+function balanceRankSentence(r,slot){
+ const held=r.read_steps+r.build_steps,parts=[tr(held===1?'balance.rank.step1':'balance.rank.steps',{n:held}),tr(r.owned_open===1?'balance.load.owned1':'balance.load.owned',{n:r.owned_open})];
+ const q=r.quota||{};if(q.state==='near')parts.push(tr(q.kind==='estimate'?'balance.rank.nearEstimate':'balance.rank.near'));else if(q.state==='unknown')parts.push(tr('balance.today.unknown'));
+ if(typeof r.history_count==='number')parts.push(tr((slot==='build'?'balance.rank.built':'balance.rank.read')+(r.history_count===1?'1':''),{n:r.history_count}));
+ return parts.join(', ')+'.';
 }
 function balanceTask(data){
  const box=node('section');box.append(node('h3',tr('balance.perTask')));
@@ -4106,22 +4282,23 @@ function balanceTask(data){
  if(!open.length){box.append(node('p',tr('balance.noOpen')));return box}
  const label=node('label',tr('balance.pickTask')),select=node('select');select.append(node('option',tr('balance.choose')));select.children[0].value='';
  for(const t of open){const o=node('option',taskTitle(t.id));o.value=t.id;if(t.id===balanceUI.task)o.selected=true;select.append(o)}
- select.value=balanceUI.task;select.onchange=e=>{balanceUI.task=e.target.value;balanceUI.attempt=null;balanceUI.signature=null;render()};focusKey(select,'balance:task');balanceUI.controls.push(select);label.append(select);box.append(label);
+ select.value=balanceUI.task;select.onchange=e=>{balanceUI.task=e.target.value;balanceAgain()};focusKey(select,'balance:task');balanceUI.controls.push(select);label.append(select);box.append(label);
  const ranked=data.task&&data.task.id===balanceUI.task&&data.task.status==='ranked'?data.task:null;
  if(ranked){const grid=node('div',undefined,'sq-balance-cards');for(const slot of ['build','read'])grid.append(balanceSlot(ranked[slot],slot));box.append(grid)}
  return box;
 }
 function balanceRender(content){
- const signature=JSON.stringify([balanceUI.data,balanceUI.task,balanceUI.error,balanceUI.refError,UI_LANG,Object.keys(state.tasks||{}).length]);
+ const signature=JSON.stringify([balanceUI.data,balanceUI.task,balanceUI.status,balanceUI.lastOk,balanceUI.lastDone,balanceUI.refError,UI_LANG,Object.keys(state.tasks||{}).length]);
  if(signature!==balanceUI.signature){balanceUI.signature=signature;balanceUI.controls=[];const box=node('section',undefined,'sq-balance');box.setAttribute('data-balance','page');balanceUI.element=box;
   box.append(node('h2',tr('tab.Bilanciamento')),node('p',tr('balance.intro'),'sq-balance-intro'));
-  if(balanceUI.error)box.append(node('p',tr('balance.error')),balanceButton(tr('balance.retry'),'balance:retry',()=>{balanceUI.attempt=null;render()}));
-  if(!balanceUI.data)box.append(node('p',tr('balance.loading')));
-  else{const data=balanceUI.data;box.append(node('p',tr('balance.notice'),'sub'),balanceSuggestions(data));const charts=node('div',undefined,'sq-chart-grid');charts.append(balanceLoad(data),balanceTokens(data),balanceQuota(data));box.append(charts,balanceReferenceForm(),balanceTask(data))}
+  if(balanceUI.status==='error')box.append(node('p',tr('balance.error')),balanceButton(tr('balance.retry'),'balance:retry',balanceAgain));
+  if(!balanceUI.data){if(balanceUI.status!=='error')box.append(node('p',tr('balance.loading')))}
+  else{const data=balanceUI.data,facts=balanceFacts(data);box.append(balanceVerdict(data,facts),balanceFreshness(),balanceRules(data,facts),balanceWindowsPlain(data),balanceMissingView(facts),node('p',tr('balance.notice'),'sub'));
+   const charts=node('div',undefined,'sq-chart-grid');charts.append(balanceLoad(data),balanceTokens(data),balanceQuota(data));box.append(charts,balanceReferenceForm(),balanceTask(data))}
  }
  if(content.children[0]!==balanceUI.element)content.replaceChildren(balanceUI.element);
  for(const el of balanceUI.controls)focusKey(el,el.getAttribute('data-focus-key'));
- if(balanceUI.attempt!==state&&!balanceUI.running)balanceFetch();
+ balancePoll();
 }
 </script>
 
@@ -4222,13 +4399,14 @@ function usageDetail(key,title,body){
  const details=node('details');details.open=usageUI.open.has(key);details.ontoggle=()=>{if(details.open)usageUI.open.add(key);else usageUI.open.delete(key)};
  details.append(usageControl(node('summary',title),'details:'+key),body);return details;
 }
-function usageBarPlot(rows,stacked,summary){
- const shown=rows.slice(0,24),height=Math.max(80,shown.length*34+10),svg=svgEl('svg',{viewBox:'0 0 560 '+height,role:'img','aria-label':summary});
- const max=Math.max(1,...shown.map(r=>usageNumber(r.value)?r.value:0));
- shown.forEach((r,i)=>{const y=12+i*34,label=svgEl('text',{x:0,y:y+11});label.textContent=Array.from(r.label).slice(0,23).join('');svg.append(label);
-  if(usageNumber(r.value)){let x=180;const values=stacked?usageKinds.map(k=>r.totals?.[k]):[r.value];values.forEach((value,j)=>{if(!usageNumber(value))return;const width=value/max*250,bar=svgEl('rect',{x,y,width,height:17,rx:2,class:'usage-k'+j});const title=svgEl('title');title.textContent=r.label+' · '+(stacked?tr('usage.'+usageKinds[j])+': ':'')+usageCount(value);bar.append(title);svg.append(bar);x+=width})}
-  const value=svgEl('text',{x:440,y:y+12});value.textContent=usageNumber(r.value)?usageCount(r.value):'—';svg.append(value);
- });return svg;
+function usageBarPlot(rows,stacked,summary,key='bars'){
+ return sqVizBars('usage-'+key,rows.map(r=>({key:String(r.identity??r.model??('task' in r?r.task??'unassigned':r.day??r.label)),label:r.label,value:usageNumber(r.value)?r.value:null,valueText:usageNumber(r.value)?usageCount(r.value):'—',
+  aria:r.label+': '+(stacked?usageKinds.map(k=>tr('usage.'+k)+' '+usageCount(r.totals?.[k])).join(', '):usageNumber(r.value)?usageCount(r.value):tr('usage.not_measured')),
+  segments:stacked?usageKinds.map((k,j)=>({key:k,value:usageNumber(r.totals?.[k])?r.totals[k]:null,cls:'usage-k'+j})):null})),{summary,hint:tr('usage.hint')});
+}
+function usageRingPlot(rows,summary){
+ const items=rows.slice().sort((a,b)=>String(a.model??'').localeCompare(String(b.model??''))).map(r=>({key:String(r.model??'unknown'),label:r.label,value:usageNumber(r.value)?r.value:null,valueText:usageNumber(r.value)?usageCount(r.value):'—'}));
+ const total=items.reduce((s,i)=>s+(usageNumber(i.value)?i.value:0),0);return sqVizRing('usage-byModel',items,{summary,hint:tr('usage.hint'),centre:usageCount(total),centreSub:tr('usage.tokens')});
 }
 function usageWindowLabel(row){
  const actor=(row?.actors||[]).find(a=>state.agents?.[a]);return actor?panelWho(actor):row?.client?({codex:'Codex',claude:'Claude',cursor:'Cursor'}[row.client]||tr('usage.window')):tr('usage.window');
@@ -4239,7 +4417,7 @@ function usageChart(key,rows,{stacked=false,note=null,headers=null,tableRows=nul
  const heading=usageControl(node('h3',tr('usage.'+key)),'chart:'+key);heading.setAttribute('tabindex','-1');card.append(heading);
  if(note)card.append(node('p',tr(note),'sq-usage-note'));
  const measured=rows.filter(r=>usageNumber(r.value)).length,summary=tr('usage.chartSummary',{measured,unknown:rows.length-measured});
- if(rows.length)card.append(plot||usageBarPlot(rows,stacked,summary));else card.append(node('p',tr('usage.noRows'),'empty'));
+ if(rows.length)card.append(plot||(key==='byModel'?usageRingPlot(rows,summary):usageBarPlot(rows,stacked,summary,key)));else card.append(node('p',tr('usage.noRows'),'empty'));
  if(key==='quota'&&rows.length){const legend=node('div',undefined,'sq-usage-legend'),groups=[...new Map(rows.map(r=>[JSON.stringify([r.identity,r.limit]),r])).values()];groups.forEach((r,i)=>{const label=node('span');label.append(node('i',undefined,'usage-k'+i%4),node('span',r.label+' · '+tr(['primary','secondary'].includes(r.limit)?'usage.'+r.limit:'usage.slot')));legend.append(label)});card.append(legend)}
  if(stacked){const legend=node('div',undefined,'sq-usage-legend');usageKinds.forEach((k,i)=>{const label=node('span');label.append(node('i',undefined,'usage-k'+i),node('span',tr('usage.'+k)));legend.append(label)});card.append(legend)}
  card.append(node('p',summary,'sq-usage-muted'));if(rows.length>24&&!plot)card.append(node('p',tr('usage.chartLimit',{n:24}),'sq-usage-muted'));
@@ -4247,15 +4425,11 @@ function usageChart(key,rows,{stacked=false,note=null,headers=null,tableRows=nul
  card.append(usageDetail('chart:'+key,tr('usage.table'),usageTable(columns,tableRows||rows.map(r=>[r.label,usageCount(r.value),usageStatus(r)]),key)));return card;
 }
 function usageQuotaPlot(rows){
- const summary=tr('usage.chartSummary',{measured:rows.filter(r=>usageNumber(r.value)).length,unknown:rows.filter(r=>!usageNumber(r.value)).length}),svg=svgEl('svg',{viewBox:'0 0 560 210',role:'img','aria-label':summary});
- for(const pct of [0,50,100]){const y=175-pct*1.45,line=svgEl('path',{d:'M35 '+y+'H540',stroke:'var(--line)',fill:'none'}),label=svgEl('text',{x:0,y:y+4});label.textContent=pct+'%';svg.append(line,label)}
- const times=rows.map(r=>Date.parse(r.observed_at)).filter(Number.isFinite),min=times.length?Math.min(...times):0,max=times.length?Math.max(...times):1,groups=new Map();
- for(const row of rows){const key=JSON.stringify([row.identity,row.limit]);if(!groups.has(key))groups.set(key,[]);groups.get(key).push(row)}
- let index=0;for(const points of groups.values()){
-  let path='',segment=false;for(const p of points.slice().sort((a,b)=>Date.parse(a.observed_at)-Date.parse(b.observed_at))){if(!usageNumber(p.value)||!Number.isFinite(Date.parse(p.observed_at))){segment=false;continue}const x=35+(Date.parse(p.observed_at)-min)/Math.max(1,max-min)*505,y=175-p.value*1.45;path+=(segment?' L':' M')+x.toFixed(2)+' '+y.toFixed(2);segment=true;const dot=svgEl('rect',{x:x-2,y:y-2,width:4,height:4,class:'usage-k'+index%4});svg.append(dot)}
-  if(path)svg.append(svgEl('path',{d:path,fill:'none',stroke:['var(--sq-accent)','var(--sq-chart-good)','var(--standby)','var(--sq-chart-done)'][index%4],'stroke-width':2,'stroke-dasharray':index%2?'5 3':'none'}));index++;
- }
- if(times.length){for(const [t,x,anchor] of [[min,35,'start'],[max,540,'end']]){const label=svgEl('text',{x,y:202,'text-anchor':anchor});label.textContent=new Date(t).toISOString().slice(5,16).replace('T',' ')+' UTC';svg.append(label)}}return svg;
+ const groups=new Map();
+ for(const row of rows){const key=row.identity+'|'+row.limit;if(!groups.has(key))groups.set(key,{key,label:row.label+' · '+tr(['primary','secondary'].includes(row.limit)?'usage.'+row.limit:'usage.slot'),points:[]});
+  groups.get(key).points.push({t:Date.parse(row.observed_at),v:usageNumber(row.value)?row.value:null,text:usageCount(row.value)+'% · '+date(row.observed_at)})}
+ const summary=tr('usage.chartSummary',{measured:rows.filter(r=>usageNumber(r.value)).length,unknown:rows.filter(r=>!usageNumber(r.value)).length});
+ return sqVizLines('usage-quota',[...groups.values()],{summary,hint:tr('usage.hint'),timeLabel:t=>new Date(t).toISOString().slice(5,16).replace('T',' ')+' UTC'});
 }
 function usageAdvisory(data){
  const section=node('section',undefined,'sq-usage-advice');section.append(node('h3',tr('usage.advice')),node('p',tr('usage.adviceNote'),'sq-usage-muted'));let count=0;
@@ -4318,5 +4492,146 @@ function usageRender(content){
 }
 </script>
 
+<style id="squadra-charts-style">
+.sq-viz{min-width:0;margin-top:4px}.sq-viz svg{display:block;width:100%;height:auto;overflow:visible}
+.sq-viz-label{font-size:13px;fill:var(--sq-text,var(--text))}.sq-viz-value{font-size:13px;font-weight:600;fill:var(--sq-text,var(--text));font-variant-numeric:tabular-nums}
+.sq-viz-axis{font-size:11px;fill:var(--sq-muted,var(--muted))}.sq-viz-grid{stroke:var(--sq-border,var(--line));fill:none}
+.sq-viz-rows{display:grid;gap:10px}.sq-viz-row{display:grid;grid-template-columns:minmax(0,34%) minmax(0,1fr) auto;gap:12px;align-items:center;font-size:13px;min-height:22px;border-radius:8px}.sq-viz-row:focus{outline:none}.sq-viz-row:focus-visible{outline:2px solid var(--sq-accent);outline-offset:3px}.sq-viz-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sq-viz-num{font-weight:600;font-variant-numeric:tabular-nums;text-align:right;min-width:3ch}.sq-viz-track{display:flex;gap:2px;height:16px;border-radius:8px;background:var(--sq-surface-2,var(--panel));overflow:hidden}.sq-viz-seg{display:block;height:100%;border-radius:8px;flex:none}.sq-viz-grad{background:linear-gradient(90deg,color-mix(in srgb,var(--sq-accent) 55%,transparent),var(--sq-accent))}.sq-viz-hatched{background:repeating-linear-gradient(45deg,var(--sq-accent) 0 3px,transparent 3px 6px)}.sq-viz-seg.usage-k0,.sq-viz-seg.sq-viz-c0{background:var(--sq-accent)}.sq-viz-seg.usage-k1{background:var(--sq-chart-good)}.sq-viz-seg.usage-k2{background:var(--standby)}.sq-viz-seg.usage-k3{background:var(--sq-chart-done)}.sq-viz-seg.sq-viz-c4{background:var(--sq-chart-neutral)}.sq-viz-c0{stop-color:var(--sq-accent);fill:var(--sq-accent);stroke:var(--sq-accent)}
+.sq-viz-c1{stop-color:var(--sq-chart-good);fill:var(--sq-chart-good);stroke:var(--sq-chart-good)}.sq-viz-c2{stop-color:var(--standby);fill:var(--standby);stroke:var(--standby)}
+.sq-viz-c3{stop-color:var(--sq-chart-done);fill:var(--sq-chart-done);stroke:var(--sq-chart-done)}.sq-viz-c4{stop-color:var(--sq-chart-neutral);fill:var(--sq-chart-neutral);stroke:var(--sq-chart-neutral)}
+.sq-viz-line{fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}.sq-viz-area{stroke:none;opacity:.18}.sq-viz-dot{stroke:var(--sq-surface,var(--panel));stroke-width:2}
+.sq-viz-ring{fill:none;stroke-width:22}.sq-viz-ring-track{fill:none;stroke:var(--sq-surface-2,var(--panel));stroke-width:22}
+.sq-viz-hatch{fill:none;stroke:var(--sq-border-strong,var(--line));stroke-dasharray:2 2}.sq-viz-partial{opacity:.55}
+.sq-viz-mark{cursor:default}.sq-viz-mark:focus{outline:none}.sq-viz-mark:focus-visible{outline:2px solid var(--sq-accent);outline-offset:3px}
+.sq-viz-readout{min-height:18px;margin:8px 0 0;font-size:12px;line-height:18px;color:var(--sq-muted,var(--muted));overflow-wrap:anywhere}
+.sq-viz-legend{display:grid;gap:6px;margin:12px 0 0;padding:0;list-style:none;font-size:13px}.sq-viz-legend li{display:flex;gap:8px;align-items:center;min-width:0;overflow-wrap:anywhere}
+.sq-viz-swatch{display:inline-block;flex:none;width:12px;height:12px;border-radius:4px}.sq-viz-swatch.sq-viz-c0{background:var(--sq-accent)}.sq-viz-swatch.sq-viz-c1{background:var(--sq-chart-good)}.sq-viz-swatch.sq-viz-c2{background:var(--standby)}.sq-viz-swatch.sq-viz-c3{background:var(--sq-chart-done)}.sq-viz-swatch.sq-viz-c4{background:var(--sq-chart-neutral)}
+.sq-viz-ringbox{display:grid;grid-template-columns:minmax(0,200px) minmax(0,1fr);gap:16px;align-items:center}.sq-viz-ringbox .sq-viz svg{max-width:220px;margin:0 auto}
+.sq-usage-chart,.sq-balance .sq-chart{padding:24px}.sq-usage-chart>*+*,.sq-balance .sq-chart>*+*{margin-top:10px}
+@media(max-width:699.98px){.sq-viz-ringbox{grid-template-columns:minmax(0,1fr)}.sq-usage-chart,.sq-balance .sq-chart{padding:16px}}
+@media (prefers-reduced-motion: reduce){.sq-viz *{animation:none!important;transition:none!important}}
+</style>
+<script id="squadra-chart-motion">
+'use strict';
+// Charts write their final attributes first; motion only plays toward them and never on an unchanged value.
+const sqMotion={last:new Map(),drawn:new Map(),seen:new Map(),
+ reduced(){try{return typeof matchMedia==='function'&&matchMedia('(prefers-reduced-motion: reduce)').matches===true}catch(e){return false}},
+ begin(chart){this.seen.set(chart,new Set())},
+ end(chart){const seen=this.seen.get(chart)||new Set();for(const k of [...this.last.keys()])if(k.startsWith(chart+'|')&&!seen.has(k)){this.last.delete(k);this.drawn.delete(k)}this.seen.delete(chart)},
+ play(el,chart,key,value,frames,length){
+  const id=chart+'|'+key;this.seen.get(chart)?.add(id);const prev=this.last.get(id),before=this.drawn.get(id);this.last.set(id,value);if(length===undefined)this.drawn.delete(id);else this.drawn.set(id,length);
+  if(prev===value||this.reduced()||typeof el.animate!=='function')return false;
+  const keyframes=frames(prev,before);if(!keyframes)return false;
+  try{el.animate(keyframes,{duration:450,easing:'cubic-bezier(.2,.7,.2,1)'});return true}catch(e){return false}
+ }
+};
+let sqVizSeq=0;
+const sqVizNum=v=>typeof v==='number'&&Number.isFinite(v)&&v>=0;
+function sqVizGradient(svg,cls,vertical=false){
+ const id='sqv'+(++sqVizSeq),defs=svgEl('defs',{}),g=svgEl('linearGradient',vertical?{id,x1:0,x2:0,y1:1,y2:0}:{id,x1:0,x2:1,y1:0,y2:0});
+ g.append(svgEl('stop',{offset:0,class:cls,'stop-opacity':.55}),svgEl('stop',{offset:1,class:cls,'stop-opacity':1}));defs.append(g);svg.append(defs);return id;
+}
+function sqVizHatch(svg){const id='sqh'+(++sqVizSeq),defs=svgEl('defs',{}),pattern=svgEl('pattern',{id,width:6,height:6,patternUnits:'userSpaceOnUse',patternTransform:'rotate(45)'});pattern.append(svgEl('rect',{x:0,y:0,width:3,height:6,class:'sq-viz-c0'}));defs.append(pattern);svg.append(defs);return id}
+function sqVizFrame(svg,hint){
+ const box=node('div',undefined,'sq-viz'),out=node('p',hint||'','sq-viz-readout');out.setAttribute('aria-live','polite');box.append(svg,out);box.sqOut=out;box.sqHint=hint||'';return box;
+}
+function sqVizShow(frame,text){frame.sqOut.textContent=text||frame.sqHint}
+function sqVizMark(frame,parent,label,{focusable=true,key=null}={}){
+ const g=svgEl('g',{class:'sq-viz-mark'});if(key)g.setAttribute('data-viz-key',key);
+ if(focusable){g.setAttribute('tabindex','0');g.setAttribute('aria-label',label)}
+ const title=svgEl('title',{});title.textContent=label;g.append(title);
+ g.onfocus=()=>sqVizShow(frame,label);g.onblur=()=>sqVizShow(frame,'');g.onpointerenter=()=>sqVizShow(frame,label);g.onpointerleave=()=>sqVizShow(frame,'');
+ parent.append(g);return g;
+}
+// length is the drawn length: a change scales from the length drawn last time, so a zero at its floor or a new scale stays finite.
+function sqVizGrow(rect,chart,key,value,axis,length){
+ rect.style.transformBox='fill-box';rect.style.transformOrigin=axis==='x'?'left center':'center bottom';
+ sqMotion.play(rect,chart,key,value,(prev,before)=>{if(!(length>0))return null;const from=prev===undefined||!(before>=0)?0:before/length;const f=axis==='x'?'scaleX':'scaleY';return [{transform:f+'('+from+')'},{transform:f+'(1)'}]},length);
+}
+// rows: {key,label,value,valueText,aria,segments:[{key,value,cls}],cls,hatch,attrs}; HTML rows keep text at its real size while bars stretch.
+function sqVizBars(chart,rows,{summary='',hint='',max=null}={}){
+ const shown=rows.slice(0,24),box=node('div',undefined,'sq-viz-rows');box.setAttribute('role','img');box.setAttribute('aria-label',summary);
+ const frame=sqVizFrame(box,hint),top=max||Math.max(1,...shown.map(r=>sqVizNum(r.value)?r.value:0));sqMotion.begin(chart);
+ for(const r of shown){
+  const row=node('div',undefined,'sq-viz-row');row.setAttribute('tabindex','0');row.setAttribute('aria-label',r.aria||(r.label+': '+(r.valueText??'—')));row.setAttribute('data-viz-key',r.key);
+  for(const [k,v] of Object.entries(r.attrs||{}))row.setAttribute(k,v);
+  const label=r.aria||(r.label+': '+(r.valueText??'—'));row.onfocus=()=>sqVizShow(frame,label);row.onblur=()=>sqVizShow(frame,'');row.onpointerenter=()=>sqVizShow(frame,label);row.onpointerleave=()=>sqVizShow(frame,'');
+  const track=node('span',undefined,'sq-viz-track');
+  if(sqVizNum(r.value)&&r.value>0){
+   const segs=(r.segments||[{key:'value',value:r.value,cls:null}]).filter(s=>sqVizNum(s.value)&&s.value>0);
+   for(const s of segs){const seg=node('span',undefined,'sq-viz-seg '+(r.hatch?'sq-viz-hatched':s.cls||r.cls||'sq-viz-grad'));seg.style.width=(s.value/top*100).toFixed(2)+'%';seg.setAttribute('data-viz-value',String(s.value));
+    seg.style.transformOrigin='left center';track.append(seg);sqMotion.play(seg,chart,r.key+'/'+s.key,s.value,prev=>[{transform:'scaleX('+(prev===undefined?0:Math.max(0,prev/s.value))+')'},{transform:'scaleX(1)'}])}
+  }
+  row.append(node('span',r.label,'sq-viz-name'),track,node('span',r.valueText??'—','sq-viz-num'));box.append(row);
+ }
+ sqMotion.end(chart);return frame;
+}
+// items: {key,label,value,valueText}; shares are display rounding of exact values.
+function sqVizRing(chart,items,{summary='',hint='',centre='',centreSub=''}={}){
+ const known=items.filter(i=>sqVizNum(i.value)&&i.value>0),total=known.reduce((s,i)=>s+i.value,0),r=62,C=2*Math.PI*r;
+ const svg=svgEl('svg',{viewBox:'0 0 200 200',role:'img','aria-label':summary,class:'sq-viz-ringchart'}),frame=sqVizFrame(svg,hint);
+ svg.append(svgEl('circle',{cx:100,cy:100,r,class:'sq-viz-ring-track'}));sqMotion.begin(chart);
+ const legend=node('ul',undefined,'sq-viz-legend');let acc=0;
+ const pct=v=>{const p=v/total*100;return (p<10?p.toFixed(1):p.toFixed(0)).replace('.',UI_LANG==='en'?'.':',')+'%'};
+ items.forEach((item,i)=>{
+  const cls='sq-viz-c'+Math.min(i,4),li=node('li'),sw=node('span',undefined,'sq-viz-swatch '+cls);sw.setAttribute('aria-hidden','true');
+  const share=sqVizNum(item.value)&&total>0?pct(item.value):null,label=item.label+(share?' · '+share:'')+' · '+(item.valueText??'—');
+  li.setAttribute('data-viz-legend',item.key);li.append(sw,node('span',label));legend.append(li);
+  if(!(sqVizNum(item.value)&&item.value>0&&total>0))return;
+  const len=item.value/total*C,mark=sqVizMark(frame,svg,label,{key:item.key});
+  const arc=svgEl('circle',{cx:100,cy:100,r,class:'sq-viz-ring '+cls,'stroke-dasharray':len.toFixed(2)+' '+C.toFixed(2),'stroke-dashoffset':(-acc).toFixed(2),transform:'rotate(-90 100 100)'});
+  arc.setAttribute('data-viz-value',String(item.value));mark.append(arc);acc+=len;
+  sqMotion.play(arc,chart,item.key,item.value,prev=>{const from=prev===undefined?0:Math.max(0,Math.min(C,prev/total*C));return [{strokeDasharray:from.toFixed(2)+' '+C.toFixed(2)},{strokeDasharray:len.toFixed(2)+' '+C.toFixed(2)}]});
+ });
+ const big=svgEl('text',{x:100,y:98,'text-anchor':'middle',class:'sq-viz-value'});big.textContent=centre;const small=svgEl('text',{x:100,y:118,'text-anchor':'middle',class:'sq-viz-axis'});small.textContent=centreSub;svg.append(big,small);
+ sqMotion.end(chart);const box=node('div',undefined,'sq-viz-ringbox');box.append(frame,legend);return box;
+}
+// Monotone cubic (Fritsch-Carlson): never overshoots the observed points.
+function sqVizSmooth(points){
+ if(points.length===1)return 'M'+points[0][0].toFixed(2)+' '+points[0][1].toFixed(2);
+ const n=points.length,dx=[],m=[],t=[];for(let k=0;k<n-1;k++){dx[k]=points[k+1][0]-points[k][0];m[k]=dx[k]?(points[k+1][1]-points[k][1])/dx[k]:0}
+ t[0]=m[0];t[n-1]=m[n-2];for(let k=1;k<n-1;k++)t[k]=m[k-1]*m[k]<=0?0:(m[k-1]+m[k])/2;
+ for(let k=0;k<n-1;k++){if(m[k]===0){t[k]=0;t[k+1]=0;continue}const a=t[k]/m[k],b=t[k+1]/m[k],s=a*a+b*b;if(s>9){const tau=3/Math.sqrt(s);t[k]=tau*a*m[k];t[k+1]=tau*b*m[k]}}
+ let d='M'+points[0][0].toFixed(2)+' '+points[0][1].toFixed(2);
+ for(let k=0;k<n-1;k++){const h=dx[k]/3;d+=' C'+(points[k][0]+h).toFixed(2)+' '+(points[k][1]+t[k]*h).toFixed(2)+' '+(points[k+1][0]-h).toFixed(2)+' '+(points[k+1][1]-t[k+1]*h).toFixed(2)+' '+points[k+1][0].toFixed(2)+' '+points[k+1][1].toFixed(2)}
+ return d;
+}
+// series: {key,label,cls,points:[{t,v,text}]}; a missing value breaks the line.
+function sqVizLines(chart,series,{summary='',hint='',format=v=>String(v),timeLabel=t=>new Date(t).toISOString()}={}){
+ const svg=svgEl('svg',{viewBox:'0 0 560 210',role:'img','aria-label':summary,class:'sq-viz-lines'}),frame=sqVizFrame(svg,hint);
+ for(const pct of [0,50,100]){const y=170-pct*1.5;svg.append(svgEl('path',{d:'M44 '+y+'H540',class:'sq-viz-grid'}));const l=svgEl('text',{x:0,y:y+4,class:'sq-viz-axis'});l.textContent=pct+'%';svg.append(l)}
+ const times=series.flatMap(s=>s.points.map(p=>p.t)).filter(Number.isFinite),min=times.length?Math.min(...times):0,max=times.length?Math.max(...times):1;
+ const X=t=>44+(t-min)/Math.max(1,max-min)*496,Y=v=>170-Math.min(100,v)*1.5;sqMotion.begin(chart);
+ series.forEach((s,si)=>{
+  const cls='sq-viz-c'+si%4,pts=s.points.filter(p=>Number.isFinite(p.t)).slice().sort((a,b)=>a.t-b.t),segments=[];let cur=[];
+  for(const p of pts){if(sqVizNum(p.v))cur.push(p);else if(cur.length){segments.push(cur);cur=[]}}if(cur.length)segments.push(cur);
+  const known=pts.filter(p=>sqVizNum(p.v));if(!known.length)return;
+  const grad=sqVizGradient(svg,cls,true),mark=sqVizMark(frame,svg,s.label+': '+known[known.length-1].text,{key:s.key});mark.setAttribute('data-viz-series',s.key);
+  segments.forEach((seg,gi)=>{const xy=seg.map(p=>[X(p.t),Y(p.v)]),d=sqVizSmooth(xy);
+   if(seg.length>1)mark.append(svgEl('path',{d:d+' L'+xy[xy.length-1][0].toFixed(2)+' 170 L'+xy[0][0].toFixed(2)+' 170 Z',class:'sq-viz-area',fill:'url(#'+grad+')'}));
+   const line=svgEl('path',{d,class:'sq-viz-line '+cls});if(si>=4)line.setAttribute('stroke-dasharray','5 3');mark.append(line);
+   sqMotion.play(line,chart,s.key+'/'+gi,d,prev=>prev===undefined?[{opacity:0},{opacity:1}]:[{d:'path("'+prev+'")'},{d:'path("'+d+'")'}]);
+  });
+  known.forEach((p,pi)=>{const r=pi===known.length-1?4.5:3;mark.append(svgEl('rect',{x:(X(p.t)-r).toFixed(2),y:(Y(p.v)-r).toFixed(2),width:2*r,height:2*r,rx:r,class:'sq-viz-dot '+cls,'data-viz-point':String(p.v)}))});
+  let index=known.length-1;mark.onkeydown=e=>{const step=e.key==='ArrowRight'?1:e.key==='ArrowLeft'?-1:0;if(!step)return;e.preventDefault?.();index=Math.max(0,Math.min(known.length-1,index+step));sqVizShow(frame,s.label+': '+known[index].text)};
+ });
+ if(times.length){for(const [t,x,anchor] of [[min,44,'start'],[max,540,'end']]){const l=svgEl('text',{x,y:202,'text-anchor':anchor,class:'sq-viz-axis'});l.textContent=timeLabel(t);svg.append(l)}}
+ sqMotion.end(chart);return frame;
+}
+// One row of 24 hourly columns; unmeasured hours are hatched outlines, the current hour is lighter.
+function sqVizStrip(chart,key,label,bins,{text=b=>'',summary=''}={}){
+ const svg=svgEl('svg',{viewBox:'0 0 560 64',role:'img','aria-label':summary,class:'sq-viz-strip'}),frame=sqVizFrame(svg,'');
+ const grad=sqVizGradient(svg,'sq-viz-c0',true),max=Math.max(1,...bins.map(b=>sqVizNum(b.total)?b.total:0)),step=560/Math.max(1,bins.length);sqMotion.begin(chart);
+ const mark=sqVizMark(frame,svg,summary||label,{key});mark.setAttribute('data-balance-model',key);let index=bins.length-1;
+ bins.forEach((b,i)=>{const x=i*step+2,w=Math.max(2,step-5),last=i===bins.length-1;
+  if(sqVizNum(b.total)){const h=Math.max(2,b.total/max*56),rect=svgEl('rect',{x:x.toFixed(2),y:(60-h).toFixed(2),width:w.toFixed(2),height:h.toFixed(2),rx:Math.min(4,w/2).toFixed(2),fill:'url(#'+grad+')',class:last?'sq-viz-partial':''});
+   rect.setAttribute('data-viz-value',String(b.total));rect.onpointerenter=()=>sqVizShow(frame,text(b));mark.append(rect);sqVizGrow(rect,chart,key+'/'+b.hour,b.total,'y',h)}
+  else{const rect=svgEl('rect',{x:x.toFixed(2),y:4,width:w.toFixed(2),height:56,rx:Math.min(4,w/2).toFixed(2),class:'sq-viz-hatch'});rect.onpointerenter=()=>sqVizShow(frame,text(b));mark.append(rect)}
+ });
+ mark.onkeydown=e=>{const s=e.key==='ArrowRight'?1:e.key==='ArrowLeft'?-1:0;if(!s||!bins.length)return;e.preventDefault?.();index=Math.max(0,Math.min(bins.length-1,index+s));sqVizShow(frame,text(bins[index]))};
+ mark.onfocus=()=>sqVizShow(frame,bins.length?text(bins[index]):label);
+ sqMotion.end(chart);return frame;
+}
+</script>
 </body></html>
 

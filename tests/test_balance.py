@@ -351,7 +351,25 @@ def page_payloads():
             'noReference': balance.calculate(state, [], 'T', data, None, AT, cohort),
             'empty': balance.calculate(empty, [], None, None, None, AT),
             'partial': balance.calculate(state, [], 'T', full_usage(cl_h5=None, cl_d7=None), REFERENCE, AT, cohort),
-            'multi': balance.calculate(state, [], 'T', multi_usage(), REFERENCE, AT, cohort)}
+            'multi': balance.calculate(state, [], 'T', multi_usage(), REFERENCE, AT, cohort),
+            **plain_payloads(cohort)}
+
+
+def plain_payloads(cohort):
+    calm = full_usage(cx=[quota(10)], cy=[quota(10)], cl_h5=1000, cl_d7=5000)
+    blocked = base_state()
+    for name in ('A', 'B'):
+        blocked['tasks'][name] = task(name, 'cx-build', status='delivered', reviewer='cy-review',
+                                      authors=['cx-build', 'cl-build', 'coord'])
+    busy = balance.calculate(base_state(), [], 'T', calm, REFERENCE, AT, cohort)
+    shared = usage(window('w-cx', 'codex', 10, [quota(10)]), window('w-cy', 'codex', 20, [quota(10)]),
+                   window('w-cl', 'claude', 30, h5=60000, d7=100000), window('w-coord', 'claude', 5, h5=35000, d7=0))
+    busy['usage']['coverage'] = {'status': 'collecting', 'sources': 0, 'measured': 0, 'reasons': ['collector_busy']}
+    return {'balanced': balance.calculate(base_state(), [], 'T', calm, REFERENCE, AT, cohort),
+            'blocked': balance.calculate(blocked, [], 'T', calm, REFERENCE, AT, cohort),
+            'unknownQuota': balance.calculate(base_state(), [], 'T', full_usage(cx=[quota(10)], cy=[]), REFERENCE, AT, cohort),
+            'shared': balance.calculate(base_state(), [], 'T', shared, REFERENCE, AT, cohort),
+            'busy': busy}
 
 
 def multi_usage():
@@ -470,6 +488,33 @@ class RouteAndPage(unittest.TestCase):
 
     def test_js_balance_multi_model_label_and_series(self):
         self.contract('models')
+
+    def test_js_balance_verdict_truthful_for_advice_balance_missing_and_blocked(self):
+        self.contract('verdicts')
+
+    def test_js_balance_what_it_checks_table_four_rules_four_columns(self):
+        self.contract('rules')
+
+    def test_js_balance_windows_and_missing_inputs_in_plain_words(self):
+        self.contract('plain')
+
+    def test_js_balance_italian_page_has_no_internal_names(self):
+        self.contract('noInternal')
+
+    def test_js_balance_polls_on_its_own_cadence_single_flight_keeping_last_figures(self):
+        self.contract('cadence')
+
+    def test_js_balance_charts_motion_reduced_motion_and_exact_values(self):
+        self.contract('chartsMotion')
+
+    def test_js_balance_quota_row_incomplete_when_a_quota_is_missing(self):
+        self.contract('quotaRow')
+
+    def test_js_balance_shared_claude_estimate_names_no_window_under_any_order(self):
+        self.contract('sharedEstimate')
+
+    def test_js_balance_hourly_bar_zero_transitions_have_finite_frames(self):
+        self.contract('zeroMotion')
 
 
 class Catalogue(unittest.TestCase):
