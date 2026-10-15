@@ -122,7 +122,7 @@ const tests={
  async noInternal(){
   const banned=[/\bS[1-4]\b/,/\b(model_source|used_percent|read_steps|build_steps|owned_open|window_minutes|resets_at|tokens_per_hour|measured_models|declared_models|claude_estimate)\b/,
    /\b(not_collected|collector_busy|no_observation|no_reference|partial_series|observation_stale|not_measured|quota_observation|no_source)\b/,/\b(measured|partial|near|clear|unknown|stale|expired|busy|estimate)\b/i,/\b[hd][57]\b/];
-  for(const name of ['full','partial','multi','empty','balanced','blocked','unknownQuota','noReference']){
+  for(const name of ['full','partial','multi','empty','balanced','blocked','unknownQuota','noReference','shared']){
    const app=await setup();app.data=clone(payload[name]);await app.select();for(const d of all(app.content,e=>e.tag==='details'))d.open=true;
    const page=text(app.content);for(const b of banned)assert.doesNotMatch(page,b,name+': '+b);
   }
@@ -153,6 +153,61 @@ const tests={
   const load=one(app.content,e=>e.getAttribute('data-chart')==='balance-load'),marks=all(load,e=>e.getAttribute('data-viz-key')!==null&&e.getAttribute('tabindex')==='0');assert.ok(marks.length>=4);
   marks[0].onfocus();assert.match(text(one(load,e=>hasClass(e,'sq-viz-readout'))),/incarichi aperti, \d+ letture in attesa/);
   const strip=one(app.content,e=>e.tag==='g'&&e.getAttribute('data-balance-model')==='gpt');strip.onfocus();strip.onkeydown({key:'ArrowLeft'});assert.match(text(one(app.content,e=>e.getAttribute('data-chart')==='balance-tokens')),/gpt · \d\d:\d\d: (\d|non misurato)/);
+ },
+ async quotaRow(){
+  const row=async(name,edit,lang)=>{const app=await setup();app.data=clone(payload[name]);if(edit)edit(app.data);await app.select();if(lang){app.run("setLanguage('"+lang+"')");await settle()}
+   const r=one(app.content,e=>e.getAttribute('data-balance-rule')==='quota','quota row '+name);return {state:r.getAttribute('data-balance-state'),today:text(r.children[2]),stateText:text(r.children[3]),verdict:one(app.content,e=>e.getAttribute('data-balance-verdict')!==null).getAttribute('data-balance-verdict')}};
+  const mixed=await row('unknownQuota');assert.equal(mixed.verdict,'incomplete');
+  assert.equal(mixed.state,'partial','a quota not measured for some window is never an unqualified ok');assert.equal(mixed.stateText,'incompleto: mancano misure');
+  assert.equal(mixed.today,'al massimo 10%, w-cx · non misurata per 1 finestra','the measured maximum and the unknown count stay');
+  const mixedEn=await row('unknownQuota',null,'en');assert.equal(mixedEn.state,'partial');assert.equal(mixedEn.stateText,'incomplete: figures missing');assert.equal(mixedEn.today,'at most 10%, w-cx · not measured for 1 window');
+  const calm=await row('balanced');assert.equal(calm.state,'ok','every quota known and below the threshold: ok');assert.equal(calm.stateText,'ok');
+  const hot=await row('noReference');assert.equal(hot.state,'fires','a known high quota fires even with other quotas missing');assert.match(hot.today,/^al massimo 96%, w-cx · non misurata per \d+ finestre$/);
+ },
+ async sharedEstimate(){
+  const row=async(name,edit,lang)=>{const app=await setup();app.data=clone(payload[name]);if(edit)edit(app.data);await app.select();if(lang){app.run("setLanguage('"+lang+"')");await settle()}
+   const r=one(app.content,e=>e.getAttribute('data-balance-rule')==='quota','quota row '+name);return {state:r.getAttribute('data-balance-state'),today:text(r.children[2])}};
+  const shared=await row('shared'),reversed=await row('shared',d=>d.windows.reverse());
+  assert.equal(shared.today,'al massimo 95%, stima condivisa delle finestre Claude sul riferimento dichiarato');assert.doesNotMatch(shared.today,/w-cl|w-coord/,'a shared estimate names no single window');
+  assert.equal(reversed.today,shared.today,'the same under any window order');assert.equal(shared.state,'fires');
+  assert.equal((await row('shared',null,'en')).today,'at most 95%, shared estimate of the Claude windows against the declared reference');
+  const cy95=d=>{for(const w of d.windows)if(w.identity==='w-cy')w.quota.slots[0].used_percent=95};
+  const tie=await row('shared',cy95),tieReversed=await row('shared',d=>{cy95(d);d.windows.reverse()});
+  assert.equal(tie.today,'al massimo 95%, w-cy','a measured Codex value keeps its window, also on a tie with the shared estimate');assert.equal(tieReversed.today,tie.today);
+  const both=d=>{for(const w of d.windows)if(w.identity==='w-cy'||w.identity==='w-cx')w.quota.slots[0].used_percent=97};
+  const twin=await row('shared',both),twinReversed=await row('shared',d=>{both(d);d.windows.reverse()});assert.equal(twin.today,twinReversed.today,'equal measured values: the same window under any order');
+ },
+ async zeroMotion(){
+  const scale=a=>/^scaleY\(([^)]*)\)$/.exec(String(a.frames[0].transform||''));
+  const finite=a=>a.frames.every(f=>{if(f.transform===undefined)return true;const m=/^scale[XY]\(([^)]*)\)$/.exec(String(f.transform));return !!m&&Number.isFinite(Number(m[1]))&&Number(m[1])>=0});
+  const set=(app,v)=>{const b=app.data.models.find(m=>m.model==='gpt').hourly[5];b.total=v;b.status=v===null?'not_measured':'measured'};
+  const run=async(reduced)=>{
+   const app=await setup();if(reduced)app.run("window.matchMedia=q=>({matches:/prefers-reduced-motion: reduce/.test(q),addEventListener(){}})");
+   const steps=[];let seen=0;const take=()=>{const list=(app.doc.animations||[]).slice(seen);seen=(app.doc.animations||[]).length;return list.filter(a=>scale(a))};
+   const strip=()=>one(app.content,e=>e.tag==='g'&&e.getAttribute('data-balance-model')==='gpt');
+   const bar=()=>all(strip(),e=>e.tag==='rect')[5];
+   set(app,0);await app.select();steps.push(['first zero',take(),bar()]);
+   for(const [name,v] of [['zero to positive',500],['positive to positive',300],['positive to zero',0],['unchanged zero',0],['zero to unknown',null],['unknown to zero',0]]){
+    set(app,v);app.run('balanceUI.immediate=true');await app.refresh();await settle();steps.push([name,take(),bar()]);
+   }
+   for(const a of app.doc.animations||[])assert.ok(finite(a),'every keyframe is finite: '+JSON.stringify(a.frames));
+   return steps;
+  };
+  const moving=await run(false),still=await run(true);
+  const only=(steps,name)=>{const s=steps.find(x=>x[0]===name);return s[1].filter(a=>a.el===s[2])};
+  for(const name of ['first zero','zero to positive','positive to positive','positive to zero','unknown to zero'])assert.equal(only(moving,name).length,1,name+': one smooth transition');
+  const from=name=>Number(scale(only(moving,name)[0])[1]);
+  assert.equal(from('first zero'),0,'a first zero grows from nothing to its floor');assert.ok(from('zero to positive')>0&&from('zero to positive')<1,'zero to positive grows from the floor');
+  assert.ok(from('positive to positive')>1,'500 to 300 shrinks from the old height');assert.ok(from('positive to zero')>1,'positive to zero shrinks from the old height to the floor');
+  assert.equal(only(moving,'unchanged zero').length,0,'an unchanged zero does not replay');assert.equal(only(moving,'zero to unknown').length,0,'an unknown hour is hatched, not animated');
+  const zero=moving.find(x=>x[0]==='positive to zero')[2],unknown=moving.find(x=>x[0]==='zero to unknown')[2];
+  assert.equal(zero.getAttribute('data-viz-value'),'0');assert.equal(zero.getAttribute('height'),'2.00','zero keeps its 2 px floor');assert.ok(hasClass(unknown,'sq-viz-hatch'),'unknown stays distinct from zero');
+  const solo=await setup(),soloBin=v=>solo.run("sqVizStrip('solo','m','M',[{hour:'2026-10-15T12:00:00Z',total:"+v+"}],{text:b=>String(b.total)})");
+  soloBin(10);soloBin(5);const same=(solo.doc.animations||[]).at(-1);soloBin(0);const down=(solo.doc.animations||[]).at(-1);
+  assert.notEqual(down,same,'a single bar going to zero moves');assert.ok(finite(same)&&finite(down));
+  assert.equal(Number(scale(same)[1]),1,'10 to 5 alone on its scale: drawn at full height both times');assert.equal(Number(scale(down)[1]),28,'5 to 0 alone: from the 56 px drawn last time to the 2 px floor');
+  assert.ok(still.every(s=>s[1].length===0),'reduced motion: no animation call at any step');
+  assert.deepEqual(still.map(s=>[s[2].getAttribute('height'),s[2].getAttribute('class')]),moving.map(s=>[s[2].getAttribute('height'),s[2].getAttribute('class')]),'reduced motion: the same final bars');
  },
  async css(){
   const block=page.match(/<style id="squadra-balance-style">([\s\S]*?)<\/style>/);assert.ok(block,'Balance style block');const css=block[1];

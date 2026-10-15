@@ -362,10 +362,13 @@ def plain_payloads(cohort):
         blocked['tasks'][name] = task(name, 'cx-build', status='delivered', reviewer='cy-review',
                                       authors=['cx-build', 'cl-build', 'coord'])
     busy = balance.calculate(base_state(), [], 'T', calm, REFERENCE, AT, cohort)
+    shared = usage(window('w-cx', 'codex', 10, [quota(10)]), window('w-cy', 'codex', 20, [quota(10)]),
+                   window('w-cl', 'claude', 30, h5=60000, d7=100000), window('w-coord', 'claude', 5, h5=35000, d7=0))
     busy['usage']['coverage'] = {'status': 'collecting', 'sources': 0, 'measured': 0, 'reasons': ['collector_busy']}
     return {'balanced': balance.calculate(base_state(), [], 'T', calm, REFERENCE, AT, cohort),
             'blocked': balance.calculate(blocked, [], 'T', calm, REFERENCE, AT, cohort),
             'unknownQuota': balance.calculate(base_state(), [], 'T', full_usage(cx=[quota(10)], cy=[]), REFERENCE, AT, cohort),
+            'shared': balance.calculate(base_state(), [], 'T', shared, REFERENCE, AT, cohort),
             'busy': busy}
 
 
@@ -503,6 +506,15 @@ class RouteAndPage(unittest.TestCase):
 
     def test_js_balance_charts_motion_reduced_motion_and_exact_values(self):
         self.contract('chartsMotion')
+
+    def test_js_balance_quota_row_incomplete_when_a_quota_is_missing(self):
+        self.contract('quotaRow')
+
+    def test_js_balance_shared_claude_estimate_names_no_window_under_any_order(self):
+        self.contract('sharedEstimate')
+
+    def test_js_balance_hourly_bar_zero_transitions_have_finite_frames(self):
+        self.contract('zeroMotion')
 
 
 class Catalogue(unittest.TestCase):

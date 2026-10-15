@@ -2658,6 +2658,7 @@ Object.assign(I18N,{
  'balance.example.idle':{it:'«Usa il modello libero»',en:'“Use the idle model”'},
  'balance.today.max':{it:'al massimo {n}, {name}',en:'at most {n}, {name}'},
  'balance.today.quota':{it:'al massimo {n}%, {name}',en:'at most {n}%, {name}'},
+ 'balance.today.quotaShared':{it:'al massimo {n}%, stima condivisa delle finestre Claude sul riferimento dichiarato',en:'at most {n}%, shared estimate of the Claude windows against the declared reference'},
  'balance.today.unknownSome':{it:'non misurata per {n} finestre',en:'not measured for {n} windows'},
  'balance.today.unknown':{it:'non misurato',en:'not measured'},
  'balance.today.none':{it:'nessuna finestra attiva per questa regola',en:'no active window for this rule'},
@@ -2666,6 +2667,7 @@ Object.assign(I18N,{
  'balance.state.fires':{it:'scatta',en:'fires'},
  'balance.state.blocked':{it:'oltre la soglia, nessuna destinazione libera',en:'over the threshold, no free destination'},
  'balance.state.unknown':{it:'non misurato',en:'not measured'},
+ 'balance.state.partial':{it:'incompleto: mancano misure',en:'incomplete: figures missing'},
  'balance.state.ok':{it:'ok',en:'ok'},
  'balance.fresh.ok':{it:'Aggiornato alle {time}; si aggiorna da solo ogni 15 secondi mentre la pagina è aperta.',en:'Updated at {time}; it refreshes itself every 15 seconds while the page is open.'},
  'balance.fresh.retained':{it:'Ultimo aggiornamento alle {time}; nuovo tentativo alle {next}.',en:'Last update at {time}; next attempt at {next}.'},
@@ -4043,11 +4045,21 @@ function balanceMissing(data){
  const est=data.claude_estimate;if(est&&est.reason==='no_reference')out.push(tr('balance.miss.noReference'));else if(est&&est.state==='unknown'&&est.reason&&est.reason!=='no_claude_window')out.push(tr('balance.miss.partialEstimate'));
  return [...new Set(out)];
 }
+// A measured quota keeps its window (equal values: the lower identity); the Claude estimate is one figure shared by every Claude window, so it names none.
+function balanceQuotaTop(wins){
+ let best=null;
+ for(const w of wins){
+  const v=balanceQuotaPercent(w),shared=(w.quota||{}).kind==='estimate';if(typeof v!=='number')continue;
+  const tie=best!==null&&v===best.v&&!shared&&(best.shared||String(w.identity)<String(best.w.identity));
+  if(best===null||v>best.v||tie)best={v,w:shared?null:w,shared};
+ }
+ return best;
+}
 function balanceFacts(data){
  const c=data.constants||{},wins=data.windows||[],fired=id=>data.suggestions.some(s=>s.id===id),has=(w,roles)=>w.available&&(w.roles||[]).some(r=>roles.includes(r));
  const top=(list,f)=>list.reduce((best,w)=>{const v=f(w);return typeof v==='number'&&(best===null||v>best.v)?{v,w}:best},null);
  const readers=wins.filter(w=>has(w,['reviewer','coordinator'])),builders=wins.filter(w=>has(w,['builder','executor'])),avail=wins.filter(w=>w.available);
- const reads=top(readers,w=>w.read_steps),owned=top(builders,w=>w.owned_open),quota=top(avail,balanceQuotaPercent),unknown=avail.filter(w=>(w.quota||{}).state==='unknown').length;
+ const reads=top(readers,w=>w.read_steps),owned=top(builders,w=>w.owned_open),quota=balanceQuotaTop(avail),unknown=avail.filter(w=>(w.quota||{}).state==='unknown').length;
  return {missing:balanceMissing(data),rules:[
   {id:'reads',threshold:c.pending_reads,best:reads,fired:fired('S1'),blocked:!fired('S1')&&!!reads&&reads.v>=c.pending_reads,unknown:0},
   {id:'quota',threshold:c.near_quota_percent,best:quota,fired:fired('S2'),blocked:false,unknown},
@@ -4066,8 +4078,8 @@ function balanceRules(data,facts){
  const table=node('table'),head=node('tr');for(const h of ['when','example','today','state'])head.append(node('th',tr('balance.col.'+h)));table.append(head);
  for(const r of facts.rules){
   const row=node('tr');row.setAttribute('data-balance-rule',r.id);
-  const today=r.id==='idle'?tr(r.fired?'balance.today.idleYes':'balance.today.idleNo'):r.best?tr(r.id==='quota'?'balance.today.quota':'balance.today.max',{n:r.id==='quota'?Math.round(r.best.v):r.best.v,name:balanceWindowName(r.best.w.identity)})+(r.unknown?' · '+tr(r.unknown===1?'balance.today.unknownOne':'balance.today.unknownSome',{n:r.unknown}):''):tr(r.unknown?'balance.today.unknown':'balance.today.none');
-  const stateKey=r.fired?'fires':r.blocked?'blocked':r.unknown&&!r.best?'unknown':'ok';
+  const today=r.id==='idle'?tr(r.fired?'balance.today.idleYes':'balance.today.idleNo'):r.best?(r.best.shared?tr('balance.today.quotaShared',{n:Math.round(r.best.v)}):tr(r.id==='quota'?'balance.today.quota':'balance.today.max',{n:r.id==='quota'?Math.round(r.best.v):r.best.v,name:balanceWindowName(r.best.w.identity)}))+(r.unknown?' · '+tr(r.unknown===1?'balance.today.unknownOne':'balance.today.unknownSome',{n:r.unknown}):''):tr(r.unknown?'balance.today.unknown':'balance.today.none');
+  const stateKey=r.fired?'fires':r.blocked?'blocked':r.unknown?(r.best?'partial':'unknown'):'ok';
   [tr('balance.when.'+r.id,{n:r.threshold}),tr('balance.example.'+r.id),today,tr('balance.state.'+stateKey)].forEach((cell,i)=>{const td=node('td',cell);td.setAttribute('data-label',tr('balance.col.'+['when','example','today','state'][i]));row.append(td)});
   row.setAttribute('data-balance-state',stateKey);table.append(row);
  }
@@ -4379,14 +4391,14 @@ function usageRender(content){
 <script id="squadra-chart-motion">
 'use strict';
 // Charts write their final attributes first; motion only plays toward them and never on an unchanged value.
-const sqMotion={last:new Map(),seen:new Map(),
+const sqMotion={last:new Map(),drawn:new Map(),seen:new Map(),
  reduced(){try{return typeof matchMedia==='function'&&matchMedia('(prefers-reduced-motion: reduce)').matches===true}catch(e){return false}},
  begin(chart){this.seen.set(chart,new Set())},
- end(chart){const seen=this.seen.get(chart)||new Set();for(const k of [...this.last.keys()])if(k.startsWith(chart+'|')&&!seen.has(k))this.last.delete(k);this.seen.delete(chart)},
- play(el,chart,key,value,frames){
-  const id=chart+'|'+key;this.seen.get(chart)?.add(id);const prev=this.last.get(id);this.last.set(id,value);
+ end(chart){const seen=this.seen.get(chart)||new Set();for(const k of [...this.last.keys()])if(k.startsWith(chart+'|')&&!seen.has(k)){this.last.delete(k);this.drawn.delete(k)}this.seen.delete(chart)},
+ play(el,chart,key,value,frames,length){
+  const id=chart+'|'+key;this.seen.get(chart)?.add(id);const prev=this.last.get(id),before=this.drawn.get(id);this.last.set(id,value);if(length===undefined)this.drawn.delete(id);else this.drawn.set(id,length);
   if(prev===value||this.reduced()||typeof el.animate!=='function')return false;
-  const keyframes=frames(prev);if(!keyframes)return false;
+  const keyframes=frames(prev,before);if(!keyframes)return false;
   try{el.animate(keyframes,{duration:450,easing:'cubic-bezier(.2,.7,.2,1)'});return true}catch(e){return false}
  }
 };
@@ -4408,9 +4420,10 @@ function sqVizMark(frame,parent,label,{focusable=true,key=null}={}){
  g.onfocus=()=>sqVizShow(frame,label);g.onblur=()=>sqVizShow(frame,'');g.onpointerenter=()=>sqVizShow(frame,label);g.onpointerleave=()=>sqVizShow(frame,'');
  parent.append(g);return g;
 }
-function sqVizGrow(rect,chart,key,value,axis){
+// length is the drawn length: a change scales from the length drawn last time, so a zero at its floor or a new scale stays finite.
+function sqVizGrow(rect,chart,key,value,axis,length){
  rect.style.transformBox='fill-box';rect.style.transformOrigin=axis==='x'?'left center':'center bottom';
- sqMotion.play(rect,chart,key,value,prev=>{const from=prev===undefined?0:Math.max(0,prev/value);const f=axis==='x'?'scaleX':'scaleY';return [{transform:f+'('+from+')'},{transform:f+'(1)'}]});
+ sqMotion.play(rect,chart,key,value,(prev,before)=>{if(!(length>0))return null;const from=prev===undefined||!(before>=0)?0:before/length;const f=axis==='x'?'scaleX':'scaleY';return [{transform:f+'('+from+')'},{transform:f+'(1)'}]},length);
 }
 // rows: {key,label,value,valueText,aria,segments:[{key,value,cls}],cls,hatch,attrs}; HTML rows keep text at its real size while bars stretch.
 function sqVizBars(chart,rows,{summary='',hint='',max=null}={}){
@@ -4489,7 +4502,7 @@ function sqVizStrip(chart,key,label,bins,{text=b=>'',summary=''}={}){
  const mark=sqVizMark(frame,svg,summary||label,{key});mark.setAttribute('data-balance-model',key);let index=bins.length-1;
  bins.forEach((b,i)=>{const x=i*step+2,w=Math.max(2,step-5),last=i===bins.length-1;
   if(sqVizNum(b.total)){const h=Math.max(2,b.total/max*56),rect=svgEl('rect',{x:x.toFixed(2),y:(60-h).toFixed(2),width:w.toFixed(2),height:h.toFixed(2),rx:Math.min(4,w/2).toFixed(2),fill:'url(#'+grad+')',class:last?'sq-viz-partial':''});
-   rect.setAttribute('data-viz-value',String(b.total));rect.onpointerenter=()=>sqVizShow(frame,text(b));mark.append(rect);sqVizGrow(rect,chart,key+'/'+b.hour,b.total,'y')}
+   rect.setAttribute('data-viz-value',String(b.total));rect.onpointerenter=()=>sqVizShow(frame,text(b));mark.append(rect);sqVizGrow(rect,chart,key+'/'+b.hour,b.total,'y',h)}
   else{const rect=svgEl('rect',{x:x.toFixed(2),y:4,width:w.toFixed(2),height:56,rx:Math.min(4,w/2).toFixed(2),class:'sq-viz-hatch'});rect.onpointerenter=()=>sqVizShow(frame,text(b));mark.append(rect)}
  });
  mark.onkeydown=e=>{const s=e.key==='ArrowRight'?1:e.key==='ArrowLeft'?-1:0;if(!s||!bins.length)return;e.preventDefault?.();index=Math.max(0,Math.min(bins.length-1,index+s));sqVizShow(frame,text(bins[index]))};
