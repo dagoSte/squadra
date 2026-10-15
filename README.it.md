@@ -29,6 +29,17 @@ Si installa con `/plugin` in Claude Code e Codex. **Per installarla:** vedi [Ins
 <a id="news"></a>
 ## Novità
 
+**3.10.1 — vedi quanto spende davvero ogni finestra AI, e a chi conviene dare il prossimo lavoro**
+
+Una squadra mescola finestre Claude Code e Codex, e ogni fornitore ti mostra solo i propri consumi. Squadra 3.10.1 li mette tutti in un'unica vista, lavoro per lavoro: quale finestra ha speso quanti token, con quale modello, rispetto a quale quota, e a quale finestra o modello conviene dare il prossimo lavoro. Per ogni consiglio vedi anche il perché. Il calcolo avviene sul tuo computer, a partire dai file di sessione che i programmi già tengono; il testo delle conversazioni non viene salvato, mostrato né inviato da nessuna parte.
+
+- **Bilanciamento (nuova skill di sistema).** Consigli su finestre e modelli in base a carico, quota e storia, con i numeri su cui si basa ogni consiglio. Non assegna niente. La pagina dice a parole semplici cosa controlla, i valori di oggi e perché non c'è nessun consiglio quando non ce n'è.
+- **I totali dei Consumi non tornano più indietro,** e una cache dei calcoli evita di rileggere i file di sessione a ogni riavvio della dashboard.
+- **Comandi che costano meno token alle finestre.** Ogni comando stampava nella finestra che lo lanciava l'intero elenco degli avvisi aperti; ora stampa una risposta breve, e l'elenco completo solo su richiesta ([TOKEN MISURATI]).
+- **Un registro che resta veloce mentre la storia cresce.** Un comando ora legge e scrive solo ciò che è cambiato, non tutta la storia ([TEMPI MISURATI]). La verifica dell'intera catena resta, nei momenti indicati nella guida.
+- **Una dashboard più leggera** che scarica solo ciò che è cambiato, e **grafici animati** nelle pagine Consumi e Bilanciamento.
+- Plugin: [VERSIONI].
+
 **3.10.0**
 - **Pagina «Consumi»: i token spesi dai modelli.** Squadra legge i file di sessione che Claude Code e Codex tengono già sul tuo computer e ne conserva solo i conteggi dei token, con modello, orario e gli identificativi di sessione e di messaggio che servono a contarli una volta sola: non salva, non mostra e non invia mai il testo delle conversazioni. Li mostra per finestra, giorno, modello e incarico, con grafici e suggerimenti per modello. La quota di Codex è misurata, per ogni finestra del fornitore; un costo stimato compare solo se inserisci i tuoi prezzi. `squadra usage` stampa gli stessi dati.
 - Plugin: memoranda 1.0.5, Playwright 1.0.6, Sentry 0.1.3.
@@ -62,6 +73,7 @@ Si installa con `/plugin` in Claude Code e Codex. **Per installarla:** vedi [Ins
 - **Domande con la frase pronta.** Quando serve una tua decisione, ricevi le opzioni, una raccomandazione e le parole esatte per rispondere.
 - **Una dashboard in parole semplici**, in italiano o in inglese, per seguire tutto dal vivo.
 - **Claude, Codex e Cursor insieme**, e aperta ai plugin della community.
+- **Un'unica vista di quanto spende ogni finestra AI.** Token per finestra, modello e lavoro, tra Claude Code e Codex, con il consiglio su quale finestra o modello debba prendere il prossimo lavoro, calcolati sul tuo computer.
 
 ## Cosa fa Squadra
 
