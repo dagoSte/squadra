@@ -684,7 +684,7 @@ def main(argv=None):
             import usage
             store = Store(workspace_path(a.root), read_only=True)
             events = store.events()
-            state = store.state(events)
+            state = store.state(events, resolve=False)
             deadline = time.monotonic() + 30
             while True:
                 result = usage.collect(events, state)
@@ -697,15 +697,16 @@ def main(argv=None):
         if a.command == "forecast":
             from forecast import calculate
             store = Store(workspace_path(a.root), read_only=True)
-            events = store.events()
-            print(json.dumps(calculate(store.state(events), events, a.task), ensure_ascii=False, indent=2))
+            state = store.view()
+            events = () if getattr(state, "current", None) is not None else store.events()
+            print(json.dumps(calculate(state, events, a.task), ensure_ascii=False, indent=2))
             return 0
         if a.command == "balance":
             import balance
             reference = balance.parse_reference(Path(a.reference).read_bytes()[:balance.REFERENCE_BYTES + 1]) if a.reference else None
             store = Store(workspace_path(a.root), read_only=True)
             events = store.events()
-            state = store.state(events)
+            state = store.state(events, resolve=False)
             if a.task is not None and a.task not in state["tasks"]:
                 raise Error("Unknown task: " + a.task)
             print(json.dumps(balance.calculate(state, events, a.task, balance.collect_usage(events, state), reference),
@@ -782,6 +783,8 @@ def main(argv=None):
             if a.command in {'task', 'brief', 'start'} and forecast_task:
                 from forecast import calculate
                 import balance
+                if getattr(state, "current", None) is None:
+                    events = store.events()
                 predicted = calculate(state, events, forecast_task)
                 print(json.dumps({'forecast': predicted}, ensure_ascii=False, indent=2))
                 print(json.dumps({'balance': balance.calculate(state, events, forecast_task, forecast_result=predicted)},

@@ -421,10 +421,11 @@ from the selftest, from a single turn or from different permission profiles.
 
 | Operation | Verified during that operation |
 | --- | --- |
-| Ordinary commands, including `check` and an ordinary task's `close`; dashboard refresh after startup | The recorded anchor event and its hash, every newer event's hash and previous link, and the authenticated index proofs for each cache value or index read. |
+| Other ordinary commands, including `check` and an ordinary task's `close`; dashboard refresh after startup | The recorded anchor event and its hash, every newer event's hash and previous link, and the authenticated index proofs for each cache value or index read. |
+| Explicit `usage`/`balance` calculations, a lesson's source check, and the lesson hint after a failed proof | The complete event hash chain and the requested historical evidence. These reads do not perform a full artifact audit. |
 | `doctor`, `checkpoint`, `save`, `restore-check`, dashboard startup, and a release-gate task's `close` | The complete event chain and referenced artifacts/manifests, plus full replay to compare or rebuild the derived cache. |
 
-An ordinary read does **not** reverify events before the anchor, untouched cache
+The other ordinary reads above do **not** reverify events before the anchor, untouched cache
 leaves, or whether the cached root equals a complete replay of the reducer. An
 invalid, missing or foreign cache falls back to verified reconstruction; a failing
 verification is not a successful cached read. Source manifests store file lists
