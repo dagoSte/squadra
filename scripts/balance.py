@@ -331,8 +331,9 @@ def suggestions(rows, groups, state):
             if quota['kind'] == 'measured':
                 hot = [s for s in quota['slots'] if s['fresh'] and s['used_percent'] >= NEAR_QUOTA]
                 metrics = {'slots': hot, 'steps': row['read_steps'] + row['build_steps']}
-                observed = {s['model'] for s in hot if isinstance(s.get('model'), str) and s['model']}
-                model, source = (next(iter(observed)), 'quota_observation') if len(observed) == 1 else (None, 'unknown')
+                names = [s.get('model') for s in hot]
+                named = all(isinstance(n, str) and n for n in names)
+                model, source = (names[0], 'quota_observation') if names and named and len(set(names)) == 1 else (None, 'unknown')
             else:
                 metrics = {'slots': [s for s in quota['slots'] if s['percent'] is not None and s['percent'] >= NEAR_QUOTA],
                            'steps': row['read_steps'] + row['build_steps'], 'estimate': True, 'reset': None}
@@ -370,7 +371,8 @@ def calculate(state, events, task_id=None, usage=None, reference=None, read_at=N
     rows, groups, estimate = window_rows(state, usage, reference, now)
     models = {}
     for row in rows.values():
-        models.setdefault(row['model'] or '', []).append(row['identity'])
+        for name in row['measured_models'] or [row['model'] or '']:
+            models.setdefault(name, []).append(row['identity'])
     measured_models = {m.get('model'): m for m in (usage or {}).get('models') or [] if isinstance(m, dict)}
     result = {'notice': NOTICE, 'writes': False, 'assigns': False,
               'read_at': datetime.fromtimestamp(now, timezone.utc).isoformat(),

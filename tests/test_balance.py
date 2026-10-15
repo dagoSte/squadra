@@ -350,7 +350,17 @@ def page_payloads():
     return {'full': balance.calculate(state, [], 'T', data, REFERENCE, AT, cohort),
             'noReference': balance.calculate(state, [], 'T', data, None, AT, cohort),
             'empty': balance.calculate(empty, [], None, None, None, AT),
-            'partial': balance.calculate(state, [], 'T', full_usage(cl_h5=None, cl_d7=None), REFERENCE, AT, cohort)}
+            'partial': balance.calculate(state, [], 'T', full_usage(cl_h5=None, cl_d7=None), REFERENCE, AT, cohort),
+            'multi': balance.calculate(state, [], 'T', multi_usage(), REFERENCE, AT, cohort)}
+
+
+def multi_usage():
+    data = full_usage(cx=[quota(10)], cy=[quota(10)])
+    rows = [{'model': 'gpt-5.4', 'status': 'measured', 'totals': {'total': 4000}},
+            {'model': 'gpt-5.4-mini', 'status': 'measured', 'totals': {'total': 900}}]
+    data['windows'][0]['models'] = rows
+    data['models'] = [dict(r, windows=['w-cx'], hourly=hourly(10 if r['model'] == 'gpt-5.4' else 3)) for r in rows]
+    return data
 
 
 class FakeUsage:
@@ -457,6 +467,9 @@ class RouteAndPage(unittest.TestCase):
 
     def test_js_balance_small_screen_and_theme_css(self):
         self.contract('css')
+
+    def test_js_balance_multi_model_label_and_series(self):
+        self.contract('models')
 
 
 class Catalogue(unittest.TestCase):
@@ -696,3 +709,34 @@ class ModelAttribution(unittest.TestCase):
             self.assertEqual(s2['model'], observed, 'the real quota row carries the observed model')
         finally:
             case.doCleanups()
+
+
+class ModelAttributionRound3(unittest.TestCase):
+    """B1a: every measured model keeps its chart; B1b: an unnamed hot quota keeps S2 unattributed."""
+    def s2(self, result):
+        return next(s for s in result['suggestions'] if s['id'] == 'S2' and s['window'] == 'w-cx')
+
+    def named(self, name, slot='primary', percent=95):
+        row = quota(percent, 300 if slot == 'primary' else 10080, slot)
+        row['model'] = name
+        return row
+
+    def test_every_measured_model_keeps_its_chart_series(self):
+        result = balance.calculate(base_state(), [], None, multi_usage(), REFERENCE, AT)
+        charts = {m['model']: m for m in result['models']}
+        self.assertTrue(charts.get('gpt-5.4', {}).get('hourly'), 'representative model series')
+        self.assertTrue(charts.get('gpt-5.4-mini', {}).get('hourly'), 'the smaller measured series is not dropped')
+        self.assertEqual(charts['gpt-5.4-mini']['windows'], ['w-cx'])
+        row = next(r for r in result['windows'] if r['identity'] == 'w-cx')
+        self.assertEqual((row['model'], row['model_source'], row['measured_models']),
+                         ('gpt-5.4', 'measured_largest_of_several', ['gpt-5.4', 'gpt-5.4-mini']))
+
+    def test_unnamed_hot_slot_keeps_s2_unknown(self):
+        data = full_usage(cx=[self.named(None), self.named('gpt-5.4', 'secondary')])
+        s2 = self.s2(balance.calculate(base_state(), [], None, data, REFERENCE, AT))
+        self.assertEqual((s2['model'], s2['model_source']), (None, 'unknown'))
+
+    def test_named_hot_slot_with_unnamed_cool_slot_is_attributed(self):
+        data = full_usage(cx=[self.named(None, percent=10), self.named('gpt-5.4', 'secondary')])
+        s2 = self.s2(balance.calculate(base_state(), [], None, data, REFERENCE, AT))
+        self.assertEqual((s2['model'], s2['model_source']), ('gpt-5.4', 'quota_observation'), 'positive control')

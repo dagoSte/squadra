@@ -2592,6 +2592,7 @@ Object.assign(I18N,{
  'balance.loading':{it:'Calcolo del bilanciamento…',en:'Computing the balance…'},'balance.error':{it:'Il bilanciamento non è disponibile. Riprova.',en:'Balance is unavailable. Try again.'},'balance.retry':{it:'Riprova',en:'Retry'},
  'balance.suggestions':{it:'Suggerimenti per modello',en:'Suggestions per model'},'balance.noSuggestions':{it:'Nessun suggerimento: nessuna regola scatta con i dati disponibili.',en:'No suggestions: no rule fires with the available data.'},
  'balance.model.none':{it:'Modello non dichiarato',en:'Model not declared'},
+ 'balance.basis.largest':{it:'{model}, il più usato tra quelli misurati: {models}',en:'{model}, the most used of the measured models: {models}'},'balance.basis.declared':{it:'{model} (dichiarato, non misurato)',en:'{model} (declared, not measured)'},
  'balance.S1':{it:'{window} ha {pending} letture in attesa; {to} ne ha 0 e può leggere «{task}» in modo indipendente.',en:'{window} holds {pending} pending reads; {to} holds 0 and can read “{task}” independently.'},
  'balance.S2':{it:'{window} è vicina al limite: {detail}. Passi in attesa: {steps}.',en:'{window} is near its limit: {detail}. Next steps held: {steps}.'},
  'balance.S3':{it:'{window} ha {owned} incarichi aperti; {to}, dello stesso client, non ne ha.',en:'{window} owns {owned} open tasks; {to}, same client, owns none.'},
@@ -3911,6 +3912,7 @@ async function balanceFetch(){
  finally{balanceUI.running=false;if(tab==='Bilanciamento')render()}
 }
 function balanceModel(m){return m||tr('balance.model.none')}
+function balanceModelLabel(r){const list=Array.isArray(r.measured_models)?r.measured_models:[];if(r.model_source==='measured_largest_of_several'&&list.length>1)return tr('balance.basis.largest',{model:r.model,models:list.join(', ')});if(r.model_source==='declared'&&r.model)return tr('balance.basis.declared',{model:r.model});return balanceModel(r.model)}
 function balanceSlotText(slot){return slot.percent!==undefined?tr('balance.slotEstimate',{percent:Math.round(slot.percent),slot:slot.slot}):tr('balance.slot',{percent:balanceNum(slot.used_percent),minutes:balanceNum(slot.window_minutes),reset:date(slot.resets_at)})}
 function balanceSuggestion(s){
  const metrics=s.metrics||{};
@@ -3940,7 +3942,7 @@ function balanceLoad(data){
  if(!rows.length)body.append(node('p',tr('balance.noWindows')));
  for(const r of rows){const row=node('div',undefined,'sq-brow');row.setAttribute('data-balance-window',r.identity);row.append(node('span',r.identity),balanceBar([[r.owned_open,'sq-mark-acc'],[r.read_steps,'sq-mark-neutral']],max,r.identity),node('span',r.owned_open+' · '+r.read_steps,'v'));body.append(row)}
  const legend=node('ul',undefined,'sq-legend');for(const [cls,key] of [['sq-mark-acc','balance.owned'],['sq-mark-neutral','balance.reads']]){const li=node('li'),svg=svgEl('svg',{width:14,height:14,viewBox:'0 0 14 14','aria-hidden':'true'});svg.append(svgEl('rect',{x:0,y:0,width:14,height:14,rx:3,class:cls}));li.append(svg,node('span',tr(key)));legend.append(li)}
- return panelCard('balance-load',{body,legend,sentence,table:panelTable([tr('balance.window'),tr('balance.model'),tr('balance.owned'),tr('balance.reads'),tr('balance.steps')],rows.map(r=>[r.identity,balanceModel(r.model),r.owned_open,r.read_steps,r.read_steps+r.build_steps]))});
+ return panelCard('balance-load',{body,legend,sentence,table:panelTable([tr('balance.window'),tr('balance.model'),tr('balance.owned'),tr('balance.reads'),tr('balance.steps')],rows.map(r=>[r.identity,balanceModelLabel(r),r.owned_open,r.read_steps,r.read_steps+r.build_steps]))});
 }
 function balanceTokens(data){
  const notes=[],tableRows=[];
@@ -3985,7 +3987,7 @@ function balanceSlot(list,slot){
  const box=node('div');box.setAttribute('data-balance-slot',slot);box.append(node('h4',tr('balance.'+slot)));
  box.append(node('p',tr('balance.order',{order:list.order.map(d=>tr('balance.dim.'+d)).join(' > ')}),'sub'));
  for(const o of list.omitted)box.append(node('p',tr('balance.omitted',{dimension:tr('balance.dim.'+o.dimension),windows:o.windows.join(', ')}),'sub'));
- const ol=node('ol',undefined,'sq-balance-list');for(const r of list.rows){const li=node('li');li.setAttribute('data-balance-rank',r.identity);li.append(node('strong',r.position+'. '+r.identity+' · '+balanceModel(r.model)),node('p',r.sentence[UI_LANG]||r.sentence.en));ol.append(li)}box.append(ol);
+ const ol=node('ol',undefined,'sq-balance-list');for(const r of list.rows){const li=node('li');li.setAttribute('data-balance-rank',r.identity);li.append(node('strong',r.position+'. '+r.identity+' · '+balanceModelLabel(r)),node('p',r.sentence[UI_LANG]||r.sentence.en));ol.append(li)}box.append(ol);
  for(const e of list.excluded){const p=node('p',e.identity+' — '+tr('balance.excluded',{reason:tr('balance.reason.'+e.reason)}),'sub');p.setAttribute('data-balance-excluded',e.identity);box.append(p)}
  return box;
 }

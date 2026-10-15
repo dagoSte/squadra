@@ -82,6 +82,15 @@ const tests={
   const app=await setup();app.data.windows[0].identity='<img src=x onerror=evil()>';app.data.suggestions[0].window='<script>evil()</script>';await app.select();
   assert.equal(all(app.content,e=>['script','img','iframe'].includes(e.tag)).length,0);assert.match(text(app.content),/<script>evil/);
  },
+ async models(){
+  const app=await setup();app.data=clone(payload.multi);await app.select();
+  const series=all(app.content,e=>hasClass(e,'sq-crow')&&e.getAttribute('data-balance-model')!==null).map(e=>e.getAttribute('data-balance-model'));
+  assert.ok(series.includes('gpt-5.4')&&series.includes('gpt-5.4-mini'),'both measured series are charted: '+series.join(','));
+  assert.match(text(app.content),/gpt-5\.4, il più usato tra quelli misurati: gpt-5\.4, gpt-5\.4-mini/);
+  const select=app.find('balance:task');select.value='T';select.onchange({target:select});await settle();
+  const build=one(app.content,e=>e.getAttribute('data-balance-slot')==='build');assert.match(text(build),/w-cx · gpt-5\.4, il più usato/);
+  app.run("setLanguage('en')");await settle();assert.match(text(app.content),/gpt-5\.4, the most used of the measured models: gpt-5\.4, gpt-5\.4-mini/);
+ },
  async css(){
   const block=page.match(/<style id="squadra-balance-style">([\s\S]*?)<\/style>/);assert.ok(block,'Balance style block');const css=block[1];
   const breakpoint=Number(css.match(/@media\(max-width:([\d.]+)px\)/)[1]);for(const width of [360,375,390])assert.ok(width<=breakpoint,'phone covered: '+width);
