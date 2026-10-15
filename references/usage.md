@@ -101,7 +101,10 @@ checks still apply.
 
 The cache is limited to 64 MiB per registry and 256 MiB overall, including temporary
 replacement space, with older entries evicted when necessary. Persistence failures
-do not prevent collection in memory. The location is outside the registry and
+do not prevent collection in memory. The cache folder is opened without following
+symlinks from the filesystem root, so when any folder above `HOME` is a symlink (a
+`HOME` under macOS `/var` or `/tmp`, or a symlinked `/home`), the cache stays off:
+figures remain correct, but a dashboard restart reads the session files again. The location is outside the registry and
 project, so ordinary `checkpoint` and `save` do not include it; persistence is
 disabled if the destination overlaps either. It is safe to delete the cache:
 Usage will rebuild it, and no transcript or registry entry is removed. Deleting
@@ -142,7 +145,7 @@ model names to nonnegative numeric rates for `input`, `cache_read`,
 `cache_creation` and `output`. Up to 100 model rows are allowed. The file is local,
 regular, not a symlink, and at most 64 KiB. No rate is inferred for a missing kind.
 
-## Interface for Balance (planned for 3.10.1)
+## Interface for Balance
 
 `scripts/usage.py:collect(events, state, *, roots=None, now=None,
 budget_seconds=0.25)` returns schema 1. Pass verified registry data; HTTP callers
