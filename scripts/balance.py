@@ -106,7 +106,7 @@ def codex_quota(rows, now):
             slots[key] = row
     shown = []
     for (limit, minutes), row in sorted(slots.items(), key=lambda item: (str(item[0][1]), item[0][0])):
-        shown.append({'limit': row.get('limit'), 'window_minutes': minutes, 'used_percent': row.get('used_percent'),
+        shown.append({'limit': row.get('limit'), 'model': row.get('model'), 'window_minutes': minutes, 'used_percent': row.get('used_percent'),
                       'resets_at': row.get('resets_at'), 'observed_at': row.get('observed_at'),
                       'status': row.get('status'), 'fresh': fresh(row, now)})
     if any(s['fresh'] and s['used_percent'] >= NEAR_QUOTA for s in shown):
@@ -156,13 +156,20 @@ def usage_windows(usage):
     return {w.get('identity'): w for w in usage.get('windows') or [] if isinstance(w, dict)}
 
 
-def model_of(group, measured):
-    names = sorted({m for m in measured if isinstance(m, str) and m})
-    if len(names) == 1:
-        return names[0], 'measured'
+def model_of(group, rows):
+    """Measured model rows (Usage schema 1) win over a declaration; several are named, not merged."""
+    totals = {}
+    for row in rows or []:
+        if isinstance(row, dict) and isinstance(row.get('model'), str) and row['model']:
+            total = (row.get('totals') or {}).get('total')
+            totals[row['model']] = max(totals.get(row['model'], -1), total if type(total) is int else -1)
+    if len(totals) == 1:
+        return next(iter(totals)), 'measured', sorted(totals)
+    if totals:
+        return min(totals, key=lambda m: (-totals[m], m)), 'measured_largest_of_several', sorted(totals)
     if len(group['declared']) == 1:
-        return next(iter(group['declared'])), 'declared'
-    return None, 'not_declared'
+        return next(iter(group['declared'])), 'declared', []
+    return None, 'not_declared', []
 
 
 def history(state, events, task_id, result):
@@ -207,7 +214,7 @@ def window_rows(state, usage, reference, now):
     rows = {}
     for identity, group in sorted(groups.items()):
         seen = measured.get(identity)
-        model, source = model_of(group, (seen or {}).get('models') or [])
+        model, source, measured_models = model_of(group, (seen or {}).get('models') or [])
         recent = (seen or {}).get('recent') or {}
         rate = recent.get('tokens_per_minute') if recent.get('status') == 'measured' else None
         if usage is None:
@@ -221,6 +228,7 @@ def window_rows(state, usage, reference, now):
         rows[identity] = {
             'identity': identity, 'seats': sorted(group['seats']), 'roles': sorted(group['roles']),
             'clients': sorted(group['clients']), 'model': model, 'model_source': source,
+            'measured_models': measured_models, 'declared_models': sorted(group['declared']),
             'available': not group['standby'], **{k: v for k, v in loads[identity].items()},
             'quota': quota,
             'tokens_per_hour': rate * 60 if isinstance(rate, (int, float)) and not isinstance(rate, bool) else None,
@@ -323,10 +331,13 @@ def suggestions(rows, groups, state):
             if quota['kind'] == 'measured':
                 hot = [s for s in quota['slots'] if s['fresh'] and s['used_percent'] >= NEAR_QUOTA]
                 metrics = {'slots': hot, 'steps': row['read_steps'] + row['build_steps']}
+                observed = {s['model'] for s in hot if isinstance(s.get('model'), str) and s['model']}
+                model, source = (next(iter(observed)), 'quota_observation') if len(observed) == 1 else (None, 'unknown')
             else:
                 metrics = {'slots': [s for s in quota['slots'] if s['percent'] is not None and s['percent'] >= NEAR_QUOTA],
                            'steps': row['read_steps'] + row['build_steps'], 'estimate': True, 'reset': None}
-            found.append({'id': 'S2', 'model': row['model'], 'window': row['identity'], 'metrics': metrics})
+                model, source = row['model'], row['model_source']
+            found.append({'id': 'S2', 'model': model, 'model_source': source, 'window': row['identity'], 'metrics': metrics})
     builders = [r for i, r in rows.items() if groups[i]['roles'] & BUILD_ROLES and r['available']]
     for row in sorted(builders, key=lambda r: r['identity']):
         if row['owned_open'] < OPEN_TASKS:

@@ -617,3 +617,82 @@ class RealCollector(unittest.TestCase):
             self.assertIsNone(estimate['slots'][0]['percent'], 'a partial rolling sum never yields a percentage')
             self.assertEqual(estimate['state'], 'unknown')
         self.assertNotIn(tu.CANARY, json.dumps(result), 'no message text reaches the balance output')
+
+
+class ModelAttribution(unittest.TestCase):
+    """B1: Usage schema 1 gives model rows as dictionaries; a measured model wins, S2 follows the hot quota row."""
+    def row(self, name, total):
+        return {'model': name, 'status': 'measured', 'totals': {'total': total}, 'windows': ['w-cx']}
+
+    def window(self, models, declared='gpt', quotas=None):
+        state = base_state()
+        for seat in ('cx-build', 'cx-review'):
+            state['agents'][seat]['model'] = declared
+        data = full_usage(cx=quotas if quotas is not None else [quota(10)])
+        data['windows'][0]['models'] = models
+        result = balance.calculate(state, [], 'T', data, REFERENCE, AT, {'status': 'scope_unavailable', 'samples': []})
+        return next(r for r in result['windows'] if r['identity'] == 'w-cx'), result
+
+    def test_measured_row_wins_over_a_different_declaration(self):
+        row, _ = self.window([self.row('gpt-5.4', 1000)])
+        self.assertEqual((row['model'], row.get('model_source'), row.get('declared_models')), ('gpt-5.4', 'measured', ['gpt']))
+
+    def test_measured_row_without_declaration(self):
+        row, _ = self.window([self.row('gpt-5.4', 1000)], declared='')
+        self.assertEqual((row['model'], row.get('model_source'), row.get('declared_models')), ('gpt-5.4', 'measured', []))
+
+    def test_declaration_only_when_nothing_is_measured(self):
+        row, _ = self.window([])
+        self.assertEqual((row['model'], row.get('model_source')), ('gpt', 'declared'), 'positive control: unchanged fallback')
+        row, _ = self.window([], declared='')
+        self.assertEqual((row['model'], row.get('model_source')), (None, 'not_declared'))
+
+    def test_several_measured_models_are_named_not_merged(self):
+        row, _ = self.window([self.row('gpt-5.4-mini', 900), self.row('gpt-5.4', 4000), {'model': None, 'totals': {'total': 10}}])
+        self.assertEqual((row['model'], row.get('model_source')), ('gpt-5.4', 'measured_largest_of_several'))
+        self.assertEqual(row.get('measured_models'), ['gpt-5.4', 'gpt-5.4-mini'])
+
+    def test_measured_series_feeds_the_model_chart(self):
+        data_models = [{'model': 'gpt-5.4', 'status': 'measured', 'totals': None, 'windows': ['w-cx'], 'hourly': [{'hour': iso(), 'status': 'measured', 'total': 5, 'reason': None}]}]
+        state = base_state()
+        data = full_usage(cx=[quota(10)])
+        data['windows'][0]['models'] = [self.row('gpt-5.4', 1000)]
+        data['models'] = data_models
+        result = balance.calculate(state, [], None, data, REFERENCE, AT)
+        chart = {m['model']: m for m in result['models']}
+        self.assertIn('gpt-5.4', chart, 'the measured model has its own series')
+        self.assertEqual(chart['gpt-5.4']['hourly'][0]['total'], 5)
+
+    def test_s2_takes_the_hot_quota_rows_model(self):
+        hot = quota(95, 10080, 'secondary'); hot['model'] = 'gpt-5.4'
+        cool = quota(10, 300, 'primary'); cool['model'] = 'gpt-5.3'
+        _, result = self.window([self.row('gpt-5.3', 1000)], quotas=[cool, hot])
+        s2 = next(s for s in result['suggestions'] if s['id'] == 'S2' and s['window'] == 'w-cx')
+        self.assertEqual((s2['model'], s2.get('model_source')), ('gpt-5.4', 'quota_observation'))
+        self.assertEqual([s.get('model') for s in s2['metrics']['slots']], ['gpt-5.4'])
+
+    def test_s2_unknown_when_hot_rows_disagree(self):
+        one = quota(95, 300, 'primary'); one['model'] = 'gpt-5.4'
+        two = quota(90, 10080, 'secondary'); two['model'] = 'gpt-5.3'
+        _, result = self.window([], quotas=[one, two])
+        s2 = next(s for s in result['suggestions'] if s['id'] == 'S2' and s['window'] == 'w-cx')
+        self.assertEqual((s2['model'], s2.get('model_source')), (None, 'unknown'))
+
+    def test_real_collector_measured_model_reaches_the_window(self):
+        case = RealCollector()
+        case.setUp()
+        try:
+            tu = case.tu
+            quota_rows = {'primary': {'used_percent': 95, 'window_minutes': 300, 'resets_at': int(tu.NOW + 1000)}, 'plan_type': 'pro'}
+            case.write('codex', [{'type': 'session_meta', 'payload': {'id': tu.CODEX}}, tu.model(tu.NOW - 7200),
+                                 tu.codex(tu.NOW - 200, 0, 0), tu.codex(tu.NOW - 10, 100, 50, quota=quota_rows)],
+                       '2026/10/15/rollout-2026-10-15T12-00-00-' + tu.CODEX + '.jsonl')
+            data = case.collect()
+            observed = next(w for w in data['windows'] if w['identity'] == case.ids[1])['models'][0]['model']
+            result = balance.calculate(case.state, [], 'T', data, REFERENCE, tu.NOW, {'status': 'scope_unavailable', 'samples': []})
+            row = next(r for r in result['windows'] if r['identity'] == case.ids[1])
+            self.assertEqual((row['model'], row.get('model_source')), (observed, 'measured'))
+            s2 = next(s for s in result['suggestions'] if s['id'] == 'S2' and s['window'] == case.ids[1])
+            self.assertEqual(s2['model'], observed, 'the real quota row carries the observed model')
+        finally:
+            case.doCleanups()
