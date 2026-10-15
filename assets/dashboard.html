@@ -1529,10 +1529,10 @@ async function transferLoad(section,record=''){
  })();
  cache.pending.set(key,request);return request;
 }
-function transferLoading(sections){
+function transferLoading(sections,retryKey){
  const failed=sections.some(([section,record])=>transferUI.errors.has(transferKey(section,record))),box=node('div',undefined,'notice');
  box.setAttribute('role','status');box.append(node('p',tr(failed?'transfer.error':'transfer.loading')));
- if(failed){const retry=node('button',tr('load.retry'));retry.onclick=()=>{for(const [section,record] of sections)transferUI.errors.delete(transferKey(section,record));render()};box.append(retry)}
+ if(failed){const retry=node('button',tr('load.retry'));if(retryKey)focusKey(retry,retryKey);retry.onclick=()=>{for(const [section,record] of sections)transferUI.errors.delete(transferKey(section,record));render()};box.append(retry)}
  return box;
 }
 function transferReady(sections){
@@ -1543,7 +1543,6 @@ function transferReady(sections){
 }
 function transferPageReady(content){
  const sections=({Posta:[['mail']],Comunicazioni:[['mail']],Output:[['outputs']],Cronologia:[['history']],Decisioni:[['graph']],Incarichi:[['tasks']],Prove:[['runs']]})[tab]||[];
- if(typeof panelUI!=='undefined'&&panelUI.story)sections.push(['story',panelUI.story]);
  if(transferReady(sections))return true;
  content.replaceChildren(transferLoading(sections));return false;
 }
@@ -2079,7 +2078,7 @@ function panelTab(b,name){
  if(panelUI.collapsed&&!panelPhone())b.setAttribute('title',tr('tab.'+name));
  focusKey(b,'nav:'+name);
 }
-function panelNavigate(){if(panelUI.drawer)panelDrawer(false,true);panelTip(null)}
+function panelNavigate(){panelUI.story=null;panelUI.storySig=null;panelUI.storyReturn=null;if(panelUI.drawer)panelDrawer(false,true);panelTip(null)}
 
 // Restore focus after every render and keep the control's screen position outside Communications.
 
@@ -2573,7 +2572,8 @@ function panelTaskCard(t){
  return card;
 }
 function panelOpenStory(id,returnKey,returnFallback='work'){
- if(state?.transfer&&!transferHas('story',id)){transferLoad('story',id).then(ok=>{if(ok)panelOpenStory(id,returnKey,returnFallback)});return}
+ if(state?.transfer)transferUI.errors.delete(transferKey('story',id));
+ panelUI.storyTab=tab;
  panelUI.story=id;panelUI.storyReturn=returnKey||'work:story:'+id;panelUI.storyReturnFallback=returnFallback;panelUI.storySig=null;panelTip(null);
  // Move focus from the card button into the open story.
  const active=document.activeElement;if(active&&typeof active.blur==='function')active.blur();
@@ -2600,10 +2600,28 @@ function panelStoryKeep(dialog){
  const opened=panelUI.storyOpen.get(task)||new Set();panelUI.storyOpen.set(task,opened);
  for(const d of panelMarked(dialog,'data-story-item')){const k=d.getAttribute('data-story-item');if(d.open)opened.add(k);else opened.delete(k)}
 }
+function panelStoryHeading(t,dialog){
+ const head=node('div',undefined,'sq-story-head'),title=node('h2',taskTitle(t.id));title.setAttribute('id','story-title');title.setAttribute('tabindex','-1');focusKey(title,'story:title');panelUI.storyTitle=title;
+ const close=node('button',undefined,'sq-icon-btn sq-story-close');close.setAttribute('type','button');close.setAttribute('aria-label',tr('story.close'));close.append(icon('x-lg'));
+ focusKey(close,'story:close');close.setAttribute('data-focus-fallback','story:title');close.onclick=()=>dialog.close();
+ const label=node('div',tr('story.title'),'label');head.append(label,title,close);return head;
+}
 function panelStoryRender(){
  const dialog=document.getElementById('story');if(!dialog)return;
+ if(panelUI.storyTab!==undefined&&panelUI.storyTab!==tab)panelUI.story=null;
  const t=panelUI.story&&state?.tasks?.[panelUI.story];
  if(!t){if(dialog.open&&typeof dialog.close==='function'){panelUI.closing=true;dialog.close();panelUI.closing=false}panelUI.storySig=null;return}
+ if(!transferHas('story',t.id)){
+  const sections=[['story',t.id]];transferReady(sections);
+  const sig='transfer:'+JSON.stringify([UI_LANG,t.id,transferUI.errors.get(transferKey('story',t.id))||null]);
+  if(sig!==panelUI.storySig){
+   panelStoryKeep(dialog);panelUI.storySig=sig;
+   dialog.replaceChildren(panelStoryHeading(t,dialog),transferLoading(sections,'story:retry'));
+   dialog.setAttribute('data-story-task',t.id);panelUI.storyKeyed=panelKeyed(dialog);
+  }else for(const e of panelUI.storyKeyed||[])pageFocusables.set(e.getAttribute('data-focus-key'),e);
+  if(!dialog.open&&typeof dialog.showModal==='function'){dialog.showModal();panelUI.storyTitle.focus()}
+  return;
+ }
  const items=panelStory(t),about=taskBody(t.id).trim(),roles=panelRoles(t),rolesTech=panelRolesTech(t);
  const sig=JSON.stringify([UI_LANG,t.status,t.superseded_by,taskTitle(t.id),about,roles,rolesTech,taskTimePhases(t),items.map(i=>[i.key,i.text,ageText(i.utc),i.tech||'',(i.links||[]).map(a=>[a.name,a.sha256])])]);
  // Keep unchanged stories in place and register their controls again for focus restoration.
@@ -2616,10 +2634,7 @@ function panelStoryRender(){
   const disclose=(k,summaryKey,lines)=>{const d=node('details'),s=node('summary',tr('ov.technical'));d.setAttribute('data-story-item',k);d.open=opened.has(k);
    d.ontoggle=()=>{if(d.open)opened.add(k);else opened.delete(k)};focusKey(s,summaryKey);s.setAttribute('data-focus-fallback','story:title');
    d.append(s);for(const line of lines)d.append(node('div',line,'sub mono'));return d};
-  const head=node('div',undefined,'sq-story-head'),title=node('h2',taskTitle(t.id));title.setAttribute('id','story-title');title.setAttribute('tabindex','-1');focusKey(title,'story:title');panelUI.storyTitle=title;
-  const close=node('button',undefined,'sq-icon-btn sq-story-close');close.setAttribute('type','button');close.setAttribute('aria-label',tr('story.close'));close.append(icon('x-lg'));
-  focusKey(close,'story:close');close.setAttribute('data-focus-fallback','story:title');close.onclick=()=>dialog.close();
-  const label=node('div',tr('story.title'),'label');head.append(label,title,close);
+  const head=panelStoryHeading(t,dialog);
   const body=[head,panelSituation(t)];const timing=taskTimeDetails(t);if(timing)body.push(timing);
   if(about)body.push(node('p',about,'sq-story-brief bodytext'));
   if(roles)body.push(node('p',roles,'sq-line'));

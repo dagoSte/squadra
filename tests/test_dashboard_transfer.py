@@ -174,6 +174,18 @@ class DashboardTransferPage(unittest.TestCase):
     def test_detail_failure_and_retry(self):
         self.contract('retry')
 
+    def test_story_failure_offers_scoped_retry(self):
+        self.contract('story_retry')
+
+    def test_story_response_does_not_reopen_after_navigation(self):
+        self.contract('story_navigation')
+
+    def test_latest_story_selection_wins(self):
+        self.contract('story_latest')
+
+    def test_closing_pending_story_restores_focus_and_stays_closed(self):
+        self.contract('story_close')
+
 
 if __name__ == '__main__':
     unittest.main()

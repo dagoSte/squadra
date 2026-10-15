@@ -55,6 +55,40 @@ const tests={
   assert.equal(app.run("Object.hasOwn(state.messages,'OLD')"),false,'stale details never join a newer state');
   assert.equal(app.run("transferHas('mail')"),false);
  },
+ async story_retry(){
+  const app=await boot({fixture:fixture()});app.http=()=>Promise.reject(Error('offline'));
+  app.run("transferUI.errors.set('story:OTHER','unrelated');panelOpenStory('TASK-KQ1')");
+  const dialog=app.doc.getElementById('story');assert.equal(dialog.open,true);assert.match(text(dialog),/Caricamento/);
+  await settle();await settle();assert.match(text(dialog),/Dettagli non disponibili/);
+  assert.equal(app.run("transferHas('story','TASK-KQ1')"),false);
+  app.http=(path,options)=>reply({head:app.run('state.registry_head.hash'),section:'story',record:'TASK-KQ1',patch:patchFor('story','TASK-KQ1')});
+  one(dialog,e=>e.getAttribute('data-focus-key')==='story:retry').onclick();await settle();await settle();
+  assert.equal(app.run("transferHas('story','TASK-KQ1')"),true);assert.equal(app.run("transferUI.errors.has('story:OTHER')"),true);
+  assert.equal(app.run('panelUI.story'),'TASK-KQ1');assert.doesNotMatch(text(dialog),/Dettagli non disponibili/);
+ },
+ async story_navigation(){
+  const app=await boot({fixture:fixture()});let resolve;
+  app.http=()=>new Promise(r=>resolve=r);app.run("panelOpenStory('TASK-KQ1')");await settle();await app.tab('Finestre');
+  resolve(reply({head:app.run('state.registry_head.hash'),section:'story',record:'TASK-KQ1',patch:patchFor('story','TASK-KQ1')}));await settle();await settle();
+  assert.equal(app.run('panelUI.story'),null);assert.equal(app.doc.getElementById('story').open,false);
+  assert.equal(app.run("transferHas('story','TASK-KQ1')"),true,'completed immutable details may remain cached');
+ },
+ async story_latest(){
+  const app=await boot({fixture:fixture()});app.run("state.tasks.SECOND={...state.tasks['TASK-KQ1'],id:'SECOND',title:'Second task'}");const pending=[];
+  app.http=(path,options)=>new Promise(resolve=>pending.push({resolve,options}));
+  app.run("panelOpenStory('TASK-KQ1')");await settle();app.run("panelOpenStory('SECOND')");await settle();
+  const done=i=>{const {resolve,options}=pending[i],record=decodeURIComponent(options.headers['X-Squadra-Record']);resolve(reply({head:app.run('state.registry_head.hash'),section:'story',record,patch:{tasks:{[record]:JSON.parse(app.run('JSON.stringify(state.tasks['+JSON.stringify(record)+'])'))}}}))};
+  done(1);await settle();await settle();done(0);await settle();await settle();
+  assert.equal(app.run('panelUI.story'),'SECOND');assert.equal(app.doc.getElementById('story').getAttribute('data-story-task'),'SECOND');
+ },
+ async story_close(){
+  const app=await boot({fixture:fixture()});let resolve;app.http=()=>new Promise(r=>resolve=r);
+  const origin=app.find('work:story:TASK-KQ1');origin.focus();origin.onclick();await settle();
+  const dialog=app.doc.getElementById('story');assert.equal(dialog.open,true);dialog.close();dialog.onclose();
+  assert.equal(app.doc.activeElement.getAttribute('data-focus-key'),'work:story:TASK-KQ1','closing a pending story returns focus');
+  resolve(reply({head:app.run('state.registry_head.hash'),section:'story',record:'TASK-KQ1',patch:patchFor('story','TASK-KQ1')}));await settle();await settle();
+  assert.equal(app.run('panelUI.story'),null);assert.equal(dialog.open,false);
+ },
  async retry(){
   const app=await boot({fixture:fixture()});app.http=()=>Promise.reject(Error('offline'));await app.tab('Posta');await settle();
   assert.match(text(app.doc.getElementById('content')),/Dettagli non disponibili/);assert.equal(app.run("transferHas('mail')"),false);
