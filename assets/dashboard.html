@@ -319,7 +319,7 @@ dialog.sq-story{inset:0;margin:auto;width:min(820px,calc(100vw - 48px));height:a
 <div class="sq-app" id="app"><div class="sq-sidebar" id="sidebar"><div class="sq-brand"><span class="sq-logo" id="logo" aria-hidden="true"></span><span class="wordmark" id="wordmark">squadra</span><button id="sidebar-close" type="button" class="sq-icon-btn" aria-label="Chiudi il menù"></button></div><div id="connected-project" class="sq-project-card"></div><nav id="tabs" aria-label="Viste della dashboard"></nav><section class="sq-plugin-nav" id="usage-nav"><div id="usage-links"></div></section><section class="sq-plugin-nav" id="balance-nav"><div id="balance-links"></div></section><section class="sq-plugin-nav" id="skills-nav"><div id="skills-links"></div></section><section id="plugin-nav" class="sq-plugin-nav" aria-labelledby="plugin-label"><h2 id="plugin-label"></h2><div id="plugin-links"></div><div id="plugin-notices"></div></section><div class="sq-sidebar-foot"><button id="sidebar-toggle" type="button" aria-pressed="false"></button></div></div>
 <div class="sq-scrim" id="scrim" hidden></div>
 <div class="sq-page" id="page"><header class="sq-topbar" id="topbar"><button id="menu" type="button" class="sq-icon-btn" aria-controls="sidebar" aria-expanded="false" aria-label="Apri il menù"></button><div class="sq-heading"><h1 id="name">Sala di controllo</h1></div><div class="sq-search"><input id="search" type="search" placeholder="Cerca incarico, finestra, messaggio o skill" aria-label="Cerca nel registro"></div><div class="header-side"><div id="lang" class="lang"></div><div id="theme" class="sq-seg"></div><div id="notify-controls" class="sq-notify-controls"></div><div class="status" id="live"><span class="dot"></span><span>In attesa</span></div></div></header>
-<main id="main" tabindex="-1"><section id="loading" class="sq-loading" role="status" aria-live="polite"><span class="sq-spinner" aria-hidden="true"></span><h2 id="loading-title">Caricamento del progetto…</h2><p id="loading-help">Sto leggendo attività, messaggi e prove.</p><button id="loading-retry" type="button" hidden>Riprova</button></section><section id="connected-hero" class="sq-hero"></section><section id="connected-context" class="sq-context" hidden></section><div id="notice"></div><p id="status" class="sq-status"></p><div id="kpis" class="sq-kpis"></div><div id="content"></div><div id="charts" class="sq-charts"></div><div class="sq-legacy" id="legacy" hidden><button id="legacy-toggle" type="button" class="link" aria-expanded="false" aria-controls="legacy-body"></button><div id="legacy-body" class="sq-legacy-body"><div id="metrics" class="metrics"></div><div id="overview"></div></div></div><details class="sq-registry-details" id="registry-details" hidden><summary id="connected-registry-label">Dettagli del registro</summary><div id="project" class="sub mono">Connessione al registro…</div></details><div class="footer" id="footer">Una consegna non è un ACK. Un test passato non è una review. Una review non autorizza un rilascio.<br>Vista locale in sola lettura, salvo le impostazioni dei plugin e le selezioni salvate · nessuna azione sui client.</div></main></div></div>
+<main id="main" tabindex="-1"><section id="loading" class="sq-loading" role="status" aria-live="polite"><span class="sq-spinner" aria-hidden="true"></span><h2 id="loading-title">Caricamento del progetto…</h2><p id="loading-help">Sto leggendo attività, messaggi e prove.</p><button id="loading-retry" type="button" hidden>Riprova</button></section><section id="connected-hero" class="sq-hero"></section><section id="connected-context" class="sq-context" hidden></section><div id="notice"></div><p id="registry-audit" class="notice" role="status" aria-live="polite" hidden></p><p id="status" class="sq-status"></p><div id="kpis" class="sq-kpis"></div><div id="content"></div><div id="charts" class="sq-charts"></div><div class="sq-legacy" id="legacy" hidden><button id="legacy-toggle" type="button" class="link" aria-expanded="false" aria-controls="legacy-body"></button><div id="legacy-body" class="sq-legacy-body"><div id="metrics" class="metrics"></div><div id="overview"></div></div></div><details class="sq-registry-details" id="registry-details" hidden><summary id="connected-registry-label">Dettagli del registro</summary><div id="project" class="sub mono">Connessione al registro…</div></details><div class="footer" id="footer">Una consegna non è un ACK. Un test passato non è una review. Una review non autorizza un rilascio.<br>Vista locale in sola lettura, salvo le impostazioni dei plugin e le selezioni salvate · nessuna azione sui client.</div></main></div></div>
 <div id="chart-tip" class="sq-tip" aria-hidden="true" hidden></div>
 <dialog id="story" class="sq-story" aria-labelledby="story-title"></dialog>
 <dialog id="artifact"><div class="rowtop"><h2 id="artifact-title">Prova</h2><button id="close">Chiudi</button></div><pre id="artifact-body"></pre></dialog>
@@ -525,6 +525,8 @@ const CORE={
  "page.project":{it:"{project} · registro #{count}",en:"{project} · registry #{count}"},
  "page.detail":{it:"Apri il dettaglio di attività, prove e finestre",en:"Open the detail of work, proofs and windows"},
  "page.reserve.title":{it:"Riserve e decisioni",en:"Reservations and decisions"},"page.reserved":{it:"riservata",en:"reserved"},
+ "audit.running":{it:"Verifica completa del registro in corso",en:"Full registry verification in progress"},
+ "audit.failed":{it:"Il controllo d’integrità del registro non è riuscito. I dati non sono disponibili.",en:"Registry integrity verification failed. Data is unavailable."},
  "page.live.connected":{it:"Registro connesso · {time}",en:"Registry connected · {time}"},"page.live.offline":{it:"Connessione non disponibile",en:"Connection unavailable"},
  "load.initial":{it:"Caricamento del progetto…",en:"Loading the project…"},
  "load.help":{it:"Sto leggendo attività, messaggi e prove.",en:"Reading tasks, messages and evidence."},
@@ -1093,6 +1095,7 @@ const matches=value=>{
  return JSON.stringify(value).toLocaleLowerCase().includes(filter);
 };
 async function api(path,headers={}){
+ if(loadUI.integrity)throw Error(tr('audit.failed'));
  const controller=typeof AbortController==='function'?new AbortController():null;
  let timer,expired=false;
  const deadline=typeof clearTimeout==='function'?new Promise((_,reject)=>{timer=setTimeout(()=>{
@@ -1100,10 +1103,10 @@ async function api(path,headers={}){
  },15000)}):null;
  const wait=p=>deadline?Promise.race([p,deadline]):p;
  const done=()=>{if(timer!==undefined)clearTimeout(timer)};
- const consume=async fn=>{try{return await wait(fn())}catch(e){throw expired?Error(tr('load.timeout')):e}finally{done()}};
+ const consume=async fn=>{try{const result=await wait(fn());if(loadUI.integrity)throw Error(tr('audit.failed'));return result}catch(e){throw expired?Error(tr('load.timeout')):e}finally{done()}};
  try{
   const r=await wait(fetch(path,{headers:{'X-Squadra-Token':token,...headers},cache:'no-store',...(controller?{signal:controller.signal}:{})}));
-  if(!r.ok)throw Error(r.status+' · '+await consume(()=>r.text()));
+  if(!r.ok){const error=Error(r.status+' · '+await consume(()=>r.text()));error.status=r.status;throw error;}
   return {json:()=>consume(()=>r.json()),text:()=>consume(()=>r.text())};
  }catch(e){done();throw expired?Error(tr('load.timeout')):e}
 }
@@ -1479,14 +1482,26 @@ function recordedWaiting(){
 }
 function workOverview(){const p=panel(tr('connected.workNow'));headingKey(p.children[0],'work');p.className='panel sq-work';p.append(node('p',tr('connected.workIntro'),'sq-lede'));const all=Object.values(state.tasks).filter(matches),closed=all.filter(t=>!panelOpen(t));for(const t of all.filter(panelOpen))p.append(panelTaskCard(t));if(closed.length){const group=node('details',undefined,'sq-closed');group.open=panelUI.closedOpen;group.ontoggle=()=>{panelUI.closedOpen=group.open;if(group.open)panelClampSoon()};const summary=node('summary',tr('work.closed',{n:closed.length}));focusKey(summary,'work:closed');summary.setAttribute('data-focus-fallback','work');group.append(summary);for(const t of closed)group.append(panelTaskCard(t));p.append(group)}if(!all.length)p.append(node('p',tr('page.empty'),'empty'));const waits=node('details',undefined,'sq-waits');waits.open=panelUI.waitsOpen;waits.ontoggle=()=>{panelUI.waitsOpen=waits.open};const summary=node('summary',tr('work.waits'));focusKey(summary,'work:waits');summary.setAttribute('data-focus-fallback','work');waits.append(summary,recordedWaiting());if(state.presence?.some(a=>a.ping||a.availability==='stand-by'))waits.append(presencePanel());p.append(waits);return p}
 function render(){if(!state)return;const anchor=commsAnchor();if(typeof renderHeaderExtras==='function')renderHeaderExtras();$('name').textContent=state.workspace.name;$('project').textContent=tr('page.project',{project:state.workspace.project,count:state.event_count});$('project').setAttribute('title',$('project').textContent);const tasksList=Object.values(state.tasks),messages=Object.values(state.messages),runs=Object.values(state.runs);const done=tasksList.filter(t=>t.status==='done').length,unread=Object.values(state.progress||{}).filter(p=>p.state?.id==='closed-unread').length;$('metrics').replaceChildren();for(const [label,value,detail,glyph] of [[tr('page.metric.closed'),done+'/'+tasksList.length,unread?tr('page.metric.closedUnread',{count:unread}):tr('page.metric.closedSub'),'check2-all'],[tr('page.metric.identities'),new Set(Object.values(state.agents).map(a=>a.identity)).size,tr('page.metric.identitiesSub',{count:Object.keys(state.agents).length}),'people'],[tr('page.metric.acks'),messages.filter(m=>!m.ack).length,tr('page.metric.acksSub'),'envelope-exclamation'],[tr('page.metric.runs'),runs.filter(r=>['running','cleanup-unknown'].includes(r.status)).length,runs.some(r=>r.status==='cleanup-unknown')?tr('page.metric.runsUnknown'):tr('page.metric.runsPending'),'hourglass-split']]){const c=node('div',undefined,'metric');c.append(node('div',label,'label'),node('strong',value),node('div',detail,'sub'));if(typeof icon==='function')c.append(icon(glyph,'metric-icon'));$('metrics').append(c)}$('notice').replaceChildren();if(state.paused)$('notice').append(node('div',tr('page.paused'),'notice'));const tabs=['Quadro','Finestre','Incarichi','Posta','Comunicazioni','Decisioni','Letture','Prove','Output','Cronologia','Storico'];$('tabs').replaceChildren();tabs.forEach(t=>{const b=node('button',tr('tab.'+t),t===tab?'active':'');if(typeof panelTab==='function')panelTab(b,t);b.onclick=()=>{if(typeof connectedReset==='function')connectedReset();tab=t;if(typeof panelNavigate==='function')panelNavigate();render()};$('tabs').append(b)});if(typeof skillsNav==='function')skillsNav();if(typeof usageNav==='function')usageNav();if(typeof balanceNav==='function')balanceNav();const content=$('content');content.className=tab==='Quadro'?'sq-home':'';if(tab==='Comunicazioni')comms(content);else{if(tab==='Usage'){usageRender(content)}else if(tab==='SystemSkills'){skillsRender(content)}else if(tab==='Bilanciamento'){balanceRender(content)}else if(tab==='Store'){storeRender(content)}else if(tab==='Letture'){readsRender(content)}else if(typeof pluginSelected==='function'&&pluginSelected()){pluginRender(content)}else{content.replaceChildren();if(tab==='Quadro'){content.append(ownerAttention(),workOverview(),connectedRail());const detail=node('details',undefined,'sq-full-detail');detail.append(node('summary',tr('page.detail')));const grid=node('div',undefined,'grid');const left=node('div'),right=node('div');left.append(recordedWaiting(),tasks('quadro-tasks'),outputs());const reserve=panel(tr('page.reserve.title'));for(const r of Object.values(state.resources))reserve.append(row(r.name,r.owner+' · '+r.reason,tr('page.reserved')));for(const d of state.decisions.slice(-5))reserve.append(row(d.actor,d.reason));addEmpty(reserve,Object.keys(state.resources).length+state.decisions.length);right.append(reserve,mail('quadro-mail'));grid.append(left,right);detail.append(grid);content.append(detail)}else content.append(({Finestre:team,Incarichi:tasks,Posta:mail,Prove:evidence,Output:outputs,Cronologia:timeline,Storico:legacyView,Decisioni:decisionsView})[tab]())}}commsRestore(anchor)}
-const loadUI={running:false,timer:null,error:null,query:'',searchAgain:false};
+const loadUI={running:false,timer:null,error:null,query:'',searchAgain:false,integrity:false};
+function registryAuditLabels(){
+ const banner=$('registry-audit');banner.hidden=!state||state.audit?.status!=='running';
+ banner.textContent=banner.hidden?'':tr('audit.running');
+}
+function registryIntegrityFailure(){
+ loadUI.integrity=true;state=null;
+ for(const id of ['connected-project','connected-hero','connected-context','status','kpis','content','charts','metrics','overview','project','plugin-links','plugin-notices','name','notice','chart-tip'])$(id).replaceChildren();
+ for(const id of ['story','artifact','read-dialog']){const dialog=$(id);if(dialog.open)dialog.close();}
+ for(const id of ['artifact-title','artifact-body','read-title','read-body'])$(id).replaceChildren();
+ $('legacy').hidden=true;$('registry-details').hidden=true;$('connected-context').hidden=true;
+ registryAuditLabels();
+}
 function loadingLabels(){
- const failed=!!loadUI.error;
+ const failed=!!loadUI.error;registryAuditLabels();
  $('registry-details').hidden=!state;
  $('loading').hidden=!!state;$('loading').className='sq-loading'+(failed?' failed':'');
- $('loading-title').textContent=tr(failed?'load.failed':'load.initial');
- $('loading-help').textContent=failed?loadUI.error:tr('load.help');
- $('loading-retry').hidden=!failed;$('loading-retry').textContent=tr('load.retry');
+ $('loading-title').textContent=tr(loadUI.integrity?'audit.failed':failed?'load.failed':'load.initial');
+ $('loading-help').textContent=loadUI.integrity?'':failed?loadUI.error:tr('load.help');
+ $('loading-retry').hidden=!failed||loadUI.integrity;$('loading-retry').textContent=tr('load.retry');
  $('main').setAttribute('aria-busy',String(loadUI.running&&!state));
  if(loadUI.running&&(!state||loadUI.query!==filter)){
   const label=tr(!state?'load.initial':'load.search');
@@ -1497,10 +1512,10 @@ function loadingLabels(){
 function scheduleRefresh(delay=2000){
  if(loadUI.timer!==null&&typeof clearTimeout==='function')clearTimeout(loadUI.timer);
  loadUI.timer=null;
- if(document.hidden!==true)loadUI.timer=setTimeout(refresh,delay);
+ if(document.hidden!==true&&!loadUI.integrity)loadUI.timer=setTimeout(refresh,delay);
 }
 async function refresh(){
- if(loadUI.running||document.hidden===true)return;
+ if(loadUI.running||loadUI.integrity||document.hidden===true)return;
  if(loadUI.timer!==null&&typeof clearTimeout==='function')clearTimeout(loadUI.timer);
  loadUI.timer=null;loadUI.running=true;loadUI.error=null;loadUI.searchAgain=false;
  const query=loadUI.query,actionClock=typeof pluginActionClock==='number'?pluginActionClock:0;
@@ -1516,9 +1531,10 @@ async function refresh(){
   $('live').className='status';$('live').setAttribute('aria-label',tr('page.live.connected',{time:new Date().toLocaleTimeString(uiLocale())}));
   $('live').replaceChildren(node('span',undefined,'dot'),node('span',tr('page.live.connected',{time:new Date().toLocaleTimeString(uiLocale())})));
  }catch(e){
-  loadUI.error=e.message;$('live').className='status bad';$('live').setAttribute('aria-label',tr('page.live.offline'));
+  if(e.status===409)registryIntegrityFailure();
+  loadUI.error=loadUI.integrity?tr('audit.failed'):e.message;$('live').className='status bad';$('live').setAttribute('aria-label',tr('page.live.offline'));
   $('live').replaceChildren(node('span',undefined,'dot'),node('span',tr('page.live.offline')));
-  const anchor=commsAnchor(),notice=node('div',state?tr('page.live.kept',{error:e.message}):e.message,'notice');
+  const anchor=commsAnchor(),notice=node('div',state?tr('page.live.kept',{error:e.message}):loadUI.error,'notice');
   if(state){const retry=node('button',tr('load.retry'));retry.onclick=()=>refresh();notice.append(retry)}
   $('notice').replaceChildren(notice);commsRestore(anchor);
  }finally{

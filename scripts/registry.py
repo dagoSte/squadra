@@ -1637,24 +1637,40 @@ class Store:
         state['challenges'] = [transform_event('challenge', item, convert) for item in state['challenges']]
         return state
 
-    def audit(self):
+    def audit(self, cancelled=None):
         """Full chain/artifact verification and independent derived-root comparison."""
         from registry_cache import Tree, load
         from registry_radix import IntegrityError
+        def check_cancelled():
+            if cancelled is not None and cancelled():
+                raise Error('Registry audit cancelled')
+        def checked(rows):
+            for row in rows:
+                check_cancelled()
+                yield row
+        if cancelled is not None:
+            self.db.set_progress_handler(lambda: int(cancelled()), 1000)
         own_transaction = not self.db.in_transaction
         if own_transaction:
             self.db.execute('BEGIN')
         try:
+            check_cancelled()
             events = self.events()
-            state = self.state(events)
+            state = self.state(checked(events))
+            check_cancelled()
             self.verify_artifacts(state)
+            check_cancelled()
             memory = sqlite3.connect(':memory:', isolation_level=None)
             memory.row_factory = sqlite3.Row
+            if cancelled is not None:
+                memory.set_progress_handler(lambda: int(cancelled()), 1000)
             try:
-                expected = Tree.build(memory, self.normalized_state(events)).flush()
+                expected = Tree.build(memory, self.normalized_state(checked(events))).flush()
+                check_cancelled()
                 import registry_current
-                current_state = registry_current.build(events, apply, initial)
+                current_state = registry_current.build(checked(events), apply, initial)
                 expected_current = Tree.build(memory, current_state, domain='current').flush()
+                check_cancelled()
                 try:
                     cached, meta = load(self)
                     agrees = meta['state'] == expected and meta['current'] == expected_current and meta['seq'] == len(events)
@@ -1663,6 +1679,7 @@ class Store:
                         agrees = (plain(cached.root) == self.normalized_state(events) and
                                   plain(cached.current_tree.root) == current_state)
                 except (IntegrityError, sqlite3.DatabaseError, ValueError, KeyError, TypeError):
+                    check_cancelled()
                     agrees = False
             finally:
                 memory.close()
@@ -1671,6 +1688,8 @@ class Store:
             self._integrity_failed = True
             raise
         finally:
+            if cancelled is not None:
+                self.db.set_progress_handler(None, 0)
             if own_transaction:
                 self.db.execute('COMMIT')
 
@@ -1739,16 +1758,19 @@ class Store:
 
     def state(self, events=None, *, resolve=True):
         state = initial()
+        referenced = False
         for event in self.events() if events is None else events:
             apply(state, event)
+            if resolve and not referenced:
+                keys = (('before', 'after') if event['kind'] in {'run.start', 'run.end'} else
+                        ('snapshot',) if event['kind'] == 'deliver' else
+                        ('candidate',) if event['kind'] == 'challenge' else ())
+                referenced = any(isinstance(event['data'].get(key), dict) and
+                                 'manifest' in event['data'][key] for key in keys)
         state["root"] = str(self.root)
-        if resolve:
-            from source_manifests import materialize_known, transform_packet
+        if resolve and referenced:
+            from source_manifests import materialize_known
             state = materialize_known(state, self.root / 'artifacts')
-            for task in state['tasks'].values():
-                delivery = task.get('delivery', {})
-                if 'packet_data' in delivery:
-                    delivery['packet_data'] = transform_packet(delivery['packet_data'], self.resolve_snapshot)
         return state
 
     def append(self, kind, actor, data, event_id=None):
@@ -1896,6 +1918,7 @@ class Store:
                 self.db.execute("BEGIN")
                 events = self.events()
                 state = self.state(events)
+                state.pop("root", None)
                 self.db.execute("COMMIT")
                 atomic(self.root / "state.json", (canonical(state) + "\n").encode())
                 atomic(self.root / "events.jsonl", b"".join((canonical(e) + "\n").encode() for e in events))

@@ -9,6 +9,7 @@ import sqlite3
 import sys
 import tempfile
 import threading
+import time
 import unittest
 from unittest.mock import patch
 from urllib.parse import quote
@@ -88,9 +89,15 @@ class DashboardPerformance(unittest.TestCase):
             connection.close()
 
     def state(self, **headers):
-        status, _, body = self.get(headers=headers)
-        self.assertEqual(status, 200, body)
-        return json.loads(body)
+        deadline = time.monotonic() + 10
+        while True:
+            status, _, body = self.get(headers=headers)
+            self.assertEqual(status, 200, body)
+            result = json.loads(body)
+            if result.get('audit', {}).get('status') != 'running':
+                return result
+            self.assertLess(time.monotonic(), deadline, 'The background audit must complete')
+            time.sleep(.01)
 
     def compact(self, query=''):
         return self.state(**{'X-Squadra-View': 'compact', 'X-Squadra-Search': quote(query, safe='')})
@@ -106,7 +113,7 @@ class DashboardPerformance(unittest.TestCase):
                 patch.object(registry, 'apply', wraps=registry.apply) as fold:
             first = self.state()
             cold_calls, cold_folds = events.call_count, fold.call_count
-            self.assertEqual(cold_calls, 1)
+            self.assertEqual(cold_calls, 2)
             self.assertEqual(audit.call_count, 1)
             self.assertEqual([call.args[1]['seq'] for call in fold.call_args_list[:first['event_count']]],
                              list(range(1, first['event_count'] + 1)))
@@ -172,13 +179,14 @@ class DashboardPerformance(unittest.TestCase):
         original = Store.events
         with patch.object(Store, 'events', autospec=True, side_effect=original) as events:
             current = self.state()
-            self.assertEqual(events.call_count, 1)
+            # Cold history, foreign-path cache recovery, and the separate full audit.
+            self.assertEqual(events.call_count, 3)
             self.assertEqual(current['workspace']['name'], 'Replacement registry')
             self.assertEqual(current['plugins']['key'], expected)
             self.assertNotEqual(current['plugins']['key'], original_state['plugins']['key'])
             self.assertEqual(current['tasks'], {})
             self.assertEqual(self.state(), current)
-            self.assertEqual(events.call_count, 1)
+            self.assertEqual(events.call_count, 3)
 
     def test_ctime_only_raw_edit_invalidates_warm_cache_and_restore_recovers(self):
         needle = b'Only ctime reveals this live event edit'
@@ -337,7 +345,7 @@ class DashboardPerformance(unittest.TestCase):
                 early = self.state()
             with patch.object(dashboard, 'now', return_value=(clock + dt.timedelta(seconds=301)).isoformat()):
                 late = self.state()
-            self.assertEqual(events.call_count, 1)
+            self.assertEqual(events.call_count, 2)
         before = next(row for row in early['presence'] if row['agent'] == 'A')
         after = next(row for row in late['presence'] if row['agent'] == 'A')
         self.assertEqual((before['seconds'], before['due']), (299, False))

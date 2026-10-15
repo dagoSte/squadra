@@ -483,7 +483,9 @@ Ordinary commands verify the anchor event and its hash, the newer event hashes a
 links, and authenticated proofs for the cache values/indexes they read. They do not
 reverify pre-anchor events, untouched leaves, or the cached root against complete
 reducer replay. Full verification runs in `doctor`, `checkpoint`, `save`,
-`restore-check`, dashboard startup and release-gate `close`; a missing, foreign or
+`restore-check` and release-gate `close`. Dashboard startup performs the same full
+audit in the background: ordinary verified data is marked pending until completion,
+and an audit failure stops data responses and removes the displayed view. A missing, foreign or
 invalid cache also falls back to verified reconstruction. See the exact
 [verification table](recovery.md#registry-verification). Read-only commands do not
 write the registry or projections. Coordinate every writer's upgrade before new

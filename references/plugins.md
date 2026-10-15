@@ -260,7 +260,9 @@ The Content-Security-Policy is unchanged.
 
 Discovery uses the normal two-second state refresh, with no extra request while
 built-in views are open. Only an open plugin view fetches a panel. Matching event
-#1 reuses the identity established at the full verified startup read; subsequent
+#1 reuses the identity established by the initial verified event read. The full
+startup audit runs in the background with a visible pending status; an audit failure
+refuses further data. Subsequent
 registry reads follow the anchor/suffix/cache-proof boundary above. Responses for an old selection or registry key are
 discarded. Refusal or removal clears the old panel. An unchanged panel retains
 its DOM; changed cards preserve focus and the reading anchor where available.

@@ -48,3 +48,6 @@ class DashboardLoading(unittest.TestCase):
 
     def test_full_technical_data_is_available_on_demand(self):
         self.contract('details')
+
+    def test_background_registry_audit_is_visible_and_failure_removes_data(self):
+        self.contract('audit')

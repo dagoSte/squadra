@@ -55,6 +55,78 @@ class VerifiedView:
         self.identity = self.marker = self.value = None
         self.reads_head = self.reads_value = None
         self.verified_events = None
+        self.audit_lock = threading.Lock()
+        self.audit_thread = self.audit_cancel = self.audit_store = None
+        self.audit_pending = self.audit_failure = None
+        self.audit_generation = 0
+        self.audit_state = 'running'
+        self.closed = False
+
+    def audit_info(self):
+        with self.audit_lock:
+            if self.audit_failure is not None:
+                raise Error(self.audit_failure)
+            return {'status': self.audit_state}
+
+    def _queue_audit(self, identity):
+        with self.audit_lock:
+            if self.closed:
+                raise Error('Dashboard view closed')
+            self.audit_generation += 1
+            self.audit_pending = self.audit_generation, identity
+            self.audit_state = 'running'
+            if self.audit_cancel is not None:
+                self.audit_cancel.set()
+            if self.audit_thread is None:
+                self.audit_thread = threading.Thread(target=self._audit_worker,
+                    name='squadra-registry-audit', daemon=True)
+                self.audit_thread.start()
+
+    def _audit_worker(self):
+        while True:
+            with self.audit_lock:
+                if self.closed or self.audit_pending is None:
+                    self.audit_thread = self.audit_store = self.audit_cancel = None
+                    return
+                generation, identity = self.audit_pending
+                self.audit_pending = None
+                cancel = self.audit_cancel = threading.Event()
+            store = None
+            audited = failure = None
+            try:
+                if self.path.is_symlink():
+                    raise Error('Registry symlink refused')
+                before = self.path.stat()
+                if (before.st_dev, before.st_ino) != identity:
+                    continue
+                store = Store(self.root, read_only=True)
+                with self.audit_lock:
+                    self.audit_store = store
+                audited = store.audit(cancelled=cancel.is_set)
+            except Exception as exc:
+                failure = str(exc)
+            finally:
+                if store is not None:
+                    store.close()
+                with self.audit_lock:
+                    if self.audit_store is store:
+                        self.audit_store = None
+            try:
+                current = self.path.lstat()
+                same_file = not self.path.is_symlink() and (current.st_dev, current.st_ino) == identity
+            except OSError:
+                same_file = False
+            with self.audit_lock:
+                if self.closed or cancel.is_set() or generation != self.audit_generation or not same_file:
+                    continue
+                if failure is not None:
+                    self.audit_failure = failure
+                    continue
+                known = self.verified_events
+                rows = audited['events']
+                common = min(len(known or []), len(rows))
+                if common and known[common - 1]['hash'] == rows[common - 1]['hash']:
+                    self.audit_state = 'complete'
 
     def stamp(self):
         if self.path.is_symlink():
@@ -79,6 +151,9 @@ class VerifiedView:
 
     def read(self):
         with self.lock:
+            if self.closed:
+                raise Error('Dashboard view closed')
+            self.audit_info()
             before = self.stamp()
             if self.value is not None and before == self.marker:
                 return self.value
@@ -94,18 +169,19 @@ class VerifiedView:
                         if any(event.get('format') != 2 for event in suffix):
                             suffix = None
                 if suffix is None:
-                    audited = store.audit()
-                    events, state = audited['events'], audited['state']
-                    if audited['cache'] == 'matched':
-                        cached = plain(store.view())
-                        if cached['event_count'] == state['event_count']:
-                            state = cached
+                    events = store.events()
+                    state = plain(store.view())
                 else:
                     events = prior + suffix
                     state = plain(store.view())
-                    if state['event_count'] != events[-1]['seq']:
-                        audited = store.audit()
-                        events, state = audited['events'], audited['state']
+                if state['event_count'] != (events[-1]['seq'] if events else 0):
+                    store.db.execute('BEGIN')
+                    try:
+                        events = store.events()
+                        state = store.state(events, resolve=False)
+                    finally:
+                        store.db.execute('COMMIT')
+                    suffix = None
                 self.verified_events = events
             finally:
                 store.close()
@@ -120,6 +196,9 @@ class VerifiedView:
             # A concurrent commit may leave a valid older snapshot, but it must not be cached as current.
             if before == after:
                 self.marker, self.value = after, value
+            if suffix is None:
+                self._queue_audit(self.identity)
+            self.audit_info()
             return value
 
     def record(self, kind, value):
@@ -136,6 +215,21 @@ class VerifiedView:
             return self.reads_value
 
     def close(self):
+        with self.audit_lock:
+            self.closed = True
+            self.audit_pending = None
+            if self.audit_cancel is not None:
+                self.audit_cancel.set()
+            if self.audit_store is not None:
+                try:
+                    self.audit_store.db.interrupt()
+                except sqlite3.ProgrammingError:
+                    pass  # The worker can finish closing its owned connection concurrently.
+            worker = self.audit_thread
+        if worker is not None:
+            worker.join(timeout=5)
+            if worker.is_alive():
+                raise Error('Registry audit cleanup did not finish within 5 seconds')
         with self.lock:
             if self.monitor is not None:
                 self.monitor.close()
@@ -164,6 +258,7 @@ def make_server(root, port=0):
         return verified_first["hash"]
 
     def plugin_key(store):
+        view.audit_info()
         # Reuse the verified key while the first record is unchanged.
         first = store.db.execute("SELECT * FROM events WHERE seq=1").fetchone()
         plugins.require(first is not None, "registry_invalid")
@@ -177,6 +272,8 @@ def make_server(root, port=0):
             pass
 
         def answer(self, status, body, content="application/json; charset=utf-8"):
+            if status == 200 and urlparse(self.path).path.startswith('/api/'):
+                view.audit_info()
             self.send_response(status)
             self.send_header("Content-Type", content)
             self.send_header("Content-Length", str(len(body)))
@@ -199,11 +296,16 @@ def make_server(root, port=0):
                 self.answer(200, fonts[path], "font/woff2"); return
             if not secrets.compare_digest(self.headers.get("X-Squadra-Token", ""), token):
                 self.answer(401, b'{"error":"token required"}'); return
+            try:
+                view.audit_info()
+            except Error as exc:
+                self.answer(409, json.dumps({"error": str(exc)}).encode())
+                return
             if path == "/api/plugin-store":
                 try:
                     body = plugin_store.catalogue(plugin_home)
                     self.answer(200, json.dumps(body, ensure_ascii=False).encode())
-                except (plugins.Refused, OSError, ValueError, KeyError):
+                except (Error, plugins.Refused, OSError, ValueError, KeyError):
                     self.answer(409, b'{"error":"store_unavailable"}')
                 return
             if path == "/api/plugins" or path.startswith("/api/plugin/"):
@@ -243,6 +345,7 @@ def make_server(root, port=0):
                     state["events"] = events[-120:]
                     state["integrity"] = "verified"
                     state['registry_head'] = {'seq': events[-1]['seq'], 'hash': events[-1]['hash']}
+                    state['audit'] = view.audit_info()
                     state["comms"] = communications(state, events, state["waits"], stamp)
                     state["activity"] = activity(events, stamp)
                     if self.headers.get('X-Squadra-View') == 'compact':
@@ -351,6 +454,7 @@ def make_server(root, port=0):
                     value = json.loads(body.decode('utf-8'), object_pairs_hook=plugins._pairs, parse_constant=plugins._constant)
                 except (UnicodeError, ValueError, RecursionError):
                     raise plugins.Refused('invalid_json') from None
+                view.audit_info()
                 if action is None:
                     plugins._fields(value, ('values',))
                     name = path[len('/api/plugin/'):-len('/settings')]
@@ -370,6 +474,8 @@ def make_server(root, port=0):
                 self.answer(200, json.dumps(result, ensure_ascii=False).encode())
             except plugins.Refused as exc:
                 self.answer(SETTINGS_STATUS.get(exc.code, 409), json.dumps({'error': exc.code}).encode())
+            except Error:
+                self.answer(409, b'{"error":"registry_invalid"}')
             except OSError:
                 # A lost reply may follow a successful save; never echo request or backend details.
                 self.close_connection = True

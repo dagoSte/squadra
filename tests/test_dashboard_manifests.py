@@ -194,6 +194,11 @@ class DashboardManifests(unittest.TestCase):
 
         with patch.object(Store, '__init__', initialize), patch.object(Store, 'close', track):
             _, state, _ = view.read()
+            worker = view.audit_thread
+            if worker is not None:
+                worker.join(5)
+                self.assertFalse(worker.is_alive())
+            self.assertEqual(view.audit_info(), {'status': 'complete'})
         self.assertTrue(opened)
         self.assertEqual(set(opened), set(closed))
         for store in opened:

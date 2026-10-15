@@ -167,6 +167,7 @@ class Board(unittest.TestCase):
         self.assertTrue(self.cli("status").startswith(expected + "\n\n"))
         live_row = next(line for line in expected.splitlines() if "| Work T | in costruzione |" in line)
         saved = expected.replace(live_row, "| A (costruttore) | Work T | in costruzione | — |")
+        self.cli("export")
         self.assertTrue((self.root / "stato.md").read_text().startswith(saved + "\n\n"))
 
     def test_exports_at_two_clocks_keep_fixed_durations_and_live_cli_ages(self):
@@ -199,6 +200,7 @@ class Board(unittest.TestCase):
         self.root = self.base / "english"
         self.cli("init", "--name", "English", "--project", str(self.repo), "--temporary", "--lang", "en")
         self.assertEqual(self.cli("status").splitlines()[2], "## In progress")
+        self.cli("export")
         self.assertEqual((self.root / "stato.md").read_text().splitlines()[2], "## In progress")
         before = (self.root / "stato.md").read_bytes()
         self.assertEqual(self.cli("board", "--lang", "it").splitlines()[2], "## In corso")

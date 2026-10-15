@@ -1,7 +1,9 @@
 """Check generated file bytes and the state returned to the CLI."""
 import contextlib
 import io
+import json
 from pathlib import Path
+import re
 import sys
 import tempfile
 import unittest
@@ -25,8 +27,7 @@ def expected_days(events):
     days = {}
     for e in events:
         day = e["utc"][:10]
-        days.setdefault(day, "# Squadra — scambi del giorno UTC\n\nProiezione ricostruibile del registro comune; non una seconda fonte.\n")
-        days[day] += f"\n## {e['utc']} · {e['actor']} · {e['kind']} · evento {e['seq']}\n\n```json\n{canonical(e['data'])}\n```\n"
+        days.setdefault(day, []).append(e)
     return days
 
 
@@ -55,8 +56,29 @@ class Projection(unittest.TestCase):
         self.assertTrue(days)
         written = sorted(p.name for p in (self.root / "posta").iterdir())
         self.assertEqual(written, sorted("exchange-" + d + ".md" for d in days))
-        for day, body in days.items():
-            self.assertEqual((self.root / "posta" / ("exchange-" + day + ".md")).read_bytes(), body.encode())
+        exported = [json.loads(line) for line in (self.root / "events.jsonl").read_text().splitlines()]
+        self.assertEqual(exported, events, "Every complete payload remains available in the verified raw export")
+        for day, day_events in days.items():
+            body = (self.root / "posta" / ("exchange-" + day + ".md")).read_text()
+            sections = body.split("\n## ")[1:]
+            self.assertEqual(len(sections), len(day_events), "No event is omitted or duplicated in the readable day")
+            self.assertEqual([int(n) for n in re.findall(r" · #(\d+)\n", body)], [e["seq"] for e in day_events])
+            for event, section in zip(day_events, sections):
+                self.assertTrue(section.startswith(f"{event['utc']} · {event['actor']} · {event['kind']} · #{event['seq']}\n"))
+                self.assertIn(f"events.jsonl · #{event['seq']} · SHA-256 {event['hash']}", section)
+                self.assertEqual(exported[event["seq"] - 1], event, "The link recovers the exact complete event")
+                for key in ("body", "text", "reason"):
+                    text = event["data"].get(key)
+                    if isinstance(text, str):
+                        if len(text.encode()) <= 4096:
+                            self.assertIn(text, section)
+                        else:
+                            self.assertIn(text[:512], section)
+                            self.assertNotIn(text, section, "Large bodies are referenced instead of duplicated")
+                            self.assertIn("Full text in source event", section)
+                if event["kind"] == "ack":
+                    self.assertIn(event["data"]["message"], section)
+            self.assertLess(len(body.encode()), 100_000, "The 200 KB message must not be copied into its daily summary")
 
     def test_project_returns_the_state_it_wrote(self):
         state = self.store.project()

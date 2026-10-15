@@ -38,7 +38,8 @@ cache has already been folded.
 | --- | --- |
 | Other ordinary commands, including `check` and an ordinary task's `close`; dashboard refresh after startup | The recorded anchor event and its hash, every newer event's hash and previous link, and authenticated proofs for each cache value or index read. |
 | Explicit `usage`/`balance` calculations, a lesson's source check, and the lesson hint after a failed proof | The complete event hash chain and the requested historical evidence. These reads do not perform a full artifact audit. |
-| `doctor`, `checkpoint`, `save`, `restore-check`, dashboard startup, and a release-gate task's `close` | The complete event chain and referenced artifacts/manifests, plus full replay to compare or rebuild the derived cache. |
+| `doctor`, `checkpoint`, `save`, `restore-check`, and a release-gate task's `close` | The complete event chain and referenced artifacts/manifests, plus full replay to compare or rebuild the derived cache. |
+| Dashboard startup | The ordinary verified path serves data while a full chain/artifact/replay audit runs in the background. A visible status marks the pending audit; failure stops data responses and removes the displayed data. |
 
 The other ordinary reads above do **not** reverify events before the anchor, untouched cache leaves,
 or that the cached root equals a complete replay of the reducer. A missing, foreign
@@ -212,7 +213,12 @@ No command or shell execution, no remote scripts or CDN. The disconnected view k
 last page with a warning. Ctrl-C stops that server, not the agents. Do not expose the port
 or use it as a multi-user service.
 
-Dashboard startup verifies the complete chain and referenced artifacts/manifests.
+Dashboard startup runs the complete chain, artifact and replay audit in the background.
+The first view uses the ordinary authenticated state path and verifies the raw event
+chain needed for historical charts. Until the full audit completes, the page shows
+“Full registry verification in progress”. A failed audit latches an integrity error:
+the server refuses further data and the page removes its displayed data. Cold first
+response and time to completed audit are separate measurements.
 Later reads use the anchor, suffix and requested-cache proofs in the
 [verification table](#registry-verification); they do not rescan every older event
 after each append. A missing, foreign or invalid cache requires verified

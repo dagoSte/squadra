@@ -244,6 +244,24 @@ class RunAbandonTests(unittest.TestCase):
         self.assertIn('page.runs.abandonedLegacy', page)
         self.assertIn("link('artifact',r.abandonment.evidence)", page)
 
+    def test_abandonment_is_work_activity_and_not_a_communication(self):
+        from panel import ORDER, activity
+        from comms import communications
+        self.orphan()
+        self.store.append('run.abandon', 'A', self.declaration())
+        event = self.store.events()[-1]
+        with self.subTest(view='activity'):
+            chart = activity([event], event['utc'])
+            self.assertEqual(len(chart['buckets']), 1)
+            counts = chart['buckets'][0][1:]
+            self.assertEqual(counts[ORDER.index('work')], 1)
+            self.assertEqual(sum(counts), 1)
+            self.assertEqual(chart['heartbeats'], 0)
+        with self.subTest(view='communications'):
+            projected = communications(self.store.state(), [event], [], event['utc'])
+            self.assertEqual(projected['unknown_kinds'], {})
+            self.assertEqual(projected['edges'], [])
+
 
 if __name__ == '__main__':
     unittest.main()

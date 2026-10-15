@@ -109,7 +109,8 @@ class Registry(unittest.TestCase):
         self.store = Store(self.root)
 
     def snap(self, char):
-        return {"repo": str(self.base), "head": char * 40, "files": [], "sha256": char * 64}
+        value = {"repo": str(self.base), "head": char * 40, "files": []}
+        return {**value, "sha256": digest(canonical(value).encode())}
 
     def test_answer_and_follows_on_one_ask_are_two_typed_edges_and_no_cycle(self):
         self.ask()
@@ -247,14 +248,14 @@ class Registry(unittest.TestCase):
         a("run.start", "A", {"id": "p1", "task": "T", "mode": "proof", "covers": []})
         a("run.end", "A", {"id": "p1", "status": "passed", "native_rc": 0, "after": self.snap("1")})
         a("deliver", "A", {"task": "T", "snapshot": self.snap("1")})
-        a("review", "R", {"task": "T", "stage": "code", "verdict": "changes-required", "binding": "1" * 64, "covers": [], "report": report})
+        a("review", "R", {"task": "T", "stage": "code", "verdict": "changes-required", "binding": self.snap("1")["sha256"], "covers": [], "report": report})
         self.assertEqual(task_progress(self.store.events())["T"]["state"]["id"], "to-fix")
         a("pause", "C", {"reason": "Owner stop"})
         a("resume", "C", {"reason": "Owner resumed"})
         a("run.start", "A", {"id": "p2", "task": "T", "mode": "proof", "covers": []})
         a("run.end", "A", {"id": "p2", "status": "passed", "native_rc": 0, "after": self.snap("2")})
         a("deliver", "A", {"task": "T", "snapshot": self.snap("2")})
-        a("review", "R", {"task": "T", "stage": "code", "verdict": "accepted", "binding": "2" * 64, "covers": [], "report": report})
+        a("review", "R", {"task": "T", "stage": "code", "verdict": "accepted", "binding": self.snap("2")["sha256"], "covers": [], "report": report})
         before = self.graph()
         ids = {}
         for n in before["nodes"]:
@@ -394,7 +395,7 @@ class Registry(unittest.TestCase):
         self.store.append("run.start", "A", {"id": "u1", "task": "U", "mode": "proof", "covers": []})
         self.store.append("run.end", "A", {"id": "u1", "status": "passed", "native_rc": 0, "after": self.snap("3")})
         self.store.append("deliver", "A", {"task": "U", "snapshot": self.snap("3")})
-        self.store.append("review", "R", {"task": "U", "stage": "code", "verdict": "accepted", "binding": "3" * 64,
+        self.store.append("review", "R", {"task": "U", "stage": "code", "verdict": "accepted", "binding": self.snap("3")["sha256"],
                                           "covers": [], "report": self.store.artifact(report)})
         self.store.append("close", "C", {"task": "U"})
         self.task("T2", supersedes="T")

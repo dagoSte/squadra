@@ -8,8 +8,8 @@ import unittest
 import test_system_skills as skills_support
 import forecast
 import registry_current
-from registry import canonical, snapshot
-from source_manifests import compact
+from registry import canonical, digest, snapshot
+from source_manifests import compact, transform_packet
 
 
 class SourceConsumers(unittest.TestCase):
@@ -111,7 +111,12 @@ class SourceConsumers(unittest.TestCase):
         packet_before = packet.read_bytes()
         full = self.store.state(events)['tasks']['U']
         self.assertEqual(full['candidate'], snapshot(self.repo))
-        self.assertEqual(full['delivery']['packet_data']['candidate'], full['candidate'])
+        self.assertEqual(full['delivery']['packet_data'], raw['delivery']['packet_data'])
+        self.assertEqual(full['delivery']['handoff'],
+                         'review-' + digest(canonical(full['delivery']['packet_data']).encode()))
+        compared = transform_packet(full['delivery']['packet_data'], self.store.resolve_snapshot)
+        self.assertEqual(compared['candidate'], full['candidate'])
+        self.assertEqual(full['delivery']['packet_data'], raw['delivery']['packet_data'])
         self.assertEqual(full['proofs'][0]['after'], full['candidate'])
         self.assertEqual(events, self.store.events())
         self.assertEqual(packet.read_bytes(), packet_before)
@@ -129,6 +134,12 @@ proof=state['tasks']['T']['proofs'][0]
 assert 'manifest' in proof['after'] and 'files' not in proof['after']
 assert proof['task']=='T' and proof['status']=='passed'
 assert 'source_manifests' not in sys.modules
+reader=sys.modules['registry'].Store(sys.argv[3],read_only=True)
+try:
+ try: reader.state()
+ except ModuleNotFoundError as error: assert error.name=='source_manifests'
+ else: raise AssertionError('A referenced source must not silently stay unresolved')
+finally: reader.close()
 for name in ('registry','plugins','plugin_actions','plugin_settings'):
  assert Path(sys.modules[name].__file__).parent==Path(sys.argv[1])
 print('reference metadata preserved without the manifest helper')
