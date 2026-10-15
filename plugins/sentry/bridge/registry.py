@@ -1648,12 +1648,36 @@ def table(state, read_at=None, events=(), *, compact=False):
                 return task['status'] == 'delivered' and (wait['id'] == delivery.get('handoff')
                     or wait['id'] in delivery.get('handoffs', []))
 
-            waiting = sorted((w for w in waiting if blocking(w)),
-                             key=lambda w: (-w['seconds'], w['kind'], str(w.get('task', w.get('id', '')))))[:5]
-        lines += ["- " + w["kind"] + " · " + str(w.get("task", w.get("id", ""))) + " · " + str(w["seconds"]) + "s · " + w["text"] for w in waiting]
+            grouped = {}
+            for wait in waiting:
+                if not blocking(wait):
+                    continue
+                message = state['messages'].get(wait.get('id'), {})
+                task = wait.get('task') or message.get('task') or message.get('related_task')
+                key = (wait['kind'], task or wait.get('id', ''))
+                previous = grouped.get(key)
+                oldest = wait if previous is None or wait['seconds'] > previous['seconds'] else previous
+                grouped[key] = {**oldest, 'count': 1 + (previous['count'] if previous else 0)}
+            priority = {'ack': 0, 'delivered': 0, 'reviewed': 0, 'alive': 1, 'cleanup-unknown': 2, 'heartbeat': 3}
+            waiting = sorted(grouped.values(), key=lambda w: (priority.get(w['kind'], 2),
+                             -w['seconds'], w['kind'], str(w.get('task', w.get('id', '')))))[:5]
+        lines += ["- " + w["kind"] + " · " + str(w.get("task", w.get("id", ""))) + " · " + str(w["seconds"]) + "s"
+                  + (" (" + str(w['count']) + " attese, la più vecchia)" if w.get('count', 1) > 1 else "")
+                  + " · " + w["text"] for w in waiting]
         if compact:
             lines.append("Tutte le attese e i dettagli: squadra status --all.")
     if compact:
+        steps = [item for item in view['next_steps'] if item['status'] != 'done']
+        lines += ["", "Prossimo passo per incarico:",
+                  "| Incarico | Finestra / ruolo | Prossimo passo |", "|---|---|---|"]
+        for item in steps[:5]:
+            who = ', '.join(item['who']) or 'Da assegnare'
+            lines.append('| ' + ' | '.join(cell(value) for value in
+                         (item['task'], who + ' / ' + item['role'], item['text'])) + ' |')
+        if not steps:
+            lines.append('| — | — | Nessun passo pendente |')
+        if len(steps) > 5:
+            lines.append('Altri ' + str(len(steps) - 5) + ' passi: squadra status --all.')
         return "\n".join(lines)
     lines += ["", "Prossimo passo per incarico:"]
     lines += ["- " + item["task"] + ": " + item["text"] for item in view["next_steps"]]
