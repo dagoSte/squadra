@@ -432,7 +432,7 @@ def attention(state):
     superseded = {t["id"]: t for t in state["tasks"].values() if t.get("superseded_by")}
     for message in state["messages"].values():
         # Pool handoffs wait once per delivery, below; a claimed pool's siblings stay unacknowledged.
-        if not message["ack"] and message.get("task") not in superseded and not message.get("pool"):
+        if not message["ack"] and message.get("info") is not True and message.get("task") not in superseded and not message.get("pool"):
             waiting.append({"kind": "ack", "id": message["id"], "who": [message["to"]],
                             "utc": message["utc"], "text": "Presa in carico da confermare"})
     for task in state["tasks"].values():
@@ -1187,6 +1187,9 @@ def validate(state, kind, actor, d):
         if kind == "plan":
             require(coordinator or actor == task["owner"], "Plan owner/coordinator required")
         if kind == "deliver":
+            handoffs = d.get("handoffs", []) + ([d["handoff"]] if d.get("handoff") else [])
+            require(not any(state["messages"].get(h, {}).get("info") is True for h in handoffs),
+                    "Information cannot be a review handoff")
             require(not task.get("reviewer") or not standby(state, task["reviewer"]),
                     "Reviewer is in stand-by; no new review handoff")
             for member in task.get("pool") or []:
@@ -1289,6 +1292,13 @@ def validate(state, kind, actor, d):
         require(winner is None, "review_claimed: " + str(winner) + " holds the read of "
                 + str(state["messages"][d["message"]].get("related_task")))
     if kind == "message":
+        require("info" not in d or type(d["info"]) is bool, "info must be boolean")
+        if d.get("info") is True:
+            handoffs = [h for t in state["tasks"].values() for h in
+                        t.get("delivery", {}).get("handoffs", []) +
+                        ([t["delivery"]["handoff"]] if t.get("delivery", {}).get("handoff") else [])]
+            require(not any(k in d for k in ("task", "ping", "pool", "awaited")) and d["id"] not in handoffs,
+                    "Information cannot replace a mandatory ACK")
         require(isinstance(d.get("to"), str) and d["to"].strip(), "Nonempty recipient required")
         require(d["to"] not in state["agents"] if d.get("awaited") else d["to"] in state["agents"],
                 "Awaited recipient already registered" if d.get("awaited") else "Recipient not registered")
@@ -1477,8 +1487,9 @@ class Store:
                 # Join once to avoid repeatedly copying growing strings.
                 mail = ["# Squadra — posta condivisa\n\nRegistro SQLite autorevole; consegna e ACK sono distinti.\n"]
                 for m in state["messages"].values():
-                    ack = m["ack"]["utc"] if m["ack"] else "PENDING"
-                    mail.append(f"\n## {m['id']} · {m['from']} → {m['to']} · ACK {ack}\n\n{m['body']}\n")
+                    ack = m["ack"]["utc"] if m["ack"] else "NOT REQUIRED" if m.get("info") is True else "PENDING"
+                    label = "INFO · " if m.get("info") is True else ""
+                    mail.append(f"\n## {m['id']} · {m['from']} → {m['to']} · {label}ACK {ack}\n\n{m['body']}\n")
                 atomic(self.root / "squadra-posta.md", "".join(mail).encode())
                 daily = {}
                 for e in events:
@@ -1615,6 +1626,9 @@ def table(state, read_at=None, events=(), *, compact=False):
     tasks = list(state["tasks"].values())
     view = attention(state)
     lines = [board(state, read_at=read_at, events=events, live=read_at is not None), "", "Serve a te:"]
+    information = sum(m.get("info") is True for m in state["messages"].values())
+    if information:
+        lines.insert(1, "Informazioni senza conferma richiesta: " + str(information))
     for item in view["for_owner"]:
         lines.append("- " + item["question"] + (" · " + item["task"] if item.get("task") else ""))
         for option in item.get("options", []):
@@ -1713,7 +1727,7 @@ def table(state, read_at=None, events=(), *, compact=False):
             lines.append("- " + row["agent"] + " · " + row["availability"] + " · ultima risposta " + str(row["last_answer"])
                          + (" · ping " + row["ping"] + " · " + str(row["seconds"]) + "s / " + str(row["threshold"])
                             + "s · " + ("ACK ricevuto" if row["answer"] else "risposta pendente") if row["ping"] else ""))
-    pending = sum(m["ack"] is None for m in state["messages"].values())
+    pending = sum(m["ack"] is None and m.get("info") is not True for m in state["messages"].values())
     lines += ["", f"Messaggi senza ACK: {pending}. Riserve attive: {len(state['resources'])}.",
               "Registrazione e heartbeat non dimostrano esecuzione, accettazione o risveglio del client."]
     return "\n".join(lines)
