@@ -1,5 +1,17 @@
 # Task, proof, review and output
 
+Ordinary command output shows the board, every owner request, wait counts by kind
+and at most five grouped waits. Waits of the same kind and task share a line with
+their count and oldest age. Assignments and current delivery/read handoffs come
+first, then active-window pings and process alerts; age orders each priority.
+Unflagged historical notices still require ACK and remain in the counts. Messages
+sent with `--info` do not. A table retains up to five open tasks'
+next steps and the windows/roles holding them, with an explicit remainder.
+Use `squadra status --all --root
+REGISTRY` for the complete previous text view and every wait. Ordinary `stato.md`
+is a bounded current summary; `squadra export` refreshes its complete projection.
+JSON results and dashboard data retain their complete contents.
+
 ## Forecast from comparable work
 
 `squadra forecast --task TASK --root REGISTRY` verifies and reads an existing
@@ -162,6 +174,14 @@ squadra inbox --agent builder
 squadra ack --actor builder --message assign-T1
 squadra start --actor builder --task T1
 ```
+
+Use `send --info` for progress and FYI notices that need no confirmation: they
+remain visible as information without an ACK wait. Requests, assignments, review
+handoffs, presence challenges and messages to unregistered recipients still need
+confirmation and cannot use this flag. A voluntary ACK of information is a real
+sign of life, never a substitute for a required assignment, review or ping ACK.
+Existing messages keep their original receipt contract; old readers may still
+show an unnecessary wait for new information messages until they are upgraded.
 
 After assignment, explain the task in plain words: the first line becomes its
 dashboard title, followed by why it exists, who it is for and when it will be
@@ -877,3 +897,19 @@ The light route skips a plan read and uses the agreed targeted proof instead of 
 The registry remeasures before a proof process, on delivery, check and close, including direct Store writes. An excess or protected path refuses with a `light_*` code and “Full route required”; a second light read is refused too. Only the coordinator can promote with `route --full --scope-file ... --proof-file ... --reason ...` (and `--full-gate` or `--expected` when required). Promotion keeps the base, authors, history and spent counters, invalidates old proof/read bindings, and has no reverse. It cannot reset an exhausted budget.
 
 Existing tasks without a route keep their behavior. A frozen squad must explicitly coordinate an upgrade of **every writer** before registering light tasks; installing this release does not migrate it. Older CLIs ignore this new metadata: mixed-version enforcement is not promised, and a 3.6.x window in such a squad still shows a task promoted to the full route as light. Unknown future policies remain readable but cannot qualify work.
+
+### Dashboard transfers
+
+The page polls every two seconds while visible. Its compact state request includes
+the token of the copy it holds; an unchanged reply retains that copy and advances
+relative times locally. Registry changes, overdue-wait/presence transitions,
+activity buckets and plugin discovery invalidate the token. Authentication and
+registry verification still precede a cached answer. Older compact clients that
+do not send the state-token header retain their previous response format.
+
+The overview receives text previews and evidence summaries. Full message bodies,
+outputs, history and artifact references load when their page, overview details
+or task story is opened. Details are bound to the registry head, so an older reply
+cannot overwrite newer state; a failed read offers retry. The full task/run JSON
+remains available from the technical-data control. Usage and, after integration,
+Balance poll independently because session data can change without registry events.

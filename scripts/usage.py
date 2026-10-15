@@ -699,6 +699,8 @@ class Collector:
                 'quota_history': [quota_status(q, now) for q in all_quotas],
                 'suggestions': advice(models, result, now), 'cost': None}
         self.persist()
+        if self.cache is not None and self.cache.notice:
+            data['coverage']['notices'] = [self.cache.notice]
         return data
 
 

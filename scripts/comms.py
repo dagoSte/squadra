@@ -145,7 +145,12 @@ def communications(state, events, waits, at, limit=LIMIT):
                         flags.append("transport-unconfirmed")
                 if data["to"] not in agents:
                     flags.append("unregistered-recipient")
-                if message.get("ack"):
+                if message.get("info") is True:
+                    status = "info"
+                    if message.get("ack"):
+                        edge.update(ack_utc=message["ack"].get("utc"),
+                                    reply_seconds=_seconds(event.get("utc"), message["ack"].get("utc")))
+                elif message.get("ack"):
                     status = "acked"
                     edge.update(ack_utc=message["ack"].get("utc"),
                                 reply_seconds=_seconds(event.get("utc"), message["ack"].get("utc")))
@@ -192,12 +197,12 @@ def communications(state, events, waits, at, limit=LIMIT):
             continue
         key = tuple(sorted([edge["from_lane"], edge["to_lane"]]))
         pair = pairs.setdefault(key, {"lanes": list(key), "same_window": key[0] == key[1], "messages": 0,
-                                      "acked": 0, "sent": 0, "queued": 0, "overdue": 0, "last_utc": None,
+                                      "acked": 0, "sent": 0, "queued": 0, "info": 0, "overdue": 0, "last_utc": None,
                                       "oldest_pending_seconds": None, "tasks": []})
         pair["messages"] += 1
         pair[edge["state"]] += 1
         pair["last_utc"] = edge["utc"]
-        if edge["state"] != "acked" and edge["age_seconds"] is not None:
+        if edge["state"] not in {"acked", "info"} and edge["age_seconds"] is not None:
             pair["oldest_pending_seconds"] = max(pair["oldest_pending_seconds"] or 0, edge["age_seconds"])
         if edge["task"] and edge["task"] not in [t["task"] for t in pair["tasks"]]:
             pair["tasks"].append({"task": edge["task"], "title": edge["task_title"]})

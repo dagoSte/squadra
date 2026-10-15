@@ -371,8 +371,14 @@ def pending_messages(state, recipient=None):
     if index is not None:
         from registry_current import pending_rows
         return pending_rows(index, state, recipient)
-    return (m for m in state["messages"].values() if not m["ack"] and
+    return (m for m in state["messages"].values() if not m["ack"] and m.get("info") is not True and
             (recipient is None or m["to"] == recipient))
+
+
+def information_count(state):
+    index = current_index(state)
+    return index["information_count"] if index is not None else sum(
+        message.get("info") is True for message in state["messages"].values())
 
 
 def live_runs(state, status=None):
@@ -493,7 +499,7 @@ def attention(state):
     superseded = {t["id"]: t for t in state["tasks"].values() if t.get("superseded_by")}
     for message in pending_messages(state):
         # Pool handoffs wait once per delivery, below; a claimed pool's siblings stay unacknowledged.
-        if not message["ack"] and message.get("task") not in superseded and not message.get("pool"):
+        if not message["ack"] and message.get("info") is not True and message.get("task") not in superseded and not message.get("pool"):
             waiting.append({"kind": "ack", "id": message["id"], "who": [message["to"]],
                             "utc": message["utc"], "text": "Presa in carico da confermare"})
     for task in state["tasks"].values():
@@ -1249,6 +1255,9 @@ def validate(state, kind, actor, d, stored_packet=None):
         if kind == "plan":
             require(coordinator or actor == task["owner"], "Plan owner/coordinator required")
         if kind == "deliver":
+            handoffs = d.get("handoffs", []) + ([d["handoff"]] if d.get("handoff") else [])
+            require(not any(state["messages"].get(h, {}).get("info") is True for h in handoffs),
+                    "Information cannot be a review handoff")
             require(not task.get("reviewer") or not standby(state, task["reviewer"]),
                     "Reviewer is in stand-by; no new review handoff")
             for member in task.get("pool") or []:
@@ -1350,6 +1359,13 @@ def validate(state, kind, actor, d, stored_packet=None):
         require(winner is None, "review_claimed: " + str(winner) + " holds the read of "
                 + str(state["messages"][d["message"]].get("related_task")))
     if kind == "message":
+        require("info" not in d or type(d["info"]) is bool, "info must be boolean")
+        if d.get("info") is True:
+            handoffs = [h for t in state["tasks"].values() for h in
+                        t.get("delivery", {}).get("handoffs", []) +
+                        ([t["delivery"]["handoff"]] if t.get("delivery", {}).get("handoff") else [])]
+            require(not any(k in d for k in ("task", "ping", "pool", "awaited")) and d["id"] not in handoffs,
+                    "Information cannot replace a mandatory ACK")
         require(isinstance(d.get("to"), str) and d["to"].strip(), "Nonempty recipient required")
         require(d["to"] not in state["agents"] if d.get("awaited") else d["to"] in state["agents"],
                 "Awaited recipient already registered" if d.get("awaited") else "Recipient not registered")
@@ -1925,8 +1941,9 @@ class Store:
                 # Join once to avoid repeatedly copying growing strings.
                 mail = ["# Squadra — posta condivisa\n\nRegistro SQLite autorevole; consegna e ACK sono distinti.\n"]
                 for m in state["messages"].values():
-                    ack = m["ack"]["utc"] if m["ack"] else "PENDING"
-                    mail.append(f"\n## {m['id']} · {m['from']} → {m['to']} · ACK {ack}\n\n{m['body']}\n")
+                    ack = m["ack"]["utc"] if m["ack"] else "NOT REQUIRED" if m.get("info") is True else "PENDING"
+                    label = "INFO · " if m.get("info") is True else ""
+                    mail.append(f"\n## {m['id']} · {m['from']} → {m['to']} · {label}ACK {ack}\n\n{m['body']}\n")
                 atomic(self.root / "squadra-posta.md", "".join(mail).encode())
                 daily = {}
                 for e in events:
@@ -2077,10 +2094,13 @@ def board(state, lang=None, read_at=None, events=(), *, live=True):
     return "\n".join(lines)
 
 
-def table(state, read_at=None, events=()):
+def table(state, read_at=None, events=(), *, compact=False):
     tasks = list(state["tasks"].values())
     view = attention(state)
     lines = [board(state, read_at=read_at, events=events, live=read_at is not None), "", "Serve a te:"]
+    information = information_count(state)
+    if information:
+        lines.insert(1, "Informazioni senza conferma richiesta: " + str(information))
     for item in view["for_owner"]:
         lines.append("- " + item["question"] + (" · " + item["task"] if item.get("task") else ""))
         for option in item.get("options", []):
@@ -2089,7 +2109,62 @@ def table(state, read_at=None, events=()):
         lines.append("Nessuna richiesta registrata — una domanda fatta solo in chat non compare qui.")
     if read_at is not None:
         lines += ["", "Attese calcolate al " + str(read_at) + ":"]
-        lines += ["- " + w["kind"] + " · " + str(w.get("task", w.get("id", ""))) + " · " + str(w["seconds"]) + "s · " + w["text"] for w in waits(state, read_at)]
+        waiting = waits(state, read_at)
+        if compact:
+            counts = {kind: sum(w['kind'] == kind for w in waiting)
+                      for kind in sorted({w['kind'] for w in waiting})}
+            lines.append(str(len(waiting)) + " totali · " + ", ".join(k + ": " + str(v) for k, v in counts.items()))
+            active = {state['agents'][actor]['identity'] for step in view['next_steps']
+                      if state['tasks'][step['task']]['status'] != 'done'
+                      for actor in step['who'] if actor in state['agents']}
+
+            def blocking(wait):
+                if wait['kind'] == 'alive':
+                    return any(state['agents'].get(actor, {}).get('identity') in active
+                               for actor in wait['who'])
+                if wait['kind'] != 'ack':
+                    return True
+                message = state['messages'].get(wait['id'], {})
+                task = state['tasks'].get(wait.get('task') or message.get('task') or message.get('related_task'), {})
+                if not task or task.get('superseded_by') or task['status'] == 'done':
+                    return False
+                if message.get('task') and task['status'] == 'waiting-ack':
+                    return True
+                delivery = task.get('delivery', {})
+                return task['status'] == 'delivered' and (wait['id'] == delivery.get('handoff')
+                    or wait['id'] in delivery.get('handoffs', []))
+
+            grouped = {}
+            for wait in waiting:
+                if not blocking(wait):
+                    continue
+                message = state['messages'].get(wait.get('id'), {})
+                task = wait.get('task') or message.get('task') or message.get('related_task')
+                key = (wait['kind'], task or wait.get('id', ''))
+                previous = grouped.get(key)
+                oldest = wait if previous is None or wait['seconds'] > previous['seconds'] else previous
+                grouped[key] = {**oldest, 'count': 1 + (previous['count'] if previous else 0)}
+            priority = {'ack': 0, 'delivered': 0, 'reviewed': 0, 'alive': 1, 'cleanup-unknown': 2, 'heartbeat': 3}
+            waiting = sorted(grouped.values(), key=lambda w: (priority.get(w['kind'], 2),
+                             -w['seconds'], w['kind'], str(w.get('task', w.get('id', '')))))[:5]
+        lines += ["- " + w["kind"] + " · " + str(w.get("task", w.get("id", ""))) + " · " + str(w["seconds"]) + "s"
+                  + (" (" + str(w['count']) + " attese, la più vecchia)" if w.get('count', 1) > 1 else "")
+                  + " · " + w["text"] for w in waiting]
+        if compact:
+            lines.append("Tutte le attese e i dettagli: squadra status --all.")
+    if compact:
+        steps = [item for item in view['next_steps'] if item['status'] != 'done']
+        lines += ["", "Prossimo passo per incarico:",
+                  "| Incarico | Finestra / ruolo | Prossimo passo |", "|---|---|---|"]
+        for item in steps[:5]:
+            who = ', '.join(item['who']) or 'Da assegnare'
+            lines.append('| ' + ' | '.join(cell(value) for value in
+                         (item['task'], who + ' / ' + item['role'], item['text'])) + ' |')
+        if not steps:
+            lines.append('| — | — | Nessun passo pendente |')
+        if len(steps) > 5:
+            lines.append('Altri ' + str(len(steps) - 5) + ' passi: squadra status --all.')
+        return "\n".join(lines)
     lines += ["", "Prossimo passo per incarico:"]
     lines += ["- " + item["task"] + ": " + item["text"] for item in view["next_steps"]]
     if view["superseded"]:

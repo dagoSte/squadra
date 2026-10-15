@@ -211,6 +211,8 @@ def render_daily(event):
     """Readable bounded text, with the immutable event digest for complete detail."""
     data = event["data"]
     parts = [f"\n## {event['utc']} · {event['actor']} · {event['kind']} · #{event['seq']}\n"]
+    if event["kind"] == "message" and data.get("info") is True:
+        parts.append("\nINFO · No ACK required / Nessuna conferma richiesta\n")
     budget = 64 * 1024
     for key in ("task", "id", "to", "message", "status", "stage", "verdict", "title", "body", "text", "summary", "reason", "next"):
         value = data.get(key) if isinstance(data, dict) else None

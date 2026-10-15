@@ -29,6 +29,17 @@ Si installa con `/plugin` in Claude Code e Codex. **Per installarla:** vedi [Ins
 <a id="news"></a>
 ## Novità
 
+**3.10.1 — vedi quanto spende davvero ogni finestra AI, e a chi conviene dare il prossimo lavoro**
+
+Una squadra mescola finestre Claude Code e Codex, e ogni fornitore ti mostra solo i propri consumi. Squadra 3.10.1 li mette tutti in un'unica vista, lavoro per lavoro: quale finestra ha speso quanti token, con quale modello, rispetto a quale quota, e a quale finestra o modello conviene dare il prossimo lavoro. Per ogni consiglio vedi anche il perché. Il calcolo avviene sul tuo computer, a partire dai file di sessione che i programmi già tengono; il testo delle conversazioni non viene salvato, mostrato né inviato da nessuna parte.
+
+- **Bilanciamento (nuova skill di sistema).** Consigli su finestre e modelli in base a carico, quota e storia, con i numeri su cui si basa ogni consiglio. Non assegna niente. La pagina dice a parole semplici cosa controlla, i valori di oggi e perché non c'è nessun consiglio quando non ce n'è.
+- **I totali dei Consumi non tornano più indietro,** e una cache dei calcoli evita di rileggere i file di sessione a ogni riavvio della dashboard.
+- **Comandi che costano meno token alle finestre.** Ogni comando stampava nella finestra che lo lanciava l'intero elenco degli avvisi aperti; ora stampa una risposta breve, e l'elenco completo solo su richiesta ([TOKEN MISURATI]).
+- **Un registro che resta veloce mentre la storia cresce.** Un comando ora legge e scrive solo ciò che è cambiato, non tutta la storia ([TEMPI MISURATI]). La verifica dell'intera catena resta, nei momenti indicati nella guida.
+- **Una dashboard più leggera** che scarica solo ciò che è cambiato, e **grafici animati** nelle pagine Consumi e Bilanciamento.
+- Plugin: [VERSIONI].
+
 **3.10.0**
 - **Pagina «Consumi»: i token spesi dai modelli.** Squadra legge i file di sessione che Claude Code e Codex tengono già sul tuo computer e ne conserva solo i conteggi dei token, con modello, orario e gli identificativi di sessione e di messaggio che servono a contarli una volta sola: non salva, non mostra e non invia mai il testo delle conversazioni. Li mostra per finestra, giorno, modello e incarico, con grafici e suggerimenti per modello. La quota di Codex è misurata, per ogni finestra del fornitore; un costo stimato compare solo se inserisci i tuoi prezzi. `squadra usage` stampa gli stessi dati.
 - Plugin: memoranda 1.0.5, Playwright 1.0.6, Sentry 0.1.3.
@@ -62,6 +73,7 @@ Si installa con `/plugin` in Claude Code e Codex. **Per installarla:** vedi [Ins
 - **Domande con la frase pronta.** Quando serve una tua decisione, ricevi le opzioni, una raccomandazione e le parole esatte per rispondere.
 - **Una dashboard in parole semplici**, in italiano o in inglese, per seguire tutto dal vivo.
 - **Claude, Codex e Cursor insieme**, e aperta ai plugin della community.
+- **Un'unica vista di quanto spende ogni finestra AI.** Token per finestra, modello e lavoro, tra Claude Code e Codex, con il consiglio su quale finestra o modello debba prendere il prossimo lavoro, calcolati sul tuo computer.
 
 ## Cosa fa Squadra
 
@@ -137,6 +149,15 @@ squadra --version
 ```
 
 Ogni rilascio alza il numero di versione. I plugin installati dallo Store mantengono la loro versione finché `squadra plugin install <nome>` non viene rieseguito dalla nuova release ([Plugin inclusi nella release](#plugin-store)). Le finestre già aperte mantengono la versione letta finché non si riavviano, e una squadra al lavoro mantiene il suo protocollo finché non la cambi esplicitamente.
+
+**Aggiornare dalla 3.10.0 o precedenti alla 3.10.1: il registro diventa più leggero, e tutte le finestre devono passare insieme.**
+- **Prima di aggiornare** salva la squadra: `squadra save --actor <la tua finestra> --to <una cartella nuova>`. È la tua strada per tornare indietro.
+- **Il registro che hai viene letto così com'è.** Niente viene convertito e la storia già scritta non si tocca. Dal primo comando sulla 3.10.1, gli eventi nuovi si scrivono nel formato più leggero.
+- **Aggiorna tutte le finestre insieme,** Claude Code e Codex. Una finestra rimasta alla 3.10.0 si ferma al primo evento nuovo con `Event integrity failure at sequence N`. È voluto: una versione vecchia si ferma invece di accettare eventi che non sa leggere. Non si perde niente: aggiorna quella finestra e riparte.
+- **Sullo stesso registro non si torna indietro.** Dopo l'aggiornamento la 3.10.0 non può più usare quel registro. Per tornare indietro ripristina il salvataggio fatto prima di aggiornare.
+- **Se hai dubbi,** esegui `squadra doctor` sulla 3.10.1: ti dice quando un registro richiede la 3.10.1 o successiva.
+- **Plugin dello Store:** esegui di nuovo `squadra plugin install <nome>`, come dopo ogni rilascio.
+- **Se hai installato Squadra dalla directory di Claude,** ricevi la versione indicata nella directory finché non passa alla 3.10.1.
 
 ### Regola 0: trovare le finestre e presentarsi
 

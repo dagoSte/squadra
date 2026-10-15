@@ -14,7 +14,7 @@ try{const root=document.documentElement;if(root&&typeof root.setAttribute==='fun
 </script>
 <style>
 :root{color-scheme:dark;--bg:#1f1c1b;--panel:#2d2724;--line:#4a423d;--text:#ebe9e1;--muted:#c7c1b7;--orange:#f2b35e;--green:#8fd3b4;--red:#f6ad9f;--sq-surface-2:#38312d;--sq-sidebar:#1a1716;--sq-border-strong:#8f857d;--sq-accent:#ffab6d;--sq-highlight:#ff7714;--sq-accent-solid:#ebe9e1;--sq-on-accent:#1f1c1b;--sq-accent-subtle:#3f2b1c;--sq-chart-good:#62b98f;--sq-chart-bad:#e25a48;--sq-chart-done:#ebe9e1;--sq-chart-neutral:#5a514b;--sq-chip:#3a332f;--sq-good-subtle:#24342a;--sq-warn-subtle:#3b2f1d;--sq-bad-subtle:#3f2622;--sq-notice-bg:#3b2f1d;--sq-notice-line:#7a5e33;--sq-backdrop:#000000b3;--sq-topbar-bg:#1f1c1bd9;--sq-shadow-1:none;--sq-shadow-2:0 16px 40px #00000099}*{box-sizing:border-box}body{margin:0;background:var(--sq-bg);color:var(--sq-text);font:16px/1.5 var(--sq-font);-webkit-font-smoothing:antialiased;--bs-body-font-family:var(--sq-font);--bs-body-font-size:16px;--bs-body-line-height:1.5;--bs-body-color:var(--sq-text);--bs-body-bg:var(--sq-bg);--bs-heading-color:var(--sq-text);--bs-font-monospace:var(--sq-mono);--bs-border-color:var(--sq-border);--bs-code-color:var(--sq-text);--bs-secondary-color:var(--sq-muted)}button,input,select{font:inherit}h1{font-size:17px;line-height:22px;font-weight:600;letter-spacing:-.01em;margin:0}h2{font-size:17px;line-height:24px;font-weight:600;letter-spacing:-.01em;margin:0 0 14px}h3{font-size:15px;line-height:22px;font-weight:600;margin:0 0 4px}h4{font-size:13px;line-height:18px;font-weight:600;margin:0 0 6px}p{margin:0 0 10px}ol,ul{padding-left:20px}dl{margin:0}.wordmark{font-size:13px;line-height:18px;font-weight:600;letter-spacing:-.01em;color:var(--sq-text)}.sub{font-size:13px;line-height:18px;color:var(--sq-muted);margin-top:4px}main{width:100%;max-width:1480px;margin:0 auto;padding:28px 32px 40px}main:focus{outline:none}button{border:1px solid var(--sq-border);background:var(--sq-surface);color:var(--sq-text);padding:6px 12px;min-height:32px;border-radius:var(--sq-r-md);cursor:pointer;line-height:20px;transition:background-color var(--sq-dur-fast) var(--sq-ease),border-color var(--sq-dur-fast) var(--sq-ease),color var(--sq-dur-fast) var(--sq-ease)}button:hover{background:var(--sq-surface-2);border-color:var(--sq-border-strong)}button:active{transform:scale(.98)}button.active{color:var(--sq-accent);border-color:var(--sq-accent)}select{color:var(--sq-text);background:var(--sq-surface);border:1px solid var(--sq-border-strong);border-radius:var(--sq-r-md);padding:5px 10px;min-height:32px;max-width:100%}.status{display:inline-flex;align-items:center;gap:8px;color:var(--sq-good);background:var(--sq-good-subtle);font-size:13px;font-weight:500;padding:5px 12px;border-radius:var(--sq-r-pill);white-space:nowrap;min-width:0;overflow:hidden;text-overflow:ellipsis}.status.bad{color:var(--sq-bad);background:var(--sq-bad-subtle)}.dot{width:7px;height:7px;flex:none;border-radius:50%;background:currentColor}.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-bottom:24px}.metric{position:relative;padding:18px 20px;background:var(--sq-surface);border:1px solid var(--sq-border);border-radius:var(--sq-r-lg);box-shadow:var(--sq-shadow-1);min-width:0}.metric strong{display:block;font-size:28px;line-height:34px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums;margin:6px 0 2px}.metric .label{padding-right:44px}.label{color:var(--sq-muted);font-size:13px;line-height:18px;font-weight:500}.grid{display:grid;grid-template-columns:minmax(0,1fr);gap:0}.panel{padding:20px;border:1px solid var(--sq-border);background:var(--sq-surface);border-radius:var(--sq-r-lg);box-shadow:var(--sq-shadow-1);min-width:0;margin-bottom:20px}.row{padding:12px 0;border-bottom:1px solid var(--sq-border)}.row:last-child{border-bottom:0}.rowtop{display:flex;justify-content:space-between;gap:14px;align-items:flex-start}.badge{display:inline-block;max-width:100%;font:500 12px/18px var(--sq-font);background:var(--sq-chip);color:var(--sq-muted);padding:2px 10px;border-radius:var(--sq-r-pill);overflow-wrap:anywhere}.badge.good{background:var(--sq-good-subtle)}.badge.warn{background:var(--sq-warn-subtle)}.badge.bad{background:var(--sq-bad-subtle)}.good{color:var(--sq-good)}.bad{color:var(--sq-bad)}.warn{color:var(--sq-warn)}.mono{font-family:var(--sq-mono);font-size:12.5px;overflow-wrap:anywhere}.bodytext{white-space:pre-wrap;overflow-wrap:anywhere;margin-top:6px}.empty{padding:20px;color:var(--sq-muted)}.notice{padding:12px 16px;border:1px solid var(--sq-notice-line);background:var(--sq-notice-bg);border-radius:var(--sq-r-md);margin-bottom:20px;color:var(--sq-warn)}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--sq-border);vertical-align:top}th{font-size:12px;font-weight:600;color:var(--sq-muted)}.scroll{overflow:auto}input{background:var(--sq-surface);border:1px solid var(--sq-border-strong);color:var(--sq-text);border-radius:var(--sq-r-md);padding:6px 12px;width:min(400px,100%)}.metadata{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}.footer{color:var(--sq-muted);font-size:12px;line-height:18px;border-top:1px solid var(--sq-border);padding-top:20px;margin-top:8px}.link{padding:2px 10px;min-height:26px;font-size:12px;margin-top:8px;margin-right:6px;border-radius:var(--sq-r-pill)}pre{white-space:pre-wrap;overflow-wrap:anywhere;margin:0;font:12px/1.7 var(--sq-mono)}dialog{width:min(1100px,90vw);max-height:85vh;background:var(--sq-surface);color:var(--sq-text);border:1px solid var(--sq-border);border-radius:var(--sq-r-xl);padding:24px;box-shadow:var(--sq-shadow-2)}dialog::backdrop{background:var(--sq-backdrop)}.progress{height:4px;background:var(--sq-surface-2);border-radius:4px;margin-top:12px}.progress span{display:block;height:100%;background:var(--sq-good);border-radius:4px}
-:root{--standby:#aabcff;--comms-sent:var(--muted);--comms-queued:var(--orange);--comms-confirmed:var(--green);--comms-overdue:var(--red)}html:has(#comms-root){overflow-anchor:none}#comms-root [hidden]{display:none}.comms-intro{margin:0 0 14px;font-size:15px}.comms-guide{margin-bottom:18px;padding:14px 18px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}.comms-guide summary,.comms-legend summary{cursor:pointer;font-weight:600}.comms-guide dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 14px;margin:12px 0}.comms-guide dt{font-weight:600}.comms-guide dd{margin:0;color:var(--muted)}.comms-list,.comms-legend ul{list-style:none;margin:0;padding:0}.comms-pairs td{vertical-align:middle;font-variant-numeric:tabular-nums}.comms-pairs tr.active{background:var(--sq-accent-subtle)}.comms-pairs tbody tr{cursor:pointer}.comms-pairs th{white-space:nowrap}.comms-pairs td:first-child{min-width:190px}.comms-pair-scroll{overflow:auto}.comms-pair-scroll:focus-visible{outline:2px solid var(--sq-focus)}.comms-pairs button,.comms-line{display:block;width:100%;text-align:left;border:0;border-radius:0;background:none;color:var(--text);padding:12px}.comms-pairs button[aria-pressed=true]{box-shadow:inset 3px 0 0 var(--sq-accent)}.comms-pairs button:focus-visible,.comms-line:focus-visible{outline:2px solid var(--sq-focus);outline-offset:-2px}.comms-filters{position:sticky;top:var(--sq-topbar-h);z-index:6;display:flex;flex-wrap:wrap;gap:12px;margin:0 0 20px;padding:16px;background:var(--panel);border:1px solid var(--sq-border-strong);border-radius:var(--sq-r-lg);box-shadow:var(--sq-shadow-1)}.comms-filters h2{width:100%;margin:0;font-size:17px}.comms-filters label{display:flex;flex:1 1 130px;min-width:0;flex-direction:column;gap:6px;font-size:14px;color:var(--muted)}.comms-filters .comms-search{flex:2 1 220px}.comms-filters select,.comms-filters input{width:100%;min-height:44px;background:var(--panel);border:1px solid var(--sq-border-strong);color:var(--text);border-radius:7px;padding:9px 10px;font:inherit;max-width:100%}.comms-filters .active-filter{border-color:var(--sq-accent);box-shadow:inset 0 -2px var(--sq-accent)}.comms-filter-state{flex:1 1 100%;display:flex;gap:12px;align-items:center}.comms-filter-state p{flex:1;min-width:0;margin:0;overflow-wrap:anywhere}.comms-filter-state button{min-height:44px}.comms-filters.has-filters{border-color:var(--sq-accent)}.comms-legend{margin:0 0 14px}.comms-legend li{display:flex;align-items:center;gap:10px;margin-top:8px}.comms-legend svg{width:48px;height:12px;flex:none}.comms-lanes{position:sticky;top:calc(var(--sq-topbar-h) + var(--comms-filter-height,0px));z-index:2;display:grid;padding:10px 12px;background:var(--panel);border-bottom:1px solid var(--line)}.comms-lane{font-size:12px;text-align:center;overflow-wrap:anywhere;padding:0 3px}.comms-lane small{display:block;color:var(--muted)}.comms-lane.standby{color:var(--standby)}.comms-lane.unregistered{color:var(--muted);font-style:italic}.comms-row{border-bottom:1px solid var(--line)}.comms-strip{display:block;width:100%;height:22px;overflow:visible}.comms-strip .lane{stroke:var(--line);stroke-width:1}.comms-strip .lane.standby{stroke:var(--standby);stroke-dasharray:2 3}.comms-strip .edge{fill:none;stroke-width:2}.s-sent,.s-manual,.s-unconfirmed{stroke:var(--comms-sent);stroke-dasharray:5 4}.s-queued{stroke:var(--comms-queued);stroke-dasharray:1 4;stroke-linecap:round;stroke-width:2.5}.s-acked,.s-recorded{stroke:var(--comms-confirmed)}.s-overdue{stroke:var(--comms-overdue);stroke-dasharray:7 3;stroke-width:3}.s-stand-by{stroke:var(--standby);stroke-dasharray:4 3}.s-active{stroke:var(--standby)}.s-unknown{stroke:var(--muted);stroke-width:1}.head-muted{fill:var(--comms-sent)}.head-orange{fill:var(--comms-queued)}.head-green{fill:var(--comms-confirmed)}.head-red{fill:var(--comms-overdue)}.head-standby{fill:var(--standby)}.comms-defs{position:absolute;width:0;height:0;overflow:hidden}.comms-text{display:block;margin-top:6px;overflow-wrap:anywhere}.comms-flag{color:var(--comms-overdue);font-weight:700;margin-right:6px}.comms-when{display:block;font-size:12px;color:var(--muted);margin-top:2px}.comms-new{margin-left:8px;font-size:11px;color:var(--sq-accent)}.comms-out{display:block;font-size:12px;color:var(--sq-accent);margin-top:2px}.comms-detail{padding:0 12px 14px}.comms-detail pre{margin-top:8px;padding:10px;border:1px solid var(--line);border-radius:8px}.comms-gone{padding:12px;color:var(--muted)}@media(prefers-reduced-motion:no-preference){.comms-row.fresh{animation:comms-in 1.2s ease-out}}@keyframes comms-in{from{background:color-mix(in srgb,var(--sq-accent) 18%,transparent)}to{background:transparent}}@media(max-width:600px){.comms-lanes{padding:8px 6px}.comms-line,.comms-pairs button{padding:10px 6px}.comms-lane{font-size:10px;overflow-wrap:normal;hyphens:auto;padding:0 1px}.comms-lane small.work{display:none}.comms-filters label{flex:1 1 40%}.comms-guide dl{grid-template-columns:1fr;gap:2px}.comms-guide dd{margin-bottom:8px}.comms-filters select{width:100%}}
+:root{--standby:#aabcff;--comms-sent:var(--muted);--comms-queued:var(--orange);--comms-confirmed:var(--green);--comms-overdue:var(--red)}html:has(#comms-root){overflow-anchor:none}#comms-root [hidden]{display:none}.comms-intro{margin:0 0 14px;font-size:15px}.comms-guide{margin-bottom:18px;padding:14px 18px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}.comms-guide summary,.comms-legend summary{cursor:pointer;font-weight:600}.comms-guide dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 14px;margin:12px 0}.comms-guide dt{font-weight:600}.comms-guide dd{margin:0;color:var(--muted)}.comms-list,.comms-legend ul{list-style:none;margin:0;padding:0}.comms-pairs td{vertical-align:middle;font-variant-numeric:tabular-nums}.comms-pairs tr.active{background:var(--sq-accent-subtle)}.comms-pairs tbody tr{cursor:pointer}.comms-pairs th{white-space:nowrap}.comms-pairs td:first-child{min-width:190px}.comms-pair-scroll{overflow:auto}.comms-pair-scroll:focus-visible{outline:2px solid var(--sq-focus)}.comms-pairs button,.comms-line{display:block;width:100%;text-align:left;border:0;border-radius:0;background:none;color:var(--text);padding:12px}.comms-pairs button[aria-pressed=true]{box-shadow:inset 3px 0 0 var(--sq-accent)}.comms-pairs button:focus-visible,.comms-line:focus-visible{outline:2px solid var(--sq-focus);outline-offset:-2px}.comms-filters{position:sticky;top:var(--sq-topbar-h);z-index:6;display:flex;flex-wrap:wrap;gap:12px;margin:0 0 20px;padding:16px;background:var(--panel);border:1px solid var(--sq-border-strong);border-radius:var(--sq-r-lg);box-shadow:var(--sq-shadow-1)}.comms-filters h2{width:100%;margin:0;font-size:17px}.comms-filters label{display:flex;flex:1 1 130px;min-width:0;flex-direction:column;gap:6px;font-size:14px;color:var(--muted)}.comms-filters .comms-search{flex:2 1 220px}.comms-filters select,.comms-filters input{width:100%;min-height:44px;background:var(--panel);border:1px solid var(--sq-border-strong);color:var(--text);border-radius:7px;padding:9px 10px;font:inherit;max-width:100%}.comms-filters .active-filter{border-color:var(--sq-accent);box-shadow:inset 0 -2px var(--sq-accent)}.comms-filter-state{flex:1 1 100%;display:flex;gap:12px;align-items:center}.comms-filter-state p{flex:1;min-width:0;margin:0;overflow-wrap:anywhere}.comms-filter-state button{min-height:44px}.comms-filters.has-filters{border-color:var(--sq-accent)}.comms-legend{margin:0 0 14px}.comms-legend li{display:flex;align-items:center;gap:10px;margin-top:8px}.comms-legend svg{width:48px;height:12px;flex:none}.comms-lanes{position:sticky;top:calc(var(--sq-topbar-h) + var(--comms-filter-height,0px));z-index:2;display:grid;padding:10px 12px;background:var(--panel);border-bottom:1px solid var(--line)}.comms-lane{font-size:12px;text-align:center;overflow-wrap:anywhere;padding:0 3px}.comms-lane small{display:block;color:var(--muted)}.comms-lane.standby{color:var(--standby)}.comms-lane.unregistered{color:var(--muted);font-style:italic}.comms-row{border-bottom:1px solid var(--line)}.comms-strip{display:block;width:100%;height:22px;overflow:visible}.comms-strip .lane{stroke:var(--line);stroke-width:1}.comms-strip .lane.standby{stroke:var(--standby);stroke-dasharray:2 3}.comms-strip .edge{fill:none;stroke-width:2}.s-info,.s-sent,.s-manual,.s-unconfirmed{stroke:var(--comms-sent);stroke-dasharray:5 4}.s-queued{stroke:var(--comms-queued);stroke-dasharray:1 4;stroke-linecap:round;stroke-width:2.5}.s-acked,.s-recorded{stroke:var(--comms-confirmed)}.s-overdue{stroke:var(--comms-overdue);stroke-dasharray:7 3;stroke-width:3}.s-stand-by{stroke:var(--standby);stroke-dasharray:4 3}.s-active{stroke:var(--standby)}.s-unknown{stroke:var(--muted);stroke-width:1}.head-muted{fill:var(--comms-sent)}.head-orange{fill:var(--comms-queued)}.head-green{fill:var(--comms-confirmed)}.head-red{fill:var(--comms-overdue)}.head-standby{fill:var(--standby)}.comms-defs{position:absolute;width:0;height:0;overflow:hidden}.comms-text{display:block;margin-top:6px;overflow-wrap:anywhere}.comms-flag{color:var(--comms-overdue);font-weight:700;margin-right:6px}.comms-when{display:block;font-size:12px;color:var(--muted);margin-top:2px}.comms-new{margin-left:8px;font-size:11px;color:var(--sq-accent)}.comms-out{display:block;font-size:12px;color:var(--sq-accent);margin-top:2px}.comms-detail{padding:0 12px 14px}.comms-detail pre{margin-top:8px;padding:10px;border:1px solid var(--line);border-radius:8px}.comms-gone{padding:12px;color:var(--muted)}@media(prefers-reduced-motion:no-preference){.comms-row.fresh{animation:comms-in 1.2s ease-out}}@keyframes comms-in{from{background:color-mix(in srgb,var(--sq-accent) 18%,transparent)}to{background:transparent}}@media(max-width:600px){.comms-lanes{padding:8px 6px}.comms-line,.comms-pairs button{padding:10px 6px}.comms-lane{font-size:10px;overflow-wrap:normal;hyphens:auto;padding:0 1px}.comms-lane small.work{display:none}.comms-filters label{flex:1 1 40%}.comms-guide dl{grid-template-columns:1fr;gap:2px}.comms-guide dd{margin-bottom:8px}.comms-filters select{width:100%}}
 </style>
 <style id="squadra-page-style">
 @media (prefers-color-scheme: light){:root{color-scheme:light;--bg:#ebe9e1;--panel:#ffffff;--line:#d9d6ce;--text:#1f1c1b;--muted:#5c534d;--orange:#8a5a00;--green:#1f6e58;--red:#a8321f;--standby:#3d5fc4;--comms-sent:#5b6878;--comms-queued:#a65a00;--comms-confirmed:#0b7a55;--comms-overdue:#c42b3c;--sq-surface-2:#f5f4f0;--sq-sidebar:#f5f4f0;--sq-border-strong:#857a72;--sq-accent:#a84500;--sq-highlight:#d95c00;--sq-accent-solid:#1f1c1b;--sq-on-accent:#ffffff;--sq-accent-subtle:#fbe6d6;--sq-chart-good:#1f7a63;--sq-chart-bad:#c0392b;--sq-chart-done:#2d2724;--sq-chart-neutral:#c7c1b7;--sq-chip:#efede7;--sq-good-subtle:#e3efe9;--sq-warn-subtle:#f6ecd8;--sq-bad-subtle:#f8e4de;--sq-notice-bg:#f8eedb;--sq-notice-line:#c9a46a;--sq-backdrop:#1f1c1b66;--sq-topbar-bg:#ebe9e1d9;--sq-shadow-1:none;--sq-shadow-2:0 8px 24px #1f1c1b29}}
@@ -433,7 +433,6 @@ const CORE={
  "status.working":{it:"In lavorazione",en:"In progress"},"status.delivered":{it:"Consegnato",en:"Delivered"},
  "status.reviewed":{it:"Review accettata",en:"Review accepted"},"status.changes-required":{it:"Correzioni richieste",en:"Changes requested"},
  "status.done":{it:"Chiuso",en:"Closed"},"status.passed":{it:"Passata",en:"Passed"},"status.failed":{it:"Fallita",en:"Failed"},
- "status.abandoned":{it:"Abbandonata: nessun risultato",en:"Abandoned: no results"},
  "status.interrupted":{it:"Interrotta",en:"Interrupted"},"status.timeout":{it:"Tempo esaurito",en:"Timed out"},
  "status.running":{it:"Avviata; esito pendente",en:"Started; result pending"},"status.cleanup-unknown":{it:"Stop da verificare",en:"Stop to verify"},
  "status.accepted":{it:"Accettato",en:"Accepted"},"status.blocked":{it:"Bloccato",en:"Blocked"},"status.matched":{it:"Corrisponde",en:"Matched"},
@@ -488,8 +487,6 @@ const CORE={
  "page.runs.unverified":{it:"non verificata",en:"not verified"},"page.runs.default":{it:"predefinito",en:"default"},
  "page.runs.notExposed":{it:"non esposto dal client",en:"not exposed by the client"},
  "page.runs.verdict":{it:"Verdetto del client: {verdict} · non equivale alla review registrata",en:"Client verdict: {verdict} · not the same as the recorded review"},
- "page.runs.abandoned":{it:"La finestra che ha avviato il lavoro dichiara che non restano processi né risultati; non è una prova riuscita.",en:"The window that started the run declares no remaining processes or results; this is not a successful proof."},
- "page.runs.abandonedLegacy":{it:"Esecuzione precedente al controllo di proprietà dei processi: dichiarazione esplicita della finestra che l’ha avviata.",en:"Run predates process leases: an explicit declaration by the window that started it."},
  "page.runs.cancel":{it:"Interruzione richiesta; attendere ricevuta terminale",en:"Stop requested; wait for the final receipt"},
  "page.timeline.title":{it:"Registro · ultimi 120 eventi, storico completo in events.jsonl",en:"Registry · latest 120 events, full history in events.jsonl"},
  "page.legacy.title":{it:"Registri precedenti · copie storiche, esiti non riconfermati",en:"Earlier registries · historical copies, results not reconfirmed"},
@@ -525,9 +522,9 @@ const CORE={
  "page.project":{it:"{project} · registro #{count}",en:"{project} · registry #{count}"},
  "page.detail":{it:"Apri il dettaglio di attività, prove e finestre",en:"Open the detail of work, proofs and windows"},
  "page.reserve.title":{it:"Riserve e decisioni",en:"Reservations and decisions"},"page.reserved":{it:"riservata",en:"reserved"},
+ "page.live.connected":{it:"Registro connesso · {time}",en:"Registry connected · {time}"},"page.live.offline":{it:"Connessione non disponibile",en:"Connection unavailable"},
  "audit.running":{it:"Verifica completa del registro in corso",en:"Full registry verification in progress"},
  "audit.failed":{it:"Il controllo d’integrità del registro non è riuscito. I dati non sono disponibili.",en:"Registry integrity verification failed. Data is unavailable."},
- "page.live.connected":{it:"Registro connesso · {time}",en:"Registry connected · {time}"},"page.live.offline":{it:"Connessione non disponibile",en:"Connection unavailable"},
  "load.initial":{it:"Caricamento del progetto…",en:"Loading the project…"},
  "load.help":{it:"Sto leggendo attività, messaggi e prove.",en:"Reading tasks, messages and evidence."},
  "load.search":{it:"Ricerca in corso…",en:"Searching…"},
@@ -535,6 +532,8 @@ const CORE={
  "load.retry":{it:"Riprova",en:"Retry"},
  "load.timeout":{it:"Il registro non ha risposto entro 15 secondi. Puoi riprovare.",en:"The registry did not respond within 15 seconds. You can retry."},
  "load.details":{it:"Apri i dati tecnici completi",en:"Open the complete technical data"},
+ "transfer.loading":{it:"Caricamento dei dettagli…",en:"Loading details…"},
+ "transfer.error":{it:"Dettagli non disponibili. Riprova.",en:"Details unavailable. Retry."},
  "page.live.kept":{it:"Ultima vista conservata · {error}",en:"Last view kept · {error}"},
  "when":{it:"{date} ({age})",en:"{date} ({age})"},"age.now":{it:"adesso",en:"just now"},"age.min":{it:"{n} min fa",en:"{n} min ago"},
  "age.hours":{it:"{n} h fa",en:"{n} h ago"},"age.days":{it:"{n} giorni fa",en:"{n} days ago"},
@@ -704,6 +703,10 @@ const CORE={
  "table.runs.passed":{it:"Superate",en:"Passed"},"table.runs.failed":{it:"Non superate",en:"Not passed"},"table.runs.running":{it:"In corso",en:"In progress"},
  "table.runs.tech":{it:"Finestra {agent} · modalità {mode}",en:"Window {agent} · mode {mode}"},
  "table.mode.proof":{it:"prova",en:"proof"},"table.mode.read":{it:"lettura",en:"read"},"table.mode.build":{it:"costruzione",en:"build"},"table.mode.probe":{it:"sonda",en:"probe"},
+ "page.mail.info":{it:"Informazione · conferma non richiesta",en:"Information · no confirmation required"},
+ "usage.cacheOffUnsafe":{it:"Il percorso della cartella personale contiene un collegamento simbolico: i calcoli salvati non sono disponibili e vengono ricostruiti.",en:"The home folder path contains a symbolic link: saved calculations are unavailable and are rebuilt."},
+ "comms.info":{it:"Informazione: nessuna conferma richiesta",en:"Information: no confirmation required"},
+ "comms.p.info":{it:"{n} informazioni senza conferma richiesta",en:"{n} information messages with no confirmation required"},
  "table.mail.message":{it:"Messaggio",en:"Message"},"table.mail.task":{it:"Incarico",en:"Task"},"table.mail.text":{it:"Testo",en:"Text"},
  "table.mail.ack":{it:"Presa in carico",en:"Receipt"},"table.mail.sent":{it:"Inviato",en:"Sent"},"table.mail.transport":{it:"Consegna",en:"Delivery"},
  "table.mail.route":{it:"{from} → {to}",en:"{from} → {to}"},"table.mail.all":{it:"Tutti i messaggi",en:"All messages"},
@@ -1089,9 +1092,10 @@ const headingKey=(e,key)=>{if(typeof focusKey==='function'){e.setAttribute('tabi
 let state=null,tab='Quadro',filter='';
 const matches=value=>{
  if(!filter)return true;
- if(state?.search?.query===filter)for(const kind of ['tasks','runs'])if(state[kind]?.[value?.id]===value){
-  if(state.search[kind].includes(value.id))return true;
+ if(state?.search?.query===filter)for(const kind of ['tasks','runs','messages'])if(state[kind]?.[value?.id]===value){
+  if(state.search[kind]?.includes(value.id))return true;
  }
+ if(state?.search?.query===filter&&value.event&&state.search.outputs?.includes(value.event))return true;
  return JSON.stringify(value).toLocaleLowerCase().includes(filter);
 };
 async function api(path,headers={}){
@@ -1141,9 +1145,9 @@ function panel(title){const p=node('section',undefined,'panel');p.append(node('h
 function row(title,body,status){const r=node('div',undefined,'row');const top=node('div',undefined,'rowtop');const heading=node('h3',typeof title==='string'?title:undefined);if(typeof title!=='string')heading.append(title);top.append(heading);if(status)top.append(badge(status));r.append(top);if(body)r.append(node('div',body,'sub bodytext'));return r}
 function addEmpty(p,count){if(!count)p.append(node('div',tr('page.empty'),'empty'))}
 function tasks(scope){const all=Object.values(state.tasks),next=t=>{const step=(state.attention?.next_steps||[]).find(s=>s.task===t.id);return step?stepText(step):''};return sqTable({name:scope||'tasks',kind:'tasks',legacyKey:'tasks',title:tr('page.tasks.title'),all,items:all.filter(item=>matches(item)&&connectedMatches('tasks',item)),id:t=>t.id,titleLabel:tr('table.tasks.title'),titleSort:t=>taskTitle(t.id),titleCell:t=>titled(taskTitle(t.id),'tasks|task:'+t.id+'|title'),defaultOrder:'table.sortRegistry',filter:{options:[['',tr('table.tasks.all')],['open',tr('table.tasks.open')],['to-fix',tr('table.tasks.tofix')],['delivered',tr('table.tasks.delivered')],['done',tr('table.tasks.done')],['superseded',tr('table.tasks.superseded')]],test:(t,v)=>v==='superseded'?Boolean(t.superseded_by):!t.superseded_by&&(v==='open'?t.status!=='done':v==='to-fix'?t.status==='changes-required':t.status===v)},columns:[{key:'time',label:tr('time.total'),sort:t=>taskTime(t)??-1,cell:t=>taskTime(t)===null?'—':timeWords(taskTime(t))},{key:'status',label:tr('table.tasks.status'),sort:t=>PANEL_STATES.indexOf(panelStateOf(t)),cell:t=>t.superseded_by?node('span',tr('ov.status.superseded'),'badge warn'):state.progress?.[t.id]?.state?.id==='closed-unread'?node('span',tr('ov.state.closed-unread'),'badge warn'):badge(t.status)},{key:'owner',label:tr('table.tasks.owner'),sort:t=>t.owner?panelWho(t.owner):'',cell:t=>t.owner?panelWho(t.owner):''},{key:'reviewer',label:tr('table.tasks.reviewer'),sort:t=>t.reviewer?panelWho(t.reviewer):'',cell:t=>t.reviewer?panelWho(t.reviewer):''},{key:'proof',label:tr('table.tasks.proof'),sort:t=>t.proofs.at(-1)?.utc||'',cell:t=>{const last=t.proofs.at(-1);return last?badge(last.status):tr('table.tasks.noProof')}},{key:'next',label:tr('table.tasks.next'),sort:next,cell:next},{key:'updated',label:tr('table.tasks.updated'),sort:t=>t.status_utc||'',cell:t=>t.status_utc?date(t.status_utc):''}],details:(t,d,link)=>{const timing=taskTimeDetails(t);if(timing)d.append(timing);const about=taskBody(t.id),body=node('div',undefined,'sub bodytext'+(t.brief?'':' ov-missing'));body.append(t.brief?(typeof glossed==='function'?glossed(about,undefined,'tasks|task:'+t.id+'|body'):node('span',about)):node('span',tr('ov.noBrief')));if(about||!t.brief)d.append(body);if(t.superseded_by)d.append(node('div',tr('page.work.superseded',{by:taskTitle(t.superseded_by)}),'sub warn'));d.append(node('div',tr('page.tasks.depends',{list:t.depends.map(taskTitle).join(', ')||tr('page.none')}),'sub'));d.append(node('div',tr('page.tasks.technical',{id:t.id,title:t.title,owner:t.owner,base:String(t.base||'').slice(0,12)}),'sub mono'));const seats=panelRolesTech(t);if(seats)d.append(node('div',seats,'sub mono'));if(t.candidate)d.append(node('div',tr('page.tasks.candidate',{head:t.candidate.head,sha:t.candidate.sha256.slice(0,16)}),'sub mono'));const fix=fixChallengeLine(t);if(fix)d.append(fix);const last=t.proofs.at(-1);if(last)d.append(node('div',tr('page.tasks.lastProof',{status:descriptions[last.status]||last.status,rc:last.native_rc,seconds:last.seconds}),'sub'));for(const rev of t.reviews){const v=row((I18N['stage.'+rev.stage]?tr('stage.'+rev.stage):rev.stage)+' · '+rev.reviewer,date(rev.utc),rev.verdict);v.append(link('review',rev.report));d.append(v)}for(const q of state.requirements?.[t.id]||[])d.append(row(q.id+' · '+q.text,tr('page.tasks.proofs',{list:q.proofs.map(p=>p.id+' / exit '+p.native_rc).join(', ')||tr('page.missing')}),q.reviewed?tr('page.readCovered'):tr('page.readPending')));if(t.delivery?.packet)d.append(link('packet',t.delivery.packet));d.append(link('scope',t.scope));if(t.plan)d.append(link('plan',t.plan));d.append(recordLink('task',t))}})}
-function mail(scope){const all=Object.values(state.messages).reverse(),about=m=>m.task||m.related_task,how=m=>m.transport?(m.transport.delivered?tr('page.mail.delivered'):tr('page.mail.unconfirmed')):tr('page.mail.shared');return sqTable({name:scope||'mail',kind:'mail',title:tr('page.mail.title'),all,items:all.filter(item=>matches(item)&&connectedMatches('mail',item)),id:m=>m.id,titleLabel:tr('table.mail.message'),titleSort:m=>panelSeat(m.from),titleCell:m=>tr('table.mail.route',{from:panelSeat(m.from),to:panelSeat(m.to)}),defaultOrder:'table.sortNewest',filter:{options:[['',tr('table.mail.all')],['waiting',tr('table.mail.waiting')],['acked',tr('table.mail.acked')]],test:(m,v)=>v==='acked'?Boolean(m.ack):!m.ack},columns:[{key:'task',label:tr('table.mail.task'),sort:m=>about(m)?taskTitle(about(m)):'',cell:m=>about(m)?taskTitle(about(m)):''},{key:'text',label:tr('table.mail.text'),sort:m=>firstLine(m.body),cell:m=>m.body},{key:'ack',label:tr('table.mail.ack'),sort:m=>m.ack?1:0,cell:m=>node('span',m.ack?tr('page.ackReceived'):tr('page.ackPending'),'badge '+(m.ack?'good':'warn'))},{key:'sent',label:tr('table.mail.sent'),sort:m=>m.utc||'',cell:m=>date(m.utc)},{key:'transport',label:tr('table.mail.transport'),sort:how,cell:how}],details:(m,d)=>{d.append(node('div',m.body,'sub bodytext'));d.append(node('div',date(m.utc)+' · '+tr('page.mail.transport',{how:how(m)})+' · '+(m.ack?tr('page.mail.ackAt',{date:date(m.ack.utc)}):tr('page.mail.noWake')),'sub'));d.append(node('div',tr('table.mail.tech',{id:m.id,from:m.from,to:m.to}),'sub mono'))}})}
+function mail(scope){const all=Object.values(state.messages).reverse(),about=m=>m.task||m.related_task,how=m=>m.transport?(m.transport.delivered?tr('page.mail.delivered'):tr('page.mail.unconfirmed')):tr('page.mail.shared');return sqTable({name:scope||'mail',kind:'mail',title:tr('page.mail.title'),all,items:all.filter(item=>matches(item)&&connectedMatches('mail',item)),id:m=>m.id,titleLabel:tr('table.mail.message'),titleSort:m=>panelSeat(m.from),titleCell:m=>tr('table.mail.route',{from:panelSeat(m.from),to:panelSeat(m.to)}),defaultOrder:'table.sortNewest',filter:{options:[['',tr('table.mail.all')],['waiting',tr('table.mail.waiting')],['acked',tr('table.mail.acked')],['info',tr('page.mail.info')]],test:(m,v)=>v==='info'?m.info===true:v==='acked'?Boolean(m.ack):m.info!==true&&!m.ack},columns:[{key:'task',label:tr('table.mail.task'),sort:m=>about(m)?taskTitle(about(m)):'',cell:m=>about(m)?taskTitle(about(m)):''},{key:'text',label:tr('table.mail.text'),sort:m=>firstLine(m.body),cell:m=>m.body},{key:'ack',label:tr('table.mail.ack'),sort:m=>m.ack?1:0,cell:m=>node('span',m.info===true?tr('page.mail.info'):m.ack?tr('page.ackReceived'):tr('page.ackPending'),'badge '+(m.info===true?'':m.ack?'good':'warn'))},{key:'sent',label:tr('table.mail.sent'),sort:m=>m.utc||'',cell:m=>date(m.utc)},{key:'transport',label:tr('table.mail.transport'),sort:how,cell:how}],details:(m,d)=>{d.append(node('div',m.body,'sub bodytext'));d.append(node('div',date(m.utc)+' · '+tr('page.mail.transport',{how:how(m)})+' · '+(m.info===true?tr('page.mail.info')+' · ':'')+(m.ack?tr('page.mail.ackAt',{date:date(m.ack.utc)}):tr('page.mail.noWake')),'sub'));d.append(node('div',tr('table.mail.tech',{id:m.id,from:m.from,to:m.to}),'sub mono'))}})}
 function team(){const all=Object.values(state.agents),owned=a=>Object.values(state.tasks).filter(t=>t.owner===a.id||t.coordinator===a.id||t.reviews.some(r=>r.reviewer===a.id)||state.outputs.some(o=>o.agent===a.id&&o.task===t.id)||Object.values(state.messages).some(m=>m.to===a.id&&m.related_task===t.id)),last=a=>state.outputs.filter(x=>x.agent===a.id).at(-1),work=a=>owned(a).map(t=>taskTitle(t.id)+': '+(descriptions[t.status]||t.status)+(taskTimeLine(t)?' · '+taskTimeLine(t):'')).join('\n');const table=sqTable({name:'windows',kind:'windows',title:tr('page.team.title'),all,items:all.filter(item=>matches(item)&&connectedMatches('windows',item)),id:a=>a.id,titleLabel:tr('table.windows.title'),titleSort:a=>panelSeat(a.id),titleCell:a=>panelSeat(a.id),defaultOrder:'table.sortRegistry',filter:{options:[['',tr('table.windows.all')],...['coordinator','builder','executor','reviewer'].map(r=>[r,roleWord(r)])],test:(a,v)=>a.role===v},columns:[{key:'role',label:tr('table.windows.role'),sort:a=>roleWord(a.role),cell:a=>tr('table.windows.roleClient',{role:roleWord(a.role),client:wordOr('client.',a.client)})},{key:'tasks',label:tr('table.windows.tasks'),sort:work,cell:a=>{const text=work(a);return text?node('span',text,'bodytext'):''}},{key:'output',label:tr('table.windows.output'),sort:a=>last(a)?.utc||'',cell:a=>{const o=last(a);return o?date(o.utc):tr('page.team.noOutput')}},{key:'skills',label:tr('table.windows.skills'),sort:a=>(a.skills||[]).length,cell:a=>(a.skills||[]).map(s=>s.name).join(', ')||tr('page.team.noSkills')},{key:'next',label:tr('table.windows.next'),sort:a=>last(a)?.next||'',cell:a=>{const o=last(a);return o?o.next:tr('page.team.toRecord')}}],details:(a,d)=>{const o=last(a);for(const value of [a.id+'\n'+tr('page.team.identity',{identity:a.identity})+'\n'+tr('page.team.session',{client:a.client,session:a.session||tr('page.team.undeclared')}),roleWord(a.role)+'\n'+(a.model||tr('page.team.model')),work(a)+'\n'+(o?date(o.utc):tr('page.team.noOutput')),(a.skills||[]).map(s=>s.name+' @ '+s.sha256.slice(0,12)).join('\n')||tr('page.team.noSkills'),o?o.next:tr('page.team.toRecord')])d.append(node('div',value,'sub mono bodytext'))}});if(!state.presence?.length)return table;const stack=node('div',undefined,'sq-stack');stack.append(table,presencePanel());return stack}
-function evidence(){const all=Object.values(state.runs).reverse(),kind=s=>s==='passed'?'passed':['failed','timeout','interrupted'].includes(s)?'failed':['running','cleanup-unknown'].includes(s)?'running':'other';const table=sqTable({name:'runs',kind:'runs',title:tr('page.runs.title'),all,items:all.filter(item=>matches(item)&&connectedMatches('runs',item)),id:r=>r.id,titleLabel:tr('table.runs.task'),titleSort:r=>taskTitle(r.task),titleCell:r=>taskTitle(r.task),defaultOrder:'table.sortNewest',filter:{options:[['',tr('table.runs.all')],['passed',tr('table.runs.passed')],['failed',tr('table.runs.failed')],['running',tr('table.runs.running')]],test:(r,v)=>kind(r.status)===v},columns:[{key:'who',label:tr('table.runs.who'),sort:r=>panelSeat(r.agent),cell:r=>panelSeat(r.agent)},{key:'mode',label:tr('table.runs.mode'),sort:r=>r.mode||'',cell:r=>wordOr('table.mode.',r.mode)},{key:'status',label:tr('table.runs.status'),sort:r=>r.status||'',cell:r=>badge(r.status)},{key:'seconds',label:tr('table.runs.seconds'),sort:r=>Number.isFinite(r.seconds)?r.seconds:-1,cell:r=>r.seconds!=null?tr('table.seconds',{n:r.seconds}):''},{key:'started',label:tr('table.runs.started'),sort:r=>r.utc||'',cell:r=>date(r.utc)}],details:(r,d,link)=>{const fix=fixChallengeLine(state.tasks[r.task]);if(fix)d.append(fix);d.append(node('div',(r.argv||[]).join(' '),'sub bodytext'));d.append(node('div',tr('table.runs.tech',{agent:r.agent,mode:r.mode}),'sub mono'));d.append(node('div',tr('page.runs.line',{id:r.id,rc:r.native_rc??tr('page.pending'),seconds:r.seconds??'—'}),'sub mono'));if(r.actual_session)d.append(node('div',tr('page.runs.session',{session:r.actual_session,cli:r.cli_version||tr('page.runs.unverified'),requested:r.requested_model||tr('page.runs.default'),observed:(r.observed_models||[]).join(', ')||tr('page.runs.notExposed')}),'sub mono'));if(r.mode==='read'&&r.response)d.append(node('div',tr('page.runs.verdict',{verdict:r.response.verdict}),'sub warn'));if(r.abandonment){d.append(node('div',tr('page.runs.abandoned'),'sub warn'));if(r.abandonment.legacy)d.append(node('div',tr('page.runs.abandonedLegacy'),'sub warn'));d.append(node('div',r.abandonment.reason,'bodytext'),link('artifact',r.abandonment.evidence))}else if(r.cancel_requested)d.append(node('div',tr('page.runs.cancel'),'sub warn'));if(r.error)d.append(node('div',r.error,'bodytext bad'));for(const a of r.artifacts||[])d.append(link('artifact',a));d.append(recordLink('run',r))}});const task=connectedUI.context?.task;if(!task||!state.tasks[task])return table;const stack=node('div',undefined,'sq-stack');stack.append(table,connectedReviews(state.tasks[task]));return stack}
+function evidence(){const all=Object.values(state.runs).reverse(),kind=s=>s==='passed'?'passed':['failed','timeout','interrupted'].includes(s)?'failed':['running','cleanup-unknown'].includes(s)?'running':'other';const table=sqTable({name:'runs',kind:'runs',title:tr('page.runs.title'),all,items:all.filter(item=>matches(item)&&connectedMatches('runs',item)),id:r=>r.id,titleLabel:tr('table.runs.task'),titleSort:r=>taskTitle(r.task),titleCell:r=>taskTitle(r.task),defaultOrder:'table.sortNewest',filter:{options:[['',tr('table.runs.all')],['passed',tr('table.runs.passed')],['failed',tr('table.runs.failed')],['running',tr('table.runs.running')]],test:(r,v)=>kind(r.status)===v},columns:[{key:'who',label:tr('table.runs.who'),sort:r=>panelSeat(r.agent),cell:r=>panelSeat(r.agent)},{key:'mode',label:tr('table.runs.mode'),sort:r=>r.mode||'',cell:r=>wordOr('table.mode.',r.mode)},{key:'status',label:tr('table.runs.status'),sort:r=>r.status||'',cell:r=>badge(r.status)},{key:'seconds',label:tr('table.runs.seconds'),sort:r=>Number.isFinite(r.seconds)?r.seconds:-1,cell:r=>r.seconds!=null?tr('table.seconds',{n:r.seconds}):''},{key:'started',label:tr('table.runs.started'),sort:r=>r.utc||'',cell:r=>date(r.utc)}],details:(r,d,link)=>{const fix=fixChallengeLine(state.tasks[r.task]);if(fix)d.append(fix);d.append(node('div',(r.argv||[]).join(' '),'sub bodytext'));d.append(node('div',tr('table.runs.tech',{agent:r.agent,mode:r.mode}),'sub mono'));d.append(node('div',tr('page.runs.line',{id:r.id,rc:r.native_rc??tr('page.pending'),seconds:r.seconds??'—'}),'sub mono'));if(r.actual_session)d.append(node('div',tr('page.runs.session',{session:r.actual_session,cli:r.cli_version||tr('page.runs.unverified'),requested:r.requested_model||tr('page.runs.default'),observed:(r.observed_models||[]).join(', ')||tr('page.runs.notExposed')}),'sub mono'));if(r.mode==='read'&&r.response)d.append(node('div',tr('page.runs.verdict',{verdict:r.response.verdict}),'sub warn'));if(r.cancel_requested)d.append(node('div',tr('page.runs.cancel'),'sub warn'));if(r.error)d.append(node('div',r.error,'bodytext bad'));for(const a of r.artifacts||[])d.append(link('artifact',a));d.append(recordLink('run',r))}});const task=connectedUI.context?.task;if(!task||!state.tasks[task])return table;const stack=node('div',undefined,'sq-stack');stack.append(table,connectedReviews(state.tasks[task]));return stack}
 function timeline(){const p=panel(tr('page.timeline.title'));for(const e of state.events.filter(matches).reverse()){const r=row('#'+e.seq+' · '+e.kind+' · '+e.actor,date(e.utc));r.append(node('div',JSON.stringify(e.data,null,2),'sub mono bodytext'));p.append(r)}return p}
 function legacyView(){const p=panel(tr('page.legacy.title'));let count=0;for(const l of Object.values(state.legacy).filter(matches)){count++;const r=row(l.path,l.notice,'reported-unverified');r.append(node('div',tr('page.legacy.imported',{date:date(l.utc)}),'sub'));for(const f of l.files)r.append(proofLink(f));p.append(r)}addEmpty(p,count);return p}
 // Add communication labels to the shared language dictionary.
@@ -1279,7 +1283,7 @@ function commsLaneLabel(lane,article){
 }
 function commsResult(e){
  const call=e.kind==='ping',delay=e.reply_seconds!=null?tr('comms.s.delay',{d:commsDuration(e.reply_seconds)}):'';
- let r=e.state==='acked'?tr(call?'comms.r.answered':'comms.r.acked',{time:commsTime(e.ack_utc)})+delay:
+ let r=e.state==='info'?tr('comms.info')+(e.ack_utc?' · '+tr('comms.r.acked',{time:commsTime(e.ack_utc)}):''):e.state==='acked'?tr(call?'comms.r.answered':'comms.r.acked',{time:commsTime(e.ack_utc)})+delay:
   e.state==='overdue'?tr(call?'comms.r.overdue.ping':'comms.r.overdue',{d:commsDuration(e.wait_seconds),n:commsDuration(e.wait_threshold)}):
   e.state==='queued'?tr('comms.r.queued'):tr(call?'comms.r.sent.ping':'comms.r.sent');
  if(e.flags.includes('recipient-stand-by'))r+=tr('comms.r.standby');
@@ -1302,7 +1306,7 @@ function commsFacts(e){
  if(e.task)lines.push(tr(e.task_described?'comms.f.task.described':'comms.f.task',{title:commsTitle(e.task_title,Infinity)}));
  if(e.kind==='message'||e.kind==='ping'){
   lines.push(tr(e.flags.includes('queued')?'comms.f.queued':e.flags.includes('manual')?'comms.f.manual':e.flags.includes('transport-unconfirmed')?'comms.f.unconfirmed':'comms.f.shared'));
-  lines.push(e.state==='acked'?tr('comms.f.acked',{time:commsTime(e.ack_utc),delay:e.reply_seconds!=null?tr('comms.s.delay',{d:commsDuration(e.reply_seconds)}):''}):e.state==='overdue'?tr('comms.f.overdue',{d:commsDuration(e.wait_seconds),n:commsDuration(e.wait_threshold)}):tr('comms.f.none'));
+  lines.push(e.state==='info'?tr('comms.info')+(e.ack_utc?' · '+tr('comms.f.acked',{time:commsTime(e.ack_utc),delay:''}):''):e.state==='acked'?tr('comms.f.acked',{time:commsTime(e.ack_utc),delay:e.reply_seconds!=null?tr('comms.s.delay',{d:commsDuration(e.reply_seconds)}):''}):e.state==='overdue'?tr('comms.f.overdue',{d:commsDuration(e.wait_seconds),n:commsDuration(e.wait_threshold)}):tr('comms.f.none'));
  }
  if(e.reason)lines.push(tr('comms.f.reason',{reason:e.reason}));
  return lines.join('\n');
@@ -1312,6 +1316,7 @@ function commsPairKey(e){return [e.from_lane,e.to_lane].sort().join('\u0000')}
 function commsPairLine(p){
  const order=state.comms.lanes.map(l=>l.identity),[x,y]=[...p.lanes].sort((m,n)=>order.indexOf(m)-order.indexOf(n)),a=commsLaneLabel(commsLane(x),true),b=commsLaneLabel(commsLane(y),true);
  const parts=[tr(p.acked===1?'comms.p.acked':'comms.p.acked.many',{n:p.acked})],waiting=p.sent+p.queued;
+ if(p.info)parts.push(tr('comms.p.info',{n:p.info}));
  if(p.overdue)parts.push(tr('comms.p.overdue',{n:p.overdue}));
  if(waiting)parts.push(tr('comms.p.waiting',{n:waiting})+(p.oldest_pending_seconds!=null?tr('comms.p.oldest',{d:commsDuration(p.oldest_pending_seconds)}):''));
  return tr('comms.p.line',{who:capital(p.same_window?tr('comms.p.same',{a}):tr('comms.p.who',{a,b})),count:tr(p.messages===1?'comms.p.message':'comms.p.messages',{n:p.messages}),
@@ -1481,14 +1486,101 @@ function recordedWaiting(){
  for(const w of state.waits||[])p.append(row(tr('page.wait.over',{kind:descriptions[w.kind]||w.kind}),(w.task?taskTitle(w.task):w.id)+' · '+w.seconds+'s / '+w.threshold+'s · '+waitText(w),tr('page.wait.check')));addEmpty(p,view.waiting.length);for(const step of view.next_steps)p.append(row(taskTitle(step.task),stepText(step),step.status));return p;
 }
 function workOverview(){const p=panel(tr('connected.workNow'));headingKey(p.children[0],'work');p.className='panel sq-work';p.append(node('p',tr('connected.workIntro'),'sq-lede'));const all=Object.values(state.tasks).filter(matches),closed=all.filter(t=>!panelOpen(t));for(const t of all.filter(panelOpen))p.append(panelTaskCard(t));if(closed.length){const group=node('details',undefined,'sq-closed');group.open=panelUI.closedOpen;group.ontoggle=()=>{panelUI.closedOpen=group.open;if(group.open)panelClampSoon()};const summary=node('summary',tr('work.closed',{n:closed.length}));focusKey(summary,'work:closed');summary.setAttribute('data-focus-fallback','work');group.append(summary);for(const t of closed)group.append(panelTaskCard(t));p.append(group)}if(!all.length)p.append(node('p',tr('page.empty'),'empty'));const waits=node('details',undefined,'sq-waits');waits.open=panelUI.waitsOpen;waits.ontoggle=()=>{panelUI.waitsOpen=waits.open};const summary=node('summary',tr('work.waits'));focusKey(summary,'work:waits');summary.setAttribute('data-focus-fallback','work');waits.append(summary,recordedWaiting());if(state.presence?.some(a=>a.ping||a.availability==='stand-by'))waits.append(presencePanel());p.append(waits);return p}
-function render(){if(!state)return;const anchor=commsAnchor();if(typeof renderHeaderExtras==='function')renderHeaderExtras();$('name').textContent=state.workspace.name;$('project').textContent=tr('page.project',{project:state.workspace.project,count:state.event_count});$('project').setAttribute('title',$('project').textContent);const tasksList=Object.values(state.tasks),messages=Object.values(state.messages),runs=Object.values(state.runs);const done=tasksList.filter(t=>t.status==='done').length,unread=Object.values(state.progress||{}).filter(p=>p.state?.id==='closed-unread').length;$('metrics').replaceChildren();for(const [label,value,detail,glyph] of [[tr('page.metric.closed'),done+'/'+tasksList.length,unread?tr('page.metric.closedUnread',{count:unread}):tr('page.metric.closedSub'),'check2-all'],[tr('page.metric.identities'),new Set(Object.values(state.agents).map(a=>a.identity)).size,tr('page.metric.identitiesSub',{count:Object.keys(state.agents).length}),'people'],[tr('page.metric.acks'),messages.filter(m=>!m.ack).length,tr('page.metric.acksSub'),'envelope-exclamation'],[tr('page.metric.runs'),runs.filter(r=>['running','cleanup-unknown'].includes(r.status)).length,runs.some(r=>r.status==='cleanup-unknown')?tr('page.metric.runsUnknown'):tr('page.metric.runsPending'),'hourglass-split']]){const c=node('div',undefined,'metric');c.append(node('div',label,'label'),node('strong',value),node('div',detail,'sub'));if(typeof icon==='function')c.append(icon(glyph,'metric-icon'));$('metrics').append(c)}$('notice').replaceChildren();if(state.paused)$('notice').append(node('div',tr('page.paused'),'notice'));const tabs=['Quadro','Finestre','Incarichi','Posta','Comunicazioni','Decisioni','Letture','Prove','Output','Cronologia','Storico'];$('tabs').replaceChildren();tabs.forEach(t=>{const b=node('button',tr('tab.'+t),t===tab?'active':'');if(typeof panelTab==='function')panelTab(b,t);b.onclick=()=>{if(typeof connectedReset==='function')connectedReset();tab=t;if(typeof panelNavigate==='function')panelNavigate();render()};$('tabs').append(b)});if(typeof skillsNav==='function')skillsNav();if(typeof usageNav==='function')usageNav();if(typeof balanceNav==='function')balanceNav();const content=$('content');content.className=tab==='Quadro'?'sq-home':'';if(tab==='Comunicazioni')comms(content);else{if(tab==='Usage'){usageRender(content)}else if(tab==='SystemSkills'){skillsRender(content)}else if(tab==='Bilanciamento'){balanceRender(content)}else if(tab==='Store'){storeRender(content)}else if(tab==='Letture'){readsRender(content)}else if(typeof pluginSelected==='function'&&pluginSelected()){pluginRender(content)}else{content.replaceChildren();if(tab==='Quadro'){content.append(ownerAttention(),workOverview(),connectedRail());const detail=node('details',undefined,'sq-full-detail');detail.append(node('summary',tr('page.detail')));const grid=node('div',undefined,'grid');const left=node('div'),right=node('div');left.append(recordedWaiting(),tasks('quadro-tasks'),outputs());const reserve=panel(tr('page.reserve.title'));for(const r of Object.values(state.resources))reserve.append(row(r.name,r.owner+' · '+r.reason,tr('page.reserved')));for(const d of state.decisions.slice(-5))reserve.append(row(d.actor,d.reason));addEmpty(reserve,Object.keys(state.resources).length+state.decisions.length);right.append(reserve,mail('quadro-mail'));grid.append(left,right);detail.append(grid);content.append(detail)}else content.append(({Finestre:team,Incarichi:tasks,Posta:mail,Prove:evidence,Output:outputs,Cronologia:timeline,Storico:legacyView,Decisioni:decisionsView})[tab]())}}commsRestore(anchor)}
+function render(){if(!state)return;const anchor=commsAnchor();if(typeof renderHeaderExtras==='function')renderHeaderExtras();$('name').textContent=state.workspace.name;$('project').textContent=tr('page.project',{project:state.workspace.project,count:state.event_count});$('project').setAttribute('title',$('project').textContent);const tasksList=Object.values(state.tasks),messages=Object.values(state.messages),runs=Object.values(state.runs);const done=tasksList.filter(t=>t.status==='done').length,unread=Object.values(state.progress||{}).filter(p=>p.state?.id==='closed-unread').length;$('metrics').replaceChildren();for(const [label,value,detail,glyph] of [[tr('page.metric.closed'),done+'/'+tasksList.length,unread?tr('page.metric.closedUnread',{count:unread}):tr('page.metric.closedSub'),'check2-all'],[tr('page.metric.identities'),new Set(Object.values(state.agents).map(a=>a.identity)).size,tr('page.metric.identitiesSub',{count:Object.keys(state.agents).length}),'people'],[tr('page.metric.acks'),messages.filter(m=>m.info!==true&&!m.ack).length,tr('page.metric.acksSub'),'envelope-exclamation'],[tr('page.metric.runs'),runs.filter(r=>['running','cleanup-unknown'].includes(r.status)).length,runs.some(r=>r.status==='cleanup-unknown')?tr('page.metric.runsUnknown'):tr('page.metric.runsPending'),'hourglass-split']]){const c=node('div',undefined,'metric');c.append(node('div',label,'label'),node('strong',value),node('div',detail,'sub'));if(typeof icon==='function')c.append(icon(glyph,'metric-icon'));$('metrics').append(c)}$('notice').replaceChildren();if(state.paused)$('notice').append(node('div',tr('page.paused'),'notice'));const tabs=['Quadro','Finestre','Incarichi','Posta','Comunicazioni','Decisioni','Letture','Prove','Output','Cronologia','Storico'];$('tabs').replaceChildren();tabs.forEach(t=>{const b=node('button',tr('tab.'+t),t===tab?'active':'');if(typeof panelTab==='function')panelTab(b,t);b.onclick=()=>{if(typeof connectedReset==='function')connectedReset();tab=t;if(typeof panelNavigate==='function')panelNavigate();render()};$('tabs').append(b)});if(typeof skillsNav==='function')skillsNav();if(typeof usageNav==='function')usageNav();if(typeof balanceNav==='function')balanceNav();const content=$('content');content.className=tab==='Quadro'?'sq-home':'';if(!transferPageReady(content)){commsRestore(anchor);return}if(tab==='Comunicazioni')comms(content);else{if(tab==='Usage'){usageRender(content)}else if(tab==='SystemSkills'){skillsRender(content)}else if(tab==='Bilanciamento'){balanceRender(content)}else if(tab==='Store'){storeRender(content)}else if(tab==='Letture'){readsRender(content)}else if(typeof pluginSelected==='function'&&pluginSelected()){pluginRender(content)}else{content.replaceChildren();if(tab==='Quadro'){content.append(ownerAttention(),workOverview(),connectedRail());content.append(transferOverviewDetail())}else content.append(({Finestre:team,Incarichi:tasks,Posta:mail,Prove:evidence,Output:outputs,Cronologia:timeline,Storico:legacyView,Decisioni:decisionsView})[tab]())}}commsRestore(anchor)}
 const loadUI={running:false,timer:null,error:null,query:'',searchAgain:false,integrity:false};
+let transferUI={head:null,sections:new Map(),pending:new Map(),errors:new Map(),overview:false},transferOffset=0;
+const transferNow=()=>Date.now()+transferOffset;
+function transferMerge(patch){
+ for(const [key,value] of Object.entries(patch)){
+  if(['tasks','runs','messages'].includes(key))Object.assign(state[key],value);
+  else if(key==='outputs'){const by=new Map(value.map(o=>[o.event,o]));state.outputs=state.outputs.map(o=>by.get(o.event)||o)}
+  else if(key==='graph'){const by=new Map(value.nodes.map(n=>[n.id,n]));state.graph={...state.graph,...value,nodes:state.graph.nodes.map(n=>by.get(n.id)||n)}}
+  else state[key]=value;
+ }
+}
+function transferSync(){
+ const head=state.registry_head?.hash;
+ if(transferUI.head!==head)transferUI={head,sections:new Map(),pending:new Map(),errors:new Map(),overview:transferUI.overview};
+ for(const patch of transferUI.sections.values())transferMerge(patch);
+}
+function transferClock(stamp){
+ const at=Date.parse(stamp);if(!Number.isFinite(at))return;
+ transferOffset=at-Date.now();
+ const previous=Date.parse(state.server_time),delta=Number.isFinite(previous)?(at-previous)/1000:0;
+ for(const row of [...(state.waits||[]),...(state.presence||[])]){
+  if(Number.isFinite(row.seconds))row.seconds=Math.max(0,Math.floor(row.seconds+delta));
+  if(row.as_of)row.as_of=stamp;
+ }
+ for(const edge of state.comms?.edges||[]){
+  if(edge.utc&&Number.isFinite(edge.age_seconds))edge.age_seconds=Math.max(0,Math.floor((at-Date.parse(edge.utc))/1000));
+  if(Number.isFinite(edge.wait_seconds))edge.wait_seconds=Math.max(0,Math.floor(edge.wait_seconds+delta));
+ }
+ for(const pair of state.comms?.pairs||[])if(Number.isFinite(pair.oldest_pending_seconds))pair.oldest_pending_seconds=Math.max(0,Math.floor(pair.oldest_pending_seconds+delta));
+ if(state.comms)state.comms.as_of=stamp;
+ state.server_time=stamp;
+}
+const transferKey=(section,record='')=>section+':'+record;
+const transferHas=(section,record='')=>!state?.transfer||transferUI.sections.has(transferKey(section,record));
+async function transferLoad(section,record=''){
+ if(transferHas(section,record))return true;
+ const cache=transferUI,key=transferKey(section,record);
+ if(cache.pending.has(key))return cache.pending.get(key);
+ if(cache.errors.has(key))return false;
+ const request=(async()=>{
+  try{
+   const data=await(await api('/api/detail/view',{'X-Squadra-State-Head':cache.head,'X-Squadra-Section':section,'X-Squadra-Record':encodeURIComponent(record)})).json();
+   if(transferUI!==cache||state.registry_head?.hash!==data.head)return false;
+   if(data.section!==section||data.record!==record||!data.patch)throw Error(tr('transfer.error'));
+   cache.sections.set(key,data.patch);transferMerge(data.patch);return true;
+  }catch(e){if(transferUI===cache)cache.errors.set(key,e.message);return false}
+  finally{cache.pending.delete(key);if(transferUI===cache)render()}
+ })();
+ cache.pending.set(key,request);return request;
+}
+function transferLoading(sections,retryKey){
+ const failed=sections.some(([section,record])=>transferUI.errors.has(transferKey(section,record))),box=node('div',undefined,'notice');
+ box.setAttribute('role','status');box.append(node('p',tr(failed?'transfer.error':'transfer.loading')));
+ if(failed){const retry=node('button',tr('load.retry'));if(retryKey)focusKey(retry,retryKey);retry.onclick=()=>{for(const [section,record] of sections)transferUI.errors.delete(transferKey(section,record));render()};box.append(retry)}
+ return box;
+}
+function transferReady(sections){
+ if(!state?.transfer)return true;
+ const missing=sections.filter(([section,record])=>!transferHas(section,record));
+ for(const [section,record] of missing)transferLoad(section,record);
+ return !missing.length;
+}
+function transferPageReady(content){
+ const sections=({Posta:[['mail']],Comunicazioni:[['mail']],Output:[['outputs']],Cronologia:[['history']],Decisioni:[['graph']],Incarichi:[['tasks']],Prove:[['runs']]})[tab]||[];
+ if(transferReady(sections))return true;
+ content.replaceChildren(transferLoading(sections));return false;
+}
+function transferOverviewDetail(){
+ const detail=node('details',undefined,'sq-full-detail');detail.open=transferUI.overview;
+ detail.append(node('summary',tr('page.detail')));
+ detail.ontoggle=()=>{if(transferUI.overview!==detail.open){transferUI.overview=detail.open;render()}};
+ if(state?.transfer&&!detail.open)return detail;
+ const sections=[['tasks'],['outputs'],['mail'],['graph']];
+ if(!transferReady(sections)){detail.append(transferLoading(sections));return detail}
+ const grid=node('div',undefined,'grid'),left=node('div'),right=node('div');
+ left.append(recordedWaiting(),tasks('quadro-tasks'),outputs());
+ const reserve=panel(tr('page.reserve.title'));
+ for(const r of Object.values(state.resources))reserve.append(row(r.name,r.owner+' · '+r.reason,tr('page.reserved')));
+ for(const d of state.decisions.slice(-5))reserve.append(row(d.actor,d.reason));
+ addEmpty(reserve,Object.keys(state.resources).length+state.decisions.length);
+ right.append(reserve,mail('quadro-mail'));grid.append(left,right);detail.append(grid);return detail;
+}
+async function transferIndependentPoll(){
+ if(tab==='Usage'&&typeof usageFetch==='function')await usageFetch();
+ // Integration seam: Balance also reads session files independently of registry changes.
+ if(tab==='Bilanciamento'&&typeof balanceFetch==='function')await balanceFetch();
+}
 function registryAuditLabels(){
  const banner=$('registry-audit');banner.hidden=!state||state.audit?.status!=='running';
  banner.textContent=banner.hidden?'':tr('audit.running');
 }
 function registryIntegrityFailure(){
  loadUI.integrity=true;state=null;
+ transferUI={head:null,sections:new Map(),pending:new Map(),errors:new Map(),overview:false};
  for(const id of ['connected-project','connected-hero','connected-context','status','kpis','content','charts','metrics','overview','project','plugin-links','plugin-notices','name','notice','chart-tip'])$(id).replaceChildren();
  for(const id of ['story','artifact','read-dialog']){const dialog=$(id);if(dialog.open)dialog.close();}
  for(const id of ['artifact-title','artifact-body','read-title','read-body'])$(id).replaceChildren();
@@ -1521,13 +1613,16 @@ async function refresh(){
  const query=loadUI.query,actionClock=typeof pluginActionClock==='number'?pluginActionClock:0;
  if(!state)applyStaticLabels();else loadingLabels();
  try{
-  const next=await(await api('/api/state',{'X-Squadra-View':'compact','X-Squadra-Search':encodeURIComponent(query)})).json();
+  const next=await(await api('/api/state',{'X-Squadra-View':'compact','X-Squadra-State-Token':state?.change_token||'','X-Squadra-Search':encodeURIComponent(query)})).json();
   if(query!==loadUI.query){loadUI.searchAgain=true;return}
-  state=next;filter=query;
-  if(typeof pluginActionReads!=='undefined')pluginActionReads.set(state,actionClock);
-  if(typeof notifyPoll==='function')notifyPoll(state);
+  if(!next.not_modified){
+   state=next;filter=query;transferSync();
+   if(typeof pluginActionReads!=='undefined')pluginActionReads.set(state,actionClock);
+   if(typeof notifyPoll==='function')notifyPoll(state);
+  }
+  transferClock(next.server_time);
   render();
-  if(tab==='Usage'&&typeof usageFetch==='function')await usageFetch();
+  await transferIndependentPoll();
   $('live').className='status';$('live').setAttribute('aria-label',tr('page.live.connected',{time:new Date().toLocaleTimeString(uiLocale())}));
   $('live').replaceChildren(node('span',undefined,'dot'),node('span',tr('page.live.connected',{time:new Date().toLocaleTimeString(uiLocale())})));
  }catch(e){
@@ -1571,7 +1666,7 @@ function focusKey(el,key){el.setAttribute('data-focus-key',key);pageFocusables.s
 function wordOr(prefix,value){return I18N[prefix+value]?tr(prefix+value):String(value??'')}
 function clip(text,length){const chars=Array.from(String(text??'').replace(/[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069]/g,' '));return chars.length>length?chars.slice(0,length-1).join('')+'…':chars.join('')}
 function firstLine(text){return String(text??'').split(/\r?\n/).map(s=>s.trim()).find(Boolean)||''}
-function ageText(value){const seconds=Math.max(0,Math.round((Date.now()-new Date(value).getTime())/1000));if(!Number.isFinite(seconds))return '';if(seconds<60)return tr('age.now');if(seconds<3600)return tr('age.min',{n:Math.floor(seconds/60)});if(seconds<86400)return tr('age.hours',{n:Math.floor(seconds/3600)});return tr('age.days',{n:Math.floor(seconds/86400)})}
+function ageText(value){const seconds=Math.max(0,Math.round((transferNow()-new Date(value).getTime())/1000));if(!Number.isFinite(seconds))return '';if(seconds<60)return tr('age.now');if(seconds<3600)return tr('age.min',{n:Math.floor(seconds/60)});if(seconds<86400)return tr('age.hours',{n:Math.floor(seconds/3600)});return tr('age.days',{n:Math.floor(seconds/86400)})}
 function when(value){return value?tr('when',{date:date(value),age:ageText(value)}):'—'}
 
 // Read available sections of the brief without inventing missing text.
@@ -2005,7 +2100,7 @@ function panelTab(b,name){
  if(panelUI.collapsed&&!panelPhone())b.setAttribute('title',tr('tab.'+name));
  focusKey(b,'nav:'+name);
 }
-function panelNavigate(){if(panelUI.drawer)panelDrawer(false,true);panelTip(null)}
+function panelNavigate(){panelUI.story=null;panelUI.storySig=null;panelUI.storyReturn=null;if(panelUI.drawer)panelDrawer(false,true);panelTip(null)}
 
 // Restore focus after every render and keep the control's screen position outside Communications.
 
@@ -2499,6 +2594,8 @@ function panelTaskCard(t){
  return card;
 }
 function panelOpenStory(id,returnKey,returnFallback='work'){
+ if(state?.transfer)transferUI.errors.delete(transferKey('story',id));
+ panelUI.storyTab=tab;
  panelUI.story=id;panelUI.storyReturn=returnKey||'work:story:'+id;panelUI.storyReturnFallback=returnFallback;panelUI.storySig=null;panelTip(null);
  // Move focus from the card button into the open story.
  const active=document.activeElement;if(active&&typeof active.blur==='function')active.blur();
@@ -2525,10 +2622,28 @@ function panelStoryKeep(dialog){
  const opened=panelUI.storyOpen.get(task)||new Set();panelUI.storyOpen.set(task,opened);
  for(const d of panelMarked(dialog,'data-story-item')){const k=d.getAttribute('data-story-item');if(d.open)opened.add(k);else opened.delete(k)}
 }
+function panelStoryHeading(t,dialog){
+ const head=node('div',undefined,'sq-story-head'),title=node('h2',taskTitle(t.id));title.setAttribute('id','story-title');title.setAttribute('tabindex','-1');focusKey(title,'story:title');panelUI.storyTitle=title;
+ const close=node('button',undefined,'sq-icon-btn sq-story-close');close.setAttribute('type','button');close.setAttribute('aria-label',tr('story.close'));close.append(icon('x-lg'));
+ focusKey(close,'story:close');close.setAttribute('data-focus-fallback','story:title');close.onclick=()=>dialog.close();
+ const label=node('div',tr('story.title'),'label');head.append(label,title,close);return head;
+}
 function panelStoryRender(){
  const dialog=document.getElementById('story');if(!dialog)return;
+ if(panelUI.storyTab!==undefined&&panelUI.storyTab!==tab)panelUI.story=null;
  const t=panelUI.story&&state?.tasks?.[panelUI.story];
  if(!t){if(dialog.open&&typeof dialog.close==='function'){panelUI.closing=true;dialog.close();panelUI.closing=false}panelUI.storySig=null;return}
+ if(!transferHas('story',t.id)){
+  const sections=[['story',t.id]];transferReady(sections);
+  const sig='transfer:'+JSON.stringify([UI_LANG,t.id,transferUI.errors.get(transferKey('story',t.id))||null]);
+  if(sig!==panelUI.storySig){
+   panelStoryKeep(dialog);panelUI.storySig=sig;
+   dialog.replaceChildren(panelStoryHeading(t,dialog),transferLoading(sections,'story:retry'));
+   dialog.setAttribute('data-story-task',t.id);panelUI.storyKeyed=panelKeyed(dialog);
+  }else for(const e of panelUI.storyKeyed||[])pageFocusables.set(e.getAttribute('data-focus-key'),e);
+  if(!dialog.open&&typeof dialog.showModal==='function'){dialog.showModal();panelUI.storyTitle.focus()}
+  return;
+ }
  const items=panelStory(t),about=taskBody(t.id).trim(),roles=panelRoles(t),rolesTech=panelRolesTech(t);
  const sig=JSON.stringify([UI_LANG,t.status,t.superseded_by,taskTitle(t.id),about,roles,rolesTech,taskTimePhases(t),items.map(i=>[i.key,i.text,ageText(i.utc),i.tech||'',(i.links||[]).map(a=>[a.name,a.sha256])])]);
  // Keep unchanged stories in place and register their controls again for focus restoration.
@@ -2541,10 +2656,7 @@ function panelStoryRender(){
   const disclose=(k,summaryKey,lines)=>{const d=node('details'),s=node('summary',tr('ov.technical'));d.setAttribute('data-story-item',k);d.open=opened.has(k);
    d.ontoggle=()=>{if(d.open)opened.add(k);else opened.delete(k)};focusKey(s,summaryKey);s.setAttribute('data-focus-fallback','story:title');
    d.append(s);for(const line of lines)d.append(node('div',line,'sub mono'));return d};
-  const head=node('div',undefined,'sq-story-head'),title=node('h2',taskTitle(t.id));title.setAttribute('id','story-title');title.setAttribute('tabindex','-1');focusKey(title,'story:title');panelUI.storyTitle=title;
-  const close=node('button',undefined,'sq-icon-btn sq-story-close');close.setAttribute('type','button');close.setAttribute('aria-label',tr('story.close'));close.append(icon('x-lg'));
-  focusKey(close,'story:close');close.setAttribute('data-focus-fallback','story:title');close.onclick=()=>dialog.close();
-  const label=node('div',tr('story.title'),'label');head.append(label,title,close);
+  const head=panelStoryHeading(t,dialog);
   const body=[head,panelSituation(t)];const timing=taskTimeDetails(t);if(timing)body.push(timing);
   if(about)body.push(node('p',about,'sq-story-brief bodytext'));
   if(roles)body.push(node('p',roles,'sq-line'));
@@ -2610,14 +2722,96 @@ Object.assign(I18N,{
  'balance.intro':{it:'Suggerimenti su quali finestre e modelli sono più liberi, con i numeri su cui si basano. Non assegna nulla: decide il coordinatore, che segue il suggerimento oppure registra perché sceglie altro.',en:'Advice on which windows and models are freest, with the numbers behind it. It assigns nothing: the coordinator follows the advice or records why it chooses otherwise.'},
  'balance.loading':{it:'Calcolo del bilanciamento…',en:'Computing the balance…'},'balance.error':{it:'Il bilanciamento non è disponibile. Riprova.',en:'Balance is unavailable. Try again.'},'balance.retry':{it:'Riprova',en:'Retry'},
  'balance.suggestions':{it:'Suggerimenti per modello',en:'Suggestions per model'},'balance.noSuggestions':{it:'Nessun suggerimento: nessuna regola scatta con i dati disponibili.',en:'No suggestions: no rule fires with the available data.'},
+ 'balance.span.week':{it:'della quota settimanale',en:'of the weekly quota'},
+ 'balance.span.h5':{it:'della quota delle 5 ore',en:'of the 5-hour quota'},
+ 'balance.span.min':{it:'della quota di {n} minuti',en:'of the {n}-minute quota'},
+ 'balance.span.estH5':{it:'delle 5 ore',en:'of the 5 hours'},
+ 'balance.span.estWeek':{it:'della settimana',en:'of the week'},
+ 'balance.short.week':{it:'settimana',en:'week'},
+ 'balance.short.h5':{it:'5 ore',en:'5 hours'},
+ 'balance.short.min':{it:'{n} min',en:'{n} min'},
+ 'balance.reset.time':{it:'si azzera alle {time}',en:'resets at {time}'},
+ 'balance.reset.day':{it:'si azzera il {day}',en:'resets on {day}'},
+ 'balance.reset.unknown':{it:'azzeramento non noto',en:'reset not known'},
+ 'balance.status.measured':{it:'misurato',en:'measured'},
+ 'balance.status.partial':{it:'parziale',en:'partial'},
+ 'balance.status.not_measured':{it:'non misurato',en:'not measured'},
+ 'balance.status.stale':{it:'non più attuale',en:'no longer current'},
+ 'balance.status.expired':{it:'scaduto',en:'expired'},
+ 'balance.status.collecting':{it:'in raccolta',en:'being collected'},
+ 'balance.status.other':{it:'non disponibile',en:'not available'},
+ 'balance.span':{it:'Fascia',en:'Window'},
+ 'balance.reset':{it:'Azzeramento',en:'Reset'},
+ 'balance.hint':{it:'Passa sopra o con il tasto Tab su una barra per leggere il valore esatto.',en:'Hover or Tab to a bar to read its exact value.'},
+ 'usage.hint':{it:'Passa sopra o con il tasto Tab su un elemento del grafico per leggere il valore esatto.',en:'Hover or Tab to a chart element to read its exact value.'},
+ 'balance.aria.load':{it:'{name}: {owned} incarichi aperti, {reads} letture in attesa',en:'{name}: {owned} open tasks, {reads} pending reads'},
+ 'balance.aria.strip':{it:'{model}: {n} token nelle ultime 24 ore; frecce sinistra e destra per le singole ore',en:'{model}: {n} tokens in the last 24 h; left and right arrows for each hour'},
+ 'balance.tokens.hour':{it:'{n} token',en:'{n} tokens'},
+ 'balance.tokens.rate':{it:'{n} token all’ora',en:'{n} tokens per hour'},
+ 'balance.tokens.unknown':{it:'token all’ora non misurati',en:'tokens per hour not measured'},
+ 'balance.role.build':{it:'costruisce',en:'builds'},
+ 'balance.role.read':{it:'legge',en:'reads'},
+ 'balance.role.coord':{it:'coordina',en:'coordinates'},
+ 'balance.windows':{it:'Le finestre',en:'The windows'},
+ 'balance.missing':{it:'Cosa non può vedere',en:'What it cannot see'},
+ 'balance.missing.none':{it:'Vede tutti i dati che usa.',en:'It sees all the data it uses.'},
+ 'balance.miss.notCollected':{it:'Token e quote non raccolti in questo momento: si aggiornano da soli tra poco.',en:'Tokens and quotas not collected at this moment: they refresh on their own shortly.'},
+ 'balance.miss.busy':{it:'La raccolta dei consumi è occupata da un’altra richiesta: restano gli ultimi numeri.',en:'Usage collection is busy with another request: the last figures stay.'},
+ 'balance.miss.collecting':{it:'La raccolta dei consumi è in corso: alcuni numeri sono ancora parziali.',en:'Usage collection is in progress: some figures are still partial.'},
+ 'balance.miss.noQuota':{it:'Quota di {name} non ancora osservata.',en:'Quota of {name} not observed yet.'},
+ 'balance.miss.stale':{it:'L’ultima quota osservata di {name} ({when}) non è più attuale.',en:'The last observed quota of {name} ({when}) is no longer current.'},
+ 'balance.miss.expired':{it:'La quota osservata di {name} ({when}) si è già azzerata.',en:'The observed quota of {name} ({when}) has already reset.'},
+ 'balance.miss.noQuotaClient':{it:'{name}: la quota di questo client non è disponibile.',en:'{name}: the quota of this client is not available.'},
+ 'balance.miss.tokens':{it:'Consumi di {name} non ancora letti: la raccolta è in corso.',en:'Usage of {name} not read yet: collection is in progress.'},
+ 'balance.miss.noReference':{it:'La quota di Claude non si può stimare: manca il riferimento (in fondo alla pagina).',en:'Claude quota cannot be estimated: no reference is set (at the bottom of the page).'},
+ 'balance.miss.partialEstimate':{it:'La stima della quota di Claude è incompleta: alcune finestre non sono ancora lette.',en:'The Claude quota estimate is incomplete: some windows are not read yet.'},
+ 'balance.verdict.balanced':{it:'La squadra è in equilibrio: oggi nessun consiglio.',en:'The squad is balanced: no advice today.'},
+ 'balance.verdict.one':{it:'1 consiglio.',en:'1 piece of advice.'},
+ 'balance.verdict.many':{it:'{n} consigli.',en:'{n} pieces of advice.'},
+ 'balance.verdict.incomplete':{it:'Nessun consiglio con i dati disponibili: mancano alcune misure, elencate sotto.',en:'No advice from the available data: some figures are missing, listed below.'},
+ 'balance.verdict.blocked':{it:'Nessun consiglio applicabile: {detail}',en:'No applicable advice: {detail}'},
+ 'balance.verdict.alsoMissing':{it:'Mancano anche alcune misure, elencate sotto.',en:'Some figures are also missing, listed below.'},
+ 'balance.blocked.reads':{it:'{name} ha {n} letture in attesa, ma nessun lettore indipendente è libero.',en:'{name} holds {n} pending reads, but no independent reader is free.'},
+ 'balance.blocked.tasks':{it:'{name} ha {n} incarichi aperti, ma nessuna finestra dello stesso tipo è libera.',en:'{name} owns {n} open tasks, but no window of the same kind is free.'},
+ 'balance.rules':{it:'Cosa controlla',en:'What it checks'},
+ 'balance.col.when':{it:'Quando scatta',en:'When it fires'},
+ 'balance.col.example':{it:'Esempio di consiglio',en:'Example of advice'},
+ 'balance.col.today':{it:'Oggi',en:'Today'},
+ 'balance.col.state':{it:'Stato',en:'State'},
+ 'balance.when.reads':{it:'Un lettore ha {n} o più letture in attesa',en:'A reader holds {n} or more pending reads'},
+ 'balance.when.quota':{it:'Una quota arriva all’{n}%',en:'A quota reaches {n}%'},
+ 'balance.when.tasks':{it:'Un costruttore ha {n} o più incarichi aperti',en:'A builder owns {n} or more open tasks'},
+ 'balance.when.idle':{it:'Un modello è fermo mentre altri sono carichi',en:'A model is idle while others are loaded'},
+ 'balance.example.reads':{it:'«Sposta una lettura a un lettore libero e indipendente»',en:'“Move a read to a free, independent reader”'},
+ 'balance.example.quota':{it:'«È vicina al limite: pianifica prima dell’azzeramento»',en:'“It is near its limit: plan before the reset”'},
+ 'balance.example.tasks':{it:'«Affida il prossimo incarico a una finestra libera dello stesso tipo»',en:'“Give the next task to a free window of the same kind”'},
+ 'balance.example.idle':{it:'«Usa il modello libero»',en:'“Use the idle model”'},
+ 'balance.today.max':{it:'al massimo {n}, {name}',en:'at most {n}, {name}'},
+ 'balance.today.quota':{it:'al massimo {n}%, {name}',en:'at most {n}%, {name}'},
+ 'balance.today.quotaShared':{it:'al massimo {n}%, stima condivisa delle finestre Claude sul riferimento dichiarato',en:'at most {n}%, shared estimate of the Claude windows against the declared reference'},
+ 'balance.today.unknownSome':{it:'non misurata per {n} finestre',en:'not measured for {n} windows'},
+ 'balance.today.unknown':{it:'non misurato',en:'not measured'},
+ 'balance.today.none':{it:'nessuna finestra attiva per questa regola',en:'no active window for this rule'},
+ 'balance.today.idleYes':{it:'un modello è fermo mentre altri sono carichi',en:'a model is idle while others are loaded'},
+ 'balance.today.idleNo':{it:'nessun modello fermo mentre altri sono carichi',en:'no model idle while others are loaded'},
+ 'balance.state.fires':{it:'scatta',en:'fires'},
+ 'balance.state.blocked':{it:'oltre la soglia, nessuna destinazione libera',en:'over the threshold, no free destination'},
+ 'balance.state.unknown':{it:'non misurato',en:'not measured'},
+ 'balance.state.partial':{it:'incompleto: mancano misure',en:'incomplete: figures missing'},
+ 'balance.state.ok':{it:'ok',en:'ok'},
+ 'balance.fresh.ok':{it:'Aggiornato alle {time}; si aggiorna da solo ogni 15 secondi mentre la pagina è aperta.',en:'Updated at {time}; it refreshes itself every 15 seconds while the page is open.'},
+ 'balance.fresh.retained':{it:'Ultimo aggiornamento alle {time}; nuovo tentativo alle {next}.',en:'Last update at {time}; next attempt at {next}.'},
+ 'balance.fresh.none':{it:'Nessun aggiornamento riuscito finora; nuovo tentativo alle {next}.',en:'No successful update yet; next attempt at {next}.'},
+ 'balance.load.owned':{it:'{n} incarichi aperti',en:'{n} open tasks'},'balance.load.owned1':{it:'1 incarico aperto',en:'1 open task'},'balance.load.reads':{it:'{n} letture in attesa',en:'{n} pending reads'},'balance.load.reads1':{it:'1 lettura in attesa',en:'1 pending read'},'balance.today.unknownOne':{it:'non misurata per 1 finestra',en:'not measured for 1 window'},
+ 'balance.rank.steps':{it:'{n} passi in attesa',en:'{n} next steps held'},'balance.rank.step1':{it:'1 passo in attesa',en:'1 next step held'},'balance.rank.near':{it:'vicina al limite di quota',en:'near its quota'},'balance.rank.nearEstimate':{it:'vicina al limite di quota (stima)',en:'near its quota (estimated)'},'balance.rank.built':{it:'{n} lavori simili costruiti',en:'{n} similar tasks built'},'balance.rank.built1':{it:'1 lavoro simile costruito',en:'1 similar task built'},'balance.rank.read':{it:'{n} lavori simili letti',en:'{n} similar tasks read'},'balance.rank.read1':{it:'1 lavoro simile letto',en:'1 similar task read'},
  'balance.model.none':{it:'Modello non dichiarato',en:'Model not declared'},
  'balance.basis.largest':{it:'{model}, il più usato tra quelli misurati: {models}',en:'{model}, the most used of the measured models: {models}'},'balance.basis.declared':{it:'{model} (dichiarato, non misurato)',en:'{model} (declared, not measured)'},
  'balance.S1':{it:'{window} ha {pending} letture in attesa; {to} ne ha 0 e può leggere «{task}» in modo indipendente.',en:'{window} holds {pending} pending reads; {to} holds 0 and can read “{task}” independently.'},
  'balance.S2':{it:'{window} è vicina al limite: {detail}. Passi in attesa: {steps}.',en:'{window} is near its limit: {detail}. Next steps held: {steps}.'},
  'balance.S3':{it:'{window} ha {owned} incarichi aperti; {to}, dello stesso client, non ne ha.',en:'{window} owns {owned} open tasks; {to}, same client, owns none.'},
  'balance.S4':{it:'Il modello {model} è libero ({windows} finestre senza incarichi) mentre {busy} è carico.',en:'Model {model} is idle ({windows} windows without tasks) while {busy} is busy.'},
- 'balance.slot':{it:'{percent}% della finestra di {minutes} min, azzeramento {reset}',en:'{percent}% of the {minutes}-minute window, resets {reset}'},
- 'balance.slotEstimate':{it:'stima {percent}% ({slot})',en:'estimate {percent}% ({slot})'},
+ 'balance.slot':{it:'{percent}% {span}, {reset}',en:'{percent}% {span}, {reset}'},
+ 'balance.slotEstimate':{it:'stima {percent}% {span}',en:'estimate {percent}% {span}'},
  'chart.balance-load.title':{it:'Carico per finestra',en:'Load per window'},'chart.balance-load.sub':{it:'Incarichi aperti di cui è titolare e letture in attesa, dal registro.',en:'Open tasks it owns and reads waiting on it, from the registry.'},
  'chart.balance-tokens.title':{it:'Token per ora, ultime 24 ore',en:'Tokens per hour, last 24 h'},'chart.balance-tokens.sub':{it:'Un piccolo grafico per modello. L’ultima ora è parziale; le ore non misurate restano vuote.',en:'One small chart per model. The last hour is partial; unmeasured hours stay empty.'},
  'chart.balance-quota.title':{it:'Quota',en:'Quota'},'chart.balance-quota.sub':{it:'Codex: misurata per finestra e per fascia. Claude: stima rispetto al riferimento che dichiari, tratteggiata.',en:'Codex: measured per window and slot. Claude: an estimate against the reference you declare, hatched.'},
@@ -2628,7 +2822,7 @@ Object.assign(I18N,{
  'balance.noHourly':{it:'Non misurato: serie oraria non disponibile.',en:'Not measured: hourly series unavailable.'},
  'balance.estimate':{it:'stima',en:'estimate'},'balance.assumption':{it:'Si assume che tutte le finestre Claude registrate condividano un account.',en:'All registered Claude windows are assumed to share one account.'},
  'balance.noReference':{it:'Stima non disponibile: nessun riferimento dichiarato. Ultime 5 ore: {h5} token · ultimi 7 giorni: {d7} token.',en:'Estimate unavailable: no reference declared. Last 5 h: {h5} tokens · last 7 days: {d7} tokens.'},
- 'balance.partial':{it:'Stima non completa ({reasons}). Somme note, parziali: ultime 5 ore {h5} token · ultimi 7 giorni {d7} token.',en:'Estimate incomplete ({reasons}). Known partial sums: last 5 h {h5} tokens · last 7 days {d7} tokens.'},
+ 'balance.partial':{it:'Stima non completa: alcune finestre Claude non sono ancora lette. Somme note, parziali: ultime 5 ore {h5} token · ultimi 7 giorni {d7} token.',en:'Estimate incomplete: some Claude windows are not read yet. Known partial sums: last 5 h {h5} tokens · last 7 days {d7} tokens.'},
  'balance.reference':{it:'Riferimento Claude (solo in questo browser)',en:'Claude reference (this browser only)'},'balance.refH5':{it:'Token per 5 ore',en:'Tokens per 5 h'},'balance.refWeek':{it:'Token per settimana',en:'Tokens per week'},
  'balance.refSave':{it:'Usa il riferimento',en:'Use reference'},'balance.refClear':{it:'Togli il riferimento',en:'Clear reference'},'balance.refInvalid':{it:'Inserisci due numeri interi positivi.',en:'Enter two positive whole numbers.'},
  'balance.perTask':{it:'Per incarico',en:'Per task'},'balance.pickTask':{it:'Incarico aperto',en:'Open task'},'balance.noOpen':{it:'Nessun incarico aperto.',en:'No open tasks.'},'balance.choose':{it:'Scegli un incarico',en:'Choose a task'},
@@ -3905,110 +4099,204 @@ if(typeof document.addEventListener==='function')document.addEventListener('keyd
 .sq-balance-num{font-variant-numeric:tabular-nums;font-weight:600}.sq-balance-est{font-style:italic}
 .sq-balance-list{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:8px}.sq-balance-list li{border-top:1px solid var(--sq-border,var(--line));padding-top:8px;min-width:0;overflow-wrap:anywhere}
 .sq-balance-form{display:flex;flex-wrap:wrap;gap:10px;align-items:end;margin-top:10px}.sq-balance-form label{display:grid;gap:4px;font-size:13px;min-width:0}.sq-balance-form input{width:12em;max-width:100%}
-.sq-balance select{max-width:100%}.sq-balance .sq-crow svg.sq-strip{grid-column:1/-1;width:100%;height:40px}.sq-balance .sq-strip rect.none{fill:none;stroke:var(--sq-border-strong,var(--line));stroke-dasharray:2 2}
+.sq-balance select{max-width:100%}.sq-balance-verdict-text{font-size:18px;line-height:1.4;font-weight:600;margin:8px 0}.sq-balance .sq-crow>.sq-viz{grid-column:1/-1}.sq-balance-line{margin:2px 0 0}.sq-balance .sq-crow svg.sq-strip{grid-column:1/-1;width:100%;height:40px}.sq-balance .sq-strip rect.none{fill:none;stroke:var(--sq-border-strong,var(--line));stroke-dasharray:2 2}
 .sq-balance:focus-visible,.sq-balance button:focus-visible,.sq-balance input:focus-visible,.sq-balance select:focus-visible{outline:2px solid var(--sq-accent);outline-offset:4px}
-@media(max-width:699.98px){.sq-balance h2{font-size:26px}.sq-balance-form{flex-direction:column;align-items:stretch}.sq-balance-form input{width:100%}}
+@media(max-width:699.98px){.sq-balance [data-balance-rules] :is(table,tbody,tr,td){display:block;width:100%}.sq-balance [data-balance-rules] tr:first-child{display:none}.sq-balance [data-balance-rules] tr{padding:10px 0;border-top:1px solid var(--sq-border,var(--line))}.sq-balance [data-balance-rules] td{padding:2px 0}.sq-balance [data-balance-rules] td::before{content:attr(data-label) ': ';font-weight:600}.sq-balance h2{font-size:26px}.sq-balance-form{flex-direction:column;align-items:stretch}.sq-balance-form input{width:100%}}
 </style>
 <script id="squadra-balance">
 'use strict';
 function balanceNav(){
  const links=$('balance-links');if(!links)return;$('balance-nav').setAttribute('aria-label',tr('tab.Bilanciamento'));
- const b=node('button',tr('tab.Bilanciamento'),tab==='Bilanciamento'?'active':'');panelTab(b,'Bilanciamento');b.onclick=()=>{connectedReset();tab='Bilanciamento';balanceUI.attempt=null;panelNavigate();render()};links.replaceChildren(b);
+ const b=node('button',tr('tab.Bilanciamento'),tab==='Bilanciamento'?'active':'');panelTab(b,'Bilanciamento');b.onclick=()=>{connectedReset();tab='Bilanciamento';balanceUI.immediate=true;panelNavigate();render()};links.replaceChildren(b);
 }
-const balanceUI={data:null,attempt:null,running:false,error:false,task:'',reference:null,refError:false,signature:null,element:null,controls:[]};
+// One cadence gates every routine fetch; opening the page, a task or reference change and retry are the explicit immediate cases.
+const BALANCE_CADENCE=15000;
+const balanceUI={data:null,running:false,status:'idle',lastAttempt:0,lastDone:0,lastOk:0,immediate:true,task:'',refError:false,signature:null,element:null,controls:[]};
 const BALANCE_STORE='squadra.usage.settings.v1';
 function balanceStored(){try{const raw=panelStore(BALANCE_STORE);const value=raw?JSON.parse(raw):null;if(value&&typeof value==='object'&&!Array.isArray(value)&&value.schema===1)return value}catch(e){}return {schema:1,prices:null,balance:{}}}
 function balanceReference(){const ref=balanceStored().balance?.reference;return ref&&Number.isInteger(ref.h5)&&Number.isInteger(ref.week)&&ref.h5>0&&ref.week>0&&ref.h5<=1e12&&ref.week<=1e12?{claude:{h5:ref.h5,week:ref.week}}:null}
 function balanceSaveReference(ref){const value=balanceStored(),own={...(value.balance&&typeof value.balance==='object'?value.balance:{})};if(ref)own.reference=ref;else delete own.reference;panelStore(BALANCE_STORE,JSON.stringify({...value,schema:1,balance:own}))}
 function balanceNum(n){return typeof n==='number'?n.toLocaleString(uiLocale()):'—'}
 function balanceButton(text,key,action){const b=node('button',text);b.onclick=action;focusKey(b,key);balanceUI.controls.push(b);return b}
-async function balanceFetch(){
+function balanceNow(){return Date.now()}
+// The cadence counts from the end of the last attempt, so a slow run is never followed at once by another.
+function balanceDue(){return !balanceUI.running&&(balanceUI.immediate||balanceNow()-balanceUI.lastDone>=BALANCE_CADENCE)}
+// The one entry for routine refresh: safe on every 2-second tick, it enforces the cadence and a single request in flight.
+function balancePoll(){if(tab!=='Bilanciamento'||document.hidden===true)return;if(balanceDue())balanceRequest()}
+// Callers outside this block that still use the old name go through the same gate.
+function balanceFetch(){balancePoll()}
+function balanceAgain(){balanceUI.immediate=true;balanceUI.signature=null;render()}
+function balanceBusy(data){const reasons=data?.usage?.coverage?.reasons;return Array.isArray(reasons)&&reasons.includes('collector_busy')}
+async function balanceRequest(){
  if(tab!=='Bilanciamento'||document.hidden===true||balanceUI.running)return;
- balanceUI.running=true;balanceUI.error=false;balanceUI.attempt=state;
+ balanceUI.running=true;balanceUI.immediate=false;balanceUI.lastAttempt=balanceNow();
  try{const headers={'X-Squadra-Record':encodeURIComponent(balanceUI.task||'')},ref=balanceReference();if(ref)headers['X-Squadra-Balance-Reference']=JSON.stringify(ref);
-  const data=await(await api('/api/balance',headers)).json();if(!Array.isArray(data.windows)||data.assigns!==false)throw Error('balance response');balanceUI.data=data}
- catch(e){balanceUI.error=true}
- finally{balanceUI.running=false;if(tab==='Bilanciamento')render()}
+  const data=await(await api('/api/balance',headers)).json();if(!Array.isArray(data.windows)||data.assigns!==false)throw Error('balance response');
+  if(balanceBusy(data)&&balanceUI.data)balanceUI.status='busy';
+  else{balanceUI.data=data;balanceUI.status=balanceBusy(data)?'busy':'ok';if(balanceUI.status==='ok')balanceUI.lastOk=balanceNow()}}
+ catch(e){balanceUI.status='error'}
+ finally{balanceUI.running=false;balanceUI.lastDone=balanceNow();if(tab==='Bilanciamento')render()}
 }
+function balanceClock(t){return new Date(t).toLocaleTimeString(uiLocale(),{hour:'2-digit',minute:'2-digit',second:'2-digit'})}
+function balanceWindowName(identity){const m=/^(codex-thread|claude-window)-([0-9a-f]{8})/.exec(String(identity||''));return m?(m[1]==='codex-thread'?'Codex ':'Claude ')+m[2]:String(identity||'')}
 function balanceModel(m){return m||tr('balance.model.none')}
 function balanceModelLabel(r){const list=Array.isArray(r.measured_models)?r.measured_models:[];if(r.model_source==='measured_largest_of_several'&&list.length>1)return tr('balance.basis.largest',{model:r.model,models:list.join(', ')});if(r.model_source==='declared'&&r.model)return tr('balance.basis.declared',{model:r.model});return balanceModel(r.model)}
-function balanceSlotText(slot){return slot.percent!==undefined?tr('balance.slotEstimate',{percent:Math.round(slot.percent),slot:slot.slot}):tr('balance.slot',{percent:balanceNum(slot.used_percent),minutes:balanceNum(slot.window_minutes),reset:date(slot.resets_at)})}
+function balanceStatusWord(s){return tr(I18N['balance.status.'+s]?'balance.status.'+s:'balance.status.other')}
+function balanceSpan(minutes){return minutes===10080?tr('balance.span.week'):minutes===300?tr('balance.span.h5'):tr('balance.span.min',{n:balanceNum(minutes)})}
+function balanceSpanShort(minutes){return minutes===10080?tr('balance.short.week'):minutes===300?tr('balance.short.h5'):tr('balance.short.min',{n:balanceNum(minutes)})}
+function balanceReset(at){const t=Date.parse(at);if(!Number.isFinite(t))return tr('balance.reset.unknown');return t-Date.now()<86400000?tr('balance.reset.time',{time:new Date(t).toLocaleTimeString(uiLocale(),{hour:'2-digit',minute:'2-digit'})}):tr('balance.reset.day',{day:new Date(t).toLocaleDateString(uiLocale(),{day:'numeric',month:'long'})})}
+function balanceEstimateSpan(slot){return tr(slot==='h5'?'balance.span.estH5':'balance.span.estWeek')}
+function balanceSlotText(slot){return slot.percent!==undefined?tr('balance.slotEstimate',{percent:Math.round(slot.percent),span:balanceEstimateSpan(slot.slot)}):tr('balance.slot',{percent:balanceNum(slot.used_percent),span:balanceSpan(slot.window_minutes),reset:balanceReset(slot.resets_at)})}
 function balanceSuggestion(s){
- const metrics=s.metrics||{};
- if(s.id==='S1')return tr('balance.S1',{window:s.window,pending:metrics.pending_reads,to:s.to,task:taskTitle(s.task)});
- if(s.id==='S2')return tr('balance.S2',{window:s.window,detail:(metrics.slots||[]).map(balanceSlotText).join('; '),steps:metrics.steps});
- if(s.id==='S3')return tr('balance.S3',{window:s.window,owned:metrics.owned_open,to:s.to});
+ const metrics=s.metrics||{},w=balanceWindowName(s.window),to=balanceWindowName(s.to);
+ if(s.id==='S1')return tr('balance.S1',{window:w,pending:metrics.pending_reads,to,task:taskTitle(s.task)});
+ if(s.id==='S2')return tr('balance.S2',{window:w,detail:(metrics.slots||[]).map(balanceSlotText).join('; '),steps:metrics.steps});
+ if(s.id==='S3')return tr('balance.S3',{window:w,owned:metrics.owned_open,to});
  return tr('balance.S4',{model:balanceModel(s.model),windows:metrics.windows,busy:(metrics.busy_models||[]).map(balanceModel).join(', ')});
 }
 function balanceSuggestions(data){
- const box=node('section');box.append(node('h3',tr('balance.suggestions')));
- if(!data.suggestions.length){box.append(node('p',tr('balance.noSuggestions'),'sub'));return box}
+ const box=node('div');if(!data.suggestions.length)return box;box.append(node('h3',tr('balance.suggestions')));
  const groups=new Map();for(const s of data.suggestions){const key=s.model||'';if(!groups.has(key))groups.set(key,[]);groups.get(key).push(s)}
  const cards=node('div',undefined,'sq-balance-cards');
  for(const [model,items] of groups){const card=node('article',undefined,'sq-balance-card');card.setAttribute('data-balance-model',model);card.append(node('h4',balanceModel(model)));const list=node('ul',undefined,'sq-balance-list');
   for(const s of items){const li=node('li',balanceSuggestion(s));li.setAttribute('data-suggestion',s.id);if(s.metrics?.estimate)li.classList?.add?.('sq-balance-est');list.append(li)}card.append(list);cards.append(card)}
  box.append(cards);return box;
 }
-function balanceBar(parts,max,label){
- const svg=svgEl('svg',{viewBox:'0 0 100 14',preserveAspectRatio:'none',role:'img','aria-label':label});let x=0;
- for(const [value,cls] of parts){if(!value)continue;const w=Math.max(1,value/max*100);svg.append(svgEl('rect',{x:x.toFixed(2),y:0,width:Math.max(0,w-(x+w<100?2:0)).toFixed(2),height:14,rx:3,class:cls}));x+=w}
- return svg;
+function balanceQuotaPercent(w){const q=w.quota||{};if(q.kind==='measured'){const f=(q.slots||[]).filter(s=>s.fresh&&typeof s.used_percent==='number');return f.length?Math.max(...f.map(s=>s.used_percent)):null}if(q.kind==='estimate'){const p=(q.slots||[]).map(s=>s.percent).filter(v=>typeof v==='number');return p.length?Math.max(...p):null}return null}
+function balanceMissing(data){
+ const out=[],u=data.usage||{},reasons=u.coverage?.reasons||[];
+ if(u.status==='not_collected')out.push(tr('balance.miss.notCollected'));else if(reasons.includes('collector_busy'))out.push(tr('balance.miss.busy'));else if(u.coverage?.status==='collecting')out.push(tr('balance.miss.collecting'));
+ if(u.status!=='not_collected')for(const w of data.windows||[]){
+  if(!w.available)continue;const name=balanceWindowName(w.identity),q=w.quota||{};
+  if(q.kind==='measured'){if(!(q.slots||[]).length)out.push(tr('balance.miss.noQuota',{name}));else for(const s of q.slots)if(!s.fresh)out.push(tr(s.status==='expired'?'balance.miss.expired':'balance.miss.stale',{name,when:date(s.observed_at)}))}
+  else if(!q.kind)out.push(tr('balance.miss.noQuotaClient',{name}));
+  if(w.tokens_per_hour===null)out.push(tr('balance.miss.tokens',{name}));
+ }
+ const est=data.claude_estimate;if(est&&est.reason==='no_reference')out.push(tr('balance.miss.noReference'));else if(est&&est.state==='unknown'&&est.reason&&est.reason!=='no_claude_window')out.push(tr('balance.miss.partialEstimate'));
+ return [...new Set(out)];
+}
+// A measured quota keeps its window (equal values: the lower identity); the Claude estimate is one figure shared by every Claude window, so it names none.
+function balanceQuotaTop(wins){
+ let best=null;
+ for(const w of wins){
+  const v=balanceQuotaPercent(w),shared=(w.quota||{}).kind==='estimate';if(typeof v!=='number')continue;
+  const tie=best!==null&&v===best.v&&!shared&&(best.shared||String(w.identity)<String(best.w.identity));
+  if(best===null||v>best.v||tie)best={v,w:shared?null:w,shared};
+ }
+ return best;
+}
+function balanceFacts(data){
+ const c=data.constants||{},wins=data.windows||[],fired=id=>data.suggestions.some(s=>s.id===id),has=(w,roles)=>w.available&&(w.roles||[]).some(r=>roles.includes(r));
+ const top=(list,f)=>list.reduce((best,w)=>{const v=f(w);return typeof v==='number'&&(best===null||v>best.v)?{v,w}:best},null);
+ const readers=wins.filter(w=>has(w,['reviewer','coordinator'])),builders=wins.filter(w=>has(w,['builder','executor'])),avail=wins.filter(w=>w.available);
+ const reads=top(readers,w=>w.read_steps),owned=top(builders,w=>w.owned_open),quota=balanceQuotaTop(avail),unknown=avail.filter(w=>(w.quota||{}).state==='unknown').length;
+ return {missing:balanceMissing(data),rules:[
+  {id:'reads',threshold:c.pending_reads,best:reads,fired:fired('S1'),blocked:!fired('S1')&&!!reads&&reads.v>=c.pending_reads,unknown:0},
+  {id:'quota',threshold:c.near_quota_percent,best:quota,fired:fired('S2'),blocked:false,unknown},
+  {id:'tasks',threshold:c.open_tasks,best:owned,fired:fired('S3'),blocked:!fired('S3')&&!!owned&&owned.v>=c.open_tasks,unknown:0},
+  {id:'idle',threshold:null,best:null,fired:fired('S4'),blocked:false,unknown:0}]};
+}
+function balanceVerdict(data,facts){
+ const n=data.suggestions.length,blocked=facts.rules.filter(r=>r.blocked),incomplete=facts.missing.length>0||facts.rules.some(r=>r.unknown);
+ const kind=n?'advice':blocked.length?'blocked':incomplete?'incomplete':'balanced';
+ const box=node('section',undefined,'sq-balance-verdict');box.setAttribute('data-balance-verdict',kind);
+ const text=kind==='advice'?tr(n===1?'balance.verdict.one':'balance.verdict.many',{n}):kind==='blocked'?tr('balance.verdict.blocked',{detail:blocked.map(r=>tr('balance.blocked.'+r.id,{name:balanceWindowName(r.best.w.identity),n:r.best.v})).join(' ')})+(incomplete?' '+tr('balance.verdict.alsoMissing'):''):kind==='incomplete'?tr('balance.verdict.incomplete'):tr('balance.verdict.balanced');
+ box.append(node('p',text,'sq-balance-verdict-text'),balanceSuggestions(data));return box;
+}
+function balanceRules(data,facts){
+ const box=node('section');box.setAttribute('data-balance-rules','table');box.append(node('h3',tr('balance.rules')));
+ const table=node('table'),head=node('tr');for(const h of ['when','example','today','state'])head.append(node('th',tr('balance.col.'+h)));table.append(head);
+ for(const r of facts.rules){
+  const row=node('tr');row.setAttribute('data-balance-rule',r.id);
+  const today=r.id==='idle'?tr(r.fired?'balance.today.idleYes':'balance.today.idleNo'):r.best?(r.best.shared?tr('balance.today.quotaShared',{n:Math.round(r.best.v)}):tr(r.id==='quota'?'balance.today.quota':'balance.today.max',{n:r.id==='quota'?Math.round(r.best.v):r.best.v,name:balanceWindowName(r.best.w.identity)}))+(r.unknown?' · '+tr(r.unknown===1?'balance.today.unknownOne':'balance.today.unknownSome',{n:r.unknown}):''):tr(r.unknown?'balance.today.unknown':'balance.today.none');
+  const stateKey=r.fired?'fires':r.blocked?'blocked':r.unknown?(r.best?'partial':'unknown'):'ok';
+  [tr('balance.when.'+r.id,{n:r.threshold}),tr('balance.example.'+r.id),today,tr('balance.state.'+stateKey)].forEach((cell,i)=>{const td=node('td',cell);td.setAttribute('data-label',tr('balance.col.'+['when','example','today','state'][i]));row.append(td)});
+  row.setAttribute('data-balance-state',stateKey);table.append(row);
+ }
+ const scroll=node('div',undefined,'scroll');scroll.append(table);box.append(scroll);return box;
+}
+function balanceRoles(w){const words=[];if((w.roles||[]).some(r=>r==='builder'||r==='executor'))words.push(tr('balance.role.build'));if((w.roles||[]).includes('reviewer'))words.push(tr('balance.role.read'));if((w.roles||[]).includes('coordinator'))words.push(tr('balance.role.coord'));return words.join(', ')}
+function balanceWindowsPlain(data){
+ const box=node('section');box.setAttribute('data-balance-windows','list');box.append(node('h3',tr('balance.windows')));
+ if(!(data.windows||[]).length){box.append(node('p',tr('balance.noWindows')));return box}
+ const list=node('ul',undefined,'sq-balance-list');
+ for(const w of data.windows){
+  const li=node('li');li.setAttribute('data-balance-plain',w.identity);const who=[balanceRoles(w),balanceModelLabel(w)].filter(Boolean),parts=[],q=w.quota||{};
+  if(q.kind==='measured')for(const s of q.slots||[])if(s.fresh)parts.push(tr('balance.slot',{percent:balanceNum(s.used_percent),span:balanceSpan(s.window_minutes),reset:balanceReset(s.resets_at)}));
+  if(q.kind==='estimate')for(const s of q.slots||[])if(typeof s.percent==='number')parts.push(tr('balance.slotEstimate',{percent:Math.round(s.percent),span:balanceEstimateSpan(s.slot)}));
+  const work=[w.tokens_per_hour===null?tr('balance.tokens.unknown'):tr('balance.tokens.rate',{n:balanceNum(Math.round(w.tokens_per_hour))})];
+  work.push(tr(w.owned_open===1?'balance.load.owned1':'balance.load.owned',{n:w.owned_open})+', '+tr(w.read_steps===1?'balance.load.reads1':'balance.load.reads',{n:w.read_steps}));if(!w.available)work.push(tr('balance.reason.stand-by'));
+  li.append(node('strong',balanceWindowName(w.identity)));for(const line of [who,parts,work])if(line.length)li.append(node('p',line.join(' · '),'sq-balance-line'));list.append(li);
+ }
+ box.append(list);return box;
+}
+function balanceMissingView(facts){const box=node('section');box.setAttribute('data-balance-missing','list');box.append(node('h3',tr('balance.missing')));if(!facts.missing.length){box.append(node('p',tr('balance.missing.none'),'sub'));return box}const list=node('ul',undefined,'sq-balance-list');for(const m of facts.missing)list.append(node('li',m));box.append(list);return box}
+function balanceFreshness(){
+ const p=node('p',undefined,'sub');p.setAttribute('data-balance-freshness',balanceUI.status);
+ if(balanceUI.status==='ok'&&balanceUI.lastOk)p.textContent=tr('balance.fresh.ok',{time:balanceClock(balanceUI.lastOk)});
+ else if(balanceUI.status==='busy'||balanceUI.status==='error')p.textContent=tr(balanceUI.lastOk?'balance.fresh.retained':'balance.fresh.none',{time:balanceUI.lastOk?balanceClock(balanceUI.lastOk):'',next:balanceClock(balanceUI.lastDone+BALANCE_CADENCE)});
+ return p;
 }
 function balanceLoad(data){
- const rows=data.windows,max=Math.max(1,...rows.map(r=>r.owned_open+r.read_steps));
- const sentence=rows.length?rows.map(r=>r.identity+': '+r.owned_open+' / '+r.read_steps).join(' · '):tr('balance.noWindows');
- const body=panelPlot(sentence);
- if(!rows.length)body.append(node('p',tr('balance.noWindows')));
- for(const r of rows){const row=node('div',undefined,'sq-brow');row.setAttribute('data-balance-window',r.identity);row.append(node('span',r.identity),balanceBar([[r.owned_open,'sq-mark-acc'],[r.read_steps,'sq-mark-neutral']],max,r.identity),node('span',r.owned_open+' · '+r.read_steps,'v'));body.append(row)}
- const legend=node('ul',undefined,'sq-legend');for(const [cls,key] of [['sq-mark-acc','balance.owned'],['sq-mark-neutral','balance.reads']]){const li=node('li'),svg=svgEl('svg',{width:14,height:14,viewBox:'0 0 14 14','aria-hidden':'true'});svg.append(svgEl('rect',{x:0,y:0,width:14,height:14,rx:3,class:cls}));li.append(svg,node('span',tr(key)));legend.append(li)}
- return panelCard('balance-load',{body,legend,sentence,table:panelTable([tr('balance.window'),tr('balance.model'),tr('balance.owned'),tr('balance.reads'),tr('balance.steps')],rows.map(r=>[r.identity,balanceModelLabel(r),r.owned_open,r.read_steps,r.read_steps+r.build_steps]))});
+ const rows=data.windows,sentence=rows.length?rows.map(r=>balanceWindowName(r.identity)+': '+r.owned_open+' / '+r.read_steps).join(' · '):tr('balance.noWindows');
+ const body=rows.length?sqVizBars('balance-load',rows.map(r=>({key:r.identity,label:balanceWindowName(r.identity),value:r.owned_open+r.read_steps,valueText:r.owned_open+' · '+r.read_steps,
+  aria:tr('balance.aria.load',{name:balanceWindowName(r.identity),owned:r.owned_open,reads:r.read_steps}),attrs:{'data-balance-window':r.identity},
+  segments:[{key:'owned',value:r.owned_open,cls:'sq-viz-c0'},{key:'reads',value:r.read_steps,cls:'sq-viz-c4'}]})),{summary:sentence,hint:tr('balance.hint')}):node('p',tr('balance.noWindows'));
+ const legend=node('ul',undefined,'sq-viz-legend');for(const [cls,key] of [['sq-viz-c0','balance.owned'],['sq-viz-c4','balance.reads']]){const li=node('li'),sw=node('span',undefined,'sq-viz-swatch '+cls);sw.setAttribute('aria-hidden','true');li.append(sw,node('span',tr(key)));legend.append(li)}
+ return panelCard('balance-load',{body,legend,sentence,table:panelTable([tr('balance.window'),tr('balance.model'),tr('balance.owned'),tr('balance.reads'),tr('balance.steps')],rows.map(r=>[balanceWindowName(r.identity),balanceModelLabel(r),r.owned_open,r.read_steps,r.read_steps+r.build_steps]))});
 }
+function balanceHourText(model,b){const t=Date.parse(b.hour),h=Number.isFinite(t)?new Date(t).toLocaleTimeString(uiLocale(),{hour:'2-digit',minute:'2-digit'}):'';return balanceModel(model)+' · '+h+': '+(typeof b.total==='number'?tr('balance.tokens.hour',{n:balanceNum(b.total)}):tr('balance.status.not_measured'))}
 function balanceTokens(data){
- const notes=[],tableRows=[];
- if(data.usage.status==='not_collected')notes.push(tr('balance.notCollected'));
- const series=data.models.filter(m=>m.hourly.length);
- const body=panelPlot(series.length?series.map(m=>balanceModel(m.model)).join(' · '):tr('balance.noHourly'));
+ const notes=[],tableRows=[];if(data.usage.status==='not_collected')notes.push(tr('balance.notCollected'));
+ const series=data.models.filter(m=>m.hourly.length),body=node('div',undefined,'sq-rows');body.setAttribute('aria-label',series.length?series.map(m=>balanceModel(m.model)).join(' · '):tr('balance.noHourly'));
  if(!series.length)body.append(node('p',tr('balance.noHourly')));
- for(const m of series){const max=Math.max(1,...m.hourly.map(b=>typeof b.total==='number'?b.total:0));const row=node('div',undefined,'sq-crow');row.setAttribute('data-balance-model',m.model||'');row.append(node('span',balanceModel(m.model),'t'));
-  const svg=svgEl('svg',{viewBox:'0 0 240 40',class:'sq-strip',role:'img','aria-label':balanceModel(m.model)});
-  m.hourly.forEach((b,i)=>{const measured=typeof b.total==='number';const h=measured?Math.max(1,b.total/max*38):38;const rect=svgEl('rect',{x:i*10,y:40-h,width:8,height:h,rx:2,class:measured?'sq-bar':'none'});const t=svgEl('title',{});t.textContent=date(b.hour)+' · '+(measured?balanceNum(b.total):tr('balance.notMeasured'));rect.append(t);svg.append(rect);tableRows.push([balanceModel(m.model),date(b.hour),measured?b.total:tr('balance.notMeasured'),b.status])});
-  row.append(svg);body.append(row)}
+ for(const m of series){const row=node('div',undefined,'sq-crow');row.setAttribute('data-balance-model',m.model||'');row.append(node('span',balanceModel(m.model),'t'));
+  const total=m.hourly.reduce((s,b)=>s+(typeof b.total==='number'?b.total:0),0);
+  row.append(sqVizStrip('balance-tokens/'+(m.model||''),m.model||'',balanceModel(m.model),m.hourly,{text:b=>balanceHourText(m.model,b),summary:tr('balance.aria.strip',{model:balanceModel(m.model),n:balanceNum(total)})}));body.append(row);
+  for(const b of m.hourly)tableRows.push([balanceModel(m.model),date(b.hour),typeof b.total==='number'?b.total:tr('balance.notMeasured'),balanceStatusWord(b.status)])}
  return panelCard('balance-tokens',{body,sentence:series.length?tr('chart.balance-tokens.sub'):tr('balance.noHourly'),notes,table:panelTable([tr('balance.model'),tr('balance.hour'),tr('balance.tokens'),tr('balance.status')],tableRows)});
 }
-function balanceHatch(svg,id){const defs=svgEl('defs',{}),pattern=svgEl('pattern',{id,width:6,height:6,patternUnits:'userSpaceOnUse',patternTransform:'rotate(45)'});pattern.append(svgEl('rect',{x:0,y:0,width:3,height:6,class:'sq-bar'}));defs.append(pattern);svg.append(defs)}
 function balanceQuota(data){
- const body=panelPlot(tr('chart.balance-quota.sub')),notes=[],tableRows=[];
- if(data.usage.status==='not_collected')notes.push(tr('balance.notCollected'));
+ const notes=[],tableRows=[],rows=[];if(data.usage.status==='not_collected')notes.push(tr('balance.notCollected'));
  for(const r of data.windows.filter(w=>w.quota.kind==='measured')){
-  if(!r.quota.slots.length){const row=node('div',undefined,'sq-brow');row.append(node('span',r.identity),node('span',tr('balance.notMeasured')),node('span','—','v'));body.append(row);tableRows.push([r.identity,'—',tr('balance.notMeasured'),'—']);continue}
-  for(const s of r.quota.slots){const row=node('div',undefined,'sq-brow');row.setAttribute('data-balance-quota',r.identity);const known=s.fresh&&typeof s.used_percent==='number';
-   row.append(node('span',r.identity+' · '+balanceNum(s.window_minutes)+' min'),known?balanceBar([[s.used_percent,'sq-bar']],100,balanceSlotText(s)):node('span',tr('balance.notMeasured')),node('span',known?Math.round(s.used_percent)+'%':'—','v'));body.append(row);
-   tableRows.push([r.identity,balanceNum(s.window_minutes)+' min',known?s.used_percent+'%':tr('balance.notMeasured')+' ('+s.status+')',date(s.resets_at)])}
+  const name=balanceWindowName(r.identity);
+  if(!r.quota.slots.length){rows.push({key:r.identity+'/none',label:name,value:null,valueText:'—',aria:name+': '+tr('balance.notMeasured'),attrs:{'data-balance-quota':r.identity}});tableRows.push([name,'—',tr('balance.notMeasured'),'—']);continue}
+  for(const s of r.quota.slots){const known=s.fresh&&typeof s.used_percent==='number';
+   rows.push({key:r.identity+'/'+(s.limit||'')+'/'+s.window_minutes,label:name+' · '+balanceSpanShort(s.window_minutes),value:known?s.used_percent:null,valueText:known?Math.round(s.used_percent)+'%':'—',
+    aria:name+' · '+balanceSpanShort(s.window_minutes)+': '+(known?balanceSlotText(s):balanceStatusWord(s.status)),attrs:{'data-balance-quota':r.identity}});
+   tableRows.push([name,balanceSpanShort(s.window_minutes),known?s.used_percent+'%':balanceStatusWord(s.status),balanceReset(s.resets_at)])}
  }
  const est=data.claude_estimate;
  if(est){notes.push(tr('balance.assumption'));
   if(est.reason==='no_reference')notes.push(tr('balance.noReference',{h5:balanceNum(est.sums.h5.total),d7:balanceNum(est.sums.d7.total)}));
-  else if(est.reason&&est.reason!=='no_claude_window')notes.push(tr('balance.partial',{reasons:[...new Set([...est.sums.h5.reasons,...est.sums.d7.reasons])].join(', ')||est.reason,h5:balanceNum(est.sums.h5.total),d7:balanceNum(est.sums.d7.total)}));
-  est.slots.forEach((s,i)=>{const row=node('div',undefined,'sq-brow');row.setAttribute('data-balance-estimate',s.slot);const label='Claude · '+tr('balance.estimate')+' · '+s.slot;
-   if(typeof s.percent==='number'){const svg=balanceBar([[Math.min(100,s.percent),'sq-bar']],100,label),id='sq-balance-hatch-'+i;balanceHatch(svg,id);for(const rect of [...svg.children].filter(c=>(c.tagName||c.tag)==='rect'))rect.setAttribute('style','fill:url(#'+id+')');row.append(node('span',label,'sq-balance-est'),svg,node('span',tr('balance.estimate')+' '+Math.round(s.percent)+'%','v'))}
-   else row.append(node('span',label,'sq-balance-est'),node('span',tr('balance.notMeasured')),node('span','—','v'));
-   body.append(row);tableRows.push(['Claude ('+tr('balance.estimate')+')',s.slot,typeof s.percent==='number'?Math.round(s.percent)+'% · '+balanceNum(est.sums[s.slot].total)+' / '+balanceNum(s.reference):tr('balance.notMeasured'),'—'])})}
- return panelCard('balance-quota',{body,sentence:tr('chart.balance-quota.sub'),notes,table:panelTable([tr('balance.window'),'',tr('balance.status'),'Reset'],tableRows)});
+  else if(est.reason&&est.reason!=='no_claude_window')notes.push(tr('balance.partial',{h5:balanceNum(est.sums.h5.total),d7:balanceNum(est.sums.d7.total)}));
+  for(const s of est.slots){const label='Claude · '+tr('balance.estimate')+' · '+tr(s.slot==='h5'?'balance.short.h5':'balance.short.week'),known=typeof s.percent==='number';
+   rows.push({key:'claude/'+s.slot,label,value:known?Math.min(100,s.percent):null,valueText:known?tr('balance.estimate')+' '+Math.round(s.percent)+'%':'—',aria:label+': '+(known?Math.round(s.percent)+'%':tr('balance.notMeasured')),hatch:known,attrs:{'data-balance-estimate':s.slot}});
+   tableRows.push(['Claude ('+tr('balance.estimate')+')',balanceEstimateSpan(s.slot),known?Math.round(s.percent)+'% · '+balanceNum(est.sums[s.slot].total)+' / '+balanceNum(s.reference):tr('balance.notMeasured'),'—'])}}
+ const body=rows.length?sqVizBars('balance-quota',rows,{summary:tr('chart.balance-quota.sub'),hint:tr('balance.hint'),max:100}):node('p',tr('balance.notMeasured'));
+ return panelCard('balance-quota',{body,sentence:tr('chart.balance-quota.sub'),notes,table:panelTable([tr('balance.window'),tr('balance.span'),tr('balance.status'),tr('balance.reset')],tableRows)});
 }
 function balanceReferenceForm(){
  const box=node('section'),form=node('div',undefined,'sq-balance-form'),current=balanceReference()?.claude;box.append(node('h3',tr('balance.reference')));
  const inputs={};for(const [key,label] of [['h5','balance.refH5'],['week','balance.refWeek']]){const l=node('label',tr(label)),input=node('input');input.setAttribute('type','number');input.setAttribute('min','1');input.setAttribute('step','1');input.setAttribute('inputmode','numeric');input.value=current?String(current[key]):'';focusKey(input,'balance:ref:'+key);balanceUI.controls.push(input);inputs[key]=input;l.append(input);form.append(l)}
- form.append(balanceButton(tr('balance.refSave'),'balance:ref:save',()=>{const h5=Number(inputs.h5.value),week=Number(inputs.week.value);if(!Number.isInteger(h5)||!Number.isInteger(week)||h5<=0||week<=0||h5>1e12||week>1e12){balanceUI.refError=true;balanceUI.signature=null;render();return}balanceUI.refError=false;balanceSaveReference({h5,week});balanceUI.attempt=null;balanceUI.signature=null;render()}),
-  balanceButton(tr('balance.refClear'),'balance:ref:clear',()=>{balanceSaveReference(null);balanceUI.refError=false;balanceUI.attempt=null;balanceUI.signature=null;render()}));
+ form.append(balanceButton(tr('balance.refSave'),'balance:ref:save',()=>{const h5=Number(inputs.h5.value),week=Number(inputs.week.value);if(!Number.isInteger(h5)||!Number.isInteger(week)||h5<=0||week<=0||h5>1e12||week>1e12){balanceUI.refError=true;balanceUI.signature=null;render();return}balanceUI.refError=false;balanceSaveReference({h5,week});balanceAgain()}),
+  balanceButton(tr('balance.refClear'),'balance:ref:clear',()=>{balanceSaveReference(null);balanceUI.refError=false;balanceAgain()}));
  box.append(form);if(balanceUI.refError)box.append(node('p',tr('balance.refInvalid'),'sub'));return box;
 }
 function balanceSlot(list,slot){
  const box=node('div');box.setAttribute('data-balance-slot',slot);box.append(node('h4',tr('balance.'+slot)));
  box.append(node('p',tr('balance.order',{order:list.order.map(d=>tr('balance.dim.'+d)).join(' > ')}),'sub'));
- for(const o of list.omitted)box.append(node('p',tr('balance.omitted',{dimension:tr('balance.dim.'+o.dimension),windows:o.windows.join(', ')}),'sub'));
- const ol=node('ol',undefined,'sq-balance-list');for(const r of list.rows){const li=node('li');li.setAttribute('data-balance-rank',r.identity);li.append(node('strong',r.position+'. '+r.identity+' · '+balanceModelLabel(r)),node('p',r.sentence[UI_LANG]||r.sentence.en));ol.append(li)}box.append(ol);
- for(const e of list.excluded){const p=node('p',e.identity+' — '+tr('balance.excluded',{reason:tr('balance.reason.'+e.reason)}),'sub');p.setAttribute('data-balance-excluded',e.identity);box.append(p)}
+ for(const o of list.omitted)box.append(node('p',tr('balance.omitted',{dimension:tr('balance.dim.'+o.dimension),windows:o.windows.map(balanceWindowName).join(', ')}),'sub'));
+ const ol=node('ol',undefined,'sq-balance-list');for(const r of list.rows){const li=node('li');li.setAttribute('data-balance-rank',r.identity);li.append(node('strong',r.position+'. '+balanceWindowName(r.identity)+' · '+balanceModelLabel(r)),node('p',balanceRankSentence(r,slot)));ol.append(li)}box.append(ol);
+ for(const e of list.excluded){const p=node('p',balanceWindowName(e.identity)+' — '+tr('balance.excluded',{reason:tr('balance.reason.'+e.reason)}),'sub');p.setAttribute('data-balance-excluded',e.identity);box.append(p)}
  return box;
+}
+// The ranking reason, written on the page from the row's fields so the wording follows singular and plural.
+function balanceRankSentence(r,slot){
+ const held=r.read_steps+r.build_steps,parts=[tr(held===1?'balance.rank.step1':'balance.rank.steps',{n:held}),tr(r.owned_open===1?'balance.load.owned1':'balance.load.owned',{n:r.owned_open})];
+ const q=r.quota||{};if(q.state==='near')parts.push(tr(q.kind==='estimate'?'balance.rank.nearEstimate':'balance.rank.near'));else if(q.state==='unknown')parts.push(tr('balance.today.unknown'));
+ if(typeof r.history_count==='number')parts.push(tr((slot==='build'?'balance.rank.built':'balance.rank.read')+(r.history_count===1?'1':''),{n:r.history_count}));
+ return parts.join(', ')+'.';
 }
 function balanceTask(data){
  const box=node('section');box.append(node('h3',tr('balance.perTask')));
@@ -4016,22 +4304,23 @@ function balanceTask(data){
  if(!open.length){box.append(node('p',tr('balance.noOpen')));return box}
  const label=node('label',tr('balance.pickTask')),select=node('select');select.append(node('option',tr('balance.choose')));select.children[0].value='';
  for(const t of open){const o=node('option',taskTitle(t.id));o.value=t.id;if(t.id===balanceUI.task)o.selected=true;select.append(o)}
- select.value=balanceUI.task;select.onchange=e=>{balanceUI.task=e.target.value;balanceUI.attempt=null;balanceUI.signature=null;render()};focusKey(select,'balance:task');balanceUI.controls.push(select);label.append(select);box.append(label);
+ select.value=balanceUI.task;select.onchange=e=>{balanceUI.task=e.target.value;balanceAgain()};focusKey(select,'balance:task');balanceUI.controls.push(select);label.append(select);box.append(label);
  const ranked=data.task&&data.task.id===balanceUI.task&&data.task.status==='ranked'?data.task:null;
  if(ranked){const grid=node('div',undefined,'sq-balance-cards');for(const slot of ['build','read'])grid.append(balanceSlot(ranked[slot],slot));box.append(grid)}
  return box;
 }
 function balanceRender(content){
- const signature=JSON.stringify([balanceUI.data,balanceUI.task,balanceUI.error,balanceUI.refError,UI_LANG,Object.keys(state.tasks||{}).length]);
+ const signature=JSON.stringify([balanceUI.data,balanceUI.task,balanceUI.status,balanceUI.lastOk,balanceUI.lastDone,balanceUI.refError,UI_LANG,Object.keys(state.tasks||{}).length]);
  if(signature!==balanceUI.signature){balanceUI.signature=signature;balanceUI.controls=[];const box=node('section',undefined,'sq-balance');box.setAttribute('data-balance','page');balanceUI.element=box;
   box.append(node('h2',tr('tab.Bilanciamento')),node('p',tr('balance.intro'),'sq-balance-intro'));
-  if(balanceUI.error)box.append(node('p',tr('balance.error')),balanceButton(tr('balance.retry'),'balance:retry',()=>{balanceUI.attempt=null;render()}));
-  if(!balanceUI.data)box.append(node('p',tr('balance.loading')));
-  else{const data=balanceUI.data;box.append(node('p',tr('balance.notice'),'sub'),balanceSuggestions(data));const charts=node('div',undefined,'sq-chart-grid');charts.append(balanceLoad(data),balanceTokens(data),balanceQuota(data));box.append(charts,balanceReferenceForm(),balanceTask(data))}
+  if(balanceUI.status==='error')box.append(node('p',tr('balance.error')),balanceButton(tr('balance.retry'),'balance:retry',balanceAgain));
+  if(!balanceUI.data){if(balanceUI.status!=='error')box.append(node('p',tr('balance.loading')))}
+  else{const data=balanceUI.data,facts=balanceFacts(data);box.append(balanceVerdict(data,facts),balanceFreshness(),balanceRules(data,facts),balanceWindowsPlain(data),balanceMissingView(facts),node('p',tr('balance.notice'),'sub'));
+   const charts=node('div',undefined,'sq-chart-grid');charts.append(balanceLoad(data),balanceTokens(data),balanceQuota(data));box.append(charts,balanceReferenceForm(),balanceTask(data))}
  }
  if(content.children[0]!==balanceUI.element)content.replaceChildren(balanceUI.element);
  for(const el of balanceUI.controls)focusKey(el,el.getAttribute('data-focus-key'));
- if(balanceUI.attempt!==state&&!balanceUI.running)balanceFetch();
+ balancePoll();
 }
 </script>
 
@@ -4094,7 +4383,7 @@ function usagePayload(value){
  const totals=row=>row?pick(row,[...usageKinds,'reasoning','total']):null;
  const quota=row=>pick(row,['identity','model','observed_at','limit','used_percent','window_minutes','resets_at','plan_type','status']);
  const count=row=>({...pick(row,['identity','actors','client','model','task','day','status','estimated','partial_hour']),totals:totals(row.totals),reasons:(row.reasons||[]).filter(r=>typeof r==='string'&&/^[a-z][a-z0-9_]{0,60}$/.test(r))});
- return {schema:1,observed_at:value.observed_at,status:value.status,coverage:pick(value.coverage,['status','sources','measured']),
+ return {schema:1,observed_at:value.observed_at,status:value.status,coverage:{...pick(value.coverage,['status','sources','measured']),notices:(Array.isArray(value.coverage?.notices)?value.coverage.notices:[]).filter(r=>r==='cache_off_unsafe_path').slice(0,1)},
   windows:value.windows.map(w=>({...count(w),quota:(w.quota||[]).map(quota)})),models:value.models.map(count),tasks:value.tasks.map(count),days:value.days.map(count),quota_history:value.quota_history.map(quota),
   suggestions:(value.suggestions||[]).map(s=>({...pick(s,['id','model','window','message_key']),vars:Object.fromEntries(Object.entries(s.vars||{}).filter(([k,v])=>['total','share','percent','minutes'].includes(k)&&usageNumber(v)))})),cost:null};
 }
@@ -4132,13 +4421,14 @@ function usageDetail(key,title,body){
  const details=node('details');details.open=usageUI.open.has(key);details.ontoggle=()=>{if(details.open)usageUI.open.add(key);else usageUI.open.delete(key)};
  details.append(usageControl(node('summary',title),'details:'+key),body);return details;
 }
-function usageBarPlot(rows,stacked,summary){
- const shown=rows.slice(0,24),height=Math.max(80,shown.length*34+10),svg=svgEl('svg',{viewBox:'0 0 560 '+height,role:'img','aria-label':summary});
- const max=Math.max(1,...shown.map(r=>usageNumber(r.value)?r.value:0));
- shown.forEach((r,i)=>{const y=12+i*34,label=svgEl('text',{x:0,y:y+11});label.textContent=Array.from(r.label).slice(0,23).join('');svg.append(label);
-  if(usageNumber(r.value)){let x=180;const values=stacked?usageKinds.map(k=>r.totals?.[k]):[r.value];values.forEach((value,j)=>{if(!usageNumber(value))return;const width=value/max*250,bar=svgEl('rect',{x,y,width,height:17,rx:2,class:'usage-k'+j});const title=svgEl('title');title.textContent=r.label+' · '+(stacked?tr('usage.'+usageKinds[j])+': ':'')+usageCount(value);bar.append(title);svg.append(bar);x+=width})}
-  const value=svgEl('text',{x:440,y:y+12});value.textContent=usageNumber(r.value)?usageCount(r.value):'—';svg.append(value);
- });return svg;
+function usageBarPlot(rows,stacked,summary,key='bars'){
+ return sqVizBars('usage-'+key,rows.map(r=>({key:String(r.identity??r.model??('task' in r?r.task??'unassigned':r.day??r.label)),label:r.label,value:usageNumber(r.value)?r.value:null,valueText:usageNumber(r.value)?usageCount(r.value):'—',
+  aria:r.label+': '+(stacked?usageKinds.map(k=>tr('usage.'+k)+' '+usageCount(r.totals?.[k])).join(', '):usageNumber(r.value)?usageCount(r.value):tr('usage.not_measured')),
+  segments:stacked?usageKinds.map((k,j)=>({key:k,value:usageNumber(r.totals?.[k])?r.totals[k]:null,cls:'usage-k'+j})):null})),{summary,hint:tr('usage.hint')});
+}
+function usageRingPlot(rows,summary){
+ const items=rows.slice().sort((a,b)=>String(a.model??'').localeCompare(String(b.model??''))).map(r=>({key:String(r.model??'unknown'),label:r.label,value:usageNumber(r.value)?r.value:null,valueText:usageNumber(r.value)?usageCount(r.value):'—'}));
+ const total=items.reduce((s,i)=>s+(usageNumber(i.value)?i.value:0),0);return sqVizRing('usage-byModel',items,{summary,hint:tr('usage.hint'),centre:usageCount(total),centreSub:tr('usage.tokens')});
 }
 function usageWindowLabel(row){
  const actor=(row?.actors||[]).find(a=>state.agents?.[a]);return actor?panelWho(actor):row?.client?({codex:'Codex',claude:'Claude',cursor:'Cursor'}[row.client]||tr('usage.window')):tr('usage.window');
@@ -4149,7 +4439,7 @@ function usageChart(key,rows,{stacked=false,note=null,headers=null,tableRows=nul
  const heading=usageControl(node('h3',tr('usage.'+key)),'chart:'+key);heading.setAttribute('tabindex','-1');card.append(heading);
  if(note)card.append(node('p',tr(note),'sq-usage-note'));
  const measured=rows.filter(r=>usageNumber(r.value)).length,summary=tr('usage.chartSummary',{measured,unknown:rows.length-measured});
- if(rows.length)card.append(plot||usageBarPlot(rows,stacked,summary));else card.append(node('p',tr('usage.noRows'),'empty'));
+ if(rows.length)card.append(plot||(key==='byModel'?usageRingPlot(rows,summary):usageBarPlot(rows,stacked,summary,key)));else card.append(node('p',tr('usage.noRows'),'empty'));
  if(key==='quota'&&rows.length){const legend=node('div',undefined,'sq-usage-legend'),groups=[...new Map(rows.map(r=>[JSON.stringify([r.identity,r.limit]),r])).values()];groups.forEach((r,i)=>{const label=node('span');label.append(node('i',undefined,'usage-k'+i%4),node('span',r.label+' · '+tr(['primary','secondary'].includes(r.limit)?'usage.'+r.limit:'usage.slot')));legend.append(label)});card.append(legend)}
  if(stacked){const legend=node('div',undefined,'sq-usage-legend');usageKinds.forEach((k,i)=>{const label=node('span');label.append(node('i',undefined,'usage-k'+i),node('span',tr('usage.'+k)));legend.append(label)});card.append(legend)}
  card.append(node('p',summary,'sq-usage-muted'));if(rows.length>24&&!plot)card.append(node('p',tr('usage.chartLimit',{n:24}),'sq-usage-muted'));
@@ -4157,15 +4447,11 @@ function usageChart(key,rows,{stacked=false,note=null,headers=null,tableRows=nul
  card.append(usageDetail('chart:'+key,tr('usage.table'),usageTable(columns,tableRows||rows.map(r=>[r.label,usageCount(r.value),usageStatus(r)]),key)));return card;
 }
 function usageQuotaPlot(rows){
- const summary=tr('usage.chartSummary',{measured:rows.filter(r=>usageNumber(r.value)).length,unknown:rows.filter(r=>!usageNumber(r.value)).length}),svg=svgEl('svg',{viewBox:'0 0 560 210',role:'img','aria-label':summary});
- for(const pct of [0,50,100]){const y=175-pct*1.45,line=svgEl('path',{d:'M35 '+y+'H540',stroke:'var(--line)',fill:'none'}),label=svgEl('text',{x:0,y:y+4});label.textContent=pct+'%';svg.append(line,label)}
- const times=rows.map(r=>Date.parse(r.observed_at)).filter(Number.isFinite),min=times.length?Math.min(...times):0,max=times.length?Math.max(...times):1,groups=new Map();
- for(const row of rows){const key=JSON.stringify([row.identity,row.limit]);if(!groups.has(key))groups.set(key,[]);groups.get(key).push(row)}
- let index=0;for(const points of groups.values()){
-  let path='',segment=false;for(const p of points.slice().sort((a,b)=>Date.parse(a.observed_at)-Date.parse(b.observed_at))){if(!usageNumber(p.value)||!Number.isFinite(Date.parse(p.observed_at))){segment=false;continue}const x=35+(Date.parse(p.observed_at)-min)/Math.max(1,max-min)*505,y=175-p.value*1.45;path+=(segment?' L':' M')+x.toFixed(2)+' '+y.toFixed(2);segment=true;const dot=svgEl('rect',{x:x-2,y:y-2,width:4,height:4,class:'usage-k'+index%4});svg.append(dot)}
-  if(path)svg.append(svgEl('path',{d:path,fill:'none',stroke:['var(--sq-accent)','var(--sq-chart-good)','var(--standby)','var(--sq-chart-done)'][index%4],'stroke-width':2,'stroke-dasharray':index%2?'5 3':'none'}));index++;
- }
- if(times.length){for(const [t,x,anchor] of [[min,35,'start'],[max,540,'end']]){const label=svgEl('text',{x,y:202,'text-anchor':anchor});label.textContent=new Date(t).toISOString().slice(5,16).replace('T',' ')+' UTC';svg.append(label)}}return svg;
+ const groups=new Map();
+ for(const row of rows){const key=row.identity+'|'+row.limit;if(!groups.has(key))groups.set(key,{key,label:row.label+' · '+tr(['primary','secondary'].includes(row.limit)?'usage.'+row.limit:'usage.slot'),points:[]});
+  groups.get(key).points.push({t:Date.parse(row.observed_at),v:usageNumber(row.value)?row.value:null,text:usageCount(row.value)+'% · '+date(row.observed_at)})}
+ const summary=tr('usage.chartSummary',{measured:rows.filter(r=>usageNumber(r.value)).length,unknown:rows.filter(r=>!usageNumber(r.value)).length});
+ return sqVizLines('usage-quota',[...groups.values()],{summary,hint:tr('usage.hint'),timeLabel:t=>new Date(t).toISOString().slice(5,16).replace('T',' ')+' UTC'});
 }
 function usageAdvisory(data){
  const section=node('section',undefined,'sq-usage-advice');section.append(node('h3',tr('usage.advice')),node('p',tr('usage.adviceNote'),'sq-usage-muted'));let count=0;
@@ -4208,7 +4494,7 @@ function usageRender(content){
   const toolbar=node('div',undefined,'sq-usage-toolbar'),live=node('p');usageUI.live=live;live.setAttribute('role','status');live.setAttribute('aria-live','polite');toolbar.append(live,usageButton(tr('usage.refresh'),'refresh',usageRetry));box.append(toolbar);
   if(usageUI.error){const error=node('div',undefined,'sq-usage-status warn');error.setAttribute('role','alert');error.append(node('p',tr('usage.error')),usageButton(tr('usage.retry'),'retry',usageRetry));box.append(error)}
   if(data){
-   const coverage=node('div',undefined,'sq-usage-status'+(data.status==='measured'?'':' warn'));coverage.append(node('strong',usageStatus(data)),node('p',tr('usage.coverage',{measured:usageCount(data.coverage?.measured),sources:usageCount(data.coverage?.sources)})));if(['collecting','limited'].includes(data.coverage?.status))coverage.append(node('p',tr('usage.'+data.coverage.status)));box.append(coverage);
+   const coverage=node('div',undefined,'sq-usage-status'+(data.status==='measured'?'':' warn'));coverage.append(node('strong',usageStatus(data)),node('p',tr('usage.coverage',{measured:usageCount(data.coverage?.measured),sources:usageCount(data.coverage?.sources)})));if(['collecting','limited'].includes(data.coverage?.status))coverage.append(node('p',tr('usage.'+data.coverage.status)));if(data.coverage?.notices?.includes('cache_off_unsafe_path'))coverage.append(node('p',tr('usage.cacheOffUnsafe')));box.append(coverage);
    const windows=data.windows.filter(w=>usageNumber(w.totals?.total)),models=data.models.filter(m=>usageNumber(m.totals?.total)),total=windows.length?windows.reduce((n,w)=>n+w.totals.total,0):null,cards=node('div',undefined,'sq-usage-cards');
    for(const [label,value] of [['total',total],['windows',windows.length],['models',models.length]]){const card=node('div',undefined,'sq-usage-stat');card.append(node('span',tr('usage.'+label)),node('strong',usageCount(value)));cards.append(card)}box.append(cards);
    const grid=node('div',undefined,'sq-usage-grid'),daily=data.days.map(d=>({...d,label:d.day,value:d.totals?.total}));
@@ -4228,5 +4514,146 @@ function usageRender(content){
 }
 </script>
 
+<style id="squadra-charts-style">
+.sq-viz{min-width:0;margin-top:4px}.sq-viz svg{display:block;width:100%;height:auto;overflow:visible}
+.sq-viz-label{font-size:13px;fill:var(--sq-text,var(--text))}.sq-viz-value{font-size:13px;font-weight:600;fill:var(--sq-text,var(--text));font-variant-numeric:tabular-nums}
+.sq-viz-axis{font-size:11px;fill:var(--sq-muted,var(--muted))}.sq-viz-grid{stroke:var(--sq-border,var(--line));fill:none}
+.sq-viz-rows{display:grid;gap:10px}.sq-viz-row{display:grid;grid-template-columns:minmax(0,34%) minmax(0,1fr) auto;gap:12px;align-items:center;font-size:13px;min-height:22px;border-radius:8px}.sq-viz-row:focus{outline:none}.sq-viz-row:focus-visible{outline:2px solid var(--sq-accent);outline-offset:3px}.sq-viz-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sq-viz-num{font-weight:600;font-variant-numeric:tabular-nums;text-align:right;min-width:3ch}.sq-viz-track{display:flex;gap:2px;height:16px;border-radius:8px;background:var(--sq-surface-2,var(--panel));overflow:hidden}.sq-viz-seg{display:block;height:100%;border-radius:8px;flex:none}.sq-viz-grad{background:linear-gradient(90deg,color-mix(in srgb,var(--sq-accent) 55%,transparent),var(--sq-accent))}.sq-viz-hatched{background:repeating-linear-gradient(45deg,var(--sq-accent) 0 3px,transparent 3px 6px)}.sq-viz-seg.usage-k0,.sq-viz-seg.sq-viz-c0{background:var(--sq-accent)}.sq-viz-seg.usage-k1{background:var(--sq-chart-good)}.sq-viz-seg.usage-k2{background:var(--standby)}.sq-viz-seg.usage-k3{background:var(--sq-chart-done)}.sq-viz-seg.sq-viz-c4{background:var(--sq-chart-neutral)}.sq-viz-c0{stop-color:var(--sq-accent);fill:var(--sq-accent);stroke:var(--sq-accent)}
+.sq-viz-c1{stop-color:var(--sq-chart-good);fill:var(--sq-chart-good);stroke:var(--sq-chart-good)}.sq-viz-c2{stop-color:var(--standby);fill:var(--standby);stroke:var(--standby)}
+.sq-viz-c3{stop-color:var(--sq-chart-done);fill:var(--sq-chart-done);stroke:var(--sq-chart-done)}.sq-viz-c4{stop-color:var(--sq-chart-neutral);fill:var(--sq-chart-neutral);stroke:var(--sq-chart-neutral)}
+.sq-viz-line{fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}.sq-viz-area{stroke:none;opacity:.18}.sq-viz-dot{stroke:var(--sq-surface,var(--panel));stroke-width:2}
+.sq-viz-ring{fill:none;stroke-width:22}.sq-viz-ring-track{fill:none;stroke:var(--sq-surface-2,var(--panel));stroke-width:22}
+.sq-viz-hatch{fill:none;stroke:var(--sq-border-strong,var(--line));stroke-dasharray:2 2}.sq-viz-partial{opacity:.55}
+.sq-viz-mark{cursor:default}.sq-viz-mark:focus{outline:none}.sq-viz-mark:focus-visible{outline:2px solid var(--sq-accent);outline-offset:3px}
+.sq-viz-readout{min-height:18px;margin:8px 0 0;font-size:12px;line-height:18px;color:var(--sq-muted,var(--muted));overflow-wrap:anywhere}
+.sq-viz-legend{display:grid;gap:6px;margin:12px 0 0;padding:0;list-style:none;font-size:13px}.sq-viz-legend li{display:flex;gap:8px;align-items:center;min-width:0;overflow-wrap:anywhere}
+.sq-viz-swatch{display:inline-block;flex:none;width:12px;height:12px;border-radius:4px}.sq-viz-swatch.sq-viz-c0{background:var(--sq-accent)}.sq-viz-swatch.sq-viz-c1{background:var(--sq-chart-good)}.sq-viz-swatch.sq-viz-c2{background:var(--standby)}.sq-viz-swatch.sq-viz-c3{background:var(--sq-chart-done)}.sq-viz-swatch.sq-viz-c4{background:var(--sq-chart-neutral)}
+.sq-viz-ringbox{display:grid;grid-template-columns:minmax(0,200px) minmax(0,1fr);gap:16px;align-items:center}.sq-viz-ringbox .sq-viz svg{max-width:220px;margin:0 auto}
+.sq-usage-chart,.sq-balance .sq-chart{padding:24px}.sq-usage-chart>*+*,.sq-balance .sq-chart>*+*{margin-top:10px}
+@media(max-width:699.98px){.sq-viz-ringbox{grid-template-columns:minmax(0,1fr)}.sq-usage-chart,.sq-balance .sq-chart{padding:16px}}
+@media (prefers-reduced-motion: reduce){.sq-viz *{animation:none!important;transition:none!important}}
+</style>
+<script id="squadra-chart-motion">
+'use strict';
+// Charts write their final attributes first; motion only plays toward them and never on an unchanged value.
+const sqMotion={last:new Map(),drawn:new Map(),seen:new Map(),
+ reduced(){try{return typeof matchMedia==='function'&&matchMedia('(prefers-reduced-motion: reduce)').matches===true}catch(e){return false}},
+ begin(chart){this.seen.set(chart,new Set())},
+ end(chart){const seen=this.seen.get(chart)||new Set();for(const k of [...this.last.keys()])if(k.startsWith(chart+'|')&&!seen.has(k)){this.last.delete(k);this.drawn.delete(k)}this.seen.delete(chart)},
+ play(el,chart,key,value,frames,length){
+  const id=chart+'|'+key;this.seen.get(chart)?.add(id);const prev=this.last.get(id),before=this.drawn.get(id);this.last.set(id,value);if(length===undefined)this.drawn.delete(id);else this.drawn.set(id,length);
+  if(prev===value||this.reduced()||typeof el.animate!=='function')return false;
+  const keyframes=frames(prev,before);if(!keyframes)return false;
+  try{el.animate(keyframes,{duration:450,easing:'cubic-bezier(.2,.7,.2,1)'});return true}catch(e){return false}
+ }
+};
+let sqVizSeq=0;
+const sqVizNum=v=>typeof v==='number'&&Number.isFinite(v)&&v>=0;
+function sqVizGradient(svg,cls,vertical=false){
+ const id='sqv'+(++sqVizSeq),defs=svgEl('defs',{}),g=svgEl('linearGradient',vertical?{id,x1:0,x2:0,y1:1,y2:0}:{id,x1:0,x2:1,y1:0,y2:0});
+ g.append(svgEl('stop',{offset:0,class:cls,'stop-opacity':.55}),svgEl('stop',{offset:1,class:cls,'stop-opacity':1}));defs.append(g);svg.append(defs);return id;
+}
+function sqVizHatch(svg){const id='sqh'+(++sqVizSeq),defs=svgEl('defs',{}),pattern=svgEl('pattern',{id,width:6,height:6,patternUnits:'userSpaceOnUse',patternTransform:'rotate(45)'});pattern.append(svgEl('rect',{x:0,y:0,width:3,height:6,class:'sq-viz-c0'}));defs.append(pattern);svg.append(defs);return id}
+function sqVizFrame(svg,hint){
+ const box=node('div',undefined,'sq-viz'),out=node('p',hint||'','sq-viz-readout');out.setAttribute('aria-live','polite');box.append(svg,out);box.sqOut=out;box.sqHint=hint||'';return box;
+}
+function sqVizShow(frame,text){frame.sqOut.textContent=text||frame.sqHint}
+function sqVizMark(frame,parent,label,{focusable=true,key=null}={}){
+ const g=svgEl('g',{class:'sq-viz-mark'});if(key)g.setAttribute('data-viz-key',key);
+ if(focusable){g.setAttribute('tabindex','0');g.setAttribute('aria-label',label)}
+ const title=svgEl('title',{});title.textContent=label;g.append(title);
+ g.onfocus=()=>sqVizShow(frame,label);g.onblur=()=>sqVizShow(frame,'');g.onpointerenter=()=>sqVizShow(frame,label);g.onpointerleave=()=>sqVizShow(frame,'');
+ parent.append(g);return g;
+}
+// length is the drawn length: a change scales from the length drawn last time, so a zero at its floor or a new scale stays finite.
+function sqVizGrow(rect,chart,key,value,axis,length){
+ rect.style.transformBox='fill-box';rect.style.transformOrigin=axis==='x'?'left center':'center bottom';
+ sqMotion.play(rect,chart,key,value,(prev,before)=>{if(!(length>0))return null;const from=prev===undefined||!(before>=0)?0:before/length;const f=axis==='x'?'scaleX':'scaleY';return [{transform:f+'('+from+')'},{transform:f+'(1)'}]},length);
+}
+// rows: {key,label,value,valueText,aria,segments:[{key,value,cls}],cls,hatch,attrs}; HTML rows keep text at its real size while bars stretch.
+function sqVizBars(chart,rows,{summary='',hint='',max=null}={}){
+ const shown=rows.slice(0,24),box=node('div',undefined,'sq-viz-rows');box.setAttribute('role','img');box.setAttribute('aria-label',summary);
+ const frame=sqVizFrame(box,hint),top=max||Math.max(1,...shown.map(r=>sqVizNum(r.value)?r.value:0));sqMotion.begin(chart);
+ for(const r of shown){
+  const row=node('div',undefined,'sq-viz-row');row.setAttribute('tabindex','0');row.setAttribute('aria-label',r.aria||(r.label+': '+(r.valueText??'—')));row.setAttribute('data-viz-key',r.key);
+  for(const [k,v] of Object.entries(r.attrs||{}))row.setAttribute(k,v);
+  const label=r.aria||(r.label+': '+(r.valueText??'—'));row.onfocus=()=>sqVizShow(frame,label);row.onblur=()=>sqVizShow(frame,'');row.onpointerenter=()=>sqVizShow(frame,label);row.onpointerleave=()=>sqVizShow(frame,'');
+  const track=node('span',undefined,'sq-viz-track');
+  if(sqVizNum(r.value)&&r.value>0){
+   const segs=(r.segments||[{key:'value',value:r.value,cls:null}]).filter(s=>sqVizNum(s.value)&&s.value>0);
+   for(const s of segs){const seg=node('span',undefined,'sq-viz-seg '+(r.hatch?'sq-viz-hatched':s.cls||r.cls||'sq-viz-grad'));seg.style.width=(s.value/top*100).toFixed(2)+'%';seg.setAttribute('data-viz-value',String(s.value));
+    seg.style.transformOrigin='left center';track.append(seg);sqMotion.play(seg,chart,r.key+'/'+s.key,s.value,prev=>[{transform:'scaleX('+(prev===undefined?0:Math.max(0,prev/s.value))+')'},{transform:'scaleX(1)'}])}
+  }
+  row.append(node('span',r.label,'sq-viz-name'),track,node('span',r.valueText??'—','sq-viz-num'));box.append(row);
+ }
+ sqMotion.end(chart);return frame;
+}
+// items: {key,label,value,valueText}; shares are display rounding of exact values.
+function sqVizRing(chart,items,{summary='',hint='',centre='',centreSub=''}={}){
+ const known=items.filter(i=>sqVizNum(i.value)&&i.value>0),total=known.reduce((s,i)=>s+i.value,0),r=62,C=2*Math.PI*r;
+ const svg=svgEl('svg',{viewBox:'0 0 200 200',role:'img','aria-label':summary,class:'sq-viz-ringchart'}),frame=sqVizFrame(svg,hint);
+ svg.append(svgEl('circle',{cx:100,cy:100,r,class:'sq-viz-ring-track'}));sqMotion.begin(chart);
+ const legend=node('ul',undefined,'sq-viz-legend');let acc=0;
+ const pct=v=>{const p=v/total*100;return (p<10?p.toFixed(1):p.toFixed(0)).replace('.',UI_LANG==='en'?'.':',')+'%'};
+ items.forEach((item,i)=>{
+  const cls='sq-viz-c'+Math.min(i,4),li=node('li'),sw=node('span',undefined,'sq-viz-swatch '+cls);sw.setAttribute('aria-hidden','true');
+  const share=sqVizNum(item.value)&&total>0?pct(item.value):null,label=item.label+(share?' · '+share:'')+' · '+(item.valueText??'—');
+  li.setAttribute('data-viz-legend',item.key);li.append(sw,node('span',label));legend.append(li);
+  if(!(sqVizNum(item.value)&&item.value>0&&total>0))return;
+  const len=item.value/total*C,mark=sqVizMark(frame,svg,label,{key:item.key});
+  const arc=svgEl('circle',{cx:100,cy:100,r,class:'sq-viz-ring '+cls,'stroke-dasharray':len.toFixed(2)+' '+C.toFixed(2),'stroke-dashoffset':(-acc).toFixed(2),transform:'rotate(-90 100 100)'});
+  arc.setAttribute('data-viz-value',String(item.value));mark.append(arc);acc+=len;
+  sqMotion.play(arc,chart,item.key,item.value,prev=>{const from=prev===undefined?0:Math.max(0,Math.min(C,prev/total*C));return [{strokeDasharray:from.toFixed(2)+' '+C.toFixed(2)},{strokeDasharray:len.toFixed(2)+' '+C.toFixed(2)}]});
+ });
+ const big=svgEl('text',{x:100,y:98,'text-anchor':'middle',class:'sq-viz-value'});big.textContent=centre;const small=svgEl('text',{x:100,y:118,'text-anchor':'middle',class:'sq-viz-axis'});small.textContent=centreSub;svg.append(big,small);
+ sqMotion.end(chart);const box=node('div',undefined,'sq-viz-ringbox');box.append(frame,legend);return box;
+}
+// Monotone cubic (Fritsch-Carlson): never overshoots the observed points.
+function sqVizSmooth(points){
+ if(points.length===1)return 'M'+points[0][0].toFixed(2)+' '+points[0][1].toFixed(2);
+ const n=points.length,dx=[],m=[],t=[];for(let k=0;k<n-1;k++){dx[k]=points[k+1][0]-points[k][0];m[k]=dx[k]?(points[k+1][1]-points[k][1])/dx[k]:0}
+ t[0]=m[0];t[n-1]=m[n-2];for(let k=1;k<n-1;k++)t[k]=m[k-1]*m[k]<=0?0:(m[k-1]+m[k])/2;
+ for(let k=0;k<n-1;k++){if(m[k]===0){t[k]=0;t[k+1]=0;continue}const a=t[k]/m[k],b=t[k+1]/m[k],s=a*a+b*b;if(s>9){const tau=3/Math.sqrt(s);t[k]=tau*a*m[k];t[k+1]=tau*b*m[k]}}
+ let d='M'+points[0][0].toFixed(2)+' '+points[0][1].toFixed(2);
+ for(let k=0;k<n-1;k++){const h=dx[k]/3;d+=' C'+(points[k][0]+h).toFixed(2)+' '+(points[k][1]+t[k]*h).toFixed(2)+' '+(points[k+1][0]-h).toFixed(2)+' '+(points[k+1][1]-t[k+1]*h).toFixed(2)+' '+points[k+1][0].toFixed(2)+' '+points[k+1][1].toFixed(2)}
+ return d;
+}
+// series: {key,label,cls,points:[{t,v,text}]}; a missing value breaks the line.
+function sqVizLines(chart,series,{summary='',hint='',format=v=>String(v),timeLabel=t=>new Date(t).toISOString()}={}){
+ const svg=svgEl('svg',{viewBox:'0 0 560 210',role:'img','aria-label':summary,class:'sq-viz-lines'}),frame=sqVizFrame(svg,hint);
+ for(const pct of [0,50,100]){const y=170-pct*1.5;svg.append(svgEl('path',{d:'M44 '+y+'H540',class:'sq-viz-grid'}));const l=svgEl('text',{x:0,y:y+4,class:'sq-viz-axis'});l.textContent=pct+'%';svg.append(l)}
+ const times=series.flatMap(s=>s.points.map(p=>p.t)).filter(Number.isFinite),min=times.length?Math.min(...times):0,max=times.length?Math.max(...times):1;
+ const X=t=>44+(t-min)/Math.max(1,max-min)*496,Y=v=>170-Math.min(100,v)*1.5;sqMotion.begin(chart);
+ series.forEach((s,si)=>{
+  const cls='sq-viz-c'+si%4,pts=s.points.filter(p=>Number.isFinite(p.t)).slice().sort((a,b)=>a.t-b.t),segments=[];let cur=[];
+  for(const p of pts){if(sqVizNum(p.v))cur.push(p);else if(cur.length){segments.push(cur);cur=[]}}if(cur.length)segments.push(cur);
+  const known=pts.filter(p=>sqVizNum(p.v));if(!known.length)return;
+  const grad=sqVizGradient(svg,cls,true),mark=sqVizMark(frame,svg,s.label+': '+known[known.length-1].text,{key:s.key});mark.setAttribute('data-viz-series',s.key);
+  segments.forEach((seg,gi)=>{const xy=seg.map(p=>[X(p.t),Y(p.v)]),d=sqVizSmooth(xy);
+   if(seg.length>1)mark.append(svgEl('path',{d:d+' L'+xy[xy.length-1][0].toFixed(2)+' 170 L'+xy[0][0].toFixed(2)+' 170 Z',class:'sq-viz-area',fill:'url(#'+grad+')'}));
+   const line=svgEl('path',{d,class:'sq-viz-line '+cls});if(si>=4)line.setAttribute('stroke-dasharray','5 3');mark.append(line);
+   sqMotion.play(line,chart,s.key+'/'+gi,d,prev=>prev===undefined?[{opacity:0},{opacity:1}]:[{d:'path("'+prev+'")'},{d:'path("'+d+'")'}]);
+  });
+  known.forEach((p,pi)=>{const r=pi===known.length-1?4.5:3;mark.append(svgEl('rect',{x:(X(p.t)-r).toFixed(2),y:(Y(p.v)-r).toFixed(2),width:2*r,height:2*r,rx:r,class:'sq-viz-dot '+cls,'data-viz-point':String(p.v)}))});
+  let index=known.length-1;mark.onkeydown=e=>{const step=e.key==='ArrowRight'?1:e.key==='ArrowLeft'?-1:0;if(!step)return;e.preventDefault?.();index=Math.max(0,Math.min(known.length-1,index+step));sqVizShow(frame,s.label+': '+known[index].text)};
+ });
+ if(times.length){for(const [t,x,anchor] of [[min,44,'start'],[max,540,'end']]){const l=svgEl('text',{x,y:202,'text-anchor':anchor,class:'sq-viz-axis'});l.textContent=timeLabel(t);svg.append(l)}}
+ sqMotion.end(chart);return frame;
+}
+// One row of 24 hourly columns; unmeasured hours are hatched outlines, the current hour is lighter.
+function sqVizStrip(chart,key,label,bins,{text=b=>'',summary=''}={}){
+ const svg=svgEl('svg',{viewBox:'0 0 560 64',role:'img','aria-label':summary,class:'sq-viz-strip'}),frame=sqVizFrame(svg,'');
+ const grad=sqVizGradient(svg,'sq-viz-c0',true),max=Math.max(1,...bins.map(b=>sqVizNum(b.total)?b.total:0)),step=560/Math.max(1,bins.length);sqMotion.begin(chart);
+ const mark=sqVizMark(frame,svg,summary||label,{key});mark.setAttribute('data-balance-model',key);let index=bins.length-1;
+ bins.forEach((b,i)=>{const x=i*step+2,w=Math.max(2,step-5),last=i===bins.length-1;
+  if(sqVizNum(b.total)){const h=Math.max(2,b.total/max*56),rect=svgEl('rect',{x:x.toFixed(2),y:(60-h).toFixed(2),width:w.toFixed(2),height:h.toFixed(2),rx:Math.min(4,w/2).toFixed(2),fill:'url(#'+grad+')',class:last?'sq-viz-partial':''});
+   rect.setAttribute('data-viz-value',String(b.total));rect.onpointerenter=()=>sqVizShow(frame,text(b));mark.append(rect);sqVizGrow(rect,chart,key+'/'+b.hour,b.total,'y',h)}
+  else{const rect=svgEl('rect',{x:x.toFixed(2),y:4,width:w.toFixed(2),height:56,rx:Math.min(4,w/2).toFixed(2),class:'sq-viz-hatch'});rect.onpointerenter=()=>sqVizShow(frame,text(b));mark.append(rect)}
+ });
+ mark.onkeydown=e=>{const s=e.key==='ArrowRight'?1:e.key==='ArrowLeft'?-1:0;if(!s||!bins.length)return;e.preventDefault?.();index=Math.max(0,Math.min(bins.length-1,index+s));sqVizShow(frame,text(bins[index]))};
+ mark.onfocus=()=>sqVizShow(frame,bins.length?text(bins[index]):label);
+ sqMotion.end(chart);return frame;
+}
+</script>
 </body></html>
 

@@ -9,7 +9,7 @@ from collections.abc import MutableMapping, MutableSequence
 
 from registry_radix import Index, IntegrityError, create_schema
 
-SCHEMA = 4
+SCHEMA = 5
 MISSING = object()
 
 

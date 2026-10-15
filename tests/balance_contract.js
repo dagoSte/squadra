@@ -6,6 +6,9 @@ const seam='fetch:async path=>{app.fetched.push(path);return path.startsWith(\'/
 if(!prefix.includes(seam))throw Error('base harness seam changed');
 prefix=prefix.replace(seam,"fetch:async(path,init)=>{app.fetched.push(path);(app.sent=app.sent||[]).push({path,headers:init?.headers||{}});if(path==='/api/balance'){const body=await app.reply(init?.headers||{});return {ok:true,json:async()=>body}}return path.startsWith('/api/artifact/')?{ok:true,text:async()=>'artifact'}:{ok:true,json:async()=>clone(app.fixture)}}");
 prefix=prefix.replaceAll("throw Error('Untrusted HTML insertion", "assert.fail('Untrusted HTML insertion");
+const motionSeam=' focus(){this.doc.activeElement=this}';
+if(!prefix.includes(motionSeam))throw Error('base harness element seam changed');
+prefix=prefix.replace(motionSeam,' animate(frames,options){(this.doc.animations||(this.doc.animations=[])).push({el:this,frames,options});return {cancel(){},finished:Promise.resolve()}}\n'+motionSeam);
 const cases=String.raw`
 const payload=JSON.parse(fs.readFileSync(casesPath,'utf8'));
 async function setup(opts={}){
@@ -21,10 +24,10 @@ const tests={
   assert.match(text(app.content),/Bilanciamento/);assert.match(text(app.content),/Non assegna nulla/);
   for(const id of ['balance-load','balance-tokens','balance-quota']){const card=one(app.content,e=>e.getAttribute('data-chart')===id);assert.ok(card,id);assert.ok(one(card,e=>e.tag==='table'),id+' table view')}
   const cards=all(app.content,e=>e.getAttribute('data-balance-model')!==null&&hasClass(e,'sq-balance-card'));assert.ok(cards.length>=2,'suggestions grouped by model');
-  assert.match(text(app.content),/w-cy ha 2 letture in attesa/);assert.match(text(app.content),/96% della finestra di 10\.080 min/);
-  assert.match(text(app.content),/stima 85% \(h5\)/);
+  assert.match(text(app.content),/w-cy ha 2 letture in attesa/);assert.match(text(app.content),/96% della quota settimanale, si azzera/);
+  assert.match(text(app.content),/stima 85% delle 5 ore/);
   const est=all(app.content,e=>e.getAttribute('data-balance-estimate')!==null);assert.equal(est.length,2,'two estimate slots');
-  assert.ok(all(app.content,e=>e.tag==='pattern').length>=1,'estimate bars are hatched');
+  assert.ok(all(app.content,e=>hasClass(e,'sq-viz-hatched')).length>=1,'estimate bars are hatched');
   assert.match(text(app.content),/condividano un account/);
   const load=all(app.content,e=>e.getAttribute('data-balance-window')!==null).map(e=>e.getAttribute('data-balance-window'));assert.deepEqual(load,['w-cl','w-coord','w-cx','w-cy']);
   const quota=all(app.content,e=>e.getAttribute('data-balance-quota')==='w-cx');assert.equal(quota.length,2,'both Codex slots shown');
@@ -33,14 +36,14 @@ const tests={
  async zero(){
   const app=await setup();app.data=clone(payload.empty);await app.select();
   assert.match(text(app.content),/Nessuna finestra registrata/);assert.match(text(app.content),/Token e quota non raccolti/);
-  assert.match(text(app.content),/serie oraria non disponibile/);assert.match(text(app.content),/Nessun suggerimento/);
+  assert.match(text(app.content),/serie oraria non disponibile/);assert.equal(one(app.content,e=>e.getAttribute('data-balance-verdict')!==null).getAttribute('data-balance-verdict'),'incomplete');assert.match(text(app.content),/Nessun consiglio con i dati disponibili/);
   assert.equal(all(app.content,e=>e.getAttribute('data-balance-window')!==null||e.getAttribute('data-balance-quota')!==null||e.getAttribute('data-balance-estimate')!==null).length,0,'no bar drawn for missing data');
-  app.data=clone(payload.noReference);app.run('balanceUI.attempt=null');await app.refresh();
+  app.data=clone(payload.noReference);app.run('balanceUI.immediate=true');await app.refresh();
   assert.match(text(app.content),/Stima non disponibile: nessun riferimento dichiarato\. Ultime 5 ore: 85\.000 token/);
   assert.equal(all(app.content,e=>e.getAttribute('data-balance-estimate')!==null).length,0,'no estimate bar without a reference');
-  app.data=clone(payload.partial);app.run('balanceUI.attempt=null');await app.refresh();
-  assert.match(text(app.content),/Stima non completa \(no_source\)\. Somme note, parziali: ultime 5 ore 0 token/);
-  assert.equal(all(app.content,e=>e.getAttribute('data-balance-estimate')!==null).length,2,'slots listed');assert.equal(all(app.content,e=>e.tag==='pattern').length,0,'no hatched bar for a partial estimate');
+  app.data=clone(payload.partial);app.run('balanceUI.immediate=true');await app.refresh();
+  assert.match(text(app.content),/Stima non completa: alcune finestre Claude non sono ancora lette\. Somme note, parziali: ultime 5 ore 0 token/);
+  assert.equal(all(app.content,e=>e.getAttribute('data-balance-estimate')!==null).length,2,'slots listed');assert.equal(all(app.content,e=>hasClass(e,'sq-viz-hatched')).length,0,'no hatched bar for a partial estimate');
  },
  async task(){
   const app=await setup();await app.select();const select=app.find('balance:task');assert.ok(select,'open-task selector');
@@ -68,7 +71,7 @@ const tests={
  async english(){
   const app=await setup();await app.select();app.run("setLanguage('en')");await settle();
   assert.match(text(app.content),/Balance/);assert.match(text(app.content),/Suggestions per model/);assert.match(text(app.content),/Tokens per hour, last 24 h/);
-  assert.match(text(app.content),/estimate 85% \(h5\)/);assert.doesNotMatch(text(app.content),/⟦/);
+  assert.match(text(app.content),/estimate 85% of the 5 hours/);assert.doesNotMatch(text(app.content),/⟦/);
  },
  async polling(){
   const app=await setup();let release;app.reply=()=>new Promise(r=>{release=r});await app.select();await app.refresh();await app.refresh();
@@ -91,11 +94,126 @@ const tests={
   const build=one(app.content,e=>e.getAttribute('data-balance-slot')==='build');assert.match(text(build),/w-cx · gpt-5\.4, il più usato/);
   app.run("setLanguage('en')");await settle();assert.match(text(app.content),/gpt-5\.4, the most used of the measured models: gpt-5\.4, gpt-5\.4-mini/);
  },
+ async verdicts(){
+  for(const [name,kind,pattern] of [['full','advice',/\d+ consigli\./],['balanced','balanced',/La squadra è in equilibrio: oggi nessun consiglio\./],['unknownQuota','incomplete',/Nessun consiglio con i dati disponibili/],['blocked','blocked',/w-cy ha 2 letture in attesa, ma nessun lettore indipendente è libero/],['empty','incomplete',/Nessun consiglio con i dati disponibili/]]){
+   const app=await setup();app.data=clone(payload[name]);await app.select();const v=one(app.content,e=>e.getAttribute('data-balance-verdict')!==null,'verdict '+name);
+   assert.equal(v.getAttribute('data-balance-verdict'),kind,name);assert.match(text(v),pattern,name);
+   if(kind==='advice')assert.ok(one(v,e=>hasClass(e,'sq-balance-cards')),'the advice sits right under the verdict');
+   if(kind!=='advice')assert.equal(all(v,e=>hasClass(e,'sq-balance-card')).length,0,name+': no advice card');
+  }
+ },
+ async rules(){
+  const app=await setup();await app.select();const table=one(app.content,e=>e.getAttribute('data-balance-rules')!==null);
+  const rows=all(table,e=>e.getAttribute('data-balance-rule')!==null);assert.deepEqual(rows.map(r=>r.getAttribute('data-balance-rule')),['reads','quota','tasks','idle']);
+  for(const r of rows){assert.equal(r.children.length,4,'four columns');assert.deepEqual(r.children.map(c=>c.getAttribute('data-label')),['Quando scatta','Esempio di consiglio','Oggi','Stato'],'each cell names its column for the phone layout')}
+  assert.match(text(rows[0]),/Un lettore ha 2 o più letture in attesa/);assert.match(text(rows[0]),/al massimo 2, w-cy/);assert.equal(rows[0].getAttribute('data-balance-state'),'fires');
+  assert.match(text(rows[1]),/Una quota arriva all’80%/);assert.match(text(rows[1]),/al massimo 96%, w-cx/);assert.match(text(rows[1]),/non misurata per 1 finestra\b/);
+  const blocked=await setup();blocked.data=clone(payload.blocked);await blocked.select();
+  const row=one(blocked.content,e=>e.getAttribute('data-balance-rule')==='reads');assert.equal(row.getAttribute('data-balance-state'),'blocked');assert.match(text(row),/oltre la soglia, nessuna destinazione libera/);
+ },
+ async plain(){
+  const app=await setup();await app.select();const list=one(app.content,e=>e.getAttribute('data-balance-windows')!==null);
+  const cxItem=one(list,e=>e.getAttribute('data-balance-plain')==='w-cx'),cx=text(cxItem);assert.equal(all(cxItem,e=>hasClass(e,'sq-balance-line')).length,3,'who, quota and work on three short lines');
+  assert.match(cx,/96% della quota settimanale, si azzera alle/);assert.match(cx,/1 incarico aperto, 0 letture in attesa/,'Italian singular and plural');assert.doesNotMatch(text(list),/\b1 (incarichi|letture|finestre)\b/,'no plural after 1');assert.match(cx,/10% della quota delle 5 ore/);assert.match(cx,/600 token all’ora/);assert.match(cx,/legge/);
+  const missing=text(one(app.content,e=>e.getAttribute('data-balance-missing')!==null));assert.match(missing,/Quota di w-cy non ancora osservata\./);
+  const none=await setup();none.data=clone(payload.noReference);await none.select();assert.match(text(one(none.content,e=>e.getAttribute('data-balance-missing')!==null)),/manca il riferimento/);
+  const multi=await setup();multi.data=clone(payload.multi);await multi.select();assert.match(text(one(multi.content,e=>e.getAttribute('data-balance-plain')==='w-cx')),/gpt-5\.4, il più usato tra quelli misurati: gpt-5\.4, gpt-5\.4-mini/);
+ },
+ async noInternal(){
+  const banned=[/\bS[1-4]\b/,/\b(model_source|used_percent|read_steps|build_steps|owned_open|window_minutes|resets_at|tokens_per_hour|measured_models|declared_models|claude_estimate)\b/,
+   /\b(not_collected|collector_busy|no_observation|no_reference|partial_series|observation_stale|not_measured|quota_observation|no_source)\b/,/\b(measured|partial|near|clear|unknown|stale|expired|busy|estimate)\b/i,/\b[hd][57]\b/];
+  for(const name of ['full','partial','multi','empty','balanced','blocked','unknownQuota','noReference','shared']){
+   const app=await setup();app.data=clone(payload[name]);await app.select();for(const d of all(app.content,e=>e.tag==='details'))d.open=true;
+   const page=text(app.content);for(const b of banned)assert.doesNotMatch(page,b,name+': '+b);
+  }
+ },
+ async cadence(){
+  const app=await setup({clock:Date.parse('2026-10-15T12:00:00Z')});const n=()=>balanceFetches(app);
+  await app.select();assert.equal(n(),1,'opening the page fetches');
+  await app.refresh();await app.refresh();assert.equal(n(),1,'a fresh state object does not bypass the cadence');
+  app.run('balanceFetch();balanceFetch();balancePoll()');await settle();assert.equal(n(),1,'every 2-second caller, old name or new, goes through the same gate');
+  app.clock+=16000;await app.refresh();assert.equal(n(),2,'due after 15 s with an idle registry');
+  let release;app.reply=()=>new Promise(r=>{release=r});app.clock+=16000;await app.refresh();assert.equal(n(),3);app.clock+=16000;await app.refresh();assert.equal(n(),3,'single flight');
+  app.reply=async()=>clone(app.data);release(clone(payload.full));await settle();
+  const before=text(one(app.content,e=>e.getAttribute('data-balance-verdict')!==null));
+  app.reply=async()=>clone(payload.busy);app.clock+=16000;await app.refresh();await settle();assert.equal(n(),4);
+  assert.equal(text(one(app.content,e=>e.getAttribute('data-balance-verdict')!==null)),before,'busy keeps the last figures');
+  const fresh=one(app.content,e=>e.getAttribute('data-balance-freshness')!==null);assert.equal(fresh.getAttribute('data-balance-freshness'),'busy');assert.match(text(fresh),/Ultimo aggiornamento alle .*nuovo tentativo alle/);
+  app.reply=async()=>{throw Error('offline')};app.clock+=16000;await app.refresh();await settle();assert.equal(n(),5);
+  assert.equal(text(one(app.content,e=>e.getAttribute('data-balance-verdict')!==null)),before,'an error keeps the last figures');assert.ok(app.find('balance:retry'));
+  app.reply=async()=>clone(app.data);const select=app.find('balance:task');select.value='T';select.onchange({target:select});await settle();assert.equal(n(),6,'a task change is an explicit immediate fetch');
+  await app.tab('Quadro');app.clock+=16000;await app.refresh();assert.equal(n(),6,'closed page: no request');
+  await app.select();assert.equal(n(),7,'opening the page again fetches at once');
+  app.doc.hidden=true;app.clock+=16000;await app.refresh();assert.equal(n(),7,'hidden page: no request');
+ },
+ async chartsMotion(){
+  const app=await setup();await app.select();const first=(app.doc.animations||[]).length;assert.ok(first>0,'balance charts animate on first draw');
+  app.run('balanceUI.immediate=true');await app.refresh();await settle();assert.equal((app.doc.animations||[]).length,first,'same figures: no replay');
+  const still=await setup();still.run("window.matchMedia=q=>({matches:/prefers-reduced-motion: reduce/.test(q),addEventListener(){}})");await still.select();assert.equal((still.doc.animations||[]).length,0,'reduced motion');
+  const load=one(app.content,e=>e.getAttribute('data-chart')==='balance-load'),marks=all(load,e=>e.getAttribute('data-viz-key')!==null&&e.getAttribute('tabindex')==='0');assert.ok(marks.length>=4);
+  marks[0].onfocus();assert.match(text(one(load,e=>hasClass(e,'sq-viz-readout'))),/incarichi aperti, \d+ letture in attesa/);
+  const strip=one(app.content,e=>e.tag==='g'&&e.getAttribute('data-balance-model')==='gpt');strip.onfocus();strip.onkeydown({key:'ArrowLeft'});assert.match(text(one(app.content,e=>e.getAttribute('data-chart')==='balance-tokens')),/gpt · \d\d:\d\d: (\d|non misurato)/);
+ },
+ async quotaRow(){
+  const row=async(name,edit,lang)=>{const app=await setup();app.data=clone(payload[name]);if(edit)edit(app.data);await app.select();if(lang){app.run("setLanguage('"+lang+"')");await settle()}
+   const r=one(app.content,e=>e.getAttribute('data-balance-rule')==='quota','quota row '+name);return {state:r.getAttribute('data-balance-state'),today:text(r.children[2]),stateText:text(r.children[3]),verdict:one(app.content,e=>e.getAttribute('data-balance-verdict')!==null).getAttribute('data-balance-verdict')}};
+  const mixed=await row('unknownQuota');assert.equal(mixed.verdict,'incomplete');
+  assert.equal(mixed.state,'partial','a quota not measured for some window is never an unqualified ok');assert.equal(mixed.stateText,'incompleto: mancano misure');
+  assert.equal(mixed.today,'al massimo 10%, w-cx · non misurata per 1 finestra','the measured maximum and the unknown count stay');
+  const mixedEn=await row('unknownQuota',null,'en');assert.equal(mixedEn.state,'partial');assert.equal(mixedEn.stateText,'incomplete: figures missing');assert.equal(mixedEn.today,'at most 10%, w-cx · not measured for 1 window');
+  const calm=await row('balanced');assert.equal(calm.state,'ok','every quota known and below the threshold: ok');assert.equal(calm.stateText,'ok');
+  const hot=await row('noReference');assert.equal(hot.state,'fires','a known high quota fires even with other quotas missing');assert.match(hot.today,/^al massimo 96%, w-cx · non misurata per \d+ finestre$/);
+ },
+ async sharedEstimate(){
+  const row=async(name,edit,lang)=>{const app=await setup();app.data=clone(payload[name]);if(edit)edit(app.data);await app.select();if(lang){app.run("setLanguage('"+lang+"')");await settle()}
+   const r=one(app.content,e=>e.getAttribute('data-balance-rule')==='quota','quota row '+name);return {state:r.getAttribute('data-balance-state'),today:text(r.children[2])}};
+  const shared=await row('shared'),reversed=await row('shared',d=>d.windows.reverse());
+  assert.equal(shared.today,'al massimo 95%, stima condivisa delle finestre Claude sul riferimento dichiarato');assert.doesNotMatch(shared.today,/w-cl|w-coord/,'a shared estimate names no single window');
+  assert.equal(reversed.today,shared.today,'the same under any window order');assert.equal(shared.state,'fires');
+  assert.equal((await row('shared',null,'en')).today,'at most 95%, shared estimate of the Claude windows against the declared reference');
+  const cy95=d=>{for(const w of d.windows)if(w.identity==='w-cy')w.quota.slots[0].used_percent=95};
+  const tie=await row('shared',cy95),tieReversed=await row('shared',d=>{cy95(d);d.windows.reverse()});
+  assert.equal(tie.today,'al massimo 95%, w-cy','a measured Codex value keeps its window, also on a tie with the shared estimate');assert.equal(tieReversed.today,tie.today);
+  const both=d=>{for(const w of d.windows)if(w.identity==='w-cy'||w.identity==='w-cx')w.quota.slots[0].used_percent=97};
+  const twin=await row('shared',both),twinReversed=await row('shared',d=>{both(d);d.windows.reverse()});assert.equal(twin.today,twinReversed.today,'equal measured values: the same window under any order');
+ },
+ async zeroMotion(){
+  const scale=a=>/^scaleY\(([^)]*)\)$/.exec(String(a.frames[0].transform||''));
+  const finite=a=>a.frames.every(f=>{if(f.transform===undefined)return true;const m=/^scale[XY]\(([^)]*)\)$/.exec(String(f.transform));return !!m&&Number.isFinite(Number(m[1]))&&Number(m[1])>=0});
+  const set=(app,v)=>{const b=app.data.models.find(m=>m.model==='gpt').hourly[5];b.total=v;b.status=v===null?'not_measured':'measured'};
+  const run=async(reduced)=>{
+   const app=await setup();if(reduced)app.run("window.matchMedia=q=>({matches:/prefers-reduced-motion: reduce/.test(q),addEventListener(){}})");
+   const steps=[];let seen=0;const take=()=>{const list=(app.doc.animations||[]).slice(seen);seen=(app.doc.animations||[]).length;return list.filter(a=>scale(a))};
+   const strip=()=>one(app.content,e=>e.tag==='g'&&e.getAttribute('data-balance-model')==='gpt');
+   const bar=()=>all(strip(),e=>e.tag==='rect')[5];
+   set(app,0);await app.select();steps.push(['first zero',take(),bar()]);
+   for(const [name,v] of [['zero to positive',500],['positive to positive',300],['positive to zero',0],['unchanged zero',0],['zero to unknown',null],['unknown to zero',0]]){
+    set(app,v);app.run('balanceUI.immediate=true');await app.refresh();await settle();steps.push([name,take(),bar()]);
+   }
+   for(const a of app.doc.animations||[])assert.ok(finite(a),'every keyframe is finite: '+JSON.stringify(a.frames));
+   return steps;
+  };
+  const moving=await run(false),still=await run(true);
+  const only=(steps,name)=>{const s=steps.find(x=>x[0]===name);return s[1].filter(a=>a.el===s[2])};
+  for(const name of ['first zero','zero to positive','positive to positive','positive to zero','unknown to zero'])assert.equal(only(moving,name).length,1,name+': one smooth transition');
+  const from=name=>Number(scale(only(moving,name)[0])[1]);
+  assert.equal(from('first zero'),0,'a first zero grows from nothing to its floor');assert.ok(from('zero to positive')>0&&from('zero to positive')<1,'zero to positive grows from the floor');
+  assert.ok(from('positive to positive')>1,'500 to 300 shrinks from the old height');assert.ok(from('positive to zero')>1,'positive to zero shrinks from the old height to the floor');
+  assert.equal(only(moving,'unchanged zero').length,0,'an unchanged zero does not replay');assert.equal(only(moving,'zero to unknown').length,0,'an unknown hour is hatched, not animated');
+  const zero=moving.find(x=>x[0]==='positive to zero')[2],unknown=moving.find(x=>x[0]==='zero to unknown')[2];
+  assert.equal(zero.getAttribute('data-viz-value'),'0');assert.equal(zero.getAttribute('height'),'2.00','zero keeps its 2 px floor');assert.ok(hasClass(unknown,'sq-viz-hatch'),'unknown stays distinct from zero');
+  const solo=await setup(),soloBin=v=>solo.run("sqVizStrip('solo','m','M',[{hour:'2026-10-15T12:00:00Z',total:"+v+"}],{text:b=>String(b.total)})");
+  soloBin(10);soloBin(5);const same=(solo.doc.animations||[]).at(-1);soloBin(0);const down=(solo.doc.animations||[]).at(-1);
+  assert.notEqual(down,same,'a single bar going to zero moves');assert.ok(finite(same)&&finite(down));
+  assert.equal(Number(scale(same)[1]),1,'10 to 5 alone on its scale: drawn at full height both times');assert.equal(Number(scale(down)[1]),28,'5 to 0 alone: from the 56 px drawn last time to the 2 px floor');
+  assert.ok(still.every(s=>s[1].length===0),'reduced motion: no animation call at any step');
+  assert.deepEqual(still.map(s=>[s[2].getAttribute('height'),s[2].getAttribute('class')]),moving.map(s=>[s[2].getAttribute('height'),s[2].getAttribute('class')]),'reduced motion: the same final bars');
+ },
  async css(){
   const block=page.match(/<style id="squadra-balance-style">([\s\S]*?)<\/style>/);assert.ok(block,'Balance style block');const css=block[1];
   const breakpoint=Number(css.match(/@media\(max-width:([\d.]+)px\)/)[1]);for(const width of [360,375,390])assert.ok(width<=breakpoint,'phone covered: '+width);
   assert.match(css,/\.sq-balance-cards\{display:grid;grid-template-columns:repeat\(auto-fill,minmax\(min\(320px,100%\),1fr\)\)/,'cards shrink to the phone width');
-  assert.match(css,/overflow-wrap:anywhere/,'long identities wrap');assert.match(css,/var\(--sq-border/,'theme tokens, light and dark');
+  assert.match(css,/overflow-wrap:anywhere/,'long identities wrap');assert.match(css,/\.sq-balance \.sq-crow>\.sq-viz\{grid-column:1\/-1\}/,'the hourly strip spans the card under its model name');assert.match(css,/\[data-balance-rules\] :is\(table,tbody,tr,td\)\{display:block/,'the rules table becomes cards on a phone');assert.match(css,/var\(--sq-border/,'theme tokens, light and dark');
   assert.doesNotMatch(css,/#[0-9a-f]{3,6}\b/i,'no fixed colours outside the theme tokens');
  }
 };

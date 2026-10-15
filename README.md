@@ -29,6 +29,17 @@ It installs with `/plugin` in Claude Code and Codex. **Install:** see [Installat
 <a id="news"></a>
 ## What's new
 
+**3.10.1 — see what every AI window really spends, and where the next task should go**
+
+A squad mixes Claude Code and Codex windows, and each provider shows you only its own usage. Squadra 3.10.1 puts all of them in one view, for every task: which window spent how many tokens, with which model, against which quota, and which window or model should take the next task. You can see why each piece of advice is given. It is computed on your computer from the session files the clients already keep; no text of the conversations is stored, shown or sent anywhere.
+
+- **Balance (new system skill).** Advice on windows and models by load, quota and history, with the numbers each piece of advice rests on. It assigns nothing. The page says in plain words what it checks, today's values, and why there is no advice when there is none.
+- **Usage totals that never jump backwards,** with a kept cache of the calculations: a dashboard restart does not read the session files again.
+- **Commands that cost the windows fewer tokens.** Every command used to print the whole list of open waits into the window that ran it; now it prints a short answer and the full list on request ([MEASURED TOKENS]).
+- **A registry that stays fast as the history grows.** A command now reads and writes what changed, not the whole history ([MEASURED TIMES]). Integrity checks still cover the whole chain at the moments listed in the guide.
+- **A lighter dashboard** that downloads only what changed, and **animated charts** on the Usage and Balance pages.
+- Plugins: [VERSIONS].
+
 **3.10.0**
 - **Usage page: tokens spent by the models.** Squadra reads the session files Claude Code and Codex already keep on your computer and keeps only the token counts, with the model, time and session and message identifiers needed to count each message once; it never stores, shows or sends the text of the conversations. It shows them per window, day, model and task, with charts and suggestions per model. Codex quota is shown as measured, for each provider window; an estimated cost appears only if you enter your own prices. `squadra usage` prints the same data.
 - Plugins: memoranda 1.0.5, Playwright 1.0.6, Sentry 0.1.3.
@@ -62,6 +73,7 @@ It installs with `/plugin` in Claude Code and Codex. **Install:** see [Installat
 - **Questions with the sentence ready.** When a decision is yours, you get the options, a recommendation and the exact words to answer.
 - **A dashboard in plain words**, in Italian or English, to follow everything live.
 - **Claude, Codex and Cursor together**, and open to community plugins.
+- **One view of what every AI window spends.** Tokens per window, model and task across Claude Code and Codex, with advice on which window or model should take the next task, computed on your computer.
 
 ## What Squadra does
 
@@ -137,6 +149,15 @@ squadra --version
 ```
 
 Every release raises the version number. Plugins installed from the Store keep their version until `squadra plugin install <name>` runs again from the new release ([Plugins bundled in your release](#plugin-store)). Open windows keep the version they read until they restart, and a running squad keeps its protocol until you switch it explicitly.
+
+**Updating from 3.10.0 or earlier to 3.10.1: the registry gets lighter, and every window must move together.**
+- **Before you update,** save the squad: `squadra save --actor <your window> --to <a new folder>`. It is your way back.
+- **Your registry is read as it is.** Nothing is converted and the history already written is not touched. From the first command on 3.10.1, new events are written in the lighter format.
+- **Update every window at once,** Claude Code and Codex. A window still on 3.10.0 stops at the first new event with `Event integrity failure at sequence N`. That is on purpose: an old version stops rather than accept events it cannot read. Nothing is lost: update that window and it carries on.
+- **No way back on the same registry.** After the update, 3.10.0 cannot use that registry. To go back, restore the save you made before updating.
+- **If in doubt,** run `squadra doctor` on 3.10.1: it says when a registry needs 3.10.1 or later.
+- **Plugins from the Store:** run `squadra plugin install <name>` again, as after every release.
+- **If you installed Squadra from the Claude directory,** you get the version the directory lists until it moves to 3.10.1.
 
 ### Rule 0: find the windows and introduce yourself
 

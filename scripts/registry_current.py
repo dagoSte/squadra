@@ -7,7 +7,7 @@ LIVE_STATUSES = ("running", "cleanup-unknown")
 
 
 def empty():
-    return {"schema": SCHEMA, "pending_messages": {}, "pending_by_recipient": {},
+    return {"schema": SCHEMA, "information_count": 0, "pending_messages": {}, "pending_by_recipient": {},
             "messages_by_recipient": {}, "messages_by_task": {}, "related_tasks": {},
             "live_runs": {status: {} for status in LIVE_STATUSES}, "run_order": {}, "run_location": {},
             "runs_by_task": {}, "latest_output": {}, "latest_ping": {}, "ping_order": {},
@@ -37,6 +37,8 @@ def _message(indexes, state, name, order, *, created):
     message = state["messages"][name]
     recipient = message["to"]
     if created:
+        if message.get("info") is True:
+            indexes["information_count"] += 1
         indexes["message_order"][name] = order
         _membership(indexes["messages_by_recipient"], recipient, name)
         for task in (message.get("task"), message.get("related_task")):
@@ -47,12 +49,13 @@ def _message(indexes, state, name, order, *, created):
         if message.get("ping"):
             indexes["recipient_ping"][recipient] = {"id": name, "order": order}
     pending = indexes["pending_by_recipient"].setdefault(recipient, {})
-    if message.get("ack") is None:
+    if message.get("ack") is None and message.get("info") is not True:
         indexes["pending_messages"][name] = name
         pending[name] = name
     else:
         indexes["pending_messages"].pop(name, None)
         pending.pop(name, None)
+    if message.get("ack") is not None:
         stamp = message["ack"]["utc"]
         # Match presence()'s existing max(UTC strings), without changing time semantics.
         indexes["recipient_answer"][recipient] = max(stamp, indexes["recipient_answer"].get(recipient, stamp))
