@@ -173,6 +173,14 @@ squadra ack --actor builder --message assign-T1
 squadra start --actor builder --task T1
 ```
 
+Use `send --info` for progress and FYI notices that need no confirmation: they
+remain visible as information without an ACK wait. Requests, assignments, review
+handoffs, presence challenges and messages to unregistered recipients still need
+confirmation and cannot use this flag. A voluntary ACK of information is a real
+sign of life, never a substitute for a required assignment, review or ping ACK.
+Existing messages keep their original receipt contract; old readers may still
+show an unnecessary wait for new information messages until they are upgraded.
+
 After assignment, explain the task in plain words: the first line becomes its
 dashboard title, followed by why it exists, who it is for and when it will be
 finished (UTF-8, at most 8192 bytes).

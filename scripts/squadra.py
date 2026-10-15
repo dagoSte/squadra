@@ -208,6 +208,7 @@ def parser():
     a = sub.add_parser("send"); a.add_argument("--actor", required=True); recipient = a.add_mutually_exclusive_group(required=True)
     recipient.add_argument("--to"); recipient.add_argument("--to-new")
     a.add_argument("--body-file", required=True); a.add_argument("--id"); a.add_argument("--reply-to"); a.add_argument("--task")
+    a.add_argument("--info", action="store_true", help="Information only; no recipient ACK required")
     a = sub.add_parser("inbox"); a.add_argument("--agent", required=True)
     a = sub.add_parser("ack"); a.add_argument("--actor", required=True); a.add_argument("--message", required=True)
     a = sub.add_parser("transport"); a.add_argument("--actor", required=True); a.add_argument("--message", required=True)
@@ -398,6 +399,8 @@ def dispatch(a, store):
         store.append("supersede", actor, {"task": a.task, "by": a.by, "reason": a.reason})
     elif command == "send":
         data = {"id": a.id or uuid.uuid4().hex, "to": a.to or a.to_new, "body": Path(a.body_file).read_text(), "reply_to": a.reply_to}
+        if a.info:
+            data["info"] = True
         if a.to_new:
             data["awaited"] = True
         if a.task:
@@ -462,19 +465,21 @@ def dispatch(a, store):
         import subprocess
         message = state["messages"][a.message]
         require(message["from"] == actor, "Only sender can deliver")
+        instruction = ("Information only; no ACK required." if message.get("info") is True
+                       else f"ACK via squadra ack --actor {message['to']} --message {a.message} (with shared --root).")
         if a.via == "manual":
             result = {"message": a.message, "via": "manual", "delivered": False,
-                      "instruction": f"Read {store.root}/squadra-posta.md and ACK {a.message}"}
+                      "instruction": f"Read {store.root}/squadra-posta.md. {instruction}"}
         else:
             agent = state["agents"][message["to"]]
             require(agent["client"] == "codex" and agent["session"], "Registered Codex session required")
             help_result = subprocess.run(["codex", "queue", "--help"], capture_output=True, text=True, timeout=15)
             require(help_result.returncode == 0 and "--thread" in help_result.stdout and "--message" in help_result.stdout, "Compatible queue not verified")
-            text = f"Squadra message {a.message}; workspace {store.root}.\n{message['body']}\nACK via squadra ack --actor {agent['id']} --message {a.message} (with shared --root)."
+            text = f"Squadra message {a.message}; workspace {store.root}.\n{message['body']}\n{instruction}"
             proc = subprocess.run(["codex", "queue", "--thread", agent["session"], "--message", text], capture_output=True, text=True, timeout=30)
             result = {"message": a.message, "via": a.via, "delivered": proc.returncode == 0,
                       "native_rc": proc.returncode, "receipt": proc.stdout, "stderr": proc.stderr,
-                      "ack": "still pending; native queue does not prove wakeup"}
+                      "ack": "not required; information only" if message.get("info") is True else "still pending; native queue does not prove wakeup"}
         store.append("transport", actor, result)
         return result
     elif command == "plan":
@@ -635,7 +640,7 @@ def dispatch(a, store):
     elif command == "doctor":
         events = store.events(); store.verify_artifacts()
         return {"events": len(events), "integrity": "passed", "unknown_running": [r["id"] for r in state["runs"].values() if r["status"] in {"running", "cleanup-unknown"}],
-                "pending_ack": [m["id"] for m in state["messages"].values() if m["ack"] is None],
+                "pending_ack": [m["id"] for m in state["messages"].values() if m["ack"] is None and m.get("info") is not True],
                 "waits": waits(state, now()),
                 "warning": "Integrity verifies the record, not truth of agents' claims or external process liveness"}
     elif command == "dash":
