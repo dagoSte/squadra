@@ -742,6 +742,8 @@ def main(argv=None):
                 print(json.dumps(visible, ensure_ascii=False, indent=2))
             if a.command not in {"inbox", "doctor"}:
                 print(table(state, read_at=now(), events=events, compact=a.command != 'status' or not a.all))
+                if a.command == 'supersede':
+                    print('- ' + a.task + ' → ' + a.by)
             forecast_task = a.id if a.command == 'task' else getattr(a, 'task', None)
             if a.command in {'task', 'brief', 'start'} and forecast_task:
                 from forecast import calculate
