@@ -8,7 +8,7 @@ La skill di squadra più completa per Claude Code, Codex e Cursor.
 
 **Gratuita e open source** — licenza MIT, nessun account, tutto gira sul tuo computer.
 
-**Versione 3.9.1** · Gratuita · MIT · Toolkit locale · Python 3.12+ · macOS / POSIX
+**Versione 3.10.0** · Gratuita · MIT · Toolkit locale · Python 3.12+ · macOS / POSIX
 
 [English](README.md) · **Italiano** · [Privacy](PRIVACY.it.md)
 
@@ -28,6 +28,10 @@ Si installa con `/plugin` in Claude Code e Codex. **Per installarla:** vedi [Ins
 
 <a id="news"></a>
 ## Novità
+
+**3.10.0**
+- **Pagina «Consumi»: i token spesi dai modelli.** Squadra legge solo i conteggi dei token che Claude Code e Codex scrivono già sul tuo computer (mai il testo delle conversazioni) e li mostra per finestra, giorno, modello e incarico, con grafici e suggerimenti per modello. La quota settimanale di Codex è misurata; un costo stimato compare solo se inserisci i tuoi prezzi. `squadra usage` stampa gli stessi dati.
+- Plugin: memoranda 1.0.5, Playwright 1.0.6, Sentry 0.1.3.
 
 **3.9.1**
 - **Ritocchi all'interfaccia.** Più spazio nella pagina «Skill di sistema» e tra i suoi blocchi; il grassetto nelle descrizioni delle skill appare come grassetto; l'obiettivo del progetto e la guida alla lettura compaiono solo nella panoramica; più badge in cima a questa pagina.

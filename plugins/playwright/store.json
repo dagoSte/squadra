@@ -4,6 +4,6 @@
   "price": "free",
   "mcp": true,
   "source": "https://github.com/dagoSte/squadra/tree/main/plugins/playwright",
-  "accepted_version": "1.0.5",
-  "review_date": "2026-10-14"
+  "accepted_version": "1.0.6",
+  "review_date": "2026-10-15"
 }

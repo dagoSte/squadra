@@ -5,7 +5,7 @@
   "description": {"it": "Richiedi verifiche di pagine e segui gli esiti dichiarati dagli agenti.", "en": "Request page checks and follow agent-reported outcomes."},
   "about": {
     "publisher": "Squadra contributors",
-    "version": "1.0.5",
+    "version": "1.0.6",
     "homepage": "https://github.com/dagoSte/squadra/tree/main/plugins/playwright",
     "tagline": {"it": "Dal controllo richiesto alla relazione, collegati all’incarico.", "en": "From requested check to report, linked to the task."},
     "sections": [{

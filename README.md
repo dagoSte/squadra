@@ -8,7 +8,7 @@ The most complete team skill for Claude Code, Codex and Cursor.
 
 **Free and open source** — MIT licence, no account, everything runs on your machine.
 
-**Version 3.9.1** · Free · MIT · Local toolkit · Python 3.12+ · macOS / POSIX
+**Version 3.10.0** · Free · MIT · Local toolkit · Python 3.12+ · macOS / POSIX
 
 **English** · [Italiano](README.it.md) · [Privacy](PRIVACY.md)
 
@@ -28,6 +28,10 @@ It installs with `/plugin` in Claude Code and Codex. **Install:** see [Installat
 
 <a id="news"></a>
 ## What's new
+
+**3.10.0**
+- **Usage page: tokens spent by the models.** Squadra reads only the token counts that Claude Code and Codex already write on your computer (never the text of the conversations) and shows them per window, day, model and task, with charts and suggestions per model. Codex weekly quota is shown as measured; an estimated cost appears only if you enter your own prices. `squadra usage` prints the same data.
+- Plugins: memoranda 1.0.5, Playwright 1.0.6, Sentry 0.1.3.
 
 **3.9.1**
 - **Interface fixes.** More room on the System skills page and between its blocks; bold text in skill descriptions shows as bold; the project goal and the reading help appear on the overview only; more badges at the top of this page.
