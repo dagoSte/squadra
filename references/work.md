@@ -1,9 +1,12 @@
 # Task, proof, review and output
 
 Ordinary command output shows the board, every owner request, wait counts by kind
-and at most five waits that still block work, oldest first. Informational ACKs stay
-in the counts without displacing task assignments, current review handoffs, running
-processes or pings to windows with a pending step. Use `squadra status --all --root
+and at most five grouped waits. Waits of the same kind and task share a line with
+their count and oldest age. Assignments and current delivery/read handoffs come
+first, then active-window pings and process alerts; age orders each priority.
+Informational ACKs remain in the counts. A table retains up to five open tasks'
+next steps and the windows/roles holding them, with an explicit remainder.
+Use `squadra status --all --root
 REGISTRY` for the complete previous text view and every wait. Saved `stato.md`,
 JSON results and dashboard data remain complete; this changes only console text.
 

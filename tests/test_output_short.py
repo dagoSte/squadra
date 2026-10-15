@@ -121,6 +121,49 @@ class ShortOutput(unittest.TestCase):
         self.assertIn('- ack · CURRENT ·', text)
         self.assertNotIn('- ack · OLD ·', text)
 
+    def test_five_orphan_heartbeats_cannot_hide_a_delivered_read(self):
+        state = self.store.state()
+        for task in state['tasks'].values():
+            task['status'] = 'done'
+        state['tasks']['T0'].update(status='delivered', reviewer='R', status_utc='2026-10-15T13:00:00+00:00')
+        for i in range(5):
+            state['runs']['ORPHAN' + str(i)] = {'id': 'ORPHAN' + str(i), 'task': 'T0', 'mode': 'proof',
+                'agent': 'A', 'status': 'running', 'utc': f'2026-10-15T12:0{i}:00+00:00'}
+        before = deepcopy(registry.waits(state, self.at))
+        text = registry.table(state, read_at=self.at, compact=True)
+        shown = [line for line in text.splitlines() if line.startswith(('- delivered ·', '- heartbeat ·'))]
+        self.assertEqual(len(shown), 2, text)
+        self.assertTrue(shown[0].startswith('- delivered · T0 ·'), shown)
+        self.assertIn('5 attese', shown[1])
+        self.assertIn('7200s', shown[1])
+        self.assertIn('la più vecchia', shown[1])
+        self.assertIn('heartbeat: 5', text)
+        self.assertEqual(registry.waits(state, self.at), before)
+        full = registry.table(state, read_at=self.at)
+        self.assertEqual(full.count('- heartbeat · T0 ·'), 5)
+
+    def test_compact_next_steps_name_only_windows_holding_open_work(self):
+        state = self.store.state()
+        for task in state['tasks'].values():
+            task['status'] = 'done'
+        state['tasks']['T0'].update(status='delivered', reviewer='R', status_utc='2026-10-15T13:00:00+00:00')
+        state['tasks']['T1'].update(status='working')
+        text = registry.table(state, read_at=self.at, compact=True)
+        self.assertIn('Prossimo passo per incarico:', text)
+        block = text.split('Prossimo passo per incarico:', 1)[1]
+        self.assertIn('| T0 | R / reviewer | Lettura non autore |', block)
+        self.assertIn('| T1 | A / builder |', block)
+        self.assertNotIn('| T2 |', block)
+        self.assertNotIn('Sostituiti', block)
+
+    def test_compact_next_steps_have_a_bound_and_an_explicit_remainder(self):
+        text = self.cli('status')
+        self.assertIn('Prossimo passo per incarico:', text)
+        block = text.split('Prossimo passo per incarico:', 1)[1]
+        self.assertEqual(sum(line.startswith('| T') for line in block.splitlines()), 5)
+        self.assertIn('Altri 3 passi:', block)
+        self.assertIn('squadra status --all', block)
+
 
 if __name__ == '__main__':
     unittest.main()
