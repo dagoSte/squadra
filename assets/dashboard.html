@@ -1084,9 +1084,10 @@ const headingKey=(e,key)=>{if(typeof focusKey==='function'){e.setAttribute('tabi
 let state=null,tab='Quadro',filter='';
 const matches=value=>{
  if(!filter)return true;
- if(state?.search?.query===filter)for(const kind of ['tasks','runs'])if(state[kind]?.[value?.id]===value){
-  if(state.search[kind].includes(value.id))return true;
+ if(state?.search?.query===filter)for(const kind of ['tasks','runs','messages'])if(state[kind]?.[value?.id]===value){
+  if(state.search[kind]?.includes(value.id))return true;
  }
+ if(state?.search?.query===filter&&value.event&&state.search.outputs?.includes(value.event))return true;
  return JSON.stringify(value).toLocaleLowerCase().includes(filter);
 };
 async function api(path,headers={}){
@@ -1475,8 +1476,99 @@ function recordedWaiting(){
  for(const w of state.waits||[])p.append(row(tr('page.wait.over',{kind:descriptions[w.kind]||w.kind}),(w.task?taskTitle(w.task):w.id)+' · '+w.seconds+'s / '+w.threshold+'s · '+waitText(w),tr('page.wait.check')));addEmpty(p,view.waiting.length);for(const step of view.next_steps)p.append(row(taskTitle(step.task),stepText(step),step.status));return p;
 }
 function workOverview(){const p=panel(tr('connected.workNow'));headingKey(p.children[0],'work');p.className='panel sq-work';p.append(node('p',tr('connected.workIntro'),'sq-lede'));const all=Object.values(state.tasks).filter(matches),closed=all.filter(t=>!panelOpen(t));for(const t of all.filter(panelOpen))p.append(panelTaskCard(t));if(closed.length){const group=node('details',undefined,'sq-closed');group.open=panelUI.closedOpen;group.ontoggle=()=>{panelUI.closedOpen=group.open;if(group.open)panelClampSoon()};const summary=node('summary',tr('work.closed',{n:closed.length}));focusKey(summary,'work:closed');summary.setAttribute('data-focus-fallback','work');group.append(summary);for(const t of closed)group.append(panelTaskCard(t));p.append(group)}if(!all.length)p.append(node('p',tr('page.empty'),'empty'));const waits=node('details',undefined,'sq-waits');waits.open=panelUI.waitsOpen;waits.ontoggle=()=>{panelUI.waitsOpen=waits.open};const summary=node('summary',tr('work.waits'));focusKey(summary,'work:waits');summary.setAttribute('data-focus-fallback','work');waits.append(summary,recordedWaiting());if(state.presence?.some(a=>a.ping||a.availability==='stand-by'))waits.append(presencePanel());p.append(waits);return p}
-function render(){if(!state)return;const anchor=commsAnchor();if(typeof renderHeaderExtras==='function')renderHeaderExtras();$('name').textContent=state.workspace.name;$('project').textContent=tr('page.project',{project:state.workspace.project,count:state.event_count});$('project').setAttribute('title',$('project').textContent);const tasksList=Object.values(state.tasks),messages=Object.values(state.messages),runs=Object.values(state.runs);const done=tasksList.filter(t=>t.status==='done').length,unread=Object.values(state.progress||{}).filter(p=>p.state?.id==='closed-unread').length;$('metrics').replaceChildren();for(const [label,value,detail,glyph] of [[tr('page.metric.closed'),done+'/'+tasksList.length,unread?tr('page.metric.closedUnread',{count:unread}):tr('page.metric.closedSub'),'check2-all'],[tr('page.metric.identities'),new Set(Object.values(state.agents).map(a=>a.identity)).size,tr('page.metric.identitiesSub',{count:Object.keys(state.agents).length}),'people'],[tr('page.metric.acks'),messages.filter(m=>!m.ack).length,tr('page.metric.acksSub'),'envelope-exclamation'],[tr('page.metric.runs'),runs.filter(r=>['running','cleanup-unknown'].includes(r.status)).length,runs.some(r=>r.status==='cleanup-unknown')?tr('page.metric.runsUnknown'):tr('page.metric.runsPending'),'hourglass-split']]){const c=node('div',undefined,'metric');c.append(node('div',label,'label'),node('strong',value),node('div',detail,'sub'));if(typeof icon==='function')c.append(icon(glyph,'metric-icon'));$('metrics').append(c)}$('notice').replaceChildren();if(state.paused)$('notice').append(node('div',tr('page.paused'),'notice'));const tabs=['Quadro','Finestre','Incarichi','Posta','Comunicazioni','Decisioni','Letture','Prove','Output','Cronologia','Storico'];$('tabs').replaceChildren();tabs.forEach(t=>{const b=node('button',tr('tab.'+t),t===tab?'active':'');if(typeof panelTab==='function')panelTab(b,t);b.onclick=()=>{if(typeof connectedReset==='function')connectedReset();tab=t;if(typeof panelNavigate==='function')panelNavigate();render()};$('tabs').append(b)});if(typeof skillsNav==='function')skillsNav();if(typeof usageNav==='function')usageNav();const content=$('content');content.className=tab==='Quadro'?'sq-home':'';if(tab==='Comunicazioni')comms(content);else{if(tab==='Usage'){usageRender(content)}else if(tab==='SystemSkills'){skillsRender(content)}else if(tab==='Store'){storeRender(content)}else if(tab==='Letture'){readsRender(content)}else if(typeof pluginSelected==='function'&&pluginSelected()){pluginRender(content)}else{content.replaceChildren();if(tab==='Quadro'){content.append(ownerAttention(),workOverview(),connectedRail());const detail=node('details',undefined,'sq-full-detail');detail.append(node('summary',tr('page.detail')));const grid=node('div',undefined,'grid');const left=node('div'),right=node('div');left.append(recordedWaiting(),tasks('quadro-tasks'),outputs());const reserve=panel(tr('page.reserve.title'));for(const r of Object.values(state.resources))reserve.append(row(r.name,r.owner+' · '+r.reason,tr('page.reserved')));for(const d of state.decisions.slice(-5))reserve.append(row(d.actor,d.reason));addEmpty(reserve,Object.keys(state.resources).length+state.decisions.length);right.append(reserve,mail('quadro-mail'));grid.append(left,right);detail.append(grid);content.append(detail)}else content.append(({Finestre:team,Incarichi:tasks,Posta:mail,Prove:evidence,Output:outputs,Cronologia:timeline,Storico:legacyView,Decisioni:decisionsView})[tab]())}}commsRestore(anchor)}
+function render(){if(!state)return;const anchor=commsAnchor();if(typeof renderHeaderExtras==='function')renderHeaderExtras();$('name').textContent=state.workspace.name;$('project').textContent=tr('page.project',{project:state.workspace.project,count:state.event_count});$('project').setAttribute('title',$('project').textContent);const tasksList=Object.values(state.tasks),messages=Object.values(state.messages),runs=Object.values(state.runs);const done=tasksList.filter(t=>t.status==='done').length,unread=Object.values(state.progress||{}).filter(p=>p.state?.id==='closed-unread').length;$('metrics').replaceChildren();for(const [label,value,detail,glyph] of [[tr('page.metric.closed'),done+'/'+tasksList.length,unread?tr('page.metric.closedUnread',{count:unread}):tr('page.metric.closedSub'),'check2-all'],[tr('page.metric.identities'),new Set(Object.values(state.agents).map(a=>a.identity)).size,tr('page.metric.identitiesSub',{count:Object.keys(state.agents).length}),'people'],[tr('page.metric.acks'),messages.filter(m=>!m.ack).length,tr('page.metric.acksSub'),'envelope-exclamation'],[tr('page.metric.runs'),runs.filter(r=>['running','cleanup-unknown'].includes(r.status)).length,runs.some(r=>r.status==='cleanup-unknown')?tr('page.metric.runsUnknown'):tr('page.metric.runsPending'),'hourglass-split']]){const c=node('div',undefined,'metric');c.append(node('div',label,'label'),node('strong',value),node('div',detail,'sub'));if(typeof icon==='function')c.append(icon(glyph,'metric-icon'));$('metrics').append(c)}$('notice').replaceChildren();if(state.paused)$('notice').append(node('div',tr('page.paused'),'notice'));const tabs=['Quadro','Finestre','Incarichi','Posta','Comunicazioni','Decisioni','Letture','Prove','Output','Cronologia','Storico'];$('tabs').replaceChildren();tabs.forEach(t=>{const b=node('button',tr('tab.'+t),t===tab?'active':'');if(typeof panelTab==='function')panelTab(b,t);b.onclick=()=>{if(typeof connectedReset==='function')connectedReset();tab=t;if(typeof panelNavigate==='function')panelNavigate();render()};$('tabs').append(b)});if(typeof skillsNav==='function')skillsNav();if(typeof usageNav==='function')usageNav();const content=$('content');content.className=tab==='Quadro'?'sq-home':'';if(!transferPageReady(content)){commsRestore(anchor);return}if(tab==='Comunicazioni')comms(content);else{if(tab==='Usage'){usageRender(content)}else if(tab==='SystemSkills'){skillsRender(content)}else if(tab==='Store'){storeRender(content)}else if(tab==='Letture'){readsRender(content)}else if(typeof pluginSelected==='function'&&pluginSelected()){pluginRender(content)}else{content.replaceChildren();if(tab==='Quadro'){content.append(ownerAttention(),workOverview(),connectedRail());content.append(transferOverviewDetail())}else content.append(({Finestre:team,Incarichi:tasks,Posta:mail,Prove:evidence,Output:outputs,Cronologia:timeline,Storico:legacyView,Decisioni:decisionsView})[tab]())}}commsRestore(anchor)}
 const loadUI={running:false,timer:null,error:null,query:'',searchAgain:false};
+let transferUI={head:null,sections:new Map(),pending:new Map(),errors:new Map(),overview:false},transferOffset=0;
+Object.assign(I18N,{
+ 'transfer.loading':{it:'Caricamento dei dettagli…',en:'Loading details…'},
+ 'transfer.error':{it:'Dettagli non disponibili. Riprova.',en:'Details unavailable. Retry.'}
+});
+const transferNow=()=>Date.now()+transferOffset;
+function transferMerge(patch){
+ for(const [key,value] of Object.entries(patch)){
+  if(['tasks','runs','messages'].includes(key))Object.assign(state[key],value);
+  else if(key==='outputs'){const by=new Map(value.map(o=>[o.event,o]));state.outputs=state.outputs.map(o=>by.get(o.event)||o)}
+  else if(key==='graph'){const by=new Map(value.nodes.map(n=>[n.id,n]));state.graph={...state.graph,...value,nodes:state.graph.nodes.map(n=>by.get(n.id)||n)}}
+  else state[key]=value;
+ }
+}
+function transferSync(){
+ const head=state.registry_head?.hash;
+ if(transferUI.head!==head)transferUI={head,sections:new Map(),pending:new Map(),errors:new Map(),overview:transferUI.overview};
+ for(const patch of transferUI.sections.values())transferMerge(patch);
+}
+function transferClock(stamp){
+ const at=Date.parse(stamp);if(!Number.isFinite(at))return;
+ transferOffset=at-Date.now();
+ const previous=Date.parse(state.server_time),delta=Number.isFinite(previous)?(at-previous)/1000:0;
+ for(const row of [...(state.waits||[]),...(state.presence||[])]){
+  if(Number.isFinite(row.seconds))row.seconds=Math.max(0,Math.floor(row.seconds+delta));
+  if(row.as_of)row.as_of=stamp;
+ }
+ for(const edge of state.comms?.edges||[]){
+  if(edge.utc&&Number.isFinite(edge.age_seconds))edge.age_seconds=Math.max(0,Math.floor((at-Date.parse(edge.utc))/1000));
+  if(Number.isFinite(edge.wait_seconds))edge.wait_seconds=Math.max(0,Math.floor(edge.wait_seconds+delta));
+ }
+ for(const pair of state.comms?.pairs||[])if(Number.isFinite(pair.oldest_pending_seconds))pair.oldest_pending_seconds=Math.max(0,Math.floor(pair.oldest_pending_seconds+delta));
+ if(state.comms)state.comms.as_of=stamp;
+ state.server_time=stamp;
+}
+const transferKey=(section,record='')=>section+':'+record;
+const transferHas=(section,record='')=>!state?.transfer||transferUI.sections.has(transferKey(section,record));
+async function transferLoad(section,record=''){
+ if(transferHas(section,record))return true;
+ const cache=transferUI,key=transferKey(section,record);
+ if(cache.pending.has(key))return cache.pending.get(key);
+ if(cache.errors.has(key))return false;
+ const request=(async()=>{
+  try{
+   const data=await(await api('/api/detail/view',{'X-Squadra-State-Head':cache.head,'X-Squadra-Section':section,'X-Squadra-Record':encodeURIComponent(record)})).json();
+   if(transferUI!==cache||state.registry_head?.hash!==data.head)return false;
+   if(data.section!==section||data.record!==record||!data.patch)throw Error(tr('transfer.error'));
+   cache.sections.set(key,data.patch);transferMerge(data.patch);return true;
+  }catch(e){if(transferUI===cache)cache.errors.set(key,e.message);return false}
+  finally{cache.pending.delete(key);if(transferUI===cache)render()}
+ })();
+ cache.pending.set(key,request);return request;
+}
+function transferLoading(sections){
+ const failed=sections.some(([section,record])=>transferUI.errors.has(transferKey(section,record))),box=node('div',undefined,'notice');
+ box.setAttribute('role','status');box.append(node('p',tr(failed?'transfer.error':'transfer.loading')));
+ if(failed){const retry=node('button',tr('load.retry'));retry.onclick=()=>{for(const [section,record] of sections)transferUI.errors.delete(transferKey(section,record));render()};box.append(retry)}
+ return box;
+}
+function transferReady(sections){
+ if(!state?.transfer)return true;
+ const missing=sections.filter(([section,record])=>!transferHas(section,record));
+ for(const [section,record] of missing)transferLoad(section,record);
+ return !missing.length;
+}
+function transferPageReady(content){
+ const sections=({Posta:[['mail']],Comunicazioni:[['mail']],Output:[['outputs']],Cronologia:[['history']],Decisioni:[['graph']],Incarichi:[['tasks']],Prove:[['runs']]})[tab]||[];
+ if(typeof panelUI!=='undefined'&&panelUI.story)sections.push(['story',panelUI.story]);
+ if(transferReady(sections))return true;
+ content.replaceChildren(transferLoading(sections));return false;
+}
+function transferOverviewDetail(){
+ const detail=node('details',undefined,'sq-full-detail');detail.open=transferUI.overview;
+ detail.append(node('summary',tr('page.detail')));
+ detail.ontoggle=()=>{if(transferUI.overview!==detail.open){transferUI.overview=detail.open;render()}};
+ if(state?.transfer&&!detail.open)return detail;
+ const sections=[['tasks'],['outputs'],['mail'],['graph']];
+ if(!transferReady(sections)){detail.append(transferLoading(sections));return detail}
+ const grid=node('div',undefined,'grid'),left=node('div'),right=node('div');
+ left.append(recordedWaiting(),tasks('quadro-tasks'),outputs());
+ const reserve=panel(tr('page.reserve.title'));
+ for(const r of Object.values(state.resources))reserve.append(row(r.name,r.owner+' · '+r.reason,tr('page.reserved')));
+ for(const d of state.decisions.slice(-5))reserve.append(row(d.actor,d.reason));
+ addEmpty(reserve,Object.keys(state.resources).length+state.decisions.length);
+ right.append(reserve,mail('quadro-mail'));grid.append(left,right);detail.append(grid);return detail;
+}
+async function transferIndependentPoll(){
+ if(tab==='Usage'&&typeof usageFetch==='function')await usageFetch();
+ // Integration seam: Balance also reads session files independently of registry changes.
+ if(tab==='Bilanciamento'&&typeof balanceFetch==='function')await balanceFetch();
+}
 function loadingLabels(){
  const failed=!!loadUI.error;
  $('registry-details').hidden=!state;
@@ -1503,13 +1595,16 @@ async function refresh(){
  const query=loadUI.query,actionClock=typeof pluginActionClock==='number'?pluginActionClock:0;
  if(!state)applyStaticLabels();else loadingLabels();
  try{
-  const next=await(await api('/api/state',{'X-Squadra-View':'compact','X-Squadra-Search':encodeURIComponent(query)})).json();
+  const next=await(await api('/api/state',{'X-Squadra-View':'compact','X-Squadra-State-Token':state?.change_token||'','X-Squadra-Search':encodeURIComponent(query)})).json();
   if(query!==loadUI.query){loadUI.searchAgain=true;return}
-  state=next;filter=query;
-  if(typeof pluginActionReads!=='undefined')pluginActionReads.set(state,actionClock);
-  if(typeof notifyPoll==='function')notifyPoll(state);
+  if(!next.not_modified){
+   state=next;filter=query;transferSync();
+   if(typeof pluginActionReads!=='undefined')pluginActionReads.set(state,actionClock);
+   if(typeof notifyPoll==='function')notifyPoll(state);
+  }
+  transferClock(next.server_time);
   render();
-  if(tab==='Usage'&&typeof usageFetch==='function')await usageFetch();
+  await transferIndependentPoll();
   $('live').className='status';$('live').setAttribute('aria-label',tr('page.live.connected',{time:new Date().toLocaleTimeString(uiLocale())}));
   $('live').replaceChildren(node('span',undefined,'dot'),node('span',tr('page.live.connected',{time:new Date().toLocaleTimeString(uiLocale())})));
  }catch(e){
@@ -1552,7 +1647,7 @@ function focusKey(el,key){el.setAttribute('data-focus-key',key);pageFocusables.s
 function wordOr(prefix,value){return I18N[prefix+value]?tr(prefix+value):String(value??'')}
 function clip(text,length){const chars=Array.from(String(text??'').replace(/[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069]/g,' '));return chars.length>length?chars.slice(0,length-1).join('')+'…':chars.join('')}
 function firstLine(text){return String(text??'').split(/\r?\n/).map(s=>s.trim()).find(Boolean)||''}
-function ageText(value){const seconds=Math.max(0,Math.round((Date.now()-new Date(value).getTime())/1000));if(!Number.isFinite(seconds))return '';if(seconds<60)return tr('age.now');if(seconds<3600)return tr('age.min',{n:Math.floor(seconds/60)});if(seconds<86400)return tr('age.hours',{n:Math.floor(seconds/3600)});return tr('age.days',{n:Math.floor(seconds/86400)})}
+function ageText(value){const seconds=Math.max(0,Math.round((transferNow()-new Date(value).getTime())/1000));if(!Number.isFinite(seconds))return '';if(seconds<60)return tr('age.now');if(seconds<3600)return tr('age.min',{n:Math.floor(seconds/60)});if(seconds<86400)return tr('age.hours',{n:Math.floor(seconds/3600)});return tr('age.days',{n:Math.floor(seconds/86400)})}
 function when(value){return value?tr('when',{date:date(value),age:ageText(value)}):'—'}
 
 // Read available sections of the brief without inventing missing text.
@@ -2480,6 +2575,7 @@ function panelTaskCard(t){
  return card;
 }
 function panelOpenStory(id,returnKey,returnFallback='work'){
+ if(state?.transfer&&!transferHas('story',id)){transferLoad('story',id).then(ok=>{if(ok)panelOpenStory(id,returnKey,returnFallback)});return}
  panelUI.story=id;panelUI.storyReturn=returnKey||'work:story:'+id;panelUI.storyReturnFallback=returnFallback;panelUI.storySig=null;panelTip(null);
  // Move focus from the card button into the open story.
  const active=document.activeElement;if(active&&typeof active.blur==='function')active.blur();

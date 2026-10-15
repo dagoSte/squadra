@@ -43,6 +43,66 @@ def compact_records(value):
     return value
 
 
+def preview(text):
+    text = str(text or '')
+    short = text.split('\n', 1)[0][:240]
+    return short + '…' if short != text else text
+
+
+def landing_records(recorded, compact):
+    """Transfer summaries; the detail routes retain the original evidence."""
+    result = dict(recorded)
+    result.update(compact)
+    result['tasks'] = {}
+    for key, task in compact['tasks'].items():
+        item = dict(task)
+        if item.get('delivery'):
+            item['delivery'] = {k: v for k, v in item['delivery'].items() if k != 'proofs'}
+        item['proofs'] = [{k: v for k, v in proof.items() if k in {
+            'id', 'utc', 'status', 'native_rc', 'seconds', 'counts', 'error', 'covers'}}
+            for proof in item.get('proofs', [])]
+        result['tasks'][key] = item
+    result['messages'] = {key: {**message, 'body': preview(message['body']),
+                               'detail_pending': preview(message['body']) != message['body']}
+                          for key, message in recorded['messages'].items()}
+    result['outputs'] = [{**output, 'text': preview(output['text']), 'artifacts': [],
+                          'detail_pending': True} for output in recorded['outputs']]
+    result['graph'] = {**recorded['graph'], 'nodes': [
+        {**node, 'artifacts': []} for node in recorded['graph']['nodes']]}
+    result['transfer'] = 1
+    return result
+
+
+def detail_patch(recorded, events, compact, section, record):
+    if section == 'mail':
+        return {'messages': recorded['messages']}
+    if section == 'outputs':
+        return {'outputs': recorded['outputs']}
+    if section == 'history':
+        return {'events': events[-120:]}
+    if section in ('tasks', 'runs'):
+        return {section: compact[section]}
+    if section == 'graph':
+        return {'graph': recorded['graph']}
+    if section == 'story' and record in recorded['tasks']:
+        return {'tasks': {record: compact['tasks'][record]},
+                'messages': {key: value for key, value in recorded['messages'].items()
+                             if value.get('task') == record or value.get('related_task') == record},
+                'outputs': [value for value in recorded['outputs'] if value.get('task') == record],
+                'graph': {'nodes': [node for node in recorded['graph']['nodes']
+                                    if record in node.get('tasks', [])]}}
+    return None
+
+
+def transfer_signature(head, query, plugins_value, waiting, present, activity_value):
+    """Time ages are local; threshold membership and bucket changes are semantic."""
+    value = [head, query, plugins_value,
+             [(w['kind'], w['id'], w.get('threshold')) for w in waiting],
+             [(p['agent'], p['due']) for p in present],
+             {k: v for k, v in activity_value.items() if k != 'as_of'}]
+    return digest(json.dumps(value, ensure_ascii=False, sort_keys=True).encode())
+
+
 class VerifiedView:
     """Reuse verified data until SQLite or the underlying files change."""
     def __init__(self, root):
@@ -198,26 +258,55 @@ def make_server(root, port=0):
                     self.answer(200, json.dumps(usage.collect(events, recorded, roots=usage_roots), ensure_ascii=False).encode())
                 elif path == "/api/state":
                     key = remember_key(events)
-                    state["plugins"] = {**plugin_actions.discover(plugin_home, key), "key": key}
-                    state["attention"] = attention(state)
                     stamp = now()
-                    state["waits"] = waits(state, stamp)
-                    state["presence"] = presence(state, stamp)
+                    plugin_value = {**plugin_actions.discover(plugin_home, key), "key": key}
+                    waiting, present = waits(state, stamp), presence(state, stamp)
+                    activity_value = activity(events, stamp)
+                    is_compact = self.headers.get('X-Squadra-View') == 'compact'
+                    conditional = is_compact and 'X-Squadra-State-Token' in self.headers
+                    query = unquote(self.headers.get('X-Squadra-Search', '')).lower() if is_compact else ''
+                    revision = transfer_signature(events[-1]['hash'], query, plugin_value,
+                                                  waiting, present, activity_value) if conditional else None
+                    if conditional and self.headers.get('X-Squadra-State-Token') == revision:
+                        self.answer(200, json.dumps({'not_modified': True, 'change_token': revision,
+                                                     'server_time': stamp}).encode())
+                        return
+                    if conditional:
+                        state = landing_records(recorded, compact)
+                        state.update(change_token=revision, server_time=stamp)
+                    state["plugins"] = plugin_value
+                    state["attention"] = attention(recorded)
+                    state["waits"], state["presence"] = waiting, present
                     state["project_started"] = events[0]["utc"]
-                    state["events"] = events[-120:]
+                    state["events"] = [{**event, 'data': {}, 'detail_pending': True} for event in events[-120:]] if conditional else events[-120:]
                     state["integrity"] = "verified"
                     state['registry_head'] = {'seq': events[-1]['seq'], 'hash': events[-1]['hash']}
-                    state["comms"] = communications(state, events, state["waits"], stamp)
-                    state["activity"] = activity(events, stamp)
-                    if self.headers.get('X-Squadra-View') == 'compact':
-                        query = unquote(self.headers.get('X-Squadra-Search', '')).lower()
+                    state["comms"] = communications(recorded, events, waiting, stamp)
+                    state["activity"] = activity_value
+                    if is_compact:
                         state['search'] = {'query': query, **{
                             kind: [key for key, record in recorded[kind].items()
                                    if query and query in json.dumps(record, ensure_ascii=False,
                                                                     separators=(',', ':')).lower()]
-                            for kind in ('tasks', 'runs')}}
-                        state.update(compact)
+                            for kind in (('tasks', 'runs', 'messages') if conditional else ('tasks', 'runs'))}}
+                        if conditional:
+                            state['search']['outputs'] = [output.get('event') for output in recorded['outputs']
+                                if query and query in json.dumps(output, ensure_ascii=False).lower()]
+                        else:
+                            state.update(compact)
                     self.answer(200, json.dumps(state, ensure_ascii=False).encode())
+                elif path == '/api/detail/view':
+                    if self.headers.get('X-Squadra-State-Head') != events[-1]['hash']:
+                        self.answer(409, b'{"error":"state_changed"}')
+                        return
+                    section = self.headers.get('X-Squadra-Section', '')
+                    record = unquote(self.headers.get('X-Squadra-Record', ''))
+                    patch = detail_patch(recorded, events, compact, section, record)
+                    if patch is None:
+                        self.answer(400, b'{"error":"unknown_detail"}')
+                        return
+                    self.answer(200, json.dumps({'head': events[-1]['hash'], 'section': section,
+                                                 'record': record, 'patch': patch}, ensure_ascii=False).encode())
                 elif path in ('/api/detail/task', '/api/detail/run'):
                     kind = 'tasks' if path.endswith('/task') else 'runs'
                     record = recorded[kind].get(unquote(self.headers.get('X-Squadra-Record', '')))
