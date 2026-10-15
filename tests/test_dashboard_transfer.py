@@ -1,5 +1,6 @@
 """Conditional transfers retain complete evidence and invalidate on real change."""
 import json
+from copy import deepcopy
 from unittest.mock import patch
 import unittest
 from pathlib import Path
@@ -114,6 +115,39 @@ class DashboardTransfer(unittest.TestCase):
         with patch.object(dashboard, 'now', return_value='2026-10-12T12:15:00+00:00'):
             later, _ = self.compact(after['change_token'])
         self.assertNotEqual(after['activity']['since'], later['activity']['since'])
+
+    def test_overdue_delivery_keeps_conditional_http_available(self):
+        with patch.object(dashboard, 'now', return_value='2026-10-12T14:00:00+00:00'):
+            first, _ = self.compact()
+            self.assertTrue(any(w['kind'] == 'delivered' and w['task'] == self.task_id
+                                for w in first['waits']))
+            again, _ = self.compact(first['change_token'])
+        self.assertTrue(again['not_modified'])
+
+    def test_signature_covers_identity_of_every_real_wait_kind(self):
+        self.store.append('message', 'C', {'id': 'PING', 'to': 'A', 'body': 'Ping',
+                                          'ping': True, 'availability_event': None})
+        state = self.store.state()
+        reviewed = deepcopy(state['tasks'][self.task_id])
+        reviewed.update(id='REVIEWED', status='reviewed', coordinator='C')
+        state['tasks']['REVIEWED'] = reviewed
+        for key, status in [('RUNNING', 'running'), ('CLEANUP', 'cleanup-unknown')]:
+            state['runs'][key] = {'id': key, 'task': self.task_id, 'agent': 'A',
+                                  'mode': 'proof', 'status': status, 'utc': self.stamp}
+        waiting = dashboard.waits(state, '2026-10-12T14:00:00+00:00')
+        self.assertEqual({w['kind'] for w in waiting},
+                         {'ack', 'delivered', 'reviewed', 'cleanup-unknown', 'heartbeat', 'alive'})
+        signature = lambda rows: dashboard.transfer_signature('head', '', {}, rows, [], {})
+        token = signature(waiting)
+        self.assertEqual(token, signature(dashboard.waits(state, '2026-10-12T14:00:01+00:00')))
+        for index, row in enumerate(waiting):
+            for field in ('id', 'task', 'who'):
+                if field not in row:
+                    continue
+                with self.subTest(kind=row['kind'], identity=field):
+                    changed = deepcopy(waiting)
+                    changed[index][field] = ['OTHER'] if field == 'who' else 'OTHER'
+                    self.assertNotEqual(token, signature(changed))
 
     def test_plugin_change_invalidates_without_a_registry_event(self):
         with patch.object(dashboard.plugin_actions, 'discover', return_value={'installed': []}):

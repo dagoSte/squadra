@@ -97,7 +97,8 @@ def detail_patch(recorded, events, compact, section, record):
 def transfer_signature(head, query, plugins_value, waiting, present, activity_value):
     """Time ages are local; threshold membership and bucket changes are semantic."""
     value = [head, query, plugins_value,
-             [(w['kind'], w['id'], w.get('threshold')) for w in waiting],
+             [(w['kind'], w.get('id'), w.get('task'), w.get('who', []), w.get('threshold'))
+              for w in waiting],
              [(p['agent'], p['due']) for p in present],
              {k: v for k, v in activity_value.items() if k != 'as_of'}]
     return digest(json.dumps(value, ensure_ascii=False, sort_keys=True).encode())
