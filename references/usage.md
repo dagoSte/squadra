@@ -102,9 +102,11 @@ checks still apply.
 The cache is limited to 64 MiB per registry and 256 MiB overall, including temporary
 replacement space, with older entries evicted when necessary. Persistence failures
 do not prevent collection in memory. The cache folder is opened without following
-symlinks from the filesystem root, so when any folder above `HOME` is a symlink (a
-`HOME` under macOS `/var` or `/tmp`, or a symlinked `/home`), the cache stays off:
-figures remain correct, but a dashboard restart reads the session files again. The location is outside the registry and
+symlinks from the filesystem root, so when any folder above `HOME`, or `~/.cache`,
+`~/.cache/squadra` or its `usage-v1` folder, is a symlink (for example a `HOME` under macOS
+`/var` or `/tmp`, or a symlinked `/home`), the cache stays off and the Usage page says so
+(`coverage.notices`): figures remain correct, but a dashboard restart reads the session files
+again. The location is outside the registry and
 project, so ordinary `checkpoint` and `save` do not include it; persistence is
 disabled if the destination overlaps either. It is safe to delete the cache:
 Usage will rebuild it, and no transcript or registry entry is removed. Deleting
