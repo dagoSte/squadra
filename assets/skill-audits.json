@@ -11,7 +11,7 @@
         "osv": true,
         "fail_on_severity": "high"
       },
-      "scanned_at": "2026-10-15T13:13:25.558133+00:00",
+      "scanned_at": "2026-10-15T21:33:19.599492+00:00",
       "result": "warn",
       "findings": {
         "critical": 0,
@@ -20,12 +20,12 @@
         "low": 0
       },
       "files": {
-        "SKILL.md": "a5190e720bc96264e881fe3629b0cbd743072aa1de766aac7d989c7c346d833d",
-        "scripts/registry.py": "33dd418ab180ff6cb5d7b5cffe75ab45643a5e41035673433e45382bb05bf464",
-        "scripts/squadra.py": "1b47fd1afe3864bc35308a059ba73132d74cafcf1480203e9c272df6db9afb3e",
-        "scripts/dashboard.py": "8df29d8c312581e0b1c021bd81ec02dab276deb6bc1459c20e2d4c182b44c0e5",
-        "scripts/system_skills.py": "4e904556c790b4d660a8698f0c1dddb360d3377793b1ce6ec6579e2d5739cb68",
-        "assets/dashboard.html": "8e6cee614d6c6104a9d307deb0a55627a653a12faf4f3945eab6a2fd2c09b8bd",
+        "SKILL.md": "c580c9489ca45149d61298c96fe6cb4c4c412627a02072aadb2fd1c67680dc77",
+        "scripts/registry.py": "47156ee82b6d30837a3895824e8e1b2a96c60cd809d84d280a136b6ade83ae85",
+        "scripts/squadra.py": "fdef7bf4b459f42a5e1d91ec4fe2a9b58092d76ea80fb5e7afa14ac78d626261",
+        "scripts/dashboard.py": "688d36b9a939198643038179dc2ad38a736dc514c7dd58fe756aeba9fc1d64b8",
+        "scripts/system_skills.py": "5b67fad6e8849b29f0e27ad22e3d582b13d6f92e12f9eb088e5c2627f1004e24",
+        "assets/dashboard.html": "077b131cf357550930db1344ac672c42826a90ab9980c741ab60e900d88207a1",
         "references/skills/errata.md": "2a486d47946b59fd78794ed8978dba19cd6e0550b85093b96e8e79c7ca747272",
         "scripts/errata.py": "0db6699770ad7a6e4dbdf5c50eb1a2144b0b8b242bd358939c33d3d89a93d6fa"
       }
@@ -40,7 +40,7 @@
         "osv": true,
         "fail_on_severity": "high"
       },
-      "scanned_at": "2026-10-15T13:13:25.558133+00:00",
+      "scanned_at": "2026-10-15T21:33:19.599492+00:00",
       "result": "warn",
       "findings": {
         "critical": 0,
@@ -49,14 +49,14 @@
         "low": 0
       },
       "files": {
-        "SKILL.md": "a5190e720bc96264e881fe3629b0cbd743072aa1de766aac7d989c7c346d833d",
-        "scripts/registry.py": "33dd418ab180ff6cb5d7b5cffe75ab45643a5e41035673433e45382bb05bf464",
-        "scripts/squadra.py": "1b47fd1afe3864bc35308a059ba73132d74cafcf1480203e9c272df6db9afb3e",
-        "scripts/dashboard.py": "8df29d8c312581e0b1c021bd81ec02dab276deb6bc1459c20e2d4c182b44c0e5",
-        "scripts/system_skills.py": "4e904556c790b4d660a8698f0c1dddb360d3377793b1ce6ec6579e2d5739cb68",
-        "assets/dashboard.html": "8e6cee614d6c6104a9d307deb0a55627a653a12faf4f3945eab6a2fd2c09b8bd",
+        "SKILL.md": "c580c9489ca45149d61298c96fe6cb4c4c412627a02072aadb2fd1c67680dc77",
+        "scripts/registry.py": "47156ee82b6d30837a3895824e8e1b2a96c60cd809d84d280a136b6ade83ae85",
+        "scripts/squadra.py": "fdef7bf4b459f42a5e1d91ec4fe2a9b58092d76ea80fb5e7afa14ac78d626261",
+        "scripts/dashboard.py": "688d36b9a939198643038179dc2ad38a736dc514c7dd58fe756aeba9fc1d64b8",
+        "scripts/system_skills.py": "5b67fad6e8849b29f0e27ad22e3d582b13d6f92e12f9eb088e5c2627f1004e24",
+        "assets/dashboard.html": "077b131cf357550930db1344ac672c42826a90ab9980c741ab60e900d88207a1",
         "references/skills/previsione.md": "c6310aff2a0284c9e75f848b122cf04567a23fde4963586d64e8ae12aa9efdbe",
-        "scripts/forecast.py": "cca3b7ae89d328f163c7d877df4ca45b1b9582a7b2f1aab9619b1efcd12e7d7f"
+        "scripts/forecast.py": "0da60890635eae583f09f48973c522c371a5bd1e0037102fe500fe58ecb1aeeb"
       }
     },
     {
@@ -69,7 +69,7 @@
         "osv": true,
         "fail_on_severity": "high"
       },
-      "scanned_at": "2026-10-15T13:13:25.558133+00:00",
+      "scanned_at": "2026-10-15T21:33:19.599492+00:00",
       "result": "warn",
       "findings": {
         "critical": 0,
@@ -78,13 +78,44 @@
         "low": 0
       },
       "files": {
-        "SKILL.md": "a5190e720bc96264e881fe3629b0cbd743072aa1de766aac7d989c7c346d833d",
-        "scripts/registry.py": "33dd418ab180ff6cb5d7b5cffe75ab45643a5e41035673433e45382bb05bf464",
-        "scripts/squadra.py": "1b47fd1afe3864bc35308a059ba73132d74cafcf1480203e9c272df6db9afb3e",
-        "scripts/dashboard.py": "8df29d8c312581e0b1c021bd81ec02dab276deb6bc1459c20e2d4c182b44c0e5",
-        "scripts/system_skills.py": "4e904556c790b4d660a8698f0c1dddb360d3377793b1ce6ec6579e2d5739cb68",
-        "assets/dashboard.html": "8e6cee614d6c6104a9d307deb0a55627a653a12faf4f3945eab6a2fd2c09b8bd",
+        "SKILL.md": "c580c9489ca45149d61298c96fe6cb4c4c412627a02072aadb2fd1c67680dc77",
+        "scripts/registry.py": "47156ee82b6d30837a3895824e8e1b2a96c60cd809d84d280a136b6ade83ae85",
+        "scripts/squadra.py": "fdef7bf4b459f42a5e1d91ec4fe2a9b58092d76ea80fb5e7afa14ac78d626261",
+        "scripts/dashboard.py": "688d36b9a939198643038179dc2ad38a736dc514c7dd58fe756aeba9fc1d64b8",
+        "scripts/system_skills.py": "5b67fad6e8849b29f0e27ad22e3d582b13d6f92e12f9eb088e5c2627f1004e24",
+        "assets/dashboard.html": "077b131cf357550930db1344ac672c42826a90ab9980c741ab60e900d88207a1",
         "references/skills/rasoio.md": "cd47402b57aa2ec04f602bb4d71c578f7e404e81bc65552d8c2f079dc88be7df"
+      }
+    },
+    {
+      "skill": "bilanciamento",
+      "scanner": "cisco-ai-skill-scanner",
+      "version": "2.2.2",
+      "policy": {
+        "name": "balanced",
+        "behavioral": true,
+        "osv": true,
+        "fail_on_severity": "high"
+      },
+      "scanned_at": "2026-10-15T21:33:19.599492+00:00",
+      "result": "warn",
+      "findings": {
+        "critical": 0,
+        "high": 0,
+        "medium": 1,
+        "low": 0
+      },
+      "files": {
+        "SKILL.md": "c580c9489ca45149d61298c96fe6cb4c4c412627a02072aadb2fd1c67680dc77",
+        "scripts/registry.py": "47156ee82b6d30837a3895824e8e1b2a96c60cd809d84d280a136b6ade83ae85",
+        "scripts/squadra.py": "fdef7bf4b459f42a5e1d91ec4fe2a9b58092d76ea80fb5e7afa14ac78d626261",
+        "scripts/dashboard.py": "688d36b9a939198643038179dc2ad38a736dc514c7dd58fe756aeba9fc1d64b8",
+        "scripts/system_skills.py": "5b67fad6e8849b29f0e27ad22e3d582b13d6f92e12f9eb088e5c2627f1004e24",
+        "assets/dashboard.html": "077b131cf357550930db1344ac672c42826a90ab9980c741ab60e900d88207a1",
+        "references/skills/bilanciamento.md": "c48669cdff93769a54b91a2b2607f7f28a65f7696cd637735d0abb4d583928e2",
+        "scripts/balance.py": "a57c6d301047eb38023586a0ea374cc9042413cbf70b48117059687b4f5ed865",
+        "scripts/forecast.py": "0da60890635eae583f09f48973c522c371a5bd1e0037102fe500fe58ecb1aeeb",
+        "scripts/usage.py": "2cd6d1979c3c144e1a94492e5a20fc34dd6ec94dbc13ae57cc9311115162ed15"
       }
     }
   ]
