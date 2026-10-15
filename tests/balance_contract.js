@@ -105,7 +105,7 @@ const tests={
  async rules(){
   const app=await setup();await app.select();const table=one(app.content,e=>e.getAttribute('data-balance-rules')!==null);
   const rows=all(table,e=>e.getAttribute('data-balance-rule')!==null);assert.deepEqual(rows.map(r=>r.getAttribute('data-balance-rule')),['reads','quota','tasks','idle']);
-  for(const r of rows)assert.equal(r.children.length,4,'four columns');
+  for(const r of rows){assert.equal(r.children.length,4,'four columns');assert.deepEqual(r.children.map(c=>c.getAttribute('data-label')),['Quando scatta','Esempio di consiglio','Oggi','Stato'],'each cell names its column for the phone layout')}
   assert.match(text(rows[0]),/Un lettore ha 2 o più letture in attesa/);assert.match(text(rows[0]),/al massimo 2, w-cy/);assert.equal(rows[0].getAttribute('data-balance-state'),'fires');
   assert.match(text(rows[1]),/Una quota arriva all’80%/);assert.match(text(rows[1]),/al massimo 96%, w-cx/);assert.match(text(rows[1]),/non misurata per 1 finestra\b/);
   const blocked=await setup();blocked.data=clone(payload.blocked);await blocked.select();
@@ -113,7 +113,7 @@ const tests={
  },
  async plain(){
   const app=await setup();await app.select();const list=one(app.content,e=>e.getAttribute('data-balance-windows')!==null);
-  const cx=text(one(list,e=>e.getAttribute('data-balance-plain')==='w-cx'));
+  const cxItem=one(list,e=>e.getAttribute('data-balance-plain')==='w-cx'),cx=text(cxItem);assert.equal(all(cxItem,e=>hasClass(e,'sq-balance-line')).length,3,'who, quota and work on three short lines');
   assert.match(cx,/96% della quota settimanale, si azzera alle/);assert.match(cx,/1 incarico aperto, 0 letture in attesa/,'Italian singular and plural');assert.doesNotMatch(text(list),/\b1 (incarichi|letture|finestre)\b/,'no plural after 1');assert.match(cx,/10% della quota delle 5 ore/);assert.match(cx,/600 token all’ora/);assert.match(cx,/legge/);
   const missing=text(one(app.content,e=>e.getAttribute('data-balance-missing')!==null));assert.match(missing,/Quota di w-cy non ancora osservata\./);
   const none=await setup();none.data=clone(payload.noReference);await none.select();assert.match(text(one(none.content,e=>e.getAttribute('data-balance-missing')!==null)),/manca il riferimento/);
@@ -158,7 +158,7 @@ const tests={
   const block=page.match(/<style id="squadra-balance-style">([\s\S]*?)<\/style>/);assert.ok(block,'Balance style block');const css=block[1];
   const breakpoint=Number(css.match(/@media\(max-width:([\d.]+)px\)/)[1]);for(const width of [360,375,390])assert.ok(width<=breakpoint,'phone covered: '+width);
   assert.match(css,/\.sq-balance-cards\{display:grid;grid-template-columns:repeat\(auto-fill,minmax\(min\(320px,100%\),1fr\)\)/,'cards shrink to the phone width');
-  assert.match(css,/overflow-wrap:anywhere/,'long identities wrap');assert.match(css,/var\(--sq-border/,'theme tokens, light and dark');
+  assert.match(css,/overflow-wrap:anywhere/,'long identities wrap');assert.match(css,/\.sq-balance \.sq-crow>\.sq-viz\{grid-column:1\/-1\}/,'the hourly strip spans the card under its model name');assert.match(css,/\[data-balance-rules\] :is\(table,tbody,tr,td\)\{display:block/,'the rules table becomes cards on a phone');assert.match(css,/var\(--sq-border/,'theme tokens, light and dark');
   assert.doesNotMatch(css,/#[0-9a-f]{3,6}\b/i,'no fixed colours outside the theme tokens');
  }
 };

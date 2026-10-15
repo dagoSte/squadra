@@ -3967,9 +3967,9 @@ if(typeof document.addEventListener==='function')document.addEventListener('keyd
 .sq-balance-num{font-variant-numeric:tabular-nums;font-weight:600}.sq-balance-est{font-style:italic}
 .sq-balance-list{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:8px}.sq-balance-list li{border-top:1px solid var(--sq-border,var(--line));padding-top:8px;min-width:0;overflow-wrap:anywhere}
 .sq-balance-form{display:flex;flex-wrap:wrap;gap:10px;align-items:end;margin-top:10px}.sq-balance-form label{display:grid;gap:4px;font-size:13px;min-width:0}.sq-balance-form input{width:12em;max-width:100%}
-.sq-balance select{max-width:100%}.sq-balance .sq-crow svg.sq-strip{grid-column:1/-1;width:100%;height:40px}.sq-balance .sq-strip rect.none{fill:none;stroke:var(--sq-border-strong,var(--line));stroke-dasharray:2 2}
+.sq-balance select{max-width:100%}.sq-balance-verdict-text{font-size:18px;line-height:1.4;font-weight:600;margin:8px 0}.sq-balance .sq-crow>.sq-viz{grid-column:1/-1}.sq-balance-line{margin:2px 0 0}.sq-balance .sq-crow svg.sq-strip{grid-column:1/-1;width:100%;height:40px}.sq-balance .sq-strip rect.none{fill:none;stroke:var(--sq-border-strong,var(--line));stroke-dasharray:2 2}
 .sq-balance:focus-visible,.sq-balance button:focus-visible,.sq-balance input:focus-visible,.sq-balance select:focus-visible{outline:2px solid var(--sq-accent);outline-offset:4px}
-@media(max-width:699.98px){.sq-balance h2{font-size:26px}.sq-balance-form{flex-direction:column;align-items:stretch}.sq-balance-form input{width:100%}}
+@media(max-width:699.98px){.sq-balance [data-balance-rules] :is(table,tbody,tr,td){display:block;width:100%}.sq-balance [data-balance-rules] tr:first-child{display:none}.sq-balance [data-balance-rules] tr{padding:10px 0;border-top:1px solid var(--sq-border,var(--line))}.sq-balance [data-balance-rules] td{padding:2px 0}.sq-balance [data-balance-rules] td::before{content:attr(data-label) ': ';font-weight:600}.sq-balance h2{font-size:26px}.sq-balance-form{flex-direction:column;align-items:stretch}.sq-balance-form input{width:100%}}
 </style>
 <script id="squadra-balance">
 'use strict';
@@ -4068,7 +4068,7 @@ function balanceRules(data,facts){
   const row=node('tr');row.setAttribute('data-balance-rule',r.id);
   const today=r.id==='idle'?tr(r.fired?'balance.today.idleYes':'balance.today.idleNo'):r.best?tr(r.id==='quota'?'balance.today.quota':'balance.today.max',{n:r.id==='quota'?Math.round(r.best.v):r.best.v,name:balanceWindowName(r.best.w.identity)})+(r.unknown?' · '+tr(r.unknown===1?'balance.today.unknownOne':'balance.today.unknownSome',{n:r.unknown}):''):tr(r.unknown?'balance.today.unknown':'balance.today.none');
   const stateKey=r.fired?'fires':r.blocked?'blocked':r.unknown&&!r.best?'unknown':'ok';
-  for(const cell of [tr('balance.when.'+r.id,{n:r.threshold}),tr('balance.example.'+r.id),today,tr('balance.state.'+stateKey)])row.append(node('td',cell));
+  [tr('balance.when.'+r.id,{n:r.threshold}),tr('balance.example.'+r.id),today,tr('balance.state.'+stateKey)].forEach((cell,i)=>{const td=node('td',cell);td.setAttribute('data-label',tr('balance.col.'+['when','example','today','state'][i]));row.append(td)});
   row.setAttribute('data-balance-state',stateKey);table.append(row);
  }
  const scroll=node('div',undefined,'scroll');scroll.append(table);box.append(scroll);return box;
@@ -4079,12 +4079,12 @@ function balanceWindowsPlain(data){
  if(!(data.windows||[]).length){box.append(node('p',tr('balance.noWindows')));return box}
  const list=node('ul',undefined,'sq-balance-list');
  for(const w of data.windows){
-  const li=node('li');li.setAttribute('data-balance-plain',w.identity);const parts=[balanceRoles(w),balanceModelLabel(w)].filter(Boolean),q=w.quota||{};
+  const li=node('li');li.setAttribute('data-balance-plain',w.identity);const who=[balanceRoles(w),balanceModelLabel(w)].filter(Boolean),parts=[],q=w.quota||{};
   if(q.kind==='measured')for(const s of q.slots||[])if(s.fresh)parts.push(tr('balance.slot',{percent:balanceNum(s.used_percent),span:balanceSpan(s.window_minutes),reset:balanceReset(s.resets_at)}));
   if(q.kind==='estimate')for(const s of q.slots||[])if(typeof s.percent==='number')parts.push(tr('balance.slotEstimate',{percent:Math.round(s.percent),span:balanceEstimateSpan(s.slot)}));
-  parts.push(w.tokens_per_hour===null?tr('balance.tokens.unknown'):tr('balance.tokens.rate',{n:balanceNum(Math.round(w.tokens_per_hour))}));
-  parts.push(tr(w.owned_open===1?'balance.load.owned1':'balance.load.owned',{n:w.owned_open})+', '+tr(w.read_steps===1?'balance.load.reads1':'balance.load.reads',{n:w.read_steps}));if(!w.available)parts.push(tr('balance.reason.stand-by'));
-  li.append(node('strong',balanceWindowName(w.identity)),node('p',parts.join(' · ')));list.append(li);
+  const work=[w.tokens_per_hour===null?tr('balance.tokens.unknown'):tr('balance.tokens.rate',{n:balanceNum(Math.round(w.tokens_per_hour))})];
+  work.push(tr(w.owned_open===1?'balance.load.owned1':'balance.load.owned',{n:w.owned_open})+', '+tr(w.read_steps===1?'balance.load.reads1':'balance.load.reads',{n:w.read_steps}));if(!w.available)work.push(tr('balance.reason.stand-by'));
+  li.append(node('strong',balanceWindowName(w.identity)));for(const line of [who,parts,work])if(line.length)li.append(node('p',line.join(' · '),'sq-balance-line'));list.append(li);
  }
  box.append(list);return box;
 }
