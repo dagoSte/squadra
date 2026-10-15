@@ -6,7 +6,7 @@ import re
 
 COMMUNICATION = {"message", "ack", "transport", "availability"}
 OTHER_KNOWN = {"init", "agent", "task", "plan", "start", "deliver", "review", "close", "output",
-               "run.start", "run.end", "run.cancel", "run.progress", "resource.acquire",
+               "run.start", "run.end", "run.cancel", "run.progress", "run.abandon", "resource.acquire",
                "resource.release", "pause", "resume", "legacy", "decision", "ask", "diagnostic",
                "settings", "save", "restore.check", "restore.freeze", "challenge", "benchmark", "brief",
                "supersede", "route", "fix", "lesson", "lesson.retire", "lesson.recall", "lesson.ineffective"}

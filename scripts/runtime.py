@@ -10,7 +10,7 @@ import subprocess
 import time
 import uuid
 
-from registry import Error, require, snapshot, now
+from registry import Error, require, snapshot, now, atomic, canonical, run_lease, run_lease_paths
 
 REVIEW_SCHEMA = {"type": "object", "additionalProperties": False, "properties": {
     "verdict": {"type": "string", "enum": ["accepted", "changes-required", "blocked"]},
@@ -141,7 +141,15 @@ def terminate(proc):
 def execute(store, actor, task_id, argv=None, mode="proof", prompt=None,
             timeout=120, gate=False, executable=None, run_id=None, stage="code", expected_rc=0, covers=None,
             *, checked=None):
-    state = store.state()
+    run_id = run_id or uuid.uuid4().hex
+    with run_lease(store.root, run_id) as lease_fd:
+        return _execute_owned(store, actor, task_id, argv, mode, prompt, timeout, gate, executable,
+                              run_id, stage, expected_rc, covers, checked=checked, lease_fd=lease_fd)
+
+
+def _execute_owned(store, actor, task_id, argv, mode, prompt, timeout, gate, executable,
+                   run_id, stage, expected_rc, covers, *, checked, lease_fd):
+    state = store.resolved()
     require(task_id in state["tasks"], "Unknown task")
     task = state["tasks"][task_id]
     agent = state["agents"][actor]
@@ -169,7 +177,6 @@ def execute(store, actor, task_id, argv=None, mode="proof", prompt=None,
         route_record["contract"] = task["contract"]
         if mode == "proof" and task["route"] == "light":
             route_record["light"] = measure(task, before)
-    run_id = run_id or uuid.uuid4().hex
     folder = store.root / "runs" / run_id
     folder.mkdir(parents=True, mode=0o700, exist_ok=False)
     if mode in {"read", "build"}:
@@ -192,8 +199,11 @@ def execute(store, actor, task_id, argv=None, mode="proof", prompt=None,
               "before": before, "gate": gate, "timeout": timeout, "folder": str(folder), "stage": stage,
               "expected_rc": expected_rc, "requested_model": agent.get("model"), "covers": covers or [], **route_record}
     record.update(fix_record)
+    record["lease_version"] = 1
+    _, _, lease_metadata, terminal_receipt = run_lease_paths(store.root, run_id)
+    atomic(lease_metadata, canonical({"run": run_id, "phase": "not-started", "pgid": None}).encode())
     store.append("run.start", actor, record, "run-start:" + run_id)
-    store.project()
+    store.publish()
     result = {"id": run_id, "status": "failed", "native_rc": None, "started": now()}
     env = os.environ.copy()
     if mode in {"proof", "probe"}:
@@ -211,11 +221,19 @@ def execute(store, actor, task_id, argv=None, mode="proof", prompt=None,
         (folder / "input.txt").write_text(prompt or "")
         with (folder / "stdout.log").open("wb") as stdout, (folder / "stderr.log").open("wb") as stderr, (folder / "input.txt").open("rb") as stdin:
             options = {"start_new_session": True} if os.name != "nt" else {"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP}
+            atomic(lease_metadata, canonical({"run": run_id, "phase": "launching", "pgid": None}).encode())
+            if os.name != "nt":
+                options["pass_fds"] = (lease_fd,)
             proc = subprocess.Popen(argv, cwd=task["repo"], env=env, stdout=stdout, stderr=stderr,
                                     stdin=stdin if prompt is not None else subprocess.DEVNULL, **options)
+            atomic(lease_metadata, canonical({"run": run_id, "phase": "spawned", "pgid": proc.pid}).encode())
             while proc.poll() is None:
-                current = store.state()
-                if current["paused"] or current["runs"][run_id].get("cancel_requested"):
+                current = store.view()
+                try:
+                    cancelled = current["paused"] or current["runs"][run_id].get("cancel_requested")
+                finally:
+                    store.release_views()
+                if cancelled:
                     terminate(proc); result["status"] = "interrupted"; break
                 if time.monotonic() - start > timeout:
                     terminate(proc); result["status"] = "timeout"; break
@@ -267,6 +285,8 @@ def execute(store, actor, task_id, argv=None, mode="proof", prompt=None,
                     result["artifacts"].append(store.artifact(folder / name))
                 except (Error, OSError) as exc:
                     result.update(status="failed", error="Evidence capture failed: " + str(exc))
+        atomic(terminal_receipt, canonical({"run": run_id, "status": result["status"],
+                                           "native_rc": result["native_rc"], "ended": result["ended"]}).encode())
         store.append("run.end", actor, result, "run-end:" + run_id)
-        store.project()
+        store.publish()
     return result

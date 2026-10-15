@@ -25,6 +25,7 @@ LIVE_WRITER = r"""
 import sys, time, types
 from pathlib import Path
 scripts, root, ready, release = sys.argv[1:5]
+sys.path.insert(0, str(Path(scripts).resolve()))
 path = Path(scripts) / "registry.py"
 module = types.ModuleType("live_writer_registry")
 exec(compile(path.read_bytes(), str(path), "exec"), module.__dict__)

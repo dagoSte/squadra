@@ -13,10 +13,11 @@ from urllib.parse import unquote, urlparse
 import webbrowser
 
 from registry import (Store, Error, digest, attention, waits, now, requirement_matrix, initial, apply, decision_graph,
-                      task_progress, presence, fix_status)
+                      task_progress, presence, fix_status, plain)
 from comms import communications
 from panel import activity
 from reads import read_value
+from source_manifests import materialize_known
 import plugins
 import plugin_settings
 import plugin_actions
@@ -95,9 +96,9 @@ def detail_patch(recorded, events, compact, section, record):
     return None
 
 
-def transfer_signature(head, query, plugins_value, waiting, present, activity_value):
+def transfer_signature(head, query, plugins_value, waiting, present, activity_value, audit=None):
     """Time ages are local; threshold membership and bucket changes are semantic."""
-    value = [head, query, plugins_value,
+    value = [head, query, plugins_value, audit,
              [(w['kind'], w.get('id'), w.get('task'), w.get('who', []), w.get('threshold'))
               for w in waiting],
              [(p['agent'], p['due']) for p in present],
@@ -114,6 +115,79 @@ class VerifiedView:
         self.monitor = None
         self.identity = self.marker = self.value = None
         self.reads_head = self.reads_value = None
+        self.verified_events = None
+        self.audit_lock = threading.Lock()
+        self.audit_thread = self.audit_cancel = self.audit_store = None
+        self.audit_pending = self.audit_failure = None
+        self.audit_generation = 0
+        self.audit_state = 'running'
+        self.closed = False
+
+    def audit_info(self):
+        with self.audit_lock:
+            if self.audit_failure is not None:
+                raise Error(self.audit_failure)
+            return {'status': self.audit_state}
+
+    def _queue_audit(self, identity):
+        with self.audit_lock:
+            if self.closed:
+                raise Error('Dashboard view closed')
+            self.audit_generation += 1
+            self.audit_pending = self.audit_generation, identity
+            self.audit_state = 'running'
+            if self.audit_cancel is not None:
+                self.audit_cancel.set()
+            if self.audit_thread is None:
+                self.audit_thread = threading.Thread(target=self._audit_worker,
+                    name='squadra-registry-audit', daemon=True)
+                self.audit_thread.start()
+
+    def _audit_worker(self):
+        while True:
+            with self.audit_lock:
+                if self.closed or self.audit_pending is None:
+                    self.audit_thread = self.audit_store = self.audit_cancel = None
+                    return
+                generation, identity = self.audit_pending
+                self.audit_pending = None
+                cancel = self.audit_cancel = threading.Event()
+            store = None
+            audited = failure = None
+            try:
+                if self.path.is_symlink():
+                    raise Error('Registry symlink refused')
+                before = self.path.stat()
+                if (before.st_dev, before.st_ino) != identity:
+                    continue
+                store = Store(self.root, read_only=True)
+                with self.audit_lock:
+                    self.audit_store = store
+                audited = store.audit(cancelled=cancel.is_set)
+            except Exception as exc:
+                failure = str(exc)
+            finally:
+                if store is not None:
+                    store.close()
+                with self.audit_lock:
+                    if self.audit_store is store:
+                        self.audit_store = None
+            try:
+                current = self.path.lstat()
+                same_file = not self.path.is_symlink() and (current.st_dev, current.st_ino) == identity
+            except OSError:
+                same_file = False
+            with self.audit_lock:
+                if self.closed or cancel.is_set() or generation != self.audit_generation or not same_file:
+                    continue
+                if failure is not None:
+                    self.audit_failure = failure
+                    continue
+                known = self.verified_events
+                rows = audited['events']
+                common = min(len(known or []), len(rows))
+                if common and known[common - 1]['hash'] == rows[common - 1]['hash']:
+                    self.audit_state = 'complete'
 
     def stamp(self):
         if self.path.is_symlink():
@@ -126,6 +200,7 @@ class VerifiedView:
             self.monitor = sqlite3.connect(self.path.as_uri() + '?mode=ro', uri=True,
                                            isolation_level=None, check_same_thread=False)
             self.identity, self.marker, self.value = identity, None, None
+            self.verified_events = None
         version = self.monitor.execute('PRAGMA data_version').fetchone()[0]
         def changed(path):
             try:
@@ -137,18 +212,40 @@ class VerifiedView:
 
     def read(self):
         with self.lock:
+            if self.closed:
+                raise Error('Dashboard view closed')
+            self.audit_info()
             before = self.stamp()
             if self.value is not None and before == self.marker:
                 return self.value
             self.value = self.marker = None
             store = Store(self.root, read_only=True)
             try:
-                events = store.events()
+                prior = self.verified_events
+                suffix = None
+                if prior:
+                    tip = store.db.execute('SELECT seq,hash FROM events ORDER BY seq DESC LIMIT 1').fetchone()
+                    if tip and tip['seq'] > prior[-1]['seq']:
+                        suffix = store.events_since(prior[-1]['seq'], prior[-1]['hash'])
+                        if any(event.get('format') != 2 for event in suffix):
+                            suffix = None
+                if suffix is None:
+                    events = store.events()
+                    state = plain(store.view())
+                else:
+                    events = prior + suffix
+                    state = plain(store.view())
+                if state['event_count'] != (events[-1]['seq'] if events else 0):
+                    store.db.execute('BEGIN')
+                    try:
+                        events = store.events()
+                        state = store.state(events, resolve=False)
+                    finally:
+                        store.db.execute('COMMIT')
+                    suffix = None
+                self.verified_events = events
             finally:
                 store.close()
-            state = initial()
-            for event in events:
-                apply(state, event)
             state.update(root=str(self.root), graph=decision_graph(events), progress=task_progress(events),
                          requirements={key: requirement_matrix(task) for key, task in state['tasks'].items()})
             for task in state['tasks'].values():
@@ -160,7 +257,14 @@ class VerifiedView:
             # A concurrent commit may leave a valid older snapshot, but it must not be cached as current.
             if before == after:
                 self.marker, self.value = after, value
+            if suffix is None:
+                self._queue_audit(self.identity)
+            self.audit_info()
             return value
+
+    def record(self, kind, value):
+        """Resolve only a requested record, rechecking immutable inventory bytes."""
+        return materialize_known({kind: {'record': value}}, self.root / 'artifacts')[kind]['record']
 
     def reads(self):
         events, _, _ = self.read()
@@ -172,11 +276,27 @@ class VerifiedView:
             return self.reads_value
 
     def close(self):
+        with self.audit_lock:
+            self.closed = True
+            self.audit_pending = None
+            if self.audit_cancel is not None:
+                self.audit_cancel.set()
+            if self.audit_store is not None:
+                try:
+                    self.audit_store.db.interrupt()
+                except sqlite3.ProgrammingError:
+                    pass  # The worker can finish closing its owned connection concurrently.
+            worker = self.audit_thread
+        if worker is not None:
+            worker.join(timeout=5)
+            if worker.is_alive():
+                raise Error('Registry audit cleanup did not finish within 5 seconds')
         with self.lock:
             if self.monitor is not None:
                 self.monitor.close()
                 self.monitor = None
             self.value = self.marker = None
+            self.verified_events = None
             self.reads_head = self.reads_value = None
 
 
@@ -199,11 +319,11 @@ def make_server(root, port=0):
         return verified_first["hash"]
 
     def plugin_key(store):
+        view.audit_info()
         # Reuse the verified key while the first record is unchanged.
         first = store.db.execute("SELECT * FROM events WHERE seq=1").fetchone()
         plugins.require(first is not None, "registry_invalid")
-        record = dict(first)
-        record["data"] = json.loads(record["data"])
+        record = store.decode_event(first)
         if record == verified_first:
             return record["hash"]
         return remember_key(store.events())
@@ -213,6 +333,8 @@ def make_server(root, port=0):
             pass
 
         def answer(self, status, body, content="application/json; charset=utf-8"):
+            if status == 200 and urlparse(self.path).path.startswith('/api/'):
+                view.audit_info()
             self.send_response(status)
             self.send_header("Content-Type", content)
             self.send_header("Content-Length", str(len(body)))
@@ -235,11 +357,16 @@ def make_server(root, port=0):
                 self.answer(200, fonts[path], "font/woff2"); return
             if not secrets.compare_digest(self.headers.get("X-Squadra-Token", ""), token):
                 self.answer(401, b'{"error":"token required"}'); return
+            try:
+                view.audit_info()
+            except Error as exc:
+                self.answer(409, json.dumps({"error": str(exc)}).encode())
+                return
             if path == "/api/plugin-store":
                 try:
                     body = plugin_store.catalogue(plugin_home)
                     self.answer(200, json.dumps(body, ensure_ascii=False).encode())
-                except (plugins.Refused, OSError, ValueError, KeyError):
+                except (Error, plugins.Refused, OSError, ValueError, KeyError):
                     self.answer(409, b'{"error":"store_unavailable"}')
                 return
             if path == "/api/plugins" or path.startswith("/api/plugin/"):
@@ -268,6 +395,7 @@ def make_server(root, port=0):
                     self.answer(200, json.dumps(result, ensure_ascii=False).encode())
                 elif path == "/api/state":
                     key = remember_key(events)
+                    audit = view.audit_info()
                     stamp = now()
                     plugin_value = {**plugin_actions.discover(plugin_home, key), "key": key}
                     waiting, present = waits(state, stamp), presence(state, stamp)
@@ -276,11 +404,13 @@ def make_server(root, port=0):
                     conditional = is_compact and 'X-Squadra-State-Token' in self.headers
                     query = unquote(self.headers.get('X-Squadra-Search', '')).lower() if is_compact else ''
                     revision = transfer_signature(events[-1]['hash'], query, plugin_value,
-                                                  waiting, present, activity_value) if conditional else None
+                                                  waiting, present, activity_value, audit) if conditional else None
                     if conditional and self.headers.get('X-Squadra-State-Token') == revision:
                         self.answer(200, json.dumps({'not_modified': True, 'change_token': revision,
                                                      'server_time': stamp}).encode())
                         return
+                    if not is_compact:
+                        state = materialize_known(recorded, view.root / 'artifacts')
                     if conditional:
                         state = landing_records(recorded, compact)
                         state.update(change_token=revision, server_time=stamp)
@@ -291,13 +421,16 @@ def make_server(root, port=0):
                     state["events"] = [{**event, 'data': {}, 'detail_pending': True} for event in events[-120:]] if conditional else events[-120:]
                     state["integrity"] = "verified"
                     state['registry_head'] = {'seq': events[-1]['seq'], 'hash': events[-1]['hash']}
+                    state['audit'] = audit
                     state["comms"] = communications(recorded, events, waiting, stamp)
                     state["activity"] = activity_value
                     if is_compact:
                         state['search'] = {'query': query, **{
                             kind: [key for key, record in recorded[kind].items()
-                                   if query and query in json.dumps(record, ensure_ascii=False,
-                                                                    separators=(',', ':')).lower()]
+                                   if query and (query in json.dumps(record, ensure_ascii=False,
+                                                                    separators=(',', ':')).lower()
+                                   or query in json.dumps(view.record(kind, record), ensure_ascii=False,
+                                                          separators=(',', ':')).lower())]
                             for kind in (('tasks', 'runs', 'messages') if conditional else ('tasks', 'runs'))}}
                         if conditional:
                             state['search']['outputs'] = [output.get('event') for output in recorded['outputs']
@@ -323,7 +456,7 @@ def make_server(root, port=0):
                     if record is None:
                         self.answer(404, b'{"error":"record not found"}')
                     else:
-                        self.answer(200, json.dumps(record, ensure_ascii=False).encode())
+                        self.answer(200, json.dumps(view.record(kind, record), ensure_ascii=False).encode())
                 elif re.fullmatch(r"/api/artifact/[0-9a-f]{64}", path):
                     sha = path.rsplit("/", 1)[-1]
                     registered = set()
@@ -412,6 +545,7 @@ def make_server(root, port=0):
                     value = json.loads(body.decode('utf-8'), object_pairs_hook=plugins._pairs, parse_constant=plugins._constant)
                 except (UnicodeError, ValueError, RecursionError):
                     raise plugins.Refused('invalid_json') from None
+                view.audit_info()
                 if action is None:
                     plugins._fields(value, ('values',))
                     name = path[len('/api/plugin/'):-len('/settings')]
@@ -431,6 +565,8 @@ def make_server(root, port=0):
                 self.answer(200, json.dumps(result, ensure_ascii=False).encode())
             except plugins.Refused as exc:
                 self.answer(SETTINGS_STATUS.get(exc.code, 409), json.dumps({'error': exc.code}).encode())
+            except Error:
+                self.answer(409, b'{"error":"registry_invalid"}')
             except OSError:
                 # A lost reply may follow a successful save; never echo request or backend details.
                 self.close_connection = True

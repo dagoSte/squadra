@@ -306,7 +306,7 @@ class Workflow(unittest.TestCase):
         original = self.store.state
         def changed():
             s = original(); s["tasks"]["Count"]["expected"] = 10; return s
-        with patch.object(self.store, "state", side_effect=changed):
+        with patch.object(self.store, "view", side_effect=changed):
             result = execute(self.store, "A", "Count", argv=[sys.executable, "-c", "print('9 passed in 0.1s')"])
         self.assertEqual(result["native_rc"], 0); self.assertEqual(result["status"], "failed")
 

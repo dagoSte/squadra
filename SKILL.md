@@ -156,7 +156,8 @@ an accepted review does not grant a new authorization to publish.
    and mail before assigning work. Do not replay old queues blindly.
    All windows of the same squad use a single shared registry; separate clones do not
    create separate mailboxes. `posta/exchange-YYYY-MM-DD.md` is the daily projection
-   of the events, not a second source to edit.
+   of the events, not a second source to edit. Use the current `inbox` when receiving
+   or transporting messages; a complete mailbox export is not a live queue.
 2. For a new squad choose a durable folder outside `/tmp`. Use
    `references/start.md` to initialize it and register windows/skills/versions.
 3. Distinguish **identity** (the actual window/session) from **role**. If a window
@@ -416,8 +417,35 @@ delivery proof. `bench-example/run/score` test the comparison with fake clients.
 with real models requires the owner's budget; no superiority is inferred
 from the selftest, from a single turn or from different permission profiles.
 
+### What registry reads verify
+
+| Operation | Verified during that operation |
+| --- | --- |
+| Other ordinary commands, including `check` and an ordinary task's `close`; dashboard refresh after startup | The recorded anchor event and its hash, every newer event's hash and previous link, and the authenticated index proofs for each cache value or index read. |
+| Explicit `usage`/`balance` calculations, a lesson's source check, and the lesson hint after a failed proof | The complete event hash chain and the requested historical evidence. These reads do not perform a full artifact audit. |
+| `doctor`, `export`, `checkpoint`, `save`, `restore-check`, and a release-gate task's `close` | The complete event chain and referenced artifacts/manifests, plus full replay to compare or rebuild the derived cache. |
+| Dashboard startup | The ordinary verified path serves data while a full chain/artifact/replay audit runs in the background. A visible status marks the pending audit; failure stops data responses and removes the displayed data. |
+
+The other ordinary reads above do **not** reverify events before the anchor, untouched cache
+leaves, or whether the cached root equals a complete replay of the reducer. An
+invalid, missing or foreign cache falls back to verified reconstruction; a failing
+verification is not a successful cached read. Source manifests store file lists
+once and preserve the original source fingerprint; binding checks resolve them.
+
+Read-only commands do not write the registry or its projections. Ordinary writes
+append new `events.jsonl` records and update affected daily views. A crash can leave
+those views behind the committed journal: compare their recorded sequence/head with
+the current Store view before treating them as complete. `state.json` and complete
+mail/history exports are refreshed by `export`, `checkpoint` or `save`, not by
+every command. Use `squadra export` when a consumer needs a complete file export.
+Upgrade every window together before the first new-format write. New events bind
+`format: 2` into their hash; legacy rows remain unchanged. Squadra 3.10.0 therefore
+refuses at the first such event with an integrity error, including status, check and
+close. This intentional refusal is not data loss: use the upgraded CLI, never bypass
+the verifier. New doctor/export commands verify the complete mixed-format history.
+
 The local registry protects against concurrent overwrites and detects accidental
-alterations with a hash chain. It does not cryptographically authenticate the windows:
+alterations within these verification boundaries. It does not cryptographically authenticate the windows:
 anyone with the same account can impersonate a name or rewrite the database.
 Continuity requires backups to another destination; no disk guarantees
 "never lose" against failure or total deletion.

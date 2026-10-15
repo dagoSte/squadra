@@ -83,6 +83,7 @@ class CursorSeat(unittest.TestCase):
             store.close()
 
     def test_registration_accepts_cursor_and_keeps_the_other_clients(self):
+        self.ok("export")
         state = json.loads((self.root / "state.json").read_text())
         self.assertEqual({k: a["client"] for k, a in state["agents"].items()},
                          {"coord": "codex", "cur": "cursor", "rcur": "cursor", "r1": "claude"})

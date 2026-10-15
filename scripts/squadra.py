@@ -10,7 +10,7 @@ import sys
 import tempfile
 import uuid
 
-from registry import (Store, Error, VERSION, BRIEF_BYTES, REFERENCE_KINDS, canonical, digest, require, snapshot, table, board, now,
+from registry import (Store, Error, VERSION, plain, BRIEF_BYTES, REFERENCE_KINDS, canonical, digest, require, snapshot, table, board, now,
                       git, waits, requirement_matrix, presence, standby, latest_ping, return_ping,
                       current_proofs, candidate_checks, gate_checks, read_at_gate)
 
@@ -40,11 +40,11 @@ def workspace_path(value=None):
 
 
 def bindings(store, task_id, require_review=True):
-    state = store.state()
+    state = store.resolved()
     task = state["tasks"][task_id]
     current = snapshot(task["repo"], store.root)
     require(current == task.get("candidate"), "Candidate drift; deliver/prove the new exact source")
-    store.verify_artifacts()
+    store.verify_artifacts(task)
     plan = task.get("plan")
     if plan:
         require(Path(plan["original"]).is_file() and digest(Path(plan["original"]).read_bytes()) == plan["sha256"], "Plan drift")
@@ -73,11 +73,13 @@ def fix_review_fields(task):
 
 
 def deliver(store, actor, task_id, reconcile=False):
-    state = store.state(); task = state["tasks"][task_id]
+    state = store.resolved(); task = state["tasks"][task_id]
     require(actor == task["owner"] or (reconcile and state["agents"][actor]["role"] == "coordinator"),
             "Assigned owner required for delivery")
     current = snapshot(task["repo"], store.root)
     previous = task.get("delivery", {})
+    from source_manifests import transform_packet
+    previous_packet = transform_packet(previous.get("packet_data", {}), store.resolve_snapshot)
     if reconcile:
         require(task.get("candidate") == current, "Candidate drift; owner must prove and deliver again")
         if not task.get("reviewer") and not task.get("pool"):
@@ -107,12 +109,14 @@ def deliver(store, actor, task_id, reconcile=False):
                 packet["light"] = data["light"]
         if task.get("fix"):
             packet.update(fix=task["fix"], fix_result=task.get("fix_result"))
-        if previous.get("handoff") and previous.get("packet_data") == packet:
+        if previous.get("handoff") and previous_packet == packet:
             return {"handoff": previous["handoff"], "packet": previous["packet"], "already_delivered": True}
-        if previous.get("handoffs") and previous.get("packet_data") == packet:
+        if previous.get("handoffs") and previous_packet == packet:
             # The same packet keeps its handoffs, ACKs and claim.
             return {"handoffs": previous["handoffs"], "packet": previous["packet"], "already_delivered": True}
         require(actor == task["owner"], "Owner must reconcile changed/missing handoff; coordinator may inspect an identical existing packet")
+        from source_manifests import transform_packet
+        packet = transform_packet(packet, store.compact_snapshot)
         key = digest(canonical(packet).encode())
         message = "review-" + key
         artifact = store.artifact_bytes((canonical(packet) + "\n").encode(), message + ".json", "generated-handoff:" + message)
@@ -250,6 +254,8 @@ def parser():
             a.add_argument("--stage", choices=["plan", "code"], default="code")
             a.add_argument("--prompt-file", required=True); a.add_argument("--cli")
     a = sub.add_parser("cancel"); a.add_argument("--actor", required=True); a.add_argument("--run", required=True)
+    a.add_argument("--abandon", action="store_true", help="Starter declares an orphan with no process and no results")
+    a.add_argument("--reason"); a.add_argument("--evidence", help="Explicit squadra-run-abandon/1 observation JSON")
     a = sub.add_parser("resource"); a.add_argument("action", choices=["acquire", "release"])
     a.add_argument("--actor", required=True); a.add_argument("--name", required=True); a.add_argument("--reason", required=True)
     for command in ["pause", "resume", "decision"]:
@@ -338,7 +344,7 @@ def lesson(store, state, a):
 
 def dispatch(a, store):
     command = a.command
-    state = store.state()
+    state = store.view()
     actor = getattr(a, "actor", "system")
     if command == "init":
         root = store.root
@@ -410,7 +416,10 @@ def dispatch(a, store):
         store.append("message", actor, data)
         return data
     elif command == "inbox":
-        return [m for m in state["messages"].values() if m["to"] == a.agent]
+        from registry_current import attached, message_ids
+        index = attached(state)
+        return ([state["messages"][key] for key in message_ids(index, recipient=a.agent)] if index is not None
+                else [m for m in state["messages"].values() if m["to"] == a.agent])
     elif command == "ack":
         store.append("ack", actor, {"message": a.message}, "ack:" + a.message + ":" + actor)
     elif command == "standby":
@@ -469,7 +478,7 @@ def dispatch(a, store):
                        else f"ACK via squadra ack --actor {message['to']} --message {a.message} (with shared --root).")
         if a.via == "manual":
             result = {"message": a.message, "via": "manual", "delivered": False,
-                      "instruction": f"Read {store.root}/squadra-posta.md. {instruction}"}
+                      "instruction": f"Run squadra inbox --agent {message['to']} --root {store.root}. {instruction}"}
         else:
             agent = state["agents"][message["to"]]
             require(agent["client"] == "codex" and agent["session"], "Registered Codex session required")
@@ -489,6 +498,8 @@ def dispatch(a, store):
     elif command in {"deliver", "advance"}:
         return deliver(store, actor, a.task, reconcile=command == "advance")
     elif command in {"check", "close"}:
+        if command == 'close' and state['tasks'][a.task].get('release_gate') is True:
+            store.audit()
         current = bindings(store, a.task)
         result = {"task": a.task, "verified": True, "snapshot": current["sha256"], "publication_authorized": False}
         if command == "close":
@@ -500,7 +511,7 @@ def dispatch(a, store):
     elif command == "review":
         from reads import load_findings
         extra = {'findings': load_findings(a.findings_file)} if a.findings_file is not None else {}
-        task = state["tasks"][a.task]
+        task = store.task(a.task, state)
         if a.stage == "plan":
             require(bool(task.get("plan")), "No registered plan")
             binding = task["plan"]["sha256"]
@@ -546,7 +557,22 @@ def dispatch(a, store):
             result["precheck"] = checked[1]
         return result
     elif command == "cancel":
-        store.append("run.cancel", actor, {"id": a.run})
+        if a.abandon:
+            from registry import abandonment_observation
+            require(a.reason and a.evidence, "--abandon requires --reason and --evidence")
+            require(a.run in state["runs"], "Unknown run")
+            with Path(a.evidence).open("rb") as source:
+                body = source.read(64 * 1024 + 1)
+            require(len(body) <= 64 * 1024, "Abandonment observation exceeds 64 KiB")
+            observation = abandonment_observation(json.loads(body), a.run)
+            run = state["runs"][a.run]
+            store.append("run.abandon", actor, {"id": a.run,
+                "starter": state["agents"][run["agent"]]["identity"], "reason": a.reason,
+                "observation": observation, "evidence": store.artifact(a.evidence),
+                "legacy": not run.get("lease_version")})
+        else:
+            require(not a.reason and not a.evidence, "--reason and --evidence require --abandon")
+            store.append("run.cancel", actor, {"id": a.run})
     elif command == "resource":
         store.append("resource." + a.action, actor, {"name": a.name, "reason": a.reason})
     elif command == "ask":
@@ -638,8 +664,14 @@ def dispatch(a, store):
         require(result["status"] in {"completed", "scored"}, "Benchmark failed; native receipt and logs preserved")
         return {"status":result["status"],"folder":str(folder.resolve()),"mode":result.get("mode"),"quality_claim":False}
     elif command == "doctor":
-        events = store.events(); store.verify_artifacts()
-        return {"events": len(events), "integrity": "passed", "unknown_running": [r["id"] for r in state["runs"].values() if r["status"] in {"running", "cleanup-unknown"}],
+        checked = store.audit()
+        events, state = checked['events'], checked['state']
+        compatibility = ({"compatibility": "This registry requires Squadra 3.10.1 or later."}
+                         if any(event.get('format') == 2 for event in events) else {})
+        return {**compatibility, "events": len(events), "integrity": "passed", "cache": checked["cache"], "unknown_running": [r["id"] for r in state["runs"].values() if r["status"] in {"running", "cleanup-unknown"}],
+                "abandoned": [{"id": r["id"], "native_rc": None, "results": "none",
+                               "legacy": r["abandonment"]["legacy"], "reason": r["abandonment"]["reason"]}
+                              for r in state["runs"].values() if r["status"] == "abandoned"],
                 "pending_ack": [m["id"] for m in state["messages"].values() if m["ack"] is None and m.get("info") is not True],
                 "waits": waits(state, now()),
                 "warning": "Integrity verifies the record, not truth of agents' claims or external process liveness"}
@@ -658,7 +690,7 @@ def main(argv=None):
             import usage
             store = Store(workspace_path(a.root), read_only=True)
             events = store.events()
-            state = store.state(events)
+            state = store.state(events, resolve=False)
             deadline = time.monotonic() + 30
             while True:
                 result = usage.collect(events, state)
@@ -671,15 +703,16 @@ def main(argv=None):
         if a.command == "forecast":
             from forecast import calculate
             store = Store(workspace_path(a.root), read_only=True)
-            events = store.events()
-            print(json.dumps(calculate(store.state(events), events, a.task), ensure_ascii=False, indent=2))
+            state = store.view()
+            events = () if getattr(state, "current", None) is not None else store.events()
+            print(json.dumps(calculate(state, events, a.task), ensure_ascii=False, indent=2))
             return 0
         if a.command == "balance":
             import balance
             reference = balance.parse_reference(Path(a.reference).read_bytes()[:balance.REFERENCE_BYTES + 1]) if a.reference else None
             store = Store(workspace_path(a.root), read_only=True)
             events = store.events()
-            state = store.state(events)
+            state = store.state(events, resolve=False)
             if a.task is not None and a.task not in state["tasks"]:
                 raise Error("Unknown task: " + a.task)
             print(json.dumps(balance.calculate(state, events, a.task, balance.collect_usage(events, state), reference),
@@ -687,8 +720,7 @@ def main(argv=None):
             return 0
         if a.command == "board":
             store = Store(workspace_path(a.root), read_only=True)
-            events = store.events()
-            print(board(store.state(events), a.lang, events=events))
+            print(board(store.view(), a.lang))
             return 0
         if a.command == "census":
             from census import collect
@@ -696,7 +728,7 @@ def main(argv=None):
             state = None
             if (root / "registry.sqlite3").is_file():
                 store = Store(root, read_only=True)
-                state = store.state()
+                state = store.resolved()
             require(a.project or state, "--project required before registry initialization")
             print(json.dumps(collect(a.project or state["workspace"]["project"], state), ensure_ascii=False, indent=2))
             return 0
@@ -733,10 +765,17 @@ def main(argv=None):
                 return 1
             print(json.dumps(result, ensure_ascii=False, indent=2))
             return 0
-        store = Store(workspace_path(a.root), create=a.command == "init")
+        read_only = (a.command in {'status', 'inbox', 'check', 'doctor'} or
+                     (a.command == 'lesson' and a.list))
+        store = Store(workspace_path(a.root), create=a.command == "init", read_only=read_only)
         result = dispatch(a, store)
         if a.command != "dash":
-            state, events = store.project(with_events=True)
+            if a.command == 'export':
+                state, events = store.project(with_events=True)
+            else:
+                if not read_only:
+                    store.publish()
+                state, events = store.view(), ()
             if result is not None:
                 visible = dict(result) if isinstance(result, dict) else result
                 if isinstance(visible, dict):
@@ -744,7 +783,7 @@ def main(argv=None):
                         value = visible.get(key)
                         if isinstance(value, dict) and "files" in value:
                             visible[key] = {"head": value["head"], "sha256": value["sha256"], "files": len(value["files"])}
-                print(json.dumps(visible, ensure_ascii=False, indent=2))
+                print(json.dumps(plain(visible), ensure_ascii=False, indent=2))
             if a.command not in {"inbox", "doctor"}:
                 print(table(state, read_at=now(), events=events, compact=a.command != 'status' or not a.all))
                 if a.command == 'supersede':
@@ -753,19 +792,21 @@ def main(argv=None):
             if a.command in {'task', 'brief', 'start'} and forecast_task:
                 from forecast import calculate
                 import balance
+                if getattr(state, "current", None) is None:
+                    events = store.events()
                 predicted = calculate(state, events, forecast_task)
                 print(json.dumps({'forecast': predicted}, ensure_ascii=False, indent=2))
                 print(json.dumps({'balance': balance.calculate(state, events, forecast_task, forecast_result=predicted)},
                                  ensure_ascii=False, indent=2))
         return 0
     except (Error, OSError, ValueError, KeyError, RuntimeError) as exc:
-        if store and a.command not in {"census", "board", "forecast", "balance", "usage"}:
+        if store and not store.read_only and a.command not in {"census", "board", "forecast", "balance", "usage"}:
             try:
                 diagnostic = {"command": a.command, "error": str(exc), "utc": now()}
                 if isinstance(getattr(a, "task", None), str):
                     diagnostic["task"] = a.task
                 store.append("diagnostic", "system", diagnostic)
-                store.project()
+                store.publish()
             except Exception:
                 pass
         print("Squadra: " + ("usage_unavailable" if a.command == 'usage' else str(exc)), file=sys.stderr)

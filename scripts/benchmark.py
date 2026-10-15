@@ -14,6 +14,15 @@ from registry import Store, Error, canonical, digest, git, now, require, snapsho
 from runtime import CURSOR_REFUSAL, cli_command, terminate, validate_reply
 
 
+def check_pause(store, message):
+    if store is None:
+        return
+    try:
+        require(not store.view()['paused'], message)
+    finally:
+        store.release_views()
+
+
 OFFLINE_CLIENT = '''#!/usr/bin/env python3
 import json,sys,uuid
 from pathlib import Path
@@ -95,7 +104,7 @@ def run(manifest_path,destination,allow_models=False,budget_file=None,store=None
         for a in m['arms']:
             for c in m['cases']:
                 for repeat in range(m['repeats']):
-                    if store:require(not store.state()['paused'],'Benchmark stopped by owner pause')
+                    check_pause(store, 'Benchmark stopped by owner pause')
                     turn=folder/(a['id']+'-'+c['id']+'-'+str(repeat));turn.mkdir(mode=0o700)
                     repo=turn/'fixture';git(folder,'clone','--no-hardlinks',c['fixture'],str(repo));git(repo,'checkout','--detach',c['head'])
                     # Separate registries keep each run from seeing another comparison arm's observations.
@@ -118,7 +127,7 @@ def run(manifest_path,destination,allow_models=False,budget_file=None,store=None
                         try:
                             proc.stdin.write(prompt.encode());proc.stdin.close()
                             while proc.poll() is None:
-                                require(not store or not store.state()['paused'],'Owner pause during benchmark')
+                                check_pause(store, 'Owner pause during benchmark')
                                 require(time.monotonic()-started<=m['timeout'],'Benchmark timeout')
                                 time.sleep(0.05)
                             row['native_rc']=proc.wait();require(row['native_rc']==0,'Native turn failed')

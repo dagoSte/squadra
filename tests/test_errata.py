@@ -196,6 +196,7 @@ class Recall(Fixture, unittest.TestCase):
         rc, data, err = run(self.root, "brief", "--actor", "C", "--task", "T", "--file", str(self.brief_file()))
         self.assertEqual((rc, data, self.kinds_after(before)), (0, None, ["brief"]))
         self.assertNotIn("lessons", self.store.state()); self.assertNotIn("lesson_recalls", self.store.state())
+        self.store.project()  # D-REGISTRY-LIGHT-ROUTE1: complete projections are explicit.
         self.assertNotIn("lessons", json.loads((self.root / "state.json").read_text()))
         self.lesson("L0001", paths=["nothing/*"], words=["absent"])
         before = self.last_seq(); self.ack()

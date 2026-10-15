@@ -638,13 +638,22 @@ squadra selftest --output /durable/selftest-001
 | File | A cosa serve |
 |---|---|
 | `registry.sqlite3` | Stato di riferimento; eventi transazionali, WAL, synchronous FULL. |
-| `artifacts/` | Copie delle prove indirizzate per contenuto. |
-| `events.jsonl` | Vista completa degli eventi con catena SHA-256. |
-| `state.json`, `stato.md` | Stato strutturato e leggibile, rigenerabile. |
-| `squadra-posta.md` | Vista della posta comune. |
-| `posta/exchange-YYYY-MM-DD.md` | Vista giornaliera in UTC, comune a tutte le finestre. |
+| `artifacts/` | Prove ed elenchi dei file sorgente indirizzati per contenuto; gli elenchi conservano l'impronta originale del codice. |
+| `events.jsonl` | Vista degli eventi aggiornata aggiungendo quelli registrati; può restare indietro dopo un'interruzione. |
+| `state.json` | Esportazione strutturata completa, aggiornata da `export`, `checkpoint` o `save`. |
+| `stato.md`, `squadra-posta.md` | Viste leggibili dello stato e della posta; usa la CLI per lavoro e messaggi correnti. |
+| `posta/exchange-YYYY-MM-DD.md` | Vista giornaliera in UTC comune a tutte le finestre; le scritture ordinarie aggiornano i giorni interessati. |
 
-Scrivi sempre attraverso la CLI, mai nei file generati; `doctor` controlla la catena e gli artefatti. L'integrità non prova che le affermazioni siano vere, né autentica crittograficamente le identità. [Altro](references/recovery.md#checkpoint-details), in inglese.
+I comandi di sola lettura non scrivono nel registro né nelle sue viste derivate. Usa `squadra export` quando servono esportazioni complete, inclusa la storia della posta. Prima di considerare completa una vista, confronta la sequenza e l'impronta dell'ultimo evento dichiarate dalla vista con quelle correnti lette tramite Store: un evento può essere registrato prima che i file esportati lo mostrino. La cache conserva lo stato già calcolato e i suoi indici; il punto di ripartenza è l'ultimo evento già incorporato in quello stato.
+
+| Operazione | Cosa viene verificato |
+|---|---|
+| Altri comandi ordinari, compresi `check` e `close` di un incarico ordinario; aggiornamenti della dashboard dopo l'avvio | L'evento usato come punto di ripartenza e la sua impronta, tutti gli eventi e collegamenti successivi, e le prove d'integrità di ogni valore o indice letto dalla cache. |
+| Calcoli espliciti `usage`/`balance`, controllo della fonte di una lezione e suggerimento di una lezione dopo una prova fallita | L'intera catena delle impronte degli eventi e le prove storiche richieste. Queste letture non controllano tutti gli artefatti. |
+| `doctor`, `export`, `checkpoint`, `save`, `restore-check` e `close` di un incarico di verifica del rilascio | L'intera catena, gli artefatti e gli elenchi dei file richiamati, e la ricostruzione completa per confrontare o rigenerare la cache. |
+| Avvio della dashboard | Il percorso ordinario verificato mostra i dati mentre il controllo completo di catena, artefatti e ricostruzione viene eseguito in sottofondo. Uno stato visibile segnala il controllo in corso; se fallisce, il server smette di fornire dati e la pagina rimuove quelli mostrati. |
+
+Le altre letture ordinarie indicate sopra non ricontrollano gli eventi precedenti, le parti della cache non lette o la sua impronta complessiva rispetto alla ricostruzione completa dello stato. Una cache mancante, estranea o non valida richiede una ricostruzione verificata; una verifica fallita non diventa un successo grazie alla cache. Aggiorna tutte le finestre insieme prima della prima scrittura nel nuovo formato. Gli eventi di questa versione includono un indicatore di formato nella loro impronta: Squadra 3.10.0 si ferma con un errore di integrità a quel punto, anche con status/check/close. Il rifiuto è intenzionale, non una perdita di dati; usa la CLI aggiornata. Gli eventi precedenti restano invariati. Scrivi sempre attraverso la CLI, mai nei file generati. L'integrità non prova che le affermazioni siano vere, né autentica crittograficamente le identità. [Dettagli](references/recovery.md#registry-verification), in inglese.
 
 ### Piccole modifiche: il percorso leggero
 
@@ -740,7 +749,7 @@ Ogni comando, raggruppato per scopo: **50 sottocomandi**, più `--version`. Usa 
 |---|---|
 | `status` | Mostra incarichi, richieste per il proprietario, attese e le tabelle dell'avanzamento. |
 | `doctor` | Controlla la catena di hash e gli artefatti; segnala ACK in sospeso ed esecuzioni incerte. |
-| `export` | Rigenera dal registro le viste leggibili. |
+| `export` | Rigenera dal registro le esportazioni complete strutturate, leggibili e della storia della posta. |
 | `legacy` | Importa vecchi record come copie storiche non verificate. |
 | `plugin` | Elenca i plugin inclusi o ne installa uno da questa release; non scarica né esegue codice. |
 | `dash` | Apre la dashboard locale, in sola lettura salvo impostazioni e selezioni dichiarate dei plugin installati. |

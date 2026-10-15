@@ -481,8 +481,11 @@ class SquadraChecks(unittest.TestCase):
         self.assertEqual(self.run_check("readme-headings", self.copy).returncode, 0)
 
     def test_pin_label_catches_a_missing_current_entry(self):
-        self.edit("plugins/memoranda/bridge/squadra_memories/pin.json", '"label": "squadra ' + self.version + '"',
-                  '"label": "squadra ' + self.version + '-old"', count=-1)
+        path = self.copy / "plugins/memoranda/bridge/squadra_memories/pin.json"
+        label = '"label": "squadra ' + self.version + '"'
+        text = path.read_text(encoding="utf-8")
+        self.assertIn(label, text)
+        path.write_text(text.replace(label, '"label": "squadra ' + self.version + '-old"'), encoding="utf-8")
         self.assertRed("pin-label", 'no accepted entry labelled "squadra ' + self.version + '"')
 
     def test_plugin_versions_catches_a_package_or_store_left_behind(self):

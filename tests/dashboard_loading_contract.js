@@ -1,6 +1,7 @@
 'use strict';
 const sourceFS=require('node:fs'),sourcePath=require('node:path');
 let harness=sourceFS.readFileSync(sourcePath.join(__dirname,'panel_contract.js'),'utf8').split('const scenarios={')[0];
+harness=harness.replace('this.children=[];this.append(...children)',"this.textContent='';this.children=[];this.append(...children)");
 harness=harness.replace('phone=false,clock}', 'phone=false,clock,http}');
 harness=harness.replace('fixture,fetched:[],clock}', 'fixture,fetched:[],clock,http}');
 harness=harness.replace('const context={console,', 'const context={AbortController,console,');
@@ -14,6 +15,35 @@ const poll=app=>app.timers.filter(t=>t.fn.name==='refresh');
 const deadline=app=>app.timers.find(t=>t.ms===15000);
 const visibility=async(app,hidden)=>{app.doc.hidden=hidden;for(const f of app.doc.listeners.visibilitychange||[])f();await settle()};
 const tests={
+ async audit(){
+  for(const language of ['it-IT','en-US']){
+   const fixture=clone(base);fixture.audit={status:'running'};
+   const app=await boot({language,fixture});const banner=app.doc.getElementById('registry-audit');
+   assert.equal(banner.hidden,false);assert.match(page,/id="registry-audit"[^>]*role="status"[^>]*aria-live="polite"/);
+   assert.equal(text(banner),language==='it-IT'?'Verifica completa del registro in corso':'Full registry verification in progress');
+   assert.ok(app.doc.getElementById('content').children.length,'ordinary verified data is usable during audit');
+   app.run("setLanguage('en')");assert.equal(text(banner),'Full registry verification in progress');
+   app.run("setLanguage('it')");assert.equal(text(banner),'Verifica completa del registro in corso');
+   const complete=clone(fixture);complete.audit.status='complete';app.http=()=>reply(complete);await app.refresh();
+   assert.equal(banner.hidden,true,'completed audit removes the pending notice');
+   app.doc.getElementById('artifact-body').textContent='OLD-DETAIL-CANARY';app.doc.getElementById('artifact').showModal();
+   let late;app.http=()=>new Promise(r=>{late=r});
+   const detail=app.run("api('/api/detail/task').then(r=>r.json())");
+   const rejected=assert.rejects(detail,/integrità|integrity/);await settle();
+   app.http=()=>Promise.resolve({ok:false,status:409,text:async()=> 'integrity_failure'});await app.refresh();
+   assert.equal(app.run('state'),null);assert.equal(app.run('loadUI.integrity'),true);
+   for(const id of ['content','charts','metrics','connected-hero','plugin-links','artifact-body'])assert.equal(text(app.doc.getElementById(id)),'',id+' must not retain old data');
+   assert.equal(app.doc.getElementById('artifact').open,false);assert.equal(banner.hidden,true);
+   assert.equal(app.doc.getElementById('loading').hidden,false);
+   assert.match(text(app.doc.getElementById('loading-title')),/integrità/);
+   app.run("setLanguage('en')");assert.match(text(app.doc.getElementById('loading-title')),/integrity/);
+   assert.equal(app.doc.getElementById('loading-retry').hidden,true);
+   late(reply({body:'OLD-DETAIL-CANARY'}));await rejected;
+   assert.equal(poll(app).length,0,'a failed integrity audit stops polling');
+   const requests=app.fetched.length;app.http=()=>reply(complete);await app.run('refresh()');
+   assert.equal(app.fetched.length,requests,'failed integrity cannot be replaced by a stale success');
+  }
+ },
  async sections(){
   assert.match(page,/<div\b[^>]*\bid="legacy"[^>]*\bhidden\b/,'overview is hidden before scripts run');
   assert.match(page,/<details\b[^>]*\bid="registry-details"[^>]*\bhidden\b/,'registry is hidden before scripts run');

@@ -9,12 +9,14 @@ import sqlite3
 import sys
 import tempfile
 import threading
+import time
 import unittest
 from unittest.mock import patch
 from urllib.parse import quote
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
 import dashboard
+import registry
 from registry import Store, canonical
 
 
@@ -87,9 +89,15 @@ class DashboardPerformance(unittest.TestCase):
             connection.close()
 
     def state(self, **headers):
-        status, _, body = self.get(headers=headers)
-        self.assertEqual(status, 200, body)
-        return json.loads(body)
+        deadline = time.monotonic() + 10
+        while True:
+            status, _, body = self.get(headers=headers)
+            self.assertEqual(status, 200, body)
+            result = json.loads(body)
+            if result.get('audit', {}).get('status') != 'running':
+                return result
+            self.assertLess(time.monotonic(), deadline, 'The background audit must complete')
+            time.sleep(.01)
 
     def compact(self, query=''):
         return self.state(**{'X-Squadra-View': 'compact', 'X-Squadra-Search': quote(query, safe='')})
@@ -99,15 +107,21 @@ class DashboardPerformance(unittest.TestCase):
 
     def test_unchanged_hits_reuse_verified_events_and_fold_without_losing_raw_state(self):
         original = Store.events
+        original_audit = Store.audit
         with patch.object(Store, 'events', autospec=True, side_effect=original) as events, \
-                patch.object(dashboard, 'apply', wraps=dashboard.apply) as fold:
+                patch.object(Store, 'audit', autospec=True, side_effect=original_audit) as audit, \
+                patch.object(registry, 'apply', wraps=registry.apply) as fold:
             first = self.state()
             cold_calls, cold_folds = events.call_count, fold.call_count
-            self.assertEqual(cold_calls, 1)
-            self.assertEqual(cold_folds, first['event_count'])
+            self.assertEqual(cold_calls, 2)
+            self.assertEqual(audit.call_count, 1)
+            self.assertEqual([call.args[1]['seq'] for call in fold.call_args_list[:first['event_count']]],
+                             list(range(1, first['event_count'] + 1)))
+            self.assertGreaterEqual(cold_folds, first['event_count'])
             for _ in range(3):
                 self.assertEqual(self.state(), first)
             self.assertEqual((events.call_count, fold.call_count), (cold_calls, cold_folds))
+            self.assertEqual(audit.call_count, 1)
             self.assertEqual(first['tasks'][self.task_id]['candidate']['files'], self.fingerprint['files'])
 
     def test_append_invalidates_once_and_returns_the_new_verified_state(self):
@@ -115,13 +129,18 @@ class DashboardPerformance(unittest.TestCase):
         self.store.append('output', 'A', {'task': self.task_id, 'text': 'Newly recorded output',
                           'next': 'Review', 'artifacts': [self.artifact]})
         original = Store.events
-        with patch.object(Store, 'events', autospec=True, side_effect=original) as events:
+        original_suffix = Store.events_since
+        with patch.object(Store, 'events', autospec=True, side_effect=original) as events, \
+                patch.object(Store, 'events_since', autospec=True, side_effect=original_suffix) as suffix:
             later = self.state()
-            self.assertEqual(events.call_count, 1)
+            self.assertEqual(events.call_count, 0)
+            self.assertEqual(suffix.call_count, 1)
+            self.assertEqual(suffix.call_args.args[1:], (first['event_count'], first['registry_head']['hash']))
             self.assertEqual(later['event_count'], first['event_count'] + 1)
             self.assertEqual(later['outputs'][-1]['text'], 'Newly recorded output')
             self.assertEqual(self.state(), later)
-            self.assertEqual(events.call_count, 1)
+            self.assertEqual(events.call_count, 0)
+            self.assertEqual(suffix.call_count, 1)
 
     def test_changed_old_row_with_unchanged_head_is_refused_until_integrity_is_restored(self):
         original_state = self.state()
@@ -160,19 +179,24 @@ class DashboardPerformance(unittest.TestCase):
         original = Store.events
         with patch.object(Store, 'events', autospec=True, side_effect=original) as events:
             current = self.state()
-            self.assertEqual(events.call_count, 1)
+            # Cold history, foreign-path cache recovery, and the separate full audit.
+            self.assertEqual(events.call_count, 3)
             self.assertEqual(current['workspace']['name'], 'Replacement registry')
             self.assertEqual(current['plugins']['key'], expected)
             self.assertNotEqual(current['plugins']['key'], original_state['plugins']['key'])
             self.assertEqual(current['tasks'], {})
             self.assertEqual(self.state(), current)
-            self.assertEqual(events.call_count, 1)
+            self.assertEqual(events.call_count, 3)
 
     def test_ctime_only_raw_edit_invalidates_warm_cache_and_restore_recovers(self):
         needle = b'Only ctime reveals this live event edit'
         event_id = self.store.append('output', 'A', {'task': self.task_id, 'text': needle.decode(),
                                  'next': 'Review', 'artifacts': []})
         seq = self.store.db.execute('SELECT seq FROM events WHERE id=?', (event_id,)).fetchone()[0]
+        # Only the authoritative row carries the marker in this raw-page fixture.
+        self.store.db.execute('PRAGMA secure_delete=ON')
+        for table in ('derived_radix_nodes', 'derived_radix_roots', 'derived_state_meta'):
+            self.store.db.execute('DELETE FROM ' + table)
         self.assertEqual(self.store.db.execute('PRAGMA wal_checkpoint(TRUNCATE)').fetchone()[0], 0)
         original = self.state()
         self.assertEqual(self.state(), original)
@@ -321,7 +345,7 @@ class DashboardPerformance(unittest.TestCase):
                 early = self.state()
             with patch.object(dashboard, 'now', return_value=(clock + dt.timedelta(seconds=301)).isoformat()):
                 late = self.state()
-            self.assertEqual(events.call_count, 1)
+            self.assertEqual(events.call_count, 2)
         before = next(row for row in early['presence'] if row['agent'] == 'A')
         after = next(row for row in late['presence'] if row['agent'] == 'A')
         self.assertEqual((before['seconds'], before['due']), (299, False))

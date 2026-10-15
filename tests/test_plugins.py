@@ -9,6 +9,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import time
 import unittest
 from unittest.mock import patch
 
@@ -32,6 +33,19 @@ def panel():
             'note': {'it': 'Nota', 'en': 'Note'}, 'items': [
                 {'id': 'one', 'title': '<img src=x onerror=alert(1)>', 'text': 'https://example.invalid/ <script>unsafe</script>',
                  'status': 'draft', 'meta': [{'label': {'it': 'Origine', 'en': 'Source'}, 'value': 'Local only'}]}]}
+
+
+def audited_state(test, fetch):
+    """Wait for the independently tested background audit before counting warm reads."""
+    deadline = time.monotonic() + 10
+    while True:
+        status, headers, state = fetch()
+        test.assertEqual(status, 200)
+        if state.get('audit') == {'status': 'complete'}:
+            return status, headers, state
+        test.assertEqual(state.get('audit'), {'status': 'running'})
+        test.assertLess(time.monotonic(), deadline, 'The background audit must finish')
+        time.sleep(.01)
 
 
 class Fixtures:
@@ -251,9 +265,10 @@ class Server(Fixtures, unittest.TestCase):
         original = Store.events; calls = []
         def counted(store): calls.append(1); return original(store)
         with patch.object(Store, 'events', counted):
-            status, _, state = self.get('/api/state'); self.assertEqual(status, 200)
+            status, _, state = audited_state(self, lambda: self.get('/api/state'))
             self.assertEqual(state['plugins'], {'plugins': [manifest()], 'refused': [], 'key': self.key})
             count = len(calls)
+            self.assertEqual(count, 2, 'One foreground history read and one background audit')
             for _ in range(3):
                 self.assertEqual(self.get('/api/plugin/example')[2], {'name': 'example', 'key': self.key, 'panel': panel()})
                 self.assertEqual(self.get('/api/plugins')[2], {'plugins': [manifest()], 'refused': []})

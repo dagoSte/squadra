@@ -8,7 +8,7 @@ import statistics
 import subprocess
 import sys
 
-from registry import Error
+from registry import Error, plain
 
 MINIMUM = 3
 
@@ -58,7 +58,13 @@ def base_manifest(repo, base):
     return result
 
 
-def changed_paths(task, current):
+def changed_paths(task, current, artifacts_root=None):
+    current = plain(current)
+    if isinstance(current, dict) and "manifest" in current:
+        from source_manifests import resolve
+        if artifacts_root is None:
+            raise ValueError('snapshot artifact location unavailable')
+        current = resolve(current, artifacts_root)
     if not isinstance(current, dict) or not isinstance(current.get('files'), list):
         raise ValueError('snapshot unavailable')
     if not Path(task['repo']).is_dir():
@@ -133,6 +139,9 @@ def calculate(state, events, task_id):
     if task_id not in state['tasks']:
         raise Error('Unknown task: ' + task_id)
     task = state['tasks'][task_id]
+    artifacts = Path(state['root']) / 'artifacts' if state.get('root') else None
+    indexed = getattr(state, 'current', None)
+    indexed_events = indexed.get('forecast_events') if indexed is not None else None
     route = task.get('route', 'full')
     result = {'task': task_id, 'minimum': MINIMUM, 'status': 'scope_unavailable', 'samples': [], 'excluded': [],
               'similarity': 'Same route, changed-file band, and shared file or non-root parent directory',
@@ -143,7 +152,7 @@ def calculate(state, events, task_id):
         return result
     try:
         current = task.get('candidate') or working_snapshot(task['repo'])
-        paths = changed_paths(task, current)
+        paths = changed_paths(task, current, artifacts)
     except (Error, OSError, ValueError, KeyError, TypeError, AttributeError, subprocess.SubprocessError):
         return result
     result['scope'] = {'source': 'recorded_candidate' if task.get('candidate') else 'working_tree',
@@ -156,11 +165,11 @@ def calculate(state, events, task_id):
         reason = None
         try:
             delivered = old.get('delivery', {}).get('snapshot')
-            previous = changed_paths(old, delivered)
+            previous = changed_paths(old, delivered, artifacts)
             shared = overlap(paths, previous)
             if old.get('route', 'full') != route or band(previous) != band(paths) or not any(shared.values()):
                 reason = 'not_comparable'
-            measured = timings(events, old['id']) if reason is None else None
+            measured = timings(indexed_events.get(old['id'], []) if indexed_events is not None else events, old['id']) if reason is None else None
             if reason is None and (measured is None or measured['code_reads'] == 0):
                 reason = 'incomplete_timing'
             if reason is None:

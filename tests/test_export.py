@@ -123,6 +123,9 @@ class ExportIntegrity(unittest.TestCase):
             self.assertEqual(event["hash"], row["hash"])
             self.assertEqual(event["previous"], previous)
             payload = {key: event[key] for key in ("id", "utc", "kind", "actor", "previous", "data")}
+            if "format" in event:
+                self.assertEqual(event["format"], row["hash_format"])
+                payload["format"] = event["format"]
             encoded = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()
             self.assertEqual(hashlib.sha256(encoded).hexdigest(), event["hash"], f"event {row['seq']} hash")
             previous = event["hash"]

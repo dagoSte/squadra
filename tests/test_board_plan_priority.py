@@ -40,6 +40,7 @@ class PlanPriority(unittest.TestCase):
         self.assertTrue(f.cli("status").startswith(prefix))
         live_row = next(line for line in prefix.splitlines() if f"| Work {name} | piano in lettura |" in line)
         saved = prefix.replace(live_row, f"| R (lettore) | Work {name} | piano in lettura | — |")
+        f.cli("export")
         self.assertTrue((f.root / "stato.md").read_text().startswith(saved))
 
     def test_new_plan_after_code_fix_request_returns_holder_to_reader(self):

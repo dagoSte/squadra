@@ -11,7 +11,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURES = ROOT / "tests" / "fixtures"
 sys.path.insert(0, str(ROOT / "scripts"))
-from registry import (Store, Error, attention, waits, initial, apply, canonical, decision_graph,  # noqa: E402
+from registry import (Store, Error, attention, waits, initial, apply, canonical, digest, decision_graph,  # noqa: E402
                       task_progress, table, EDGE_KINDS)
 from squadra import main, parser  # noqa: E402
 import test_decisions as support  # noqa: E402
@@ -49,7 +49,8 @@ def add_task(store, project, name, owner="A", **extra):
 
 
 def snap(project, char):
-    return {"repo": str(project), "head": char * 40, "files": [], "sha256": char * 64}
+    value = {"repo": str(project), "head": char * 40, "files": []}
+    return {**value, "sha256": digest(canonical(value).encode())}
 
 
 def read_report(store, project):
@@ -70,7 +71,7 @@ def spend_code_budget(store, project, name):
     a("run.end", "A", {"id": name + "-green", "status": "passed", "native_rc": 0, "after": snap(project, "2")})
     a("deliver", "A", {"task": name, "snapshot": snap(project, "2")})
     for _ in range(2):
-        a("review", "R", {"task": name, "stage": "code", "verdict": "changes-required", "binding": "2" * 64,
+        a("review", "R", {"task": name, "stage": "code", "verdict": "changes-required", "binding": snap(project, "2")["sha256"],
                           "covers": [], "report": report})
     return report
 
@@ -123,7 +124,7 @@ class Supersede(unittest.TestCase):
         a("run.start", "A", {"id": name + "-p", "task": name, "mode": "proof", "covers": []})
         a("run.end", "A", {"id": name + "-p", "status": "passed", "native_rc": 0, "after": snap(self.base, "3")})
         a("deliver", "A", {"task": name, "snapshot": snap(self.base, "3")})
-        a("review", "R", {"task": name, "stage": "code", "verdict": "accepted", "binding": "3" * 64,
+        a("review", "R", {"task": name, "stage": "code", "verdict": "accepted", "binding": snap(self.base, "3")["sha256"],
                           "covers": [], "report": report})
         a("close", "C", {"task": name})
 
@@ -134,6 +135,7 @@ class Supersede(unittest.TestCase):
                          ("supersede", "C", {"task": "T", "by": "U", "reason": "Work moved to U by recorded decision"}))
         self.assertEqual(self.recorded(), [event])
         self.assertIn("- T → U", self.last_output)
+        self.store.project()  # D-REGISTRY-LIGHT-ROUTE1: complete projections are explicit.
         self.assertIn("- T → U", (self.root / "stato.md").read_text())
         self.assertEqual(json.loads((self.root / "events.jsonl").read_text().splitlines()[-1])["kind"], "supersede")
         for missing in ("--task", "--by", "--reason", "--actor"):
@@ -262,7 +264,7 @@ class Supersede(unittest.TestCase):
         self.assertEqual(state["runs"], before["runs"])
         self.assertEqual(state["tasks"]["NEW"], before["tasks"]["NEW"], "the replacement itself is not changed")
         with self.assertRaisesRegex(Error, "Review round budget exhausted"):
-            self.store.append("review", "R", {"task": "OLD", "stage": "code", "verdict": "accepted", "binding": "2" * 64,
+            self.store.append("review", "R", {"task": "OLD", "stage": "code", "verdict": "accepted", "binding": snap(self.base, "2")["sha256"],
                                               "covers": [], "report": report})
         after = task_progress(events)["OLD"]
         self.assertEqual(after["steps"], progress["steps"], "every reached step and its outcome stay")
@@ -346,8 +348,8 @@ class Supersede(unittest.TestCase):
             copy = Store(Path(temp) / "record", create=True)
             try:
                 for e in events:
-                    copy.db.execute("INSERT INTO events(seq,id,utc,kind,actor,data,previous,hash) VALUES(?,?,?,?,?,?,?,?)",
-                                    (e["seq"], e["id"], e["utc"], e["kind"], e["actor"], canonical(e["data"]), e["previous"], e["hash"]))
+                    copy.db.execute("INSERT INTO events(seq,id,utc,kind,actor,data,previous,hash,hash_format) VALUES(?,?,?,?,?,?,?,?,?)",
+                                    (e["seq"], e["id"], e["utc"], e["kind"], e["actor"], canonical(e["data"]), e["previous"], e["hash"], e.get("format")))
                 self.assertEqual(copy.events(), events, "the chain with a supersede event verifies unchanged")
                 replayed = copy.state()
             finally:

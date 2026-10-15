@@ -23,7 +23,7 @@ import plugin_settings as settings
 import plugins
 from registry import Store
 from test_brand import POLICY
-from test_plugins import Fixtures, KEY, manifest, panel
+from test_plugins import Fixtures, KEY, manifest, panel, audited_state
 from test_plugin_settings import tree
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -335,13 +335,13 @@ class Http(ActionFixture, unittest.TestCase):
         original=Store.events; calls=[]
         def counted(store): calls.append(1); return original(store)
         with patch.object(Store,'events',counted):
-            _,headers,state=self.request(path='/api/state',method='GET')
-            self.assertEqual(len(calls),1); self.assertIsNone(state['plugins']['plugins'][0]['actions'][0]['pending'])
+            _,headers,state=audited_state(self, lambda: self.request(path='/api/state',method='GET'))
+            self.assertEqual(len(calls),2); self.assertIsNone(state['plugins']['plugins'][0]['actions'][0]['pending'])
             self.assertEqual(headers['Content-Security-Policy'],POLICY)
             status,_,body=self.request(['two','one']); self.assertEqual(status,200)
             self.assertEqual(set(body),{'saved','request'}); self.assertTrue(body['saved'])
             self.assertEqual(set(body['request']),{'ids','requested'}); self.assertEqual(body['request']['ids'],['two','one'])
-            self.assertEqual(len(calls),1,'POST reuses verified event-1 identity')
+            self.assertEqual(len(calls),2,'POST reuses verified event-1 identity after the startup audit')
         saved=json.loads(self.request_file.read_text()); self.assertEqual(saved['key'],self.key)
         state=self.request(path='/api/state',method='GET')[2]
         self.assertEqual(state['plugins']['plugins'][0]['actions'][0]['pending'],body['request'])

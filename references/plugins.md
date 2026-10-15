@@ -28,6 +28,16 @@ authenticated `/api/state` response; neither a path nor the latest event hash is
 the panel key. A missing exact panel is never replaced with another registry's
 file. The server does not accept a client-selected key.
 
+The first-event identity does not certify that an exported history is current.
+`events.jsonl` is extended after commits and may lag if an update is interrupted;
+compare its recorded sequence/head with the current Store view before treating it
+as complete. `state.json` and complete mail/history exports are refreshed by
+`export`, `checkpoint` or `save`. A producer needing those files must request an
+explicit `squadra export --root /path/to/registry`; a producer reading Store directly
+uses that version's verified accessors. The [verification boundaries](recovery.md#registry-verification)
+apply to both routes. Source bindings may reference immutable file manifests;
+resolve them when comparing source files, without changing stored packet hashes.
+
 Files must be regular files. Traversal from the trusted HOME directory uses
 directory descriptors and no-follow opens for `.squadra` and every component
 below it. Symlinks, directories in place of files, FIFOs and unsafe I/O are
@@ -250,8 +260,10 @@ The Content-Security-Policy is unchanged.
 
 Discovery uses the normal two-second state refresh, with no extra request while
 built-in views are open. Only an open plugin view fetches a panel. Matching event
-#1 reuses the identity established by a verified read; a changed first record
-requires verification again. Responses for an old selection or registry key are
+#1 reuses the identity established by the initial verified event read. The full
+startup audit runs in the background with a visible pending status; an audit failure
+refuses further data. Subsequent
+registry reads follow the anchor/suffix/cache-proof boundary above. Responses for an old selection or registry key are
 discarded. Refusal or removal clears the old panel. An unchanged panel retains
 its DOM; changed cards preserve focus and the reading anchor where available.
 

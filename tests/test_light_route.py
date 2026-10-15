@@ -379,7 +379,8 @@ class LightRoute(unittest.TestCase):
     def test_old_bridge_reads_light_registry_without_loading_write_helper(self):
         self.register(); self.change(); self.proof(); self.review()
         self.promote()
-        # The shipped 3.6.0 bridge remains readable; only new writers enforce promotion.
+        recorded = self.store.events()
+        # D8681: the old reader keeps legacy support but must refuse format-2 history.
         old = self.base / "old-bridge"; old.mkdir()
         root = Path(__file__).resolve().parents[1]
         fixture = root / "tests/fixtures/squadra-3.6.0"
@@ -390,35 +391,75 @@ class LightRoute(unittest.TestCase):
         frozen = (fixture / "registry.py").read_bytes()
         (old / "registry.py").write_bytes(frozen)
         new = root / "plugins/playwright/bridge"
-        script = (
-            "import sys, json; sys.path.insert(0, sys.argv[1]); from registry import Store; "
-            "s=Store(sys.argv[2],read_only=True); t=s.state()['tasks']['L']; "
-            "print(json.dumps({'base':t['base'],'route':t['route'],'helper': 'light_route' in sys.modules})); s.close()")
+        def reader(resolve):
+            return (
+                "import sys, json; sys.path.insert(0, sys.argv[1]); from registry import Store; "
+                "s=Store(sys.argv[2],read_only=True); t=" + resolve + "['tasks']['L']; "
+                "print(json.dumps({'base':t['base'],'route':t['route'],'helper': 'light_route' in sys.modules})); s.close()")
         for folder in (old, new):
+            script = reader("s.state()" if folder == old else "s.state(resolve=False)")
             result = subprocess.run([sys.executable, "-I", "-B", "-c", script, str(folder), str(self.root)],
                                     capture_output=True, text=True, timeout=15)
+            if folder == old:
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("integrity", result.stderr.lower())
+                continue
             self.assertEqual(result.returncode, 0, result.stderr)
             data = json.loads(result.stdout)
             self.assertFalse(data["helper"])
             self.assertEqual(data["base"], self.store.state()["tasks"]["L"]["base"])
-            self.assertEqual(data["route"], "light" if folder == old else "full")
+            self.assertEqual(data["route"], "full")
+
+        legacy = self.base / "legacy-reader-record"
+        legacy.mkdir(); (legacy / "artifacts").mkdir()
+        scope = self.store.state()["tasks"]["L"]["scope"]["sha256"]
+        shutil.copy2(self.root / "artifacts" / scope, legacy / "artifacts" / scope)
+        setup_events = [e for e in self.store.events() if e["kind"] in {"init", "agent"}
+                        or e["kind"] == "task" and e["data"]["id"] == "L"]
+        create = (
+            "import sys,json; sys.path.insert(0,sys.argv[1]); from registry import Store; "
+            "s=Store(sys.argv[2],create=True); "
+            "[s.append(e['kind'],e['actor'],e['data'],e['id']) for e in json.load(sys.stdin)]; "
+            "s.project(); s.close()")
+        result = subprocess.run([sys.executable, "-I", "-B", "-c", create, str(old), str(legacy)],
+                                input=json.dumps(setup_events), capture_output=True, text=True, timeout=15)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        legacy_before = (legacy / "events.jsonl").read_bytes()
+        result = subprocess.run([sys.executable, "-I", "-B", "-c", reader("s.state()"), str(old), str(legacy)],
+                                capture_output=True, text=True, timeout=15)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout), {
+            "base": self.store.state()["tasks"]["L"]["base"], "route": "light", "helper": False})
+        self.assertEqual((legacy / "events.jsonl").read_bytes(), legacy_before)
 
         old_cli = self.base / "old-cli"; old_cli.mkdir()
         shutil.copytree(fixture, old_cli / "scripts")
         copy = self.base / "old-reader-record"
         self.store.checkpoint(copy)
         before = (copy / "events.jsonl").read_bytes()
+        state_before = (copy / "state.json").read_bytes()
         for command in ("status", "doctor"):
             result = subprocess.run([sys.executable, "-B", str(old_cli / "scripts/squadra.py"),
                                     "--root", str(copy), command], env=self.env,
                                     capture_output=True, text=True, timeout=30)
-            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("integrity", (result.stdout + result.stderr).lower())
             self.assertNotIn("Unknown event kind", result.stderr)
-            if command == "doctor":
-                self.assertEqual(json.loads(result.stdout)["integrity"], "passed")
             self.assertEqual((copy / "events.jsonl").read_bytes(), before)
-        # Old readers verify the bytes, but cannot interpret or enforce promotion.
-        self.assertEqual(json.loads((copy / "state.json").read_text())["tasks"]["L"]["route"], "light")
+            self.assertEqual((copy / "state.json").read_bytes(), state_before)
+            positive = subprocess.run([sys.executable, "-B", str(old_cli / "scripts/squadra.py"),
+                                       "--root", str(legacy), command], env=self.env,
+                                      capture_output=True, text=True, timeout=30)
+            self.assertEqual(positive.returncode, 0, positive.stdout + positive.stderr)
+            self.assertNotIn("Unknown event kind", positive.stderr)
+            if command == "doctor":
+                self.assertEqual(json.loads(positive.stdout)["integrity"], "passed")
+            self.assertEqual((legacy / "events.jsonl").read_bytes(), legacy_before)
+        self.assertEqual(json.loads(state_before)["tasks"]["L"]["route"], "full")
+        self.assertEqual(self.store.events(), recorded)
+        self.assertEqual((old / "registry.py").read_bytes(), frozen)
+        for name, expected in hashes.items():
+            self.assertEqual(hashlib.sha256((fixture / name).read_bytes()).hexdigest(), expected)
 
     def test_promotion_has_bilingual_history_in_the_served_page(self):
         from dashboard_test_support import make_server

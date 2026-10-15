@@ -254,7 +254,7 @@ def validate_event(state, kind, actor, data):
 
 
 def register(store, actor, task_id, filename, reason):
-    task = store.state()['tasks'][task_id]
+    task = store.resolved()['tasks'][task_id]
     data = {'task': task_id, 'fix': prepare(store, task, filename), 'reason': reason,
             'previous': binding(task) if task.get('fix') else None}
     if task.get('contract'):
@@ -264,7 +264,7 @@ def register(store, actor, task_id, filename, reason):
 
 
 def execute(store, actor, task_id, destination, timeout=30, exception=None):
-    state = store.state(); task = state['tasks'][task_id]
+    state = store.resolved(); task = state['tasks'][task_id]
     eligible(state, task, actor)
     require(task.get('fix'), 'fix_agreement_required')
     validate_fix(task['fix'], store.root)

@@ -4,11 +4,13 @@ Ordinary command output shows the board, every owner request, wait counts by kin
 and at most five grouped waits. Waits of the same kind and task share a line with
 their count and oldest age. Assignments and current delivery/read handoffs come
 first, then active-window pings and process alerts; age orders each priority.
-Informational ACKs remain in the counts. A table retains up to five open tasks'
+Unflagged historical notices still require ACK and remain in the counts. Messages
+sent with `--info` do not. A table retains up to five open tasks'
 next steps and the windows/roles holding them, with an explicit remainder.
 Use `squadra status --all --root
-REGISTRY` for the complete previous text view and every wait. Saved `stato.md`,
-JSON results and dashboard data remain complete; this changes only console text.
+REGISTRY` for the complete previous text view and every wait. Ordinary `stato.md`
+is a bounded current summary; `squadra export` refreshes its complete projection.
+JSON results and dashboard data retain their complete contents.
 
 ## Forecast from comparable work
 
@@ -486,9 +488,28 @@ proof of liveness and performs no actions.
 
 Omit `--task` when the text concerns coordination of the area, for example the
 arrival of an outside reviewer. Previous outputs do not change their association.
-Each write updates shared mail and the UTC day's projection in
-`posta/exchange-YYYY-MM-DD.md`; do not create authoritative copies per clone or
-edit these projections. `export` rebuilds them from events.
+Each write appends new event records and updates affected UTC days in
+`posta/exchange-YYYY-MM-DD.md` and bounded summaries. Complete `state.json` and
+mail/history exports are refreshed by `export`, `checkpoint` or `save`, not by
+every command. Do not create authoritative copies per clone or edit projections.
+A commit can precede its projection update: compare the exported sequence/head
+with the current Store view before treating a file as complete. Use the current
+`inbox` for reception and transport; an old complete mailbox is not a live queue.
+`squadra export` rebuilds the complete projections from verified authority.
+
+### Registry read boundaries
+
+Ordinary commands verify the anchor event and its hash, the newer event hashes and
+links, and authenticated proofs for the cache values/indexes they read. They do not
+reverify pre-anchor events, untouched leaves, or the cached root against complete
+reducer replay. Full verification runs in `doctor`, `checkpoint`, `save`,
+`restore-check` and release-gate `close`. Dashboard startup performs the same full
+audit in the background: ordinary verified data is marked pending until completion,
+and an audit failure stops data responses and removes the displayed view. A missing, foreign or
+invalid cache also falls back to verified reconstruction. See the exact
+[verification table](recovery.md#registry-verification). Read-only commands do not
+write the registry or projections. Coordinate every writer's upgrade before new
+source-manifest references are used; unsupported older tools must refuse them.
 
 <a id="keep-alive-e-stand-by"></a>
 ## Keep-alive and stand-by
