@@ -11,7 +11,7 @@
         "osv": true,
         "fail_on_severity": "high"
       },
-      "scanned_at": "2026-10-14T12:04:30.852305+00:00",
+      "scanned_at": "2026-10-15T13:13:25.558133+00:00",
       "result": "warn",
       "findings": {
         "critical": 0,
@@ -21,11 +21,11 @@
       },
       "files": {
         "SKILL.md": "a5190e720bc96264e881fe3629b0cbd743072aa1de766aac7d989c7c346d833d",
-        "scripts/registry.py": "cf603c2db8c0983e56387fc86779d6d186ca21e76ece783454015f4106310ec7",
-        "scripts/squadra.py": "e082947fb334b5416e0d159a7ed35c323122d0d059a9b419cf571863b8a5cd27",
-        "scripts/dashboard.py": "972f885c64c9e23061797d55695ef34786ba36ff5699c6b8c47890786f737930",
+        "scripts/registry.py": "33dd418ab180ff6cb5d7b5cffe75ab45643a5e41035673433e45382bb05bf464",
+        "scripts/squadra.py": "1b47fd1afe3864bc35308a059ba73132d74cafcf1480203e9c272df6db9afb3e",
+        "scripts/dashboard.py": "8df29d8c312581e0b1c021bd81ec02dab276deb6bc1459c20e2d4c182b44c0e5",
         "scripts/system_skills.py": "4e904556c790b4d660a8698f0c1dddb360d3377793b1ce6ec6579e2d5739cb68",
-        "assets/dashboard.html": "9ad21042d17cdaf98d1a503eff9baddc2152c4404a6e89f95745d073e033e97e",
+        "assets/dashboard.html": "8e6cee614d6c6104a9d307deb0a55627a653a12faf4f3945eab6a2fd2c09b8bd",
         "references/skills/errata.md": "2a486d47946b59fd78794ed8978dba19cd6e0550b85093b96e8e79c7ca747272",
         "scripts/errata.py": "0db6699770ad7a6e4dbdf5c50eb1a2144b0b8b242bd358939c33d3d89a93d6fa"
       }
@@ -40,7 +40,7 @@
         "osv": true,
         "fail_on_severity": "high"
       },
-      "scanned_at": "2026-10-14T12:04:30.852305+00:00",
+      "scanned_at": "2026-10-15T13:13:25.558133+00:00",
       "result": "warn",
       "findings": {
         "critical": 0,
@@ -50,11 +50,11 @@
       },
       "files": {
         "SKILL.md": "a5190e720bc96264e881fe3629b0cbd743072aa1de766aac7d989c7c346d833d",
-        "scripts/registry.py": "cf603c2db8c0983e56387fc86779d6d186ca21e76ece783454015f4106310ec7",
-        "scripts/squadra.py": "e082947fb334b5416e0d159a7ed35c323122d0d059a9b419cf571863b8a5cd27",
-        "scripts/dashboard.py": "972f885c64c9e23061797d55695ef34786ba36ff5699c6b8c47890786f737930",
+        "scripts/registry.py": "33dd418ab180ff6cb5d7b5cffe75ab45643a5e41035673433e45382bb05bf464",
+        "scripts/squadra.py": "1b47fd1afe3864bc35308a059ba73132d74cafcf1480203e9c272df6db9afb3e",
+        "scripts/dashboard.py": "8df29d8c312581e0b1c021bd81ec02dab276deb6bc1459c20e2d4c182b44c0e5",
         "scripts/system_skills.py": "4e904556c790b4d660a8698f0c1dddb360d3377793b1ce6ec6579e2d5739cb68",
-        "assets/dashboard.html": "9ad21042d17cdaf98d1a503eff9baddc2152c4404a6e89f95745d073e033e97e",
+        "assets/dashboard.html": "8e6cee614d6c6104a9d307deb0a55627a653a12faf4f3945eab6a2fd2c09b8bd",
         "references/skills/previsione.md": "c6310aff2a0284c9e75f848b122cf04567a23fde4963586d64e8ae12aa9efdbe",
         "scripts/forecast.py": "cca3b7ae89d328f163c7d877df4ca45b1b9582a7b2f1aab9619b1efcd12e7d7f"
       }
@@ -69,7 +69,7 @@
         "osv": true,
         "fail_on_severity": "high"
       },
-      "scanned_at": "2026-10-14T12:04:30.852305+00:00",
+      "scanned_at": "2026-10-15T13:13:25.558133+00:00",
       "result": "warn",
       "findings": {
         "critical": 0,
@@ -79,11 +79,11 @@
       },
       "files": {
         "SKILL.md": "a5190e720bc96264e881fe3629b0cbd743072aa1de766aac7d989c7c346d833d",
-        "scripts/registry.py": "cf603c2db8c0983e56387fc86779d6d186ca21e76ece783454015f4106310ec7",
-        "scripts/squadra.py": "e082947fb334b5416e0d159a7ed35c323122d0d059a9b419cf571863b8a5cd27",
-        "scripts/dashboard.py": "972f885c64c9e23061797d55695ef34786ba36ff5699c6b8c47890786f737930",
+        "scripts/registry.py": "33dd418ab180ff6cb5d7b5cffe75ab45643a5e41035673433e45382bb05bf464",
+        "scripts/squadra.py": "1b47fd1afe3864bc35308a059ba73132d74cafcf1480203e9c272df6db9afb3e",
+        "scripts/dashboard.py": "8df29d8c312581e0b1c021bd81ec02dab276deb6bc1459c20e2d4c182b44c0e5",
         "scripts/system_skills.py": "4e904556c790b4d660a8698f0c1dddb360d3377793b1ce6ec6579e2d5739cb68",
-        "assets/dashboard.html": "9ad21042d17cdaf98d1a503eff9baddc2152c4404a6e89f95745d073e033e97e",
+        "assets/dashboard.html": "8e6cee614d6c6104a9d307deb0a55627a653a12faf4f3945eab6a2fd2c09b8bd",
         "references/skills/rasoio.md": "cd47402b57aa2ec04f602bb4d71c578f7e404e81bc65552d8c2f079dc88be7df"
       }
     }
