@@ -49,20 +49,20 @@ html:root{scroll-behavior:auto}
 .sq-brand{display:flex;align-items:center;gap:10px;padding:4px 6px 14px;min-height:46px}
 .sq-logo{display:grid;place-items:center;width:30px;height:30px;flex:none;border-radius:var(--sq-r-sm);background:var(--sq-accent-solid);color:var(--sq-on-accent);box-shadow:inset 0 0 0 2px var(--sq-highlight)}
 .sq-brand .wordmark{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-:is(#tabs,#plugin-links,#skills-links,#usage-links){display:flex;flex-direction:column;gap:2px}
-:is(#tabs,#plugin-links,#skills-links,#usage-links) button{display:flex;align-items:center;gap:12px;width:100%;min-height:40px;padding:8px 12px;border:0;border-radius:var(--sq-r-md);background:none;color:var(--sq-text);font-weight:500;text-align:left;white-space:nowrap;overflow:hidden}
-:is(#tabs,#plugin-links,#skills-links,#usage-links) button .sq-icon{order:-1;width:18px;height:18px;color:var(--sq-muted)}
-:is(#tabs,#plugin-links,#skills-links,#usage-links) button:hover{background:var(--sq-surface-2)}
-:is(#tabs,#plugin-links,#skills-links,#usage-links) button.active{background:var(--sq-accent-subtle);color:var(--sq-text);box-shadow:inset 3px 0 0 var(--sq-highlight)}
-:is(#tabs,#plugin-links,#skills-links,#usage-links) button.active .sq-icon{color:var(--sq-accent)}
-:is(#tabs,#plugin-links,#skills-links,#usage-links) button:focus-visible,#sidebar-toggle:focus-visible{outline-offset:-2px}
+:is(#tabs,#plugin-links,#skills-links,#usage-links,#balance-links){display:flex;flex-direction:column;gap:2px}
+:is(#tabs,#plugin-links,#skills-links,#usage-links,#balance-links) button{display:flex;align-items:center;gap:12px;width:100%;min-height:40px;padding:8px 12px;border:0;border-radius:var(--sq-r-md);background:none;color:var(--sq-text);font-weight:500;text-align:left;white-space:nowrap;overflow:hidden}
+:is(#tabs,#plugin-links,#skills-links,#usage-links,#balance-links) button .sq-icon{order:-1;width:18px;height:18px;color:var(--sq-muted)}
+:is(#tabs,#plugin-links,#skills-links,#usage-links,#balance-links) button:hover{background:var(--sq-surface-2)}
+:is(#tabs,#plugin-links,#skills-links,#usage-links,#balance-links) button.active{background:var(--sq-accent-subtle);color:var(--sq-text);box-shadow:inset 3px 0 0 var(--sq-highlight)}
+:is(#tabs,#plugin-links,#skills-links,#usage-links,#balance-links) button.active .sq-icon{color:var(--sq-accent)}
+:is(#tabs,#plugin-links,#skills-links,#usage-links,#balance-links) button:focus-visible,#sidebar-toggle:focus-visible{outline-offset:-2px}
 .sq-sidebar-foot{margin-top:auto;padding-top:10px;border-top:1px solid var(--sq-border)}
 #sidebar-toggle{display:flex;align-items:center;gap:12px;width:100%;min-height:40px;padding:8px 12px;border:0;background:none;color:var(--sq-muted);white-space:nowrap;overflow:hidden;text-align:left}
 #sidebar-toggle .sq-icon{width:18px;height:18px}
 .sq-icon-btn{display:none;align-items:center;justify-content:center;width:44px;height:44px;padding:0;border:0;background:none;color:var(--sq-text);border-radius:var(--sq-r-md)}
 .sq-icon-btn .sq-icon{width:20px;height:20px}
 .collapsed .sq-brand .wordmark{display:none}
-.collapsed :is(#tabs,#plugin-links,#skills-links,#usage-links) button,.collapsed #sidebar-toggle{width:48px;padding:8px 15px;gap:40px}
+.collapsed :is(#tabs,#plugin-links,#skills-links,#usage-links,#balance-links) button,.collapsed #sidebar-toggle{width:48px;padding:8px 15px;gap:40px}
 .sq-scrim{position:fixed;inset:0;z-index:25;background:var(--sq-backdrop)}
 .sq-page{display:flex;flex-direction:column;min-width:0}
 .sq-topbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:14px;height:var(--sq-topbar-h);padding:0 28px;background:var(--sq-topbar-bg);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);border-bottom:1px solid var(--sq-border)}
@@ -149,7 +149,7 @@ html:root{scroll-behavior:auto}
 button:focus-visible,select:focus-visible,summary:focus-visible,input:focus-visible{outline:2px solid var(--sq-focus);outline-offset:2px}
 @media (max-width:1279.98px){.sq-seg .sq-label{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}.sq-seg button{padding:3px 8px}}
 @media (max-width:1099.98px){.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.sq-topbar{padding:0 20px;gap:10px}main{padding:22px 20px 32px}.status{max-width:180px}}
-@media (max-width:699.98px){html{--sq-topbar-h:112px}.sq-app,.sq-app.collapsed{grid-template-columns:minmax(0,1fr)}.sq-sidebar{position:fixed;left:0;top:0;bottom:0;width:min(300px,86vw);transform:translateX(-105%);visibility:hidden;box-shadow:var(--sq-shadow-2);transition:transform var(--sq-dur) var(--sq-ease),visibility 0s linear var(--sq-dur)}.drawer-open .sq-sidebar{transform:none;visibility:visible;transition:transform var(--sq-dur) var(--sq-ease)}.sq-icon-btn{display:inline-flex}.sq-sidebar-foot{display:none}.collapsed .sq-brand .wordmark{display:block}.collapsed :is(#tabs,#plugin-links,#skills-links,#usage-links) button{width:100%;padding:8px 12px;gap:12px}.sq-topbar{flex-wrap:wrap;align-content:center;gap:6px 8px;padding:6px 12px}.sq-heading{flex:1 1 0}.sq-search{order:5;flex:1 1 100%}#search{font-size:16px;min-height:40px}.header-side{gap:6px}.status{max-width:44px;padding:5px 10px}.status span:last-child{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}main{padding:16px 12px 28px}.metrics{gap:10px}.metric{padding:14px}.metric strong{font-size:24px;line-height:30px}.sq-head{display:none}.sq-caption{padding:14px 16px 10px}.sq-table>.row{grid-template-columns:minmax(0,1fr);row-gap:6px;padding:14px 16px}.sq-cell[data-label]::before{content:attr(data-label);display:block;font-size:11px;line-height:16px;font-weight:600;color:var(--sq-muted)}.sq-foot,.sq-empty{padding:12px 16px}.sq-brow{grid-template-columns:minmax(80px,40%) minmax(0,1fr) auto}.dec-toolbar label{flex:1 1 100%;min-width:0}.dec-toolbar select{flex:1 1 auto;width:100%;min-width:0}}
+@media (max-width:699.98px){html{--sq-topbar-h:112px}.sq-app,.sq-app.collapsed{grid-template-columns:minmax(0,1fr)}.sq-sidebar{position:fixed;left:0;top:0;bottom:0;width:min(300px,86vw);transform:translateX(-105%);visibility:hidden;box-shadow:var(--sq-shadow-2);transition:transform var(--sq-dur) var(--sq-ease),visibility 0s linear var(--sq-dur)}.drawer-open .sq-sidebar{transform:none;visibility:visible;transition:transform var(--sq-dur) var(--sq-ease)}.sq-icon-btn{display:inline-flex}.sq-sidebar-foot{display:none}.collapsed .sq-brand .wordmark{display:block}.collapsed :is(#tabs,#plugin-links,#skills-links,#usage-links,#balance-links) button{width:100%;padding:8px 12px;gap:12px}.sq-topbar{flex-wrap:wrap;align-content:center;gap:6px 8px;padding:6px 12px}.sq-heading{flex:1 1 0}.sq-search{order:5;flex:1 1 100%}#search{font-size:16px;min-height:40px}.header-side{gap:6px}.status{max-width:44px;padding:5px 10px}.status span:last-child{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}main{padding:16px 12px 28px}.metrics{gap:10px}.metric{padding:14px}.metric strong{font-size:24px;line-height:30px}.sq-head{display:none}.sq-caption{padding:14px 16px 10px}.sq-table>.row{grid-template-columns:minmax(0,1fr);row-gap:6px;padding:14px 16px}.sq-cell[data-label]::before{content:attr(data-label);display:block;font-size:11px;line-height:16px;font-weight:600;color:var(--sq-muted)}.sq-foot,.sq-empty{padding:12px 16px}.sq-brow{grid-template-columns:minmax(80px,40%) minmax(0,1fr) auto}.dec-toolbar label{flex:1 1 100%;min-width:0}.dec-toolbar select{flex:1 1 auto;width:100%;min-width:0}}
 @media (prefers-reduced-motion: reduce){.sq-sidebar,.drawer-open .sq-sidebar,button{transition:none}button:active{transform:none}.sq-chart details[open]>summary .sq-icon,.sq-more details[open]>summary .sq-icon{transition:none}}
 @media (prefers-reduced-transparency: reduce){.sq-topbar{background:var(--sq-bg);-webkit-backdrop-filter:none;backdrop-filter:none}}
 .sq-status{margin:0 0 18px;max-width:60ch;font-size:20px;line-height:28px;font-weight:600;letter-spacing:-.01em}
@@ -316,7 +316,7 @@ dialog.sq-story{inset:0;margin:auto;width:min(820px,calc(100vw - 48px));height:a
 </style>
 </head><body>
 <button id="skip" type="button" class="sq-skip">Vai al contenuto</button>
-<div class="sq-app" id="app"><div class="sq-sidebar" id="sidebar"><div class="sq-brand"><span class="sq-logo" id="logo" aria-hidden="true"></span><span class="wordmark" id="wordmark">squadra</span><button id="sidebar-close" type="button" class="sq-icon-btn" aria-label="Chiudi il menù"></button></div><div id="connected-project" class="sq-project-card"></div><nav id="tabs" aria-label="Viste della dashboard"></nav><section class="sq-plugin-nav" id="usage-nav"><div id="usage-links"></div></section><section class="sq-plugin-nav" id="skills-nav"><div id="skills-links"></div></section><section id="plugin-nav" class="sq-plugin-nav" aria-labelledby="plugin-label"><h2 id="plugin-label"></h2><div id="plugin-links"></div><div id="plugin-notices"></div></section><div class="sq-sidebar-foot"><button id="sidebar-toggle" type="button" aria-pressed="false"></button></div></div>
+<div class="sq-app" id="app"><div class="sq-sidebar" id="sidebar"><div class="sq-brand"><span class="sq-logo" id="logo" aria-hidden="true"></span><span class="wordmark" id="wordmark">squadra</span><button id="sidebar-close" type="button" class="sq-icon-btn" aria-label="Chiudi il menù"></button></div><div id="connected-project" class="sq-project-card"></div><nav id="tabs" aria-label="Viste della dashboard"></nav><section class="sq-plugin-nav" id="usage-nav"><div id="usage-links"></div></section><section class="sq-plugin-nav" id="balance-nav"><div id="balance-links"></div></section><section class="sq-plugin-nav" id="skills-nav"><div id="skills-links"></div></section><section id="plugin-nav" class="sq-plugin-nav" aria-labelledby="plugin-label"><h2 id="plugin-label"></h2><div id="plugin-links"></div><div id="plugin-notices"></div></section><div class="sq-sidebar-foot"><button id="sidebar-toggle" type="button" aria-pressed="false"></button></div></div>
 <div class="sq-scrim" id="scrim" hidden></div>
 <div class="sq-page" id="page"><header class="sq-topbar" id="topbar"><button id="menu" type="button" class="sq-icon-btn" aria-controls="sidebar" aria-expanded="false" aria-label="Apri il menù"></button><div class="sq-heading"><h1 id="name">Sala di controllo</h1></div><div class="sq-search"><input id="search" type="search" placeholder="Cerca incarico, finestra, messaggio o skill" aria-label="Cerca nel registro"></div><div class="header-side"><div id="lang" class="lang"></div><div id="theme" class="sq-seg"></div><div id="notify-controls" class="sq-notify-controls"></div><div class="status" id="live"><span class="dot"></span><span>In attesa</span></div></div></header>
 <main id="main" tabindex="-1"><section id="loading" class="sq-loading" role="status" aria-live="polite"><span class="sq-spinner" aria-hidden="true"></span><h2 id="loading-title">Caricamento del progetto…</h2><p id="loading-help">Sto leggendo attività, messaggi e prove.</p><button id="loading-retry" type="button" hidden>Riprova</button></section><section id="connected-hero" class="sq-hero"></section><section id="connected-context" class="sq-context" hidden></section><div id="notice"></div><p id="status" class="sq-status"></p><div id="kpis" class="sq-kpis"></div><div id="content"></div><div id="charts" class="sq-charts"></div><div class="sq-legacy" id="legacy" hidden><button id="legacy-toggle" type="button" class="link" aria-expanded="false" aria-controls="legacy-body"></button><div id="legacy-body" class="sq-legacy-body"><div id="metrics" class="metrics"></div><div id="overview"></div></div></div><details class="sq-registry-details" id="registry-details" hidden><summary id="connected-registry-label">Dettagli del registro</summary><div id="project" class="sub mono">Connessione al registro…</div></details><div class="footer" id="footer">Una consegna non è un ACK. Un test passato non è una review. Una review non autorizza un rilascio.<br>Vista locale in sola lettura, salvo le impostazioni dei plugin e le selezioni salvate · nessuna azione sui client.</div></main></div></div>
@@ -1475,7 +1475,7 @@ function recordedWaiting(){
  for(const w of state.waits||[])p.append(row(tr('page.wait.over',{kind:descriptions[w.kind]||w.kind}),(w.task?taskTitle(w.task):w.id)+' · '+w.seconds+'s / '+w.threshold+'s · '+waitText(w),tr('page.wait.check')));addEmpty(p,view.waiting.length);for(const step of view.next_steps)p.append(row(taskTitle(step.task),stepText(step),step.status));return p;
 }
 function workOverview(){const p=panel(tr('connected.workNow'));headingKey(p.children[0],'work');p.className='panel sq-work';p.append(node('p',tr('connected.workIntro'),'sq-lede'));const all=Object.values(state.tasks).filter(matches),closed=all.filter(t=>!panelOpen(t));for(const t of all.filter(panelOpen))p.append(panelTaskCard(t));if(closed.length){const group=node('details',undefined,'sq-closed');group.open=panelUI.closedOpen;group.ontoggle=()=>{panelUI.closedOpen=group.open;if(group.open)panelClampSoon()};const summary=node('summary',tr('work.closed',{n:closed.length}));focusKey(summary,'work:closed');summary.setAttribute('data-focus-fallback','work');group.append(summary);for(const t of closed)group.append(panelTaskCard(t));p.append(group)}if(!all.length)p.append(node('p',tr('page.empty'),'empty'));const waits=node('details',undefined,'sq-waits');waits.open=panelUI.waitsOpen;waits.ontoggle=()=>{panelUI.waitsOpen=waits.open};const summary=node('summary',tr('work.waits'));focusKey(summary,'work:waits');summary.setAttribute('data-focus-fallback','work');waits.append(summary,recordedWaiting());if(state.presence?.some(a=>a.ping||a.availability==='stand-by'))waits.append(presencePanel());p.append(waits);return p}
-function render(){if(!state)return;const anchor=commsAnchor();if(typeof renderHeaderExtras==='function')renderHeaderExtras();$('name').textContent=state.workspace.name;$('project').textContent=tr('page.project',{project:state.workspace.project,count:state.event_count});$('project').setAttribute('title',$('project').textContent);const tasksList=Object.values(state.tasks),messages=Object.values(state.messages),runs=Object.values(state.runs);const done=tasksList.filter(t=>t.status==='done').length,unread=Object.values(state.progress||{}).filter(p=>p.state?.id==='closed-unread').length;$('metrics').replaceChildren();for(const [label,value,detail,glyph] of [[tr('page.metric.closed'),done+'/'+tasksList.length,unread?tr('page.metric.closedUnread',{count:unread}):tr('page.metric.closedSub'),'check2-all'],[tr('page.metric.identities'),new Set(Object.values(state.agents).map(a=>a.identity)).size,tr('page.metric.identitiesSub',{count:Object.keys(state.agents).length}),'people'],[tr('page.metric.acks'),messages.filter(m=>!m.ack).length,tr('page.metric.acksSub'),'envelope-exclamation'],[tr('page.metric.runs'),runs.filter(r=>['running','cleanup-unknown'].includes(r.status)).length,runs.some(r=>r.status==='cleanup-unknown')?tr('page.metric.runsUnknown'):tr('page.metric.runsPending'),'hourglass-split']]){const c=node('div',undefined,'metric');c.append(node('div',label,'label'),node('strong',value),node('div',detail,'sub'));if(typeof icon==='function')c.append(icon(glyph,'metric-icon'));$('metrics').append(c)}$('notice').replaceChildren();if(state.paused)$('notice').append(node('div',tr('page.paused'),'notice'));const tabs=['Quadro','Finestre','Incarichi','Posta','Comunicazioni','Decisioni','Letture','Prove','Output','Cronologia','Storico'];$('tabs').replaceChildren();tabs.forEach(t=>{const b=node('button',tr('tab.'+t),t===tab?'active':'');if(typeof panelTab==='function')panelTab(b,t);b.onclick=()=>{if(typeof connectedReset==='function')connectedReset();tab=t;if(typeof panelNavigate==='function')panelNavigate();render()};$('tabs').append(b)});if(typeof skillsNav==='function')skillsNav();if(typeof usageNav==='function')usageNav();const content=$('content');content.className=tab==='Quadro'?'sq-home':'';if(tab==='Comunicazioni')comms(content);else{if(tab==='Usage'){usageRender(content)}else if(tab==='SystemSkills'){skillsRender(content)}else if(tab==='Store'){storeRender(content)}else if(tab==='Letture'){readsRender(content)}else if(typeof pluginSelected==='function'&&pluginSelected()){pluginRender(content)}else{content.replaceChildren();if(tab==='Quadro'){content.append(ownerAttention(),workOverview(),connectedRail());const detail=node('details',undefined,'sq-full-detail');detail.append(node('summary',tr('page.detail')));const grid=node('div',undefined,'grid');const left=node('div'),right=node('div');left.append(recordedWaiting(),tasks('quadro-tasks'),outputs());const reserve=panel(tr('page.reserve.title'));for(const r of Object.values(state.resources))reserve.append(row(r.name,r.owner+' · '+r.reason,tr('page.reserved')));for(const d of state.decisions.slice(-5))reserve.append(row(d.actor,d.reason));addEmpty(reserve,Object.keys(state.resources).length+state.decisions.length);right.append(reserve,mail('quadro-mail'));grid.append(left,right);detail.append(grid);content.append(detail)}else content.append(({Finestre:team,Incarichi:tasks,Posta:mail,Prove:evidence,Output:outputs,Cronologia:timeline,Storico:legacyView,Decisioni:decisionsView})[tab]())}}commsRestore(anchor)}
+function render(){if(!state)return;const anchor=commsAnchor();if(typeof renderHeaderExtras==='function')renderHeaderExtras();$('name').textContent=state.workspace.name;$('project').textContent=tr('page.project',{project:state.workspace.project,count:state.event_count});$('project').setAttribute('title',$('project').textContent);const tasksList=Object.values(state.tasks),messages=Object.values(state.messages),runs=Object.values(state.runs);const done=tasksList.filter(t=>t.status==='done').length,unread=Object.values(state.progress||{}).filter(p=>p.state?.id==='closed-unread').length;$('metrics').replaceChildren();for(const [label,value,detail,glyph] of [[tr('page.metric.closed'),done+'/'+tasksList.length,unread?tr('page.metric.closedUnread',{count:unread}):tr('page.metric.closedSub'),'check2-all'],[tr('page.metric.identities'),new Set(Object.values(state.agents).map(a=>a.identity)).size,tr('page.metric.identitiesSub',{count:Object.keys(state.agents).length}),'people'],[tr('page.metric.acks'),messages.filter(m=>!m.ack).length,tr('page.metric.acksSub'),'envelope-exclamation'],[tr('page.metric.runs'),runs.filter(r=>['running','cleanup-unknown'].includes(r.status)).length,runs.some(r=>r.status==='cleanup-unknown')?tr('page.metric.runsUnknown'):tr('page.metric.runsPending'),'hourglass-split']]){const c=node('div',undefined,'metric');c.append(node('div',label,'label'),node('strong',value),node('div',detail,'sub'));if(typeof icon==='function')c.append(icon(glyph,'metric-icon'));$('metrics').append(c)}$('notice').replaceChildren();if(state.paused)$('notice').append(node('div',tr('page.paused'),'notice'));const tabs=['Quadro','Finestre','Incarichi','Posta','Comunicazioni','Decisioni','Letture','Prove','Output','Cronologia','Storico'];$('tabs').replaceChildren();tabs.forEach(t=>{const b=node('button',tr('tab.'+t),t===tab?'active':'');if(typeof panelTab==='function')panelTab(b,t);b.onclick=()=>{if(typeof connectedReset==='function')connectedReset();tab=t;if(typeof panelNavigate==='function')panelNavigate();render()};$('tabs').append(b)});if(typeof skillsNav==='function')skillsNav();if(typeof usageNav==='function')usageNav();if(typeof balanceNav==='function')balanceNav();const content=$('content');content.className=tab==='Quadro'?'sq-home':'';if(tab==='Comunicazioni')comms(content);else{if(tab==='Usage'){usageRender(content)}else if(tab==='SystemSkills'){skillsRender(content)}else if(tab==='Bilanciamento'){balanceRender(content)}else if(tab==='Store'){storeRender(content)}else if(tab==='Letture'){readsRender(content)}else if(typeof pluginSelected==='function'&&pluginSelected()){pluginRender(content)}else{content.replaceChildren();if(tab==='Quadro'){content.append(ownerAttention(),workOverview(),connectedRail());const detail=node('details',undefined,'sq-full-detail');detail.append(node('summary',tr('page.detail')));const grid=node('div',undefined,'grid');const left=node('div'),right=node('div');left.append(recordedWaiting(),tasks('quadro-tasks'),outputs());const reserve=panel(tr('page.reserve.title'));for(const r of Object.values(state.resources))reserve.append(row(r.name,r.owner+' · '+r.reason,tr('page.reserved')));for(const d of state.decisions.slice(-5))reserve.append(row(d.actor,d.reason));addEmpty(reserve,Object.keys(state.resources).length+state.decisions.length);right.append(reserve,mail('quadro-mail'));grid.append(left,right);detail.append(grid);content.append(detail)}else content.append(({Finestre:team,Incarichi:tasks,Posta:mail,Prove:evidence,Output:outputs,Cronologia:timeline,Storico:legacyView,Decisioni:decisionsView})[tab]())}}commsRestore(anchor)}
 const loadUI={running:false,timer:null,error:null,query:'',searchAgain:false};
 function loadingLabels(){
  const failed=!!loadUI.error;
@@ -2587,6 +2587,38 @@ panelStatic();
 'use strict';
 // View selections belong to the reader and never change registry data.
 Object.assign(I18N,{
+ 'tab.Bilanciamento':{it:'Bilanciamento',en:'Balance'},
+ 'balance.intro':{it:'Suggerimenti su quali finestre e modelli sono più liberi, con i numeri su cui si basano. Non assegna nulla: decide il coordinatore, che segue il suggerimento oppure registra perché sceglie altro.',en:'Advice on which windows and models are freest, with the numbers behind it. It assigns nothing: the coordinator follows the advice or records why it chooses otherwise.'},
+ 'balance.loading':{it:'Calcolo del bilanciamento…',en:'Computing the balance…'},'balance.error':{it:'Il bilanciamento non è disponibile. Riprova.',en:'Balance is unavailable. Try again.'},'balance.retry':{it:'Riprova',en:'Retry'},
+ 'balance.suggestions':{it:'Suggerimenti per modello',en:'Suggestions per model'},'balance.noSuggestions':{it:'Nessun suggerimento: nessuna regola scatta con i dati disponibili.',en:'No suggestions: no rule fires with the available data.'},
+ 'balance.model.none':{it:'Modello non dichiarato',en:'Model not declared'},
+ 'balance.basis.largest':{it:'{model}, il più usato tra quelli misurati: {models}',en:'{model}, the most used of the measured models: {models}'},'balance.basis.declared':{it:'{model} (dichiarato, non misurato)',en:'{model} (declared, not measured)'},
+ 'balance.S1':{it:'{window} ha {pending} letture in attesa; {to} ne ha 0 e può leggere «{task}» in modo indipendente.',en:'{window} holds {pending} pending reads; {to} holds 0 and can read “{task}” independently.'},
+ 'balance.S2':{it:'{window} è vicina al limite: {detail}. Passi in attesa: {steps}.',en:'{window} is near its limit: {detail}. Next steps held: {steps}.'},
+ 'balance.S3':{it:'{window} ha {owned} incarichi aperti; {to}, dello stesso client, non ne ha.',en:'{window} owns {owned} open tasks; {to}, same client, owns none.'},
+ 'balance.S4':{it:'Il modello {model} è libero ({windows} finestre senza incarichi) mentre {busy} è carico.',en:'Model {model} is idle ({windows} windows without tasks) while {busy} is busy.'},
+ 'balance.slot':{it:'{percent}% della finestra di {minutes} min, azzeramento {reset}',en:'{percent}% of the {minutes}-minute window, resets {reset}'},
+ 'balance.slotEstimate':{it:'stima {percent}% ({slot})',en:'estimate {percent}% ({slot})'},
+ 'chart.balance-load.title':{it:'Carico per finestra',en:'Load per window'},'chart.balance-load.sub':{it:'Incarichi aperti di cui è titolare e letture in attesa, dal registro.',en:'Open tasks it owns and reads waiting on it, from the registry.'},
+ 'chart.balance-tokens.title':{it:'Token per ora, ultime 24 ore',en:'Tokens per hour, last 24 h'},'chart.balance-tokens.sub':{it:'Un piccolo grafico per modello. L’ultima ora è parziale; le ore non misurate restano vuote.',en:'One small chart per model. The last hour is partial; unmeasured hours stay empty.'},
+ 'chart.balance-quota.title':{it:'Quota',en:'Quota'},'chart.balance-quota.sub':{it:'Codex: misurata per finestra e per fascia. Claude: stima rispetto al riferimento che dichiari, tratteggiata.',en:'Codex: measured per window and slot. Claude: an estimate against the reference you declare, hatched.'},
+ 'balance.owned':{it:'Incarichi aperti',en:'Open tasks'},'balance.reads':{it:'Letture in attesa',en:'Pending reads'},'balance.steps':{it:'Passi in attesa',en:'Next steps held'},
+ 'balance.window':{it:'Finestra',en:'Window'},'balance.model':{it:'Modello',en:'Model'},'balance.hour':{it:'Ora',en:'Hour'},'balance.tokens':{it:'Token',en:'Tokens'},'balance.status':{it:'Stato',en:'Status'},
+ 'balance.notCollected':{it:'Token e quota non raccolti in questo momento.',en:'Tokens and quota not collected at this moment.'},
+ 'balance.notMeasured':{it:'Non misurato',en:'Not measured'},'balance.noWindows':{it:'Nessuna finestra registrata.',en:'No windows registered.'},
+ 'balance.noHourly':{it:'Non misurato: serie oraria non disponibile.',en:'Not measured: hourly series unavailable.'},
+ 'balance.estimate':{it:'stima',en:'estimate'},'balance.assumption':{it:'Si assume che tutte le finestre Claude registrate condividano un account.',en:'All registered Claude windows are assumed to share one account.'},
+ 'balance.noReference':{it:'Stima non disponibile: nessun riferimento dichiarato. Ultime 5 ore: {h5} token · ultimi 7 giorni: {d7} token.',en:'Estimate unavailable: no reference declared. Last 5 h: {h5} tokens · last 7 days: {d7} tokens.'},
+ 'balance.partial':{it:'Stima non completa ({reasons}). Somme note, parziali: ultime 5 ore {h5} token · ultimi 7 giorni {d7} token.',en:'Estimate incomplete ({reasons}). Known partial sums: last 5 h {h5} tokens · last 7 days {d7} tokens.'},
+ 'balance.reference':{it:'Riferimento Claude (solo in questo browser)',en:'Claude reference (this browser only)'},'balance.refH5':{it:'Token per 5 ore',en:'Tokens per 5 h'},'balance.refWeek':{it:'Token per settimana',en:'Tokens per week'},
+ 'balance.refSave':{it:'Usa il riferimento',en:'Use reference'},'balance.refClear':{it:'Togli il riferimento',en:'Clear reference'},'balance.refInvalid':{it:'Inserisci due numeri interi positivi.',en:'Enter two positive whole numbers.'},
+ 'balance.perTask':{it:'Per incarico',en:'Per task'},'balance.pickTask':{it:'Incarico aperto',en:'Open task'},'balance.noOpen':{it:'Nessun incarico aperto.',en:'No open tasks.'},'balance.choose':{it:'Scegli un incarico',en:'Choose a task'},
+ 'balance.build':{it:'Chi può costruire',en:'Who can build'},'balance.read':{it:'Chi può leggere',en:'Who can read'},'balance.excluded':{it:'Esclusa: {reason}',en:'Excluded: {reason}'},
+ 'balance.reason.author':{it:'autore dell’incarico',en:'task author'},'balance.reason.stand-by':{it:'in pausa (stand-by)',en:'on stand-by'},
+ 'balance.omitted':{it:'Criterio «{dimension}» non usato: manca per {windows}.',en:'“{dimension}” not used: missing for {windows}.'},
+ 'balance.dim.quota':{it:'quota',en:'quota'},'balance.dim.history':{it:'lavori simili',en:'similar work'},'balance.dim.rate':{it:'token per ora',en:'tokens per hour'},
+ 'balance.order':{it:'Ordine usato: {order}.',en:'Order used: {order}.'},'balance.dim.steps':{it:'passi in attesa',en:'next steps held'},'balance.dim.owned':{it:'incarichi aperti',en:'open tasks'},
+ 'balance.notice':{it:'Solo un consiglio: non assegna nulla e non cambia percorso, lettore, budget o permessi.',en:'Advice only: assigns nothing and changes no route, reader, budget or permission.'},
  "usage.title":{"it":"Consumi","en":"Usage"},
  "tab.Usage":{"it":"Consumi","en":"Usage"},
  "usage.intro":{"it":"I token misurati nelle finestre di questo progetto, suddivisi per modello e lavoro. I token sono unità di testo elaborate dal modello; non sono un addebito.","en":"Measured tokens in this project’s windows, by model and task. Tokens are units of text processed by a model; they are not a charge."},
@@ -2945,7 +2977,7 @@ function pluginSelected(){return tab==='Plugin'}
 function pluginCatalog(){return state?.plugins||{plugins:[],refused:[]}}
 function pluginManifest(){return (pluginCatalog().plugins||[]).find(p=>p.name===pluginView.selected)}
 function pluginLocal(value){return value?.[UI_LANG]||''}
-function activeNavigation(){return [...($('tabs')?.children||[]),...($('plugin-links')?.children||[]),...($('skills-links')?.children||[]),...($('usage-links')?.children||[])].find(b=>b.className==='active')}
+function activeNavigation(){return [...($('tabs')?.children||[]),...($('plugin-links')?.children||[]),...($('skills-links')?.children||[]),...($('usage-links')?.children||[]),...($('balance-links')?.children||[])].find(b=>b.className==='active')}
 function pluginText(tag,text,cls){const e=document.createElement(tag);e.textContent=text;if(cls)e.className=cls;return e}
 function pluginLogo(manifest,size){
  const src=manifest?.icon;
@@ -3776,7 +3808,7 @@ function skillOpen(id){document.activeElement?.blur?.();skillsUI.selected=id;ski
 async function skillsFetch(){
  if(tab!=='SystemSkills'||document.hidden===true||skillsUI.running)return;
  skillsUI.running=true;skillsUI.error=false;skillsUI.attempt=state;
- try{const data=await(await api('/api/skills')).json();if(!Array.isArray(data.skills)||data.skills.length!==3)throw Error('skills response');skillsUI.data=data}
+ try{const data=await(await api('/api/skills')).json();if(!Array.isArray(data.skills)||data.skills.length!==4)throw Error('skills response');skillsUI.data=data}
  catch(e){skillsUI.error=true}
  finally{skillsUI.running=false;if(tab==='SystemSkills')render()}
 }
@@ -3846,6 +3878,142 @@ function skillsRender(content){
  if(skillsUI.attempt!==state&&!skillsUI.running)skillsFetch();
 }
 if(typeof document.addEventListener==='function')document.addEventListener('keydown',event=>{const active=document.activeElement,tag=(active?.tagName||active?.tag||'').toLowerCase();if(tab==='SystemSkills'&&event.key==='/'&&!['input','textarea','select'].includes(tag)&&active?.getAttribute?.('contenteditable')!=='true'){event.preventDefault?.();skillsUI.search?.focus()}});
+</script>
+<style id="squadra-balance-style">
+.sq-balance{max-width:1100px;margin:0 auto;min-width:0;padding:8px 8px 48px}.sq-balance h2{font-family:var(--sq-serif,Georgia,serif);font-size:30px;line-height:1.2}.sq-balance-intro{max-width:760px;color:var(--sq-muted);line-height:1.6}
+.sq-balance section+section{margin-top:28px}.sq-balance-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(320px,100%),1fr));gap:12px}
+.sq-balance-card{border:1px solid var(--sq-border,var(--line));border-radius:12px;padding:14px 16px;background:var(--sq-surface,var(--panel));min-width:0;overflow-wrap:anywhere}.sq-balance-card h4{margin:0 0 6px}
+.sq-balance-num{font-variant-numeric:tabular-nums;font-weight:600}.sq-balance-est{font-style:italic}
+.sq-balance-list{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:8px}.sq-balance-list li{border-top:1px solid var(--sq-border,var(--line));padding-top:8px;min-width:0;overflow-wrap:anywhere}
+.sq-balance-form{display:flex;flex-wrap:wrap;gap:10px;align-items:end;margin-top:10px}.sq-balance-form label{display:grid;gap:4px;font-size:13px;min-width:0}.sq-balance-form input{width:12em;max-width:100%}
+.sq-balance select{max-width:100%}.sq-balance .sq-crow svg.sq-strip{grid-column:1/-1;width:100%;height:40px}.sq-balance .sq-strip rect.none{fill:none;stroke:var(--sq-border-strong,var(--line));stroke-dasharray:2 2}
+.sq-balance:focus-visible,.sq-balance button:focus-visible,.sq-balance input:focus-visible,.sq-balance select:focus-visible{outline:2px solid var(--sq-accent);outline-offset:4px}
+@media(max-width:699.98px){.sq-balance h2{font-size:26px}.sq-balance-form{flex-direction:column;align-items:stretch}.sq-balance-form input{width:100%}}
+</style>
+<script id="squadra-balance">
+'use strict';
+function balanceNav(){
+ const links=$('balance-links');if(!links)return;$('balance-nav').setAttribute('aria-label',tr('tab.Bilanciamento'));
+ const b=node('button',tr('tab.Bilanciamento'),tab==='Bilanciamento'?'active':'');panelTab(b,'Bilanciamento');b.onclick=()=>{connectedReset();tab='Bilanciamento';balanceUI.attempt=null;panelNavigate();render()};links.replaceChildren(b);
+}
+const balanceUI={data:null,attempt:null,running:false,error:false,task:'',reference:null,refError:false,signature:null,element:null,controls:[]};
+const BALANCE_STORE='squadra.usage.settings.v1';
+function balanceStored(){try{const raw=panelStore(BALANCE_STORE);const value=raw?JSON.parse(raw):null;if(value&&typeof value==='object'&&!Array.isArray(value)&&value.schema===1)return value}catch(e){}return {schema:1,prices:null,balance:{}}}
+function balanceReference(){const ref=balanceStored().balance?.reference;return ref&&Number.isInteger(ref.h5)&&Number.isInteger(ref.week)&&ref.h5>0&&ref.week>0&&ref.h5<=1e12&&ref.week<=1e12?{claude:{h5:ref.h5,week:ref.week}}:null}
+function balanceSaveReference(ref){const value=balanceStored(),own={...(value.balance&&typeof value.balance==='object'?value.balance:{})};if(ref)own.reference=ref;else delete own.reference;panelStore(BALANCE_STORE,JSON.stringify({...value,schema:1,balance:own}))}
+function balanceNum(n){return typeof n==='number'?n.toLocaleString(uiLocale()):'—'}
+function balanceButton(text,key,action){const b=node('button',text);b.onclick=action;focusKey(b,key);balanceUI.controls.push(b);return b}
+async function balanceFetch(){
+ if(tab!=='Bilanciamento'||document.hidden===true||balanceUI.running)return;
+ balanceUI.running=true;balanceUI.error=false;balanceUI.attempt=state;
+ try{const headers={'X-Squadra-Record':encodeURIComponent(balanceUI.task||'')},ref=balanceReference();if(ref)headers['X-Squadra-Balance-Reference']=JSON.stringify(ref);
+  const data=await(await api('/api/balance',headers)).json();if(!Array.isArray(data.windows)||data.assigns!==false)throw Error('balance response');balanceUI.data=data}
+ catch(e){balanceUI.error=true}
+ finally{balanceUI.running=false;if(tab==='Bilanciamento')render()}
+}
+function balanceModel(m){return m||tr('balance.model.none')}
+function balanceModelLabel(r){const list=Array.isArray(r.measured_models)?r.measured_models:[];if(r.model_source==='measured_largest_of_several'&&list.length>1)return tr('balance.basis.largest',{model:r.model,models:list.join(', ')});if(r.model_source==='declared'&&r.model)return tr('balance.basis.declared',{model:r.model});return balanceModel(r.model)}
+function balanceSlotText(slot){return slot.percent!==undefined?tr('balance.slotEstimate',{percent:Math.round(slot.percent),slot:slot.slot}):tr('balance.slot',{percent:balanceNum(slot.used_percent),minutes:balanceNum(slot.window_minutes),reset:date(slot.resets_at)})}
+function balanceSuggestion(s){
+ const metrics=s.metrics||{};
+ if(s.id==='S1')return tr('balance.S1',{window:s.window,pending:metrics.pending_reads,to:s.to,task:taskTitle(s.task)});
+ if(s.id==='S2')return tr('balance.S2',{window:s.window,detail:(metrics.slots||[]).map(balanceSlotText).join('; '),steps:metrics.steps});
+ if(s.id==='S3')return tr('balance.S3',{window:s.window,owned:metrics.owned_open,to:s.to});
+ return tr('balance.S4',{model:balanceModel(s.model),windows:metrics.windows,busy:(metrics.busy_models||[]).map(balanceModel).join(', ')});
+}
+function balanceSuggestions(data){
+ const box=node('section');box.append(node('h3',tr('balance.suggestions')));
+ if(!data.suggestions.length){box.append(node('p',tr('balance.noSuggestions'),'sub'));return box}
+ const groups=new Map();for(const s of data.suggestions){const key=s.model||'';if(!groups.has(key))groups.set(key,[]);groups.get(key).push(s)}
+ const cards=node('div',undefined,'sq-balance-cards');
+ for(const [model,items] of groups){const card=node('article',undefined,'sq-balance-card');card.setAttribute('data-balance-model',model);card.append(node('h4',balanceModel(model)));const list=node('ul',undefined,'sq-balance-list');
+  for(const s of items){const li=node('li',balanceSuggestion(s));li.setAttribute('data-suggestion',s.id);if(s.metrics?.estimate)li.classList?.add?.('sq-balance-est');list.append(li)}card.append(list);cards.append(card)}
+ box.append(cards);return box;
+}
+function balanceBar(parts,max,label){
+ const svg=svgEl('svg',{viewBox:'0 0 100 14',preserveAspectRatio:'none',role:'img','aria-label':label});let x=0;
+ for(const [value,cls] of parts){if(!value)continue;const w=Math.max(1,value/max*100);svg.append(svgEl('rect',{x:x.toFixed(2),y:0,width:Math.max(0,w-(x+w<100?2:0)).toFixed(2),height:14,rx:3,class:cls}));x+=w}
+ return svg;
+}
+function balanceLoad(data){
+ const rows=data.windows,max=Math.max(1,...rows.map(r=>r.owned_open+r.read_steps));
+ const sentence=rows.length?rows.map(r=>r.identity+': '+r.owned_open+' / '+r.read_steps).join(' · '):tr('balance.noWindows');
+ const body=panelPlot(sentence);
+ if(!rows.length)body.append(node('p',tr('balance.noWindows')));
+ for(const r of rows){const row=node('div',undefined,'sq-brow');row.setAttribute('data-balance-window',r.identity);row.append(node('span',r.identity),balanceBar([[r.owned_open,'sq-mark-acc'],[r.read_steps,'sq-mark-neutral']],max,r.identity),node('span',r.owned_open+' · '+r.read_steps,'v'));body.append(row)}
+ const legend=node('ul',undefined,'sq-legend');for(const [cls,key] of [['sq-mark-acc','balance.owned'],['sq-mark-neutral','balance.reads']]){const li=node('li'),svg=svgEl('svg',{width:14,height:14,viewBox:'0 0 14 14','aria-hidden':'true'});svg.append(svgEl('rect',{x:0,y:0,width:14,height:14,rx:3,class:cls}));li.append(svg,node('span',tr(key)));legend.append(li)}
+ return panelCard('balance-load',{body,legend,sentence,table:panelTable([tr('balance.window'),tr('balance.model'),tr('balance.owned'),tr('balance.reads'),tr('balance.steps')],rows.map(r=>[r.identity,balanceModelLabel(r),r.owned_open,r.read_steps,r.read_steps+r.build_steps]))});
+}
+function balanceTokens(data){
+ const notes=[],tableRows=[];
+ if(data.usage.status==='not_collected')notes.push(tr('balance.notCollected'));
+ const series=data.models.filter(m=>m.hourly.length);
+ const body=panelPlot(series.length?series.map(m=>balanceModel(m.model)).join(' · '):tr('balance.noHourly'));
+ if(!series.length)body.append(node('p',tr('balance.noHourly')));
+ for(const m of series){const max=Math.max(1,...m.hourly.map(b=>typeof b.total==='number'?b.total:0));const row=node('div',undefined,'sq-crow');row.setAttribute('data-balance-model',m.model||'');row.append(node('span',balanceModel(m.model),'t'));
+  const svg=svgEl('svg',{viewBox:'0 0 240 40',class:'sq-strip',role:'img','aria-label':balanceModel(m.model)});
+  m.hourly.forEach((b,i)=>{const measured=typeof b.total==='number';const h=measured?Math.max(1,b.total/max*38):38;const rect=svgEl('rect',{x:i*10,y:40-h,width:8,height:h,rx:2,class:measured?'sq-bar':'none'});const t=svgEl('title',{});t.textContent=date(b.hour)+' · '+(measured?balanceNum(b.total):tr('balance.notMeasured'));rect.append(t);svg.append(rect);tableRows.push([balanceModel(m.model),date(b.hour),measured?b.total:tr('balance.notMeasured'),b.status])});
+  row.append(svg);body.append(row)}
+ return panelCard('balance-tokens',{body,sentence:series.length?tr('chart.balance-tokens.sub'):tr('balance.noHourly'),notes,table:panelTable([tr('balance.model'),tr('balance.hour'),tr('balance.tokens'),tr('balance.status')],tableRows)});
+}
+function balanceHatch(svg,id){const defs=svgEl('defs',{}),pattern=svgEl('pattern',{id,width:6,height:6,patternUnits:'userSpaceOnUse',patternTransform:'rotate(45)'});pattern.append(svgEl('rect',{x:0,y:0,width:3,height:6,class:'sq-bar'}));defs.append(pattern);svg.append(defs)}
+function balanceQuota(data){
+ const body=panelPlot(tr('chart.balance-quota.sub')),notes=[],tableRows=[];
+ if(data.usage.status==='not_collected')notes.push(tr('balance.notCollected'));
+ for(const r of data.windows.filter(w=>w.quota.kind==='measured')){
+  if(!r.quota.slots.length){const row=node('div',undefined,'sq-brow');row.append(node('span',r.identity),node('span',tr('balance.notMeasured')),node('span','—','v'));body.append(row);tableRows.push([r.identity,'—',tr('balance.notMeasured'),'—']);continue}
+  for(const s of r.quota.slots){const row=node('div',undefined,'sq-brow');row.setAttribute('data-balance-quota',r.identity);const known=s.fresh&&typeof s.used_percent==='number';
+   row.append(node('span',r.identity+' · '+balanceNum(s.window_minutes)+' min'),known?balanceBar([[s.used_percent,'sq-bar']],100,balanceSlotText(s)):node('span',tr('balance.notMeasured')),node('span',known?Math.round(s.used_percent)+'%':'—','v'));body.append(row);
+   tableRows.push([r.identity,balanceNum(s.window_minutes)+' min',known?s.used_percent+'%':tr('balance.notMeasured')+' ('+s.status+')',date(s.resets_at)])}
+ }
+ const est=data.claude_estimate;
+ if(est){notes.push(tr('balance.assumption'));
+  if(est.reason==='no_reference')notes.push(tr('balance.noReference',{h5:balanceNum(est.sums.h5.total),d7:balanceNum(est.sums.d7.total)}));
+  else if(est.reason&&est.reason!=='no_claude_window')notes.push(tr('balance.partial',{reasons:[...new Set([...est.sums.h5.reasons,...est.sums.d7.reasons])].join(', ')||est.reason,h5:balanceNum(est.sums.h5.total),d7:balanceNum(est.sums.d7.total)}));
+  est.slots.forEach((s,i)=>{const row=node('div',undefined,'sq-brow');row.setAttribute('data-balance-estimate',s.slot);const label='Claude · '+tr('balance.estimate')+' · '+s.slot;
+   if(typeof s.percent==='number'){const svg=balanceBar([[Math.min(100,s.percent),'sq-bar']],100,label),id='sq-balance-hatch-'+i;balanceHatch(svg,id);for(const rect of [...svg.children].filter(c=>(c.tagName||c.tag)==='rect'))rect.setAttribute('style','fill:url(#'+id+')');row.append(node('span',label,'sq-balance-est'),svg,node('span',tr('balance.estimate')+' '+Math.round(s.percent)+'%','v'))}
+   else row.append(node('span',label,'sq-balance-est'),node('span',tr('balance.notMeasured')),node('span','—','v'));
+   body.append(row);tableRows.push(['Claude ('+tr('balance.estimate')+')',s.slot,typeof s.percent==='number'?Math.round(s.percent)+'% · '+balanceNum(est.sums[s.slot].total)+' / '+balanceNum(s.reference):tr('balance.notMeasured'),'—'])})}
+ return panelCard('balance-quota',{body,sentence:tr('chart.balance-quota.sub'),notes,table:panelTable([tr('balance.window'),'',tr('balance.status'),'Reset'],tableRows)});
+}
+function balanceReferenceForm(){
+ const box=node('section'),form=node('div',undefined,'sq-balance-form'),current=balanceReference()?.claude;box.append(node('h3',tr('balance.reference')));
+ const inputs={};for(const [key,label] of [['h5','balance.refH5'],['week','balance.refWeek']]){const l=node('label',tr(label)),input=node('input');input.setAttribute('type','number');input.setAttribute('min','1');input.setAttribute('step','1');input.setAttribute('inputmode','numeric');input.value=current?String(current[key]):'';focusKey(input,'balance:ref:'+key);balanceUI.controls.push(input);inputs[key]=input;l.append(input);form.append(l)}
+ form.append(balanceButton(tr('balance.refSave'),'balance:ref:save',()=>{const h5=Number(inputs.h5.value),week=Number(inputs.week.value);if(!Number.isInteger(h5)||!Number.isInteger(week)||h5<=0||week<=0||h5>1e12||week>1e12){balanceUI.refError=true;balanceUI.signature=null;render();return}balanceUI.refError=false;balanceSaveReference({h5,week});balanceUI.attempt=null;balanceUI.signature=null;render()}),
+  balanceButton(tr('balance.refClear'),'balance:ref:clear',()=>{balanceSaveReference(null);balanceUI.refError=false;balanceUI.attempt=null;balanceUI.signature=null;render()}));
+ box.append(form);if(balanceUI.refError)box.append(node('p',tr('balance.refInvalid'),'sub'));return box;
+}
+function balanceSlot(list,slot){
+ const box=node('div');box.setAttribute('data-balance-slot',slot);box.append(node('h4',tr('balance.'+slot)));
+ box.append(node('p',tr('balance.order',{order:list.order.map(d=>tr('balance.dim.'+d)).join(' > ')}),'sub'));
+ for(const o of list.omitted)box.append(node('p',tr('balance.omitted',{dimension:tr('balance.dim.'+o.dimension),windows:o.windows.join(', ')}),'sub'));
+ const ol=node('ol',undefined,'sq-balance-list');for(const r of list.rows){const li=node('li');li.setAttribute('data-balance-rank',r.identity);li.append(node('strong',r.position+'. '+r.identity+' · '+balanceModelLabel(r)),node('p',r.sentence[UI_LANG]||r.sentence.en));ol.append(li)}box.append(ol);
+ for(const e of list.excluded){const p=node('p',e.identity+' — '+tr('balance.excluded',{reason:tr('balance.reason.'+e.reason)}),'sub');p.setAttribute('data-balance-excluded',e.identity);box.append(p)}
+ return box;
+}
+function balanceTask(data){
+ const box=node('section');box.append(node('h3',tr('balance.perTask')));
+ const open=Object.values(state.tasks||{}).filter(t=>t.status!=='done'&&!t.superseded_by);
+ if(!open.length){box.append(node('p',tr('balance.noOpen')));return box}
+ const label=node('label',tr('balance.pickTask')),select=node('select');select.append(node('option',tr('balance.choose')));select.children[0].value='';
+ for(const t of open){const o=node('option',taskTitle(t.id));o.value=t.id;if(t.id===balanceUI.task)o.selected=true;select.append(o)}
+ select.value=balanceUI.task;select.onchange=e=>{balanceUI.task=e.target.value;balanceUI.attempt=null;balanceUI.signature=null;render()};focusKey(select,'balance:task');balanceUI.controls.push(select);label.append(select);box.append(label);
+ const ranked=data.task&&data.task.id===balanceUI.task&&data.task.status==='ranked'?data.task:null;
+ if(ranked){const grid=node('div',undefined,'sq-balance-cards');for(const slot of ['build','read'])grid.append(balanceSlot(ranked[slot],slot));box.append(grid)}
+ return box;
+}
+function balanceRender(content){
+ const signature=JSON.stringify([balanceUI.data,balanceUI.task,balanceUI.error,balanceUI.refError,UI_LANG,Object.keys(state.tasks||{}).length]);
+ if(signature!==balanceUI.signature){balanceUI.signature=signature;balanceUI.controls=[];const box=node('section',undefined,'sq-balance');box.setAttribute('data-balance','page');balanceUI.element=box;
+  box.append(node('h2',tr('tab.Bilanciamento')),node('p',tr('balance.intro'),'sq-balance-intro'));
+  if(balanceUI.error)box.append(node('p',tr('balance.error')),balanceButton(tr('balance.retry'),'balance:retry',()=>{balanceUI.attempt=null;render()}));
+  if(!balanceUI.data)box.append(node('p',tr('balance.loading')));
+  else{const data=balanceUI.data;box.append(node('p',tr('balance.notice'),'sub'),balanceSuggestions(data));const charts=node('div',undefined,'sq-chart-grid');charts.append(balanceLoad(data),balanceTokens(data),balanceQuota(data));box.append(charts,balanceReferenceForm(),balanceTask(data))}
+ }
+ if(content.children[0]!==balanceUI.element)content.replaceChildren(balanceUI.element);
+ for(const el of balanceUI.controls)focusKey(el,el.getAttribute('data-focus-key'));
+ if(balanceUI.attempt!==state&&!balanceUI.running)balanceFetch();
+}
 </script>
 
 <style id="squadra-usage-style">

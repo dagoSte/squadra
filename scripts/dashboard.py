@@ -23,6 +23,7 @@ import plugin_actions
 import plugin_store
 import system_skills
 import forecast
+import balance
 import usage
 
 SETTINGS_BODY_TIMEOUT = 5.0
@@ -194,6 +195,11 @@ def make_server(root, port=0):
                 elif path == '/api/forecast':
                     task_id = unquote(self.headers.get('X-Squadra-Record', ''))
                     self.answer(200, json.dumps(forecast.calculate(recorded, events, task_id), ensure_ascii=False).encode())
+                elif path == '/api/balance':
+                    reference = balance.parse_reference(self.headers.get('X-Squadra-Balance-Reference'))
+                    task_id = unquote(self.headers.get('X-Squadra-Record', '')) or None
+                    self.answer(200, json.dumps(balance.calculate(recorded, events, task_id, usage.collect(events, recorded, roots=usage_roots),
+                                                                  reference), ensure_ascii=False).encode())
                 elif path == '/api/usage':
                     result = usage.response(events, recorded, roots=usage_roots,
                                             revision=self.headers.get('X-Squadra-Usage-Revision'),

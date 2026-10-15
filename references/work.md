@@ -11,6 +11,15 @@ the forecast itself cannot change a route, reviewer, budget or permission.
 The System skills page explains the automatic trigger and shows **Computed on
 demand**, because no historical activation counter is recorded for forecasts.
 
+## Balance of windows and models
+
+`squadra balance [--task TASK] [--reference FILE] --root REGISTRY` reads the registry
+and the Usage collector's numbers without writing anything. Task creation, briefing and
+start also print the ranking, without tokens or quota (marked «not collected»). Follow
+[the bilanciamento guide](skills/bilanciamento.md) for the order, the missing-data rule,
+the quota slots and the Claude estimate. The coordinator follows the suggestion or records
+a reason; the advice cannot change an owner, reviewer, route, budget or permission.
+
 <a id="triage-in-una-pagina"></a>
 ## Triage on one page
 

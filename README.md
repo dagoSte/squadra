@@ -630,10 +630,10 @@ The coordinator may declare `task --route light` for a bounded, reversible chang
 <a id="commands"></a>
 ## Squadra commands
 
-Every command, grouped by purpose: **49 subcommands**, plus `--version`. Use `squadra <command> --help` for the flags; registry commands accept `--root` or `SQUADRA_ROOT`. «Coordinator only» marks what only the coordinator can record: `task`, `route`, `supersede`, `brief`, `close`, `ask`, `decision`, `settings`, `pause`, `resume`, `save`, `standby`, `ping --sweep`, and the receipt that `restore-check` writes into the live registry. Without installing, the same commands run as `python3 -B scripts/squadra.py <command>`.
+Every command, grouped by purpose: **50 subcommands**, plus `--version`. Use `squadra <command> --help` for the flags; registry commands accept `--root` or `SQUADRA_ROOT`. «Coordinator only» marks what only the coordinator can record: `task`, `route`, `supersede`, `brief`, `close`, `ask`, `decision`, `settings`, `pause`, `resume`, `save`, `standby`, `ping --sweep`, and the receipt that `restore-check` writes into the live registry. Without installing, the same commands run as `python3 -B scripts/squadra.py <command>`.
 
 <details>
-<summary><strong>All 49 commands, grouped by purpose</strong></summary>
+<summary><strong>All 50 commands, grouped by purpose</strong></summary>
 
 ### Start and team
 
@@ -691,6 +691,7 @@ Every command, grouped by purpose: **49 subcommands**, plus `--version`. Use `sq
 | `output` | Save one substantive update: text, evidence and the next step. |
 | `board` | Show progress by window with measured approximate elapsed time, in Italian or English with `--lang`; the coordinator adds labelled estimates of remaining or total task time. |
 | `forecast` | Compare an open task with similar completed work: observed elapsed times and a route suggestion; read-only, no figures below three complete samples. |
+| `balance` | Suggest windows and models by load, quota and similar work, with the numbers behind each suggestion; read-only, assigns nothing, Claude quota only as a labelled estimate. |
 | `usage` | Read local token usage by window, model and task, with coverage and optional user-priced estimates; [details](references/usage.md). |
 
 ### Continuity

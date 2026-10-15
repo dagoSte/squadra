@@ -19,9 +19,9 @@ const tests={
  async directory(){
   const app=await setup();await app.select();
   assert.equal(app.doc.getElementById('skills-links').children[0].getAttribute('aria-current'),'page');
-  assert.deepEqual(all(app.content,e=>e.getAttribute('data-skill')).map(e=>e.getAttribute('data-skill')),['errata','previsione','rasoio']);
+  assert.deepEqual(all(app.content,e=>e.getAttribute('data-skill')).map(e=>e.getAttribute('data-skill')),['errata','previsione','rasoio','bilanciamento']);
   assert.equal(all(app.content,e=>hasClass(e,'sq-skill-spark')).length,2,'read-only forecasts have no invented sparkline');
-  assert.equal(all(app.content,e=>e.textContent==='squadra built-in').length,3);
+  assert.equal(all(app.content,e=>e.textContent==='squadra built-in').length,4);
   assert.match(text(app.content),/Calcolata su richiesta/);
   for(const row of all(app.content,e=>e.getAttribute('data-skill'))){assert.ok(one(row,e=>e.tag==='h3'));assert.ok(all(row,e=>e.tag==='p').length>=2)}
   app.find('skills:range:day').onclick();await settle();assert.equal(app.find('skills:range:day').getAttribute('aria-selected'),'true');
@@ -76,7 +76,7 @@ const tests={
  },
  async failureAndZero(){
   const app=await setup();app.reply=async()=>{throw Error('offline')};await app.select();assert.match(text(app.content),/non sono disponibili/);assert.ok(app.find('skills:retry'));
-  app.reply=async()=>clone(app.data);app.find('skills:retry').onclick();await settle();assert.equal(all(app.content,e=>e.getAttribute('data-skill')).length,3);
+  app.reply=async()=>clone(app.data);app.find('skills:retry').onclick();await settle();assert.equal(all(app.content,e=>e.getAttribute('data-skill')).length,4);
   for(const s of app.data.skills)if(s.mode==='recorded'){s.total=0;s.last_24h=0;s.daily=Array(56).fill(0);s.first=null;s.last=null;s.recent=[]}
   await app.refresh();const paths=all(app.content,e=>e.tag==='path'&&e.getAttribute('d')?.startsWith('M1.00,38.00'));
   assert.equal(paths.length,2);for(const p of paths)assert.equal((p.getAttribute('d').match(/,38.00/g)||[]).length,56,'flat real zero');

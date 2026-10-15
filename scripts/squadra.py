@@ -153,6 +153,9 @@ def parser():
     sub = p.add_subparsers(dest="command", required=True)
     a = sub.add_parser("forecast", help="Read-only comparison with similar completed tasks; no estimate below three samples")
     a.add_argument("--task", required=True)
+    a = sub.add_parser("balance", help="Read-only advice on windows and models by load, quota and history; assigns nothing")
+    a.add_argument("--task", help="Rank build and read candidates for this open task")
+    a.add_argument("--reference", help="JSON file with the declared Claude reference {\"claude\":{\"h5\":N,\"week\":N}}")
     a = sub.add_parser("usage", help="Read-only local token usage; partial coverage after a 30-second collection deadline")
     a.add_argument("--json", action="store_true", help="Print the same measured data as JSON")
     a.add_argument("--prices", metavar="FILE", help="Optional local price table for a labelled estimate; no default prices")
@@ -665,6 +668,17 @@ def main(argv=None):
             events = store.events()
             print(json.dumps(calculate(store.state(events), events, a.task), ensure_ascii=False, indent=2))
             return 0
+        if a.command == "balance":
+            import balance
+            reference = balance.parse_reference(Path(a.reference).read_bytes()[:balance.REFERENCE_BYTES + 1]) if a.reference else None
+            store = Store(workspace_path(a.root), read_only=True)
+            events = store.events()
+            state = store.state(events)
+            if a.task is not None and a.task not in state["tasks"]:
+                raise Error("Unknown task: " + a.task)
+            print(json.dumps(balance.calculate(state, events, a.task, balance.collect_usage(events, state), reference),
+                             ensure_ascii=False, indent=2))
+            return 0
         if a.command == "board":
             store = Store(workspace_path(a.root), read_only=True)
             events = store.events()
@@ -730,10 +744,14 @@ def main(argv=None):
             forecast_task = a.id if a.command == 'task' else getattr(a, 'task', None)
             if a.command in {'task', 'brief', 'start'} and forecast_task:
                 from forecast import calculate
-                print(json.dumps({'forecast': calculate(state, events, forecast_task)}, ensure_ascii=False, indent=2))
+                import balance
+                predicted = calculate(state, events, forecast_task)
+                print(json.dumps({'forecast': predicted}, ensure_ascii=False, indent=2))
+                print(json.dumps({'balance': balance.calculate(state, events, forecast_task, forecast_result=predicted)},
+                                 ensure_ascii=False, indent=2))
         return 0
     except (Error, OSError, ValueError, KeyError, RuntimeError) as exc:
-        if store and a.command not in {"census", "board", "forecast", "usage"}:
+        if store and a.command not in {"census", "board", "forecast", "balance", "usage"}:
             try:
                 diagnostic = {"command": a.command, "error": str(exc), "utc": now()}
                 if isinstance(getattr(a, "task", None), str):

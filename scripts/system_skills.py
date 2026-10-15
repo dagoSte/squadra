@@ -14,7 +14,9 @@ SCANNER = 'cisco-ai-skill-scanner'
 POLICY = {'name': 'balanced', 'behavioral': True, 'osv': True, 'fail_on_severity': 'high'}
 COMMON_FILES = ('SKILL.md', 'scripts/registry.py', 'scripts/squadra.py', 'scripts/dashboard.py',
                 'scripts/system_skills.py', 'assets/dashboard.html')
-DEPENDENCIES = {'errata': ('scripts/errata.py',), 'rasoio': (), 'previsione': ('scripts/forecast.py',)}
+DEPENDENCIES = {'errata': ('scripts/errata.py',), 'rasoio': (), 'previsione': ('scripts/forecast.py',),
+                'bilanciamento': ('scripts/balance.py', 'scripts/forecast.py', 'scripts/usage.py')}
+ON_DEMAND = frozenset({'previsione', 'bilanciamento'})
 CATALOGUE = (
     {'id': 'errata', 'tag': {'it': 'Esperienza', 'en': 'Experience'},
      'description': {'it': 'Ricorda gli errori già incontrati e richiama le lezioni utili.', 'en': 'Keeps lessons from past mistakes and recalls the relevant ones.'},
@@ -37,6 +39,13 @@ CATALOGUE = (
      'records': {'it': 'Conta le letture con la lente rasoio e le righe nette dichiarate, non risparmi misurati.', 'en': 'Counts rasoio-lens reviews and declared net lines, not measured savings.'},
      'limits': {'it': 'Conserva controlli di sicurezza, accessibilità, comportamento e requisiti.', 'en': 'Preserves security checks, accessibility, behavior and requirements.'},
      'command': 'squadra review --lens rasoio --net-lines N …', 'prompt': {'it': 'Leggi questa modifica con rasoio: quali parti si possono semplificare mantenendo i requisiti?', 'en': 'Read this change with rasoio: what can be simplified while preserving the requirements?'}},
+    {'id': 'bilanciamento', 'tag': {'it': 'Pianificazione', 'en': 'Planning'},
+     'description': {'it': 'Suggerisce a quali finestre e modelli affidare un incarico, guardando carico, quota e lavori simili.', 'en': 'Suggests which windows and models to give a task, from load, quota and similar work.'},
+     'trigger': {'it': 'Alla creazione, alla preparazione e all’avvio di un incarico; anche su richiesta.', 'en': 'At task creation, briefing and start; also on demand.'},
+     'action': {'it': 'Il coordinatore legge l’ordine proposto e lo segue, oppure registra perché sceglie altro. Non assegna nulla da solo.', 'en': 'The coordinator reads the proposed order and follows it, or records why it chooses otherwise. It assigns nothing by itself.'},
+     'records': {'it': 'Non registra attivazioni: calcola i suggerimenti al momento.', 'en': 'Records no activations: computes the advice on demand.'},
+     'limits': {'it': 'La quota di Claude è solo una stima rispetto a un riferimento che dichiari tu. Un dato mancante non vale zero e un autore non viene mai proposto come lettore.', 'en': 'Claude quota is only an estimate against a reference you declare. Missing data is never zero, and an author is never suggested as reader.'},
+     'command': 'squadra balance --task TASK', 'prompt': {'it': 'Quali finestre sono più libere per questo incarico e chi può leggerlo in modo indipendente?', 'en': 'Which windows are freest for this task, and who can read it independently?'}},
 )
 
 
@@ -84,7 +93,7 @@ def audit(root, skill, read_at):
     unavailable = {'status': 'not_audited', 'reason': 'missing_or_invalid_record'}
     try:
         bundle = json.loads(bounded_file(root, 'assets/skill-audits.json', 65536), object_pairs_hook=unique_object)
-        if type(bundle.get('schema')) is not int or bundle['schema'] != 1 or not isinstance(bundle.get('records'), list) or len(bundle['records']) > 3:
+        if type(bundle.get('schema')) is not int or bundle['schema'] != 1 or not isinstance(bundle.get('records'), list) or len(bundle['records']) > len(CATALOGUE):
             return unavailable
         records = [r for r in bundle['records'] if r.get('skill') == skill]
         if len(records) != 1:
@@ -124,7 +133,7 @@ def catalogue(events, state, root=ROOT, read_at=None):
             row['guide'] = None
         activations, bins, pairs = [], [0] * 56, set()
         counts = dict(lessons=0, recalled_pairs=0, recall_events=0, ineffective=0, reads=0, net_lines=0)
-        for event in events if skill != 'previsione' else []:
+        for event in events if skill not in ON_DEMAND else []:
             kind, data = event['kind'], event['data']
             if not ((skill == 'errata' and kind in ('lesson', 'lesson.retire', 'lesson.recall', 'lesson.ineffective'))
                     or (skill == 'rasoio' and kind == 'review' and data.get('lens') == 'rasoio')):
@@ -154,10 +163,11 @@ def catalogue(events, state, root=ROOT, read_at=None):
                     counts['net_lines'] += data['net_lines']
         counts['recalled_pairs'] = len(pairs)
         activations.sort(key=lambda item: (instant(item['utc']), item['event']))
-        row.update(mode='on_demand' if skill == 'previsione' else 'recorded',
-                   total=None if skill == 'previsione' else len(activations),
-                   last_24h=None if skill == 'previsione' else sum(instant(e['utc']) >= stamp - 86400 for e in activations),
-                   daily=None if skill == 'previsione' else bins, counts=counts,
+        on_demand = skill in ON_DEMAND
+        row.update(mode='on_demand' if on_demand else 'recorded',
+                   total=None if on_demand else len(activations),
+                   last_24h=None if on_demand else sum(instant(e['utc']) >= stamp - 86400 for e in activations),
+                   daily=None if on_demand else bins, counts=counts,
                    first=activations[0] if activations else None, last=activations[-1] if activations else None,
                    recent=list(reversed(activations[-20:])))
         result.append(row)
