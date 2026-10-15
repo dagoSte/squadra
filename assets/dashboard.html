@@ -702,7 +702,7 @@ const CORE={
  "table.runs.tech":{it:"Finestra {agent} · modalità {mode}",en:"Window {agent} · mode {mode}"},
  "table.mode.proof":{it:"prova",en:"proof"},"table.mode.read":{it:"lettura",en:"read"},"table.mode.build":{it:"costruzione",en:"build"},"table.mode.probe":{it:"sonda",en:"probe"},
  "page.mail.info":{it:"Informazione · conferma non richiesta",en:"Information · no confirmation required"},
- "usage.cacheOffUnsafe":{it:"Il percorso della cartella personale contiene un collegamento simbolico: i calcoli salvati non sono disponibili e vengono ricostruiti.",en:"The home folder path contains a symbolic link: saved calculations are unavailable and are rebuilt."},
+ "usage.cacheOffUnsafe":{it:"Il percorso della cache contiene un collegamento simbolico: i calcoli salvati non sono disponibili e vengono ricostruiti.",en:"The cache folder path contains a symbolic link: saved calculations are unavailable and are rebuilt."},
  "comms.info":{it:"Informazione: nessuna conferma richiesta",en:"Information: no confirmation required"},
  "comms.p.info":{it:"{n} informazioni senza conferma richiesta",en:"{n} information messages with no confirmation required"},
  "table.mail.message":{it:"Messaggio",en:"Message"},"table.mail.task":{it:"Incarico",en:"Task"},"table.mail.text":{it:"Testo",en:"Text"},
@@ -4080,6 +4080,7 @@ if(typeof document.addEventListener==='function')document.addEventListener('keyd
 .sq-balance section+section{margin-top:28px}.sq-balance-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(320px,100%),1fr));gap:12px}
 .sq-balance-card{border:1px solid var(--sq-border,var(--line));border-radius:12px;padding:14px 16px;background:var(--sq-surface,var(--panel));min-width:0;overflow-wrap:anywhere}.sq-balance-card h4{margin:0 0 6px}
 .sq-balance-num{font-variant-numeric:tabular-nums;font-weight:600}.sq-balance-est{font-style:italic}
+.sq-balance [data-balance-rule] td:last-child .sq-readable{overflow-wrap:normal}
 .sq-balance-list{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:8px}.sq-balance-list li{border-top:1px solid var(--sq-border,var(--line));padding-top:8px;min-width:0;overflow-wrap:anywhere}
 .sq-balance-form{display:flex;flex-wrap:wrap;gap:10px;align-items:end;margin-top:10px}.sq-balance-form label{display:grid;gap:4px;font-size:13px;min-width:0}.sq-balance-form input{width:12em;max-width:100%}
 .sq-balance select{max-width:100%}.sq-balance-verdict-text{font-size:18px;line-height:1.4;font-weight:600;margin:8px 0}.sq-balance .sq-crow>.sq-viz{grid-column:1/-1}.sq-balance-line{margin:2px 0 0}.sq-balance .sq-crow svg.sq-strip{grid-column:1/-1;width:100%;height:40px}.sq-balance .sq-strip rect.none{fill:none;stroke:var(--sq-border-strong,var(--line));stroke-dasharray:2 2}
