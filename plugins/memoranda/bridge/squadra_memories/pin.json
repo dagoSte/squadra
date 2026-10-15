@@ -501,6 +501,52 @@
         "lesson.recall",
         "lesson.retire"
       ]
+    },
+    {
+      "label": "squadra 3.10.0",
+      "registry_py_sha256": "479174ed9b7eab4fcfbfe42bc69700a60c2448f58366bdf93a0bdffb7f911c68",
+      "source_commit": "a04eaca0541bb6add6fa4b7fa4e1ff1fe58c8a39",
+      "kinds": [
+        "ack",
+        "agent",
+        "ask",
+        "availability",
+        "benchmark",
+        "brief",
+        "challenge",
+        "close",
+        "decision",
+        "deliver",
+        "diagnostic",
+        "fix",
+        "init",
+        "legacy",
+        "message",
+        "output",
+        "pause",
+        "plan",
+        "resource.acquire",
+        "resource.release",
+        "restore.check",
+        "restore.freeze",
+        "resume",
+        "review",
+        "route",
+        "run.cancel",
+        "run.end",
+        "run.progress",
+        "run.start",
+        "save",
+        "settings",
+        "start",
+        "supersede",
+        "task",
+        "transport",
+        "lesson",
+        "lesson.ineffective",
+        "lesson.recall",
+        "lesson.retire"
+      ]
     }
   ]
 }
