@@ -8,7 +8,7 @@ La skill di squadra più completa per Claude Code, Codex e Cursor.
 
 **Gratuita e open source** — licenza MIT, nessun account, tutto gira sul tuo computer.
 
-**Versione 3.10.0** · Gratuita · MIT · Toolkit locale · Python 3.12+ · macOS / POSIX
+**Versione 3.10.1** · Gratuita · MIT · Toolkit locale · Python 3.12+ · macOS / POSIX
 
 [English](README.md) · **Italiano** · [Privacy](PRIVACY.it.md)
 
@@ -35,10 +35,11 @@ Una squadra mescola finestre Claude Code e Codex, e ogni fornitore ti mostra sol
 
 - **Bilanciamento (nuova skill di sistema).** Consigli su finestre e modelli in base a carico, quota e storia, con i numeri su cui si basa ogni consiglio. Non assegna niente. La pagina dice a parole semplici cosa controlla, i valori di oggi e perché non c'è nessun consiglio quando non ce n'è.
 - **I totali dei Consumi non tornano più indietro,** e una cache dei calcoli evita di rileggere i file di sessione a ogni riavvio della dashboard.
-- **Comandi che costano meno token alle finestre.** Ogni comando stampava nella finestra che lo lanciava l'intero elenco degli avvisi aperti; ora stampa una risposta breve, e l'elenco completo solo su richiesta ([TOKEN MISURATI]).
-- **Un registro che resta veloce mentre la storia cresce.** Un comando ora legge e scrive solo ciò che è cambiato, non tutta la storia ([TEMPI MISURATI]). La verifica dell'intera catena resta, nei momenti indicati nella guida.
+- **Comandi che costano meno token alle finestre.** Ogni comando stampava nella finestra che lo lanciava l'intero elenco degli avvisi aperti; ora stampa una risposta breve, e l'elenco completo solo su richiesta (sulla nostra squadra, meno di 3 KB per comando invece di fino a 89 KB).
+- **Un registro che resta veloce mentre la storia cresce.** Un comando ora legge e scrive solo ciò che è cambiato, non tutta la storia (misurato su una copia del nostro registro di 8.500 eventi: «a che punto siamo» da 8,6 a 1,2 secondi, l'invio di un messaggio a un'altra finestra da 27 a 3,2 secondi). La verifica dell'intera catena resta, nei momenti indicati nella guida.
 - **Una dashboard più leggera** che scarica solo ciò che è cambiato, e **grafici animati** nelle pagine Consumi e Bilanciamento.
-- Plugin: [VERSIONI].
+- **Messaggi solo informativi** che non chiedono risposta: non restano più aperti come attese.
+- Plugin: memoranda 1.0.6, Playwright 1.0.7, Sentry 0.1.4.
 
 **3.10.0**
 - **Pagina «Consumi»: i token spesi dai modelli.** Squadra legge i file di sessione che Claude Code e Codex tengono già sul tuo computer e ne conserva solo i conteggi dei token, con modello, orario e gli identificativi di sessione e di messaggio che servono a contarli una volta sola: non salva, non mostra e non invia mai il testo delle conversazioni. Li mostra per finestra, giorno, modello e incarico, con grafici e suggerimenti per modello. La quota di Codex è misurata, per ogni finestra del fornitore; un costo stimato compare solo se inserisci i tuoi prezzi. `squadra usage` stampa gli stessi dati.

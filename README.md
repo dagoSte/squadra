@@ -8,7 +8,7 @@ The most complete team skill for Claude Code, Codex and Cursor.
 
 **Free and open source** — MIT licence, no account, everything runs on your machine.
 
-**Version 3.10.0** · Free · MIT · Local toolkit · Python 3.12+ · macOS / POSIX
+**Version 3.10.1** · Free · MIT · Local toolkit · Python 3.12+ · macOS / POSIX
 
 **English** · [Italiano](README.it.md) · [Privacy](PRIVACY.md)
 
@@ -35,10 +35,11 @@ A squad mixes Claude Code and Codex windows, and each provider shows you only it
 
 - **Balance (new system skill).** Advice on windows and models by load, quota and history, with the numbers each piece of advice rests on. It assigns nothing. The page says in plain words what it checks, today's values, and why there is no advice when there is none.
 - **Usage totals that never jump backwards,** with a kept cache of the calculations: a dashboard restart does not read the session files again.
-- **Commands that cost the windows fewer tokens.** Every command used to print the whole list of open waits into the window that ran it; now it prints a short answer and the full list on request ([MEASURED TOKENS]).
-- **A registry that stays fast as the history grows.** A command now reads and writes what changed, not the whole history ([MEASURED TIMES]). Integrity checks still cover the whole chain at the moments listed in the guide.
+- **Commands that cost the windows fewer tokens.** Every command used to print the whole list of open waits into the window that ran it; now it prints a short answer and the full list on request (on our squad, under 3 KB per command instead of up to 89 KB).
+- **A registry that stays fast as the history grows.** A command now reads and writes what changed, not the whole history (measured on a copy of our 8,500-event registry: «where are we» from 8.6 s to 1.2 s, sending a message to another window from 27 s to 3.2 s). Integrity checks still cover the whole chain at the moments listed in the guide.
 - **A lighter dashboard** that downloads only what changed, and **animated charts** on the Usage and Balance pages.
-- Plugins: [VERSIONS].
+- **Information messages** that expect no reply no longer stay open as waits.
+- Plugins: memoranda 1.0.6, Playwright 1.0.7, Sentry 0.1.4.
 
 **3.10.0**
 - **Usage page: tokens spent by the models.** Squadra reads the session files Claude Code and Codex already keep on your computer and keeps only the token counts, with the model, time and session and message identifiers needed to count each message once; it never stores, shows or sends the text of the conversations. It shows them per window, day, model and task, with charts and suggestions per model. Codex quota is shown as measured, for each provider window; an estimated cost appears only if you enter your own prices. `squadra usage` prints the same data.

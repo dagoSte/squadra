@@ -142,7 +142,7 @@ prima osservazioni e associazioni necessarie, poi rimuovi solo la cartella del
 plugin: perdi anche la richiesta pendente, ma non gli incarichi o gli errori
 Sentry. Gli altri plugin e la configurazione del client restano separati.
 
-Le prove usano la suite di test di Squadra 3.10.0: HOME sintetiche,
+Le prove usano la suite di test di Squadra 3.10.1: HOME sintetiche,
 installazione e reinstallazione dallo Store, script reali della dashboard e un
 trasporto MCP sintetico, con nomi esplicitamente sintetici. La prova con un
 account Sentry reale resta da fare.
