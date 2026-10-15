@@ -3856,7 +3856,7 @@ if(typeof document.addEventListener==='function')document.addEventListener('keyd
 'use strict';
 const usageKinds=['input','cache_read','cache_creation','output'];
 const usageSettingsKey='squadra.usage.settings.v1';
-const usageUI={data:null,error:false,flight:null,attempt:null,signature:null,element:null,controls:[],open:new Set(),draft:null,priceNotice:null};
+const usageUI={data:null,revision:null,serial:0,error:false,busy:false,flight:null,attempt:false,signature:null,element:null,live:null,controls:[],open:new Set(),draft:null,priceNotice:null};
 const usageNumber=n=>typeof n==='number'&&Number.isFinite(n)&&n>=0;
 const usageCount=n=>usageNumber(n)?n.toLocaleString(uiLocale()):tr('usage.not_measured');
 const usageModel=m=>m||tr('usage.unknownModel');
@@ -3898,7 +3898,7 @@ function usageEstimate(data,prices){
 }
 function usageNav(){
  const links=$('usage-links');if(!links)return;$('usage-nav').setAttribute('aria-label',tr('usage.title'));
- const b=node('button',tr('usage.title'),tab==='Usage'?'active':'');panelTab(b,'Usage');b.onclick=()=>{connectedReset();tab='Usage';usageUI.attempt=null;panelNavigate();render()};links.replaceChildren(b);
+ const b=node('button',tr('usage.title'),tab==='Usage'?'active':'');panelTab(b,'Usage');b.onclick=()=>{connectedReset();tab='Usage';panelNavigate();render();usageFetch()};links.replaceChildren(b);
 }
 function usageControl(el,key){focusKey(el,'usage:'+key);el.setAttribute('data-focus-fallback','nav:Usage');usageUI.controls.push(el);return el}
 function usageButton(label,key,action){const b=usageControl(node('button',label),key);b.setAttribute('type','button');b.onclick=action;return b}
@@ -3914,15 +3914,28 @@ function usagePayload(value){
 function usageFetch(){
  if(tab!=='Usage'||document.hidden===true)return Promise.resolve();
  if(usageUI.flight)return usageUI.flight;
- if(usageUI.attempt===state)return Promise.resolve();
- usageUI.attempt=state;usageUI.error=false;
+ usageUI.attempt=true;usageUI.error=false;usageUI.busy=false;
+ const headers={'X-Squadra-Usage-View':'compact'};
+ if(usageUI.revision)headers['X-Squadra-Usage-Revision']=usageUI.revision;
  usageUI.flight=(async()=>{
-  try{const value=await(await api('/api/usage')).json();if(value?.schema!==1||!Array.isArray(value.windows)||!Array.isArray(value.models)||!Array.isArray(value.days)||!Array.isArray(value.tasks)||!Array.isArray(value.quota_history))throw Error('usage_response_invalid');usageUI.data=usagePayload(value)}
+  try{
+   const value=await(await api('/api/usage',headers)).json();
+   if(value?.schema!==1)throw Error('usage_response_invalid');
+   if(value.busy===true){usageUI.busy=true;return}
+   if(value.unchanged===true){if(!usageUI.data||!usageUI.revision||value.revision!==usageUI.revision)throw Error('usage_response_invalid');return}
+   if(!Array.isArray(value.windows)||!Array.isArray(value.models)||!Array.isArray(value.days)||!Array.isArray(value.tasks)||!Array.isArray(value.quota_history)||value.revision!==undefined&&(typeof value.revision!=='string'||!/^[a-f0-9]{64}$/.test(value.revision)))throw Error('usage_response_invalid');
+   usageUI.data=usagePayload(value);usageUI.revision=value.revision||null;usageUI.serial++;
+  }
   catch(e){usageUI.error=true}
   finally{usageUI.flight=null;if(tab==='Usage')render()}
- })();return usageUI.flight;
+ })();usageLoading();return usageUI.flight;
 }
-function usageRetry(){usageUI.attempt=null;usageFetch();render()}
+function usageRetry(){usageFetch();render()}
+function usageLoading(){
+ if(!usageUI.live)return;
+ const data=usageUI.data,fetching=usageUI.flight!==null||usageUI.busy||!usageUI.attempt;
+ usageUI.live.textContent=fetching?tr(data?'usage.refreshing':'usage.loading'):data?tr('usage.observed',{time:date(data.observed_at)}):tr('usage.not_measured');
+}
 function usageTable(headers,rows,key){
  const wrap=usageControl(node('div',undefined,'sq-usage-table'),'table:'+key);wrap.setAttribute('role','region');wrap.setAttribute('aria-label',tr('usage.'+key));wrap.setAttribute('tabindex','0');
  const table=node('table'),head=node('tr');headers.forEach(label=>{const th=node('th',label);th.setAttribute('scope','col');head.append(th)});table.append(head);
@@ -4001,10 +4014,11 @@ function usagePriceForm(data){
  const details=usageDetail('prices',tr('usage.prices'),body);details.className='sq-usage-prices';return details;
 }
 function usageRender(content){
- const data=usageUI.data,fetching=usageUI.flight!==null||usageUI.attempt!==state,signature=JSON.stringify([UI_LANG,data,usageUI.error,fetching,usageUI.priceNotice]);
+ const data=usageUI.data,signature=JSON.stringify([UI_LANG,usageUI.serial,usageUI.error,usageUI.priceNotice,state.registry_head?.hash]);let scrolls=null;
  if(signature!==usageUI.signature||!usageUI.element){
+  scrolls=new Map(usageUI.controls.map(el=>[el.getAttribute('data-focus-key'),[el.scrollLeft||0,el.scrollTop||0]]));
   usageUI.signature=signature;usageUI.controls=[];const box=node('div',undefined,'sq-usage');usageUI.element=box;const heading=usageControl(node('h2',tr('usage.title')),'heading');heading.setAttribute('tabindex','-1');box.append(heading,node('p',tr('usage.intro'),'sq-usage-intro'));
-  const toolbar=node('div',undefined,'sq-usage-toolbar'),live=node('p',fetching?tr(data?'usage.refreshing':'usage.loading'):data?tr('usage.observed',{time:date(data.observed_at)}):tr('usage.not_measured'));live.setAttribute('role','status');live.setAttribute('aria-live','polite');toolbar.append(live,usageButton(tr('usage.refresh'),'refresh',usageRetry));box.append(toolbar);
+  const toolbar=node('div',undefined,'sq-usage-toolbar'),live=node('p');usageUI.live=live;live.setAttribute('role','status');live.setAttribute('aria-live','polite');toolbar.append(live,usageButton(tr('usage.refresh'),'refresh',usageRetry));box.append(toolbar);
   if(usageUI.error){const error=node('div',undefined,'sq-usage-status warn');error.setAttribute('role','alert');error.append(node('p',tr('usage.error')),usageButton(tr('usage.retry'),'retry',usageRetry));box.append(error)}
   if(data){
    const coverage=node('div',undefined,'sq-usage-status'+(data.status==='measured'?'':' warn'));coverage.append(node('strong',usageStatus(data)),node('p',tr('usage.coverage',{measured:usageCount(data.coverage?.measured),sources:usageCount(data.coverage?.sources)})));if(['collecting','limited'].includes(data.coverage?.status))coverage.append(node('p',tr('usage.'+data.coverage.status)));box.append(coverage);
@@ -4022,7 +4036,8 @@ function usageRender(content){
   box.append(node('p',tr('usage.privacy'),'sq-usage-muted'));
  }
  if(content.children[0]!==usageUI.element)content.replaceChildren(usageUI.element);for(const el of usageUI.controls)focusKey(el,el.getAttribute('data-focus-key'));
- if(usageUI.attempt!==state&&!usageUI.flight)usageFetch();
+ if(scrolls)for(const el of usageUI.controls){const position=scrolls.get(el.getAttribute('data-focus-key'));if(position){el.scrollLeft=position[0];el.scrollTop=position[1]}}
+ usageLoading();
 }
 </script>
 

@@ -37,9 +37,17 @@ The Usage page and `squadra usage` read the session files that Claude Code and
 Codex already keep in your HOME, for the windows registered in the squad. They
 parse each line and keep only token counts, model names, times, Codex quota
 figures and the session and hashed message identifiers needed to count each
-message once, in memory; the text of the conversations is never stored, shown or
-sent. Prices you enter on the page stay in your browser's
-local storage and are not written to the registry.
+message once. The calculations and allowed structural metadata, including file
+identity, sampled fingerprints and collection offsets, are kept in memory and in
+a private disposable cache at `~/.cache/squadra/usage-v1/`. Conversation text and
+incomplete raw lines are never stored in that cache, shown or sent. Cache keys
+are hashed; the folder is private, files are written atomically with private
+permissions, and storage is bounded to 64 MiB per registry and 256 MiB overall.
+The cache is outside the registry and project and is excluded from ordinary
+`checkpoint` and `save` packages. It is safe to delete: the numbers are rebuilt
+from the original session files without removing those files or registry data.
+Prices you enter on the page stay in your browser's local storage and are not
+written to the registry.
 
 ## The dashboard and external services
 

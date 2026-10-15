@@ -91,6 +91,7 @@ class UsageRoutes(unittest.TestCase):
             server, token = self.start_server()
             status, api, headers = self.get(server, token)
             self.assertEqual(status, 200)
+            self.assertRegex(api.pop('revision'), r'^[a-f0-9]{64}$')
             self.assertEqual(api, obj)
             self.assertIsNone(api['cost'])
             self.assertIn("connect-src 'self'", headers['Content-Security-Policy'])

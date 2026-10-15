@@ -195,7 +195,10 @@ def make_server(root, port=0):
                     task_id = unquote(self.headers.get('X-Squadra-Record', ''))
                     self.answer(200, json.dumps(forecast.calculate(recorded, events, task_id), ensure_ascii=False).encode())
                 elif path == '/api/usage':
-                    self.answer(200, json.dumps(usage.collect(events, recorded, roots=usage_roots), ensure_ascii=False).encode())
+                    result = usage.response(events, recorded, roots=usage_roots,
+                                            revision=self.headers.get('X-Squadra-Usage-Revision'),
+                                            compact=self.headers.get('X-Squadra-Usage-View') == 'compact')
+                    self.answer(200, json.dumps(result, ensure_ascii=False).encode())
                 elif path == "/api/state":
                     key = remember_key(events)
                     state["plugins"] = {**plugin_actions.discover(plugin_home, key), "key": key}

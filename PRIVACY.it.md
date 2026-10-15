@@ -37,13 +37,20 @@ esegue direttamente quei programmi.
 
 La pagina «Consumi» e `squadra usage` leggono i file di sessione che Claude Code e
 Codex tengono già nella tua HOME, per le finestre registrate nella squadra.
-Leggono ogni riga e ne conservano in memoria solo i conteggi dei token, i nomi
+Leggono ogni riga e ne conservano solo i conteggi dei token, i nomi
 dei modelli, gli orari, i dati di quota di Codex e gli identificativi di
 sessione e di messaggio (questi ultimi ridotti a un'impronta hash) che servono a contare
-ogni messaggio una volta sola; il testo delle conversazioni
-non viene mai salvato, mostrato né inviato. I prezzi che inserisci nella pagina
-restano nella memoria locale del tuo browser e non
-vengono scritti nel registro.
+ogni messaggio una volta sola. I calcoli e i metadati strutturali ammessi, compresi
+identità dei file, impronte campionate e posizioni di lettura, restano in memoria
+e in una cache privata eliminabile in `~/.cache/squadra/usage-v1/`. Il testo delle
+conversazioni e le righe grezze incomplete non vengono mai salvati nella cache,
+mostrati né inviati. Le chiavi della cache sono impronte hash; la cartella è privata,
+i file sono scritti atomicamente con permessi privati e lo spazio è limitato a
+64 MiB per registro e 256 MiB complessivi. La cache è esterna al registro e al
+progetto ed è esclusa dai normali pacchetti `checkpoint` e `save`. Puoi eliminarla
+senza rischi: i numeri vengono ricostruiti dai file di sessione originali, senza
+rimuovere quei file o i dati del registro. I prezzi che inserisci nella pagina
+restano nella memoria locale del tuo browser e non vengono scritti nel registro.
 
 ## La dashboard e i servizi esterni
 

@@ -1,4 +1,4 @@
-"""Read-only local usage: retain numeric observations, never conversation content."""
+"""Local usage: retain validated numeric observations, never conversation content."""
 from __future__ import annotations
 
 from collections import OrderedDict, defaultdict
@@ -12,6 +12,8 @@ import re
 import stat
 import threading
 import time
+
+import usage_cache
 
 KINDS = ('input', 'cache_read', 'cache_creation', 'output', 'reasoning', 'total')
 PRICE_KINDS = KINDS[:4]
@@ -215,6 +217,10 @@ class Source:
     def __init__(self, path, root, client, session):
         self.path, self.root, self.client, self.session = path, root, client, session
         self.stamp = None
+        self.fingerprint = None
+        self.end = self.append_cursor = self.backfill_end = 0
+        self.restored = False
+        self._normal = None
         self.cursor = 0
         self.records = {}
         self.reasons = set()
@@ -225,95 +231,180 @@ class Source:
         if client == 'claude' and 'subagents' in path.parts:
             self.allowed_sessions.add(path.stem.removeprefix('agent-'))
 
+    def dump(self):
+        return {k: getattr(self, k) for k in ('client', 'session', 'stamp', 'cursor', 'end',
+                'append_cursor', 'backfill_end', 'fingerprint', 'observed', 'pending', 'checked')} | {
+                    'stamp': list(self.stamp), 'fingerprint': list(self.fingerprint),
+                    'records': [[offset, row] for offset, row in sorted(self.records.items())],
+                    'reasons': sorted(self.reasons)}
+
+    def restore(self, data):
+        if data['client'] != self.client or data['session'] != self.session:
+            return
+        for key in ('cursor', 'end', 'append_cursor', 'backfill_end', 'observed', 'pending', 'checked'):
+            setattr(self, key, data[key])
+        self.stamp, self.fingerprint = tuple(data['stamp']), tuple(data['fingerprint'])
+        self.records, self.reasons = dict(data['records']), set(data['reasons'])
+        self.restored = True
+
+    @staticmethod
+    def samples(fd, end):
+        hashes = []
+        for start, size in ((0, min(end, 65536)), (max(0, end - 65536), min(end, 65536))):
+            os.lseek(fd, start, os.SEEK_SET)
+            raw = os.read(fd, size)
+            if len(raw) != size:
+                raise Invalid('source_changed')
+            hashes.append(hashlib.sha256(raw).hexdigest())
+        return tuple(hashes)
+
+    def reset(self, marker, fingerprint):
+        self.stamp, self.fingerprint = marker, fingerprint
+        self.end = self.cursor = self.append_cursor = self.backfill_end = marker[2]
+        self.records, self.reasons, self.pending = {}, set(), False
+        self._normal = None
+
+    def keep(self, offset, line, max_records):
+        if offset in self.records or not line.strip():
+            return True
+        if len(self.records) >= max_records:
+            self.reasons.add('sample_limit')
+            return False
+        try:
+            row = project(line, self.client)
+            if row is not None:
+                if row.get('session') is not None and row['session'] not in self.allowed_sessions:
+                    self.reasons.add('identity_mismatch')
+                else:
+                    self.records[offset] = row
+        except Invalid as exc:
+            self.reasons.add(str(exc))
+        return True
+
+    def backfill(self, fd, deadline, max_records):
+        end = self.cursor
+        size = min(end, SLICE_BYTES)
+        start = end - size
+        os.lseek(fd, start, os.SEEK_SET)
+        block = read_chunks(fd, size)
+        if len(block) != size:
+            raise Invalid('source_changed')
+        if start > 0:
+            boundary = block.find(b'\n')
+            while (boundary < 0 or boundary == len(block) - 1) and start > 0 and len(block) <= MAX_RECORD:
+                amount = min(start, 65536)
+                start -= amount
+                os.lseek(fd, start, os.SEEK_SET)
+                block = os.read(fd, amount) + block
+                boundary = block.find(b'\n')
+            if (boundary < 0 or boundary == len(block) - 1) and start > 0:
+                self.reasons.add('record_too_large'); self.cursor = 0
+                return
+            if start > 0:
+                start += boundary + 1
+                block = block[boundary + 1:]
+        if end == self.backfill_end and block and not block.endswith(b'\n'):
+            last = block.rfind(b'\n')
+            block = block[:last + 1] if last >= 0 else b''
+            if self.append_cursor == self.backfill_end:
+                self.append_cursor = start + len(block)
+                self.pending = True
+        offset = start + len(block)
+        for line in reversed(block.splitlines(keepends=True)):
+            if time.monotonic() >= deadline:
+                break
+            offset -= len(line)
+            self.cursor = offset
+            if not self.keep(offset, line, max_records):
+                self.cursor = 0
+                break
+        else:
+            self.cursor = start
+
+    def appended(self, fd, deadline, max_records):
+        start = self.append_cursor
+        size = min(self.end - start, SLICE_BYTES)
+        os.lseek(fd, start, os.SEEK_SET)
+        block = read_chunks(fd, size)
+        if len(block) != size:
+            raise Invalid('source_changed')
+        while b'\n' not in block and start + len(block) < self.end and len(block) <= MAX_RECORD:
+            block += os.read(fd, min(65536, self.end - start - len(block)))
+        if len(block) > MAX_RECORD and b'\n' not in block:
+            self.reasons.add('record_too_large'); self.append_cursor = self.end
+            return
+        self.pending = start + len(block) == self.end and not block.endswith(b'\n')
+        complete = block[:block.rfind(b'\n') + 1]
+        offset = start
+        for line in complete.splitlines(keepends=True):
+            if time.monotonic() >= deadline:
+                break
+            if not self.keep(offset, line, max_records):
+                self.append_cursor = self.end
+                break
+            offset += len(line)
+            self.append_cursor = offset
+
     def read(self, deadline, observed_at=None, max_records=MAX_RECORDS):
         self.checked = True
         try:
-            s = trusted(self.path, self.root)
-            marker = stamp(s)
-            if marker != self.stamp:
-                self.stamp, self.cursor, self.records = marker, s.st_size, {}
-                self.reasons, self.pending = set(), False
+            marker = stamp(trusted(self.path, self.root))
+            self.observed = time.time() if observed_at is None else observed_at
+            if (marker == self.stamp and not self.restored and self.cursor == 0
+                    and self.append_cursor == self.end):
+                return
             fd = os.open(self.path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
             try:
-                if stamp(os.fstat(fd)) != marker:
+                current = stamp(os.fstat(fd))
+                if current[:2] != marker[:2] or current[2] < marker[2]:
                     raise Invalid('source_changed')
-                self.observed = time.time() if observed_at is None else observed_at
-                if self.cursor == 0:
-                    return
+                marker = current
+                initial = self.stamp is None
+                if not initial and (marker != self.stamp or self.restored):
+                    compatible = (marker[:2] == self.stamp[:2] and marker[2] >= self.end
+                                  and self.samples(fd, self.end) == self.fingerprint)
+                    initial = not compatible
+                if initial:
+                    self.reset(marker, self.samples(fd, marker[2]))
+                elif marker != self.stamp:
+                    self.stamp, self.end = marker, marker[2]
+                    self.fingerprint = self.samples(fd, self.end)
+                self.restored = False
+                self._normal = None
                 if self.client == 'codex' and 0 not in self.records:
                     os.lseek(fd, 0, os.SEEK_SET)
                     header = os.read(fd, 65536).split(b'\n', 1)
                     if len(header) == 2:
-                        try:
-                            first = project(header[0], self.client)
-                            if first and first['type'] == 'session':
-                                self.records[0] = first
-                        except Invalid as exc:
-                            self.reasons.add(str(exc))
-                end = self.cursor
-                size = min(end, SLICE_BYTES)
-                start = end - size
-                os.lseek(fd, start, os.SEEK_SET)
-                block = read_chunks(fd, size)
-                if len(block) != size:
+                        self.keep(0, header[0], max_records)
+                if not initial and self.append_cursor < self.end:
+                    self.appended(fd, deadline, max_records)
+                if self.cursor and time.monotonic() < deadline:
+                    self.backfill(fd, deadline, max_records)
+                final = stamp(os.fstat(fd))
+                path_marker = stamp(trusted(self.path, self.root))
+                if (final[:2] != marker[:2] or path_marker[:2] != marker[:2]
+                        or final[2] < self.end or path_marker[2] < self.end
+                        or (final != marker and self.samples(fd, self.end) != self.fingerprint)):
                     raise Invalid('source_changed')
-                if start > 0:
-                    boundary = block.find(b'\n')
-                    while (boundary < 0 or boundary == len(block) - 1) and start > 0 and len(block) <= MAX_RECORD:
-                        amount = min(start, 65536)
-                        start -= amount
-                        os.lseek(fd, start, os.SEEK_SET)
-                        block = os.read(fd, amount) + block
-                        boundary = block.find(b'\n')
-                    if (boundary < 0 or boundary == len(block) - 1) and start > 0:
-                        self.reasons.add('record_too_large'); self.cursor = 0
-                        return
-                    if start > 0:
-                        start += boundary + 1
-                        block = block[boundary + 1:]
-                if end == s.st_size and block and not block.endswith(b'\n'):
-                    last = block.rfind(b'\n')
-                    self.pending = True
-                    block = block[:last + 1] if last >= 0 else b''
-                lines = block.splitlines(keepends=True)
-                offset = start + len(block)
-                for line in reversed(lines):
-                    if time.monotonic() >= deadline:
-                        break
-                    offset -= len(line)
-                    self.cursor = offset
-                    if len(self.records) >= max_records:
-                        self.reasons.add('sample_limit')
-                        self.cursor = 0
-                        break
-                    if not line.strip():
-                        continue
-                    try:
-                        row = project(line, self.client)
-                        if row is not None:
-                            if row.get('session') is not None and row['session'] not in self.allowed_sessions:
-                                self.reasons.add('identity_mismatch')
-                                continue
-                            self.records[offset] = row
-                    except Invalid as exc:
-                        self.reasons.add(str(exc))
-                else:
-                    self.cursor = start
-                if stamp(os.fstat(fd)) != marker or stamp(trusted(self.path, self.root)) != marker:
-                    raise Invalid('source_changed')
+                # A compatible concurrent append remains for the next slice, not a reset.
             finally:
                 os.close(fd)
         except (OSError, Invalid) as exc:
+            self.stamp, self.fingerprint, self._normal = None, None, None
             self.records = {}
             self.reasons.add(str(exc) if isinstance(exc, Invalid) else 'source_unavailable')
-            self.cursor = 0
+            self.cursor = self.end = self.append_cursor = self.backfill_end = 0
 
     def normalized(self):
+        if self.restored:
+            return [], [], {'collecting'}
+        if self._normal is not None:
+            return self._normal
         rows = [r for _, r in sorted(self.records.items())]
         samples, quotas, reasons = [], [], set(self.reasons)
         if self.pending:
             reasons.add('incomplete_record')
-        if self.cursor:
+        if self.cursor or (self.append_cursor < self.end and not self.pending):
             reasons.add('collecting')
         model, previous, previous_model, previous_at = None, None, None, None
         dedup = {}
@@ -368,7 +459,8 @@ class Source:
             samples, quotas = [], []
         if 'identity_mismatch' in reasons:
             samples, quotas = [], []
-        return samples, quotas, reasons
+        self._normal = samples, quotas, reasons
+        return self._normal
 
 
 class Collector:
@@ -378,12 +470,26 @@ class Collector:
         self.inventory = None
         self.discovered = 0
         self.lock = threading.Lock()
+        self.cache = None
+        self.restored_sources = {}
+        self.cache_mark = None
+        self.http_data = None
+        self.http_key = None
+        self.http_until = 0
+        self.http_revision = None
+        self.directories = {}
 
     def discover(self, windows, deadline):
         signature = tuple((w['identity'], w['client'], tuple(sorted(w['sessions']))) for w in windows)
-        if self.inventory is not None and self.inventory[0] == signature and time.monotonic() - self.discovered < 30:
+        if (self.inventory is not None and self.inventory[0] == signature
+                and time.monotonic() - self.discovered < 30 and self.directory_stamp() == self.directories):
             return self.inventory[1]
-        found, errors = {}, {}
+        found, errors, directories = {}, {}, {}
+        for root in self.roots.values():
+            try:
+                directories[str(root)] = stamp(root.lstat())
+            except OSError:
+                directories[str(root)] = None
         for client in ('claude', 'codex'):
             root = self.roots.get(client)
             if root is None:
@@ -394,6 +500,7 @@ class Collector:
                 matches = []
                 seen = 0
                 for folder, dirs, names in os.walk(root, followlinks=False):
+                    directories[folder] = stamp(Path(folder).lstat())
                     if time.monotonic() >= deadline or seen > 100000:
                         errors[client] = 'discovery_limited'
                         break
@@ -463,95 +570,136 @@ class Collector:
                     selected[:] = [(s, p) for s, p in selected if p != path]
                     if chosen is None:
                         reasons.add('identity_ambiguous')
-        if not errors:
+        if 'discovery_limited' not in errors.values():
             self.inventory, self.discovered = (signature, result), time.monotonic()
+            self.directories = directories
         return result
 
+    def directory_stamp(self):
+        result = {}
+        for path in self.directories:
+            try:
+                result[path] = stamp(Path(path).lstat())
+            except OSError:
+                result[path] = None
+        return result
+
+    @staticmethod
+    def source_key(key):
+        return hashlib.sha256(json.dumps(key, separators=(',', ':')).encode()).hexdigest()
+
+    def persist(self):
+        if self.cache is None:
+            return
+        mark = tuple((k, v.stamp, v.cursor, v.append_cursor, len(v.records),
+                      tuple(sorted(v.reasons)), v.pending) for k, v in sorted(self.sources.items()))
+        if mark == self.cache_mark:
+            return
+        values = {self.source_key(k): v.dump() for k, v in self.sources.items()
+                  if v.stamp is not None and v.fingerprint is not None}
+        if self.cache.save(values):
+            self.cache_mark = mark
+
+    @staticmethod
+    def busy(now):
+        return {'schema': 1, 'observed_at': utc(now), 'status': 'not_measured',
+                'coverage': {'status': 'collecting', 'sources': 0, 'measured': 0, 'reasons': ['collector_busy']},
+                'windows': [], 'models': [], 'tasks': [], 'days': [], 'quota_history': [], 'suggestions': [], 'cost': None}
+
     def collect(self, events, state, now, budget_seconds):
-        deadline = time.monotonic() + max(0, min(budget_seconds, 30))
         if not self.lock.acquire(blocking=False):
-            return {'schema': 1, 'observed_at': utc(now), 'status': 'not_measured',
-                    'coverage': {'status': 'collecting', 'sources': 0, 'measured': 0, 'reasons': ['collector_busy']},
-                    'windows': [], 'models': [], 'tasks': [], 'days': [], 'quota_history': [], 'suggestions': [], 'cost': None}
+            return self.busy(now)
         try:
-            windows = seats(state)
-            discovery = self.discover(windows, deadline)
-            used, result, all_samples, all_quotas = set(), [], [], []
-            measured_sources = 0
-            spans = task_spans(events, state, now)
-            for w in windows:
-                selected, discovered_reasons = discovery[w['identity']]
-                samples, quotas, reasons, observed, dedup = [], [], set(discovered_reasons), None, {}
-                conflicts = set()
-                complete = bool(selected)
-                for session, path in selected:
-                    key = (w['client'], str(path))
-                    used.add(key)
-                    source_session = path.parent.parent.name if w['client'] == 'claude' and 'subagents' in path.parts else session
-                    source = self.sources.setdefault(key, Source(path, self.roots[w['client']], w['client'], source_session))
-                    available = MAX_RECORDS - sum(len(s.records) for s in self.sources.values() if s is not source)
-                    if available <= 0 and (source.cursor or not source.checked):
-                        source.reasons.add('sample_limit'); source.cursor = 0; source.checked = True
-                    elif time.monotonic() < deadline:
-                        source.read(deadline, now, available)
-                    src_samples, src_quota, src_reasons = source.normalized()
-                    measured_sources += bool(src_samples)
-                    reasons.update(src_reasons)
-                    complete = complete and source.checked and source.cursor == 0 and not source.pending and not source.reasons
-                    observed = min(observed, source.observed) if observed and source.observed else source.observed
-                    for sample in src_samples:
-                        skey = sample.get('key')
-                        if skey is not None:
-                            old = dedup.get(skey)
-                            if old and (old['tokens'] != sample['tokens'] or old['model'] != sample['model']):
-                                reasons.add('duplicate_conflict'); complete = False
-                                conflicts.add(skey)
-                            if old:
-                                continue
-                            dedup[skey] = sample
-                        samples.append({**sample, 'identity': w['identity']})
-                    quotas.extend({**q, 'identity': w['identity']} for q in src_quota)
-                samples = [s for s in samples if s['at'] <= now and s.get('key') not in conflicts]
-                if not samples:
-                    reasons.add('no_usage_observed')
-                totals = add_tokens(samples) if samples else None
-                if totals is not None and totals['total'] is None:
-                    reasons.add('counter_limit')
-                complete = complete and not (reasons - {'baseline_unattributed'})
-                status = 'measured' if complete and samples and not reasons else 'partial' if samples else 'not_measured'
-                row = {k: w[k] for k in ('identity', 'actors', 'client')}
-                row.update(status=status, reasons=sorted(reasons), totals=totals,
-                           models=model_rows(samples, complete, now),
-                           hourly=hourly(samples, complete, now), rolling=rolling(samples, complete, now),
-                           quota=latest_quotas(quotas, now))
-                recent = interval(samples, now - 900, now, complete)
-                fresh = observed is not None and now - observed <= 60
-                row['recent'] = {'seconds': 900, 'total_tokens': recent['total'] if fresh and recent['status'] == 'measured' else None,
-                                 'tokens_per_minute': recent['total'] / 15 if fresh and recent['status'] == 'measured' and recent['total'] is not None else None,
-                                 'observed_until': utc(observed) if observed is not None else None,
-                                 'last_sample_at': utc(max(s['at'] for s in samples)) if samples else None,
-                                 'status': recent['status'] if fresh else 'not_measured',
-                                 'reason': recent['reason'] if fresh else 'observation_stale',
-                                 'estimated': recent['estimated'], 'reasons': recent['reasons']}
-                result.append(row); all_samples.extend(samples); all_quotas.extend(quotas)
-            self.sources = {k: v for k, v in self.sources.items() if k in used}
-            complete = bool(result) and all(w['status'] == 'measured' for w in result)
-            models = model_rows(all_samples, complete, now)
-            days = []
-            for day in sorted({utc(s['at'])[:10] for s in all_samples}):
-                group = [s for s in all_samples if utc(s['at']).startswith(day)]
-                days.append({'day': day, 'status': 'measured' if complete else 'partial', 'totals': add_tokens(group),
-                             'estimated': any(s['estimated'] for s in group)})
-            tasks = attribute(all_samples, spans, complete)
-            return {'schema': 1, 'observed_at': utc(now), 'status': 'measured' if complete else 'partial' if all_samples else 'not_measured',
-                    'coverage': {'status': 'collecting' if any(s.cursor or not s.checked for s in self.sources.values()) else 'ready' if complete else 'limited',
-                                 'sources': len(self.sources), 'measured': measured_sources,
-                                 'reasons': sorted({r for w in result for r in w['reasons']})},
-                    'windows': result, 'models': models, 'tasks': tasks, 'days': days,
-                    'quota_history': [quota_status(q, now) for q in all_quotas],
-                    'suggestions': advice(models, result, now), 'cost': None}
+            return self._collect(events, state, now, budget_seconds)
         finally:
             self.lock.release()
+
+    def _collect(self, events, state, now, budget_seconds):
+        deadline = time.monotonic() + max(0, min(budget_seconds, 30))
+        windows = seats(state)
+        discovery = self.discover(windows, deadline)
+        used, result, all_samples, all_quotas = set(), [], [], []
+        measured_sources = 0
+        spans = task_spans(events, state, now)
+        for w in windows:
+            selected, discovered_reasons = discovery[w['identity']]
+            samples, quotas, reasons, observed, dedup = [], [], set(discovered_reasons), None, {}
+            conflicts = set()
+            complete = bool(selected)
+            for session, path in selected:
+                key = (w['client'], str(path))
+                used.add(key)
+                source_session = path.parent.parent.name if w['client'] == 'claude' and 'subagents' in path.parts else session
+                if key not in self.sources:
+                    source = Source(path, self.roots[w['client']], w['client'], source_session)
+                    saved = self.restored_sources.pop(self.source_key(key), None)
+                    if saved is not None:
+                        source.restore(saved)
+                    self.sources[key] = source
+                source = self.sources[key]
+                available = MAX_RECORDS - sum(len(s.records) for s in self.sources.values() if s is not source)
+                if available <= 0 and (source.cursor or not source.checked):
+                    source.reasons.add('sample_limit'); source.cursor = 0; source.checked = True; source._normal = None
+                elif time.monotonic() < deadline:
+                    source.read(deadline, now, available)
+                src_samples, src_quota, src_reasons = source.normalized()
+                measured_sources += bool(src_samples)
+                reasons.update(src_reasons)
+                complete = complete and source.checked and source.cursor == 0 and source.append_cursor == source.end and not source.pending and not source.reasons
+                observed = min(observed, source.observed) if observed and source.observed else source.observed
+                for sample in src_samples:
+                    skey = sample.get('key')
+                    if skey is not None:
+                        old = dedup.get(skey)
+                        if old and (old['tokens'] != sample['tokens'] or old['model'] != sample['model']):
+                            reasons.add('duplicate_conflict'); complete = False
+                            conflicts.add(skey)
+                        if old:
+                            continue
+                        dedup[skey] = sample
+                    samples.append({**sample, 'identity': w['identity']})
+                quotas.extend({**q, 'identity': w['identity']} for q in src_quota)
+            samples = [s for s in samples if s['at'] <= now and s.get('key') not in conflicts]
+            if not samples:
+                reasons.add('no_usage_observed')
+            totals = add_tokens(samples) if samples else None
+            if totals is not None and totals['total'] is None:
+                reasons.add('counter_limit')
+            complete = complete and not (reasons - {'baseline_unattributed'})
+            status = 'measured' if complete and samples and not reasons else 'partial' if samples else 'not_measured'
+            row = {k: w[k] for k in ('identity', 'actors', 'client')}
+            row.update(status=status, reasons=sorted(reasons), totals=totals,
+                       models=model_rows(samples, complete, now),
+                       hourly=hourly(samples, complete, now), rolling=rolling(samples, complete, now),
+                       quota=latest_quotas(quotas, now))
+            recent = interval(samples, now - 900, now, complete)
+            fresh = observed is not None and now - observed <= 60
+            row['recent'] = {'seconds': 900, 'total_tokens': recent['total'] if fresh and recent['status'] == 'measured' else None,
+                             'tokens_per_minute': recent['total'] / 15 if fresh and recent['status'] == 'measured' and recent['total'] is not None else None,
+                             'observed_until': utc(observed) if observed is not None else None,
+                             'last_sample_at': utc(max(s['at'] for s in samples)) if samples else None,
+                             'status': recent['status'] if fresh else 'not_measured',
+                             'reason': recent['reason'] if fresh else 'observation_stale',
+                             'estimated': recent['estimated'], 'reasons': recent['reasons']}
+            result.append(row); all_samples.extend(samples); all_quotas.extend(quotas)
+        self.sources = {k: v for k, v in self.sources.items() if k in used}
+        complete = bool(result) and all(w['status'] == 'measured' for w in result)
+        models = model_rows(all_samples, complete, now)
+        days = []
+        for day in sorted({utc(s['at'])[:10] for s in all_samples}):
+            group = [s for s in all_samples if utc(s['at']).startswith(day)]
+            days.append({'day': day, 'status': 'measured' if complete else 'partial', 'totals': add_tokens(group),
+                         'estimated': any(s['estimated'] for s in group)})
+        tasks = attribute(all_samples, spans, complete)
+        data = {'schema': 1, 'observed_at': utc(now), 'status': 'measured' if complete else 'partial' if all_samples else 'not_measured',
+                'coverage': {'status': 'collecting' if any(s.restored or s.cursor or (s.append_cursor < s.end and not s.pending) or not s.checked for s in self.sources.values()) else 'ready' if complete else 'limited',
+                             'sources': len(self.sources), 'measured': measured_sources,
+                             'reasons': sorted({r for w in result for r in w['reasons']})},
+                'windows': result, 'models': models, 'tasks': tasks, 'days': days,
+                'quota_history': [quota_status(q, now) for q in all_quotas],
+                'suggestions': advice(models, result, now), 'cost': None}
+        self.persist()
+        return data
 
 
 def add_tokens(samples):
@@ -761,18 +909,95 @@ def read_prices(path):
         raise Invalid('price_table_invalid') from None
 
 
-def collect(events, state, *, roots=None, now=None, budget_seconds=0.25):
+def get_collector(events, state, roots):
     roots = source_roots() if roots is None else roots
     key = (events[0].get('hash', events[0].get('id')) if events else None,
-           tuple(sorted((k, str(v)) for k, v in roots.items())))
+           tuple(sorted((k, str(v)) for k, v in roots.items())), str(Path.home()))
     with _COLLECTOR_LOCK:
         if key not in _COLLECTORS:
-            _COLLECTORS[key] = Collector(roots)
+            collector = Collector(roots)
+            workspace = state.get('workspace', {})
+            excluded = [v for v in (workspace.get('project'), workspace.get('root')) if v]
+            collector.cache = usage_cache.Cache(Collector.source_key(key), excluded=excluded)
+            collector.restored_sources = collector.cache.load()
+            _COLLECTORS[key] = collector
         collector = _COLLECTORS[key]
         _COLLECTORS.move_to_end(key)
         while len(_COLLECTORS) > 4:
             _COLLECTORS.popitem(last=False)
+    return collector
+
+
+def collect(events, state, *, roots=None, now=None, budget_seconds=0.25):
+    collector = get_collector(events, state, roots)
     return collector.collect(events, state, time.time() if now is None else now, budget_seconds)
+
+
+def compact_usage(data):
+    result = dict(data)
+    result['windows'] = [{k: v for k, v in w.items() if k not in {'hourly', 'rolling', 'models', 'recent'}}
+                         for w in data['windows']]
+    result['models'] = [{k: v for k, v in m.items() if k not in {'hourly', 'rolling', 'windows'}}
+                        for m in data['models']]
+    return result
+
+
+def response_key(collector, events, state, *, current):
+    head = events[-1].get('hash') if events else None
+    if head is None:
+        head = hashlib.sha256(json.dumps(events, sort_keys=True).encode()).hexdigest()
+    windows = tuple((w['identity'], tuple(w['actors']), w['client'], tuple(sorted(w['sessions'])))
+                    for w in seats(state))
+    sources = []
+    for key, source in sorted(collector.sources.items()):
+        marker = source.stamp
+        if current:
+            try:
+                marker = stamp(trusted(source.path, source.root))
+            except Invalid:
+                marker = None
+        sources.append((key, marker, source.cursor, source.append_cursor, source.pending))
+    directories = collector.directory_stamp() if current else collector.directories
+    return (head, windows, tuple(sources), tuple(sorted((directories or {}).items())))
+
+
+def next_transition(collector, now):
+    future = [math.floor(now / 3600) * 3600 + 3600]
+    for source in collector.sources.values():
+        samples, quotas, _ = source.normalized()
+        if source.observed is not None:
+            future.append(source.observed + 60.000001)
+        for sample in samples:
+            future.extend(sample['at'] + offset for offset in (0, 900.000001, 18000.000001, 604800.000001))
+        for quota in quotas:
+            future.extend((instant(quota['observed_at']), instant(quota['observed_at']) + 900.000001,
+                           instant(quota['resets_at'])))
+    return min(t for t in future if t > now)
+
+
+def response(events, state, *, roots=None, now=None, budget_seconds=0.25, revision=None, compact=False):
+    collector = get_collector(events, state, roots)
+    now = time.time() if now is None else now
+    if not collector.lock.acquire(blocking=False):
+        return {'schema': 1, 'busy': True}
+    try:
+        key = response_key(collector, events, state, current=True)
+        unfinished = any(s.cursor or (s.append_cursor < s.end and not s.pending) or s.restored
+                         for s in collector.sources.values())
+        fresh = (collector.http_data is not None and collector.http_key == key and not unfinished
+                 and instant(collector.http_data['observed_at']) <= now < collector.http_until and time.monotonic() - collector.discovered < 30)
+        if not fresh:
+            collector.http_data = collector._collect(events, state, now, budget_seconds)
+            collector.http_key = response_key(collector, events, state, current=False)
+            collector.http_until = next_transition(collector, now)
+            collector.http_revision = hashlib.sha256(json.dumps(
+                [collector.http_key, now, collector.http_until], sort_keys=True).encode()).hexdigest()
+        if revision == collector.http_revision:
+            return {'schema': 1, 'unchanged': True, 'revision': collector.http_revision}
+        data = compact_usage(collector.http_data) if compact else dict(collector.http_data)
+        return {**data, 'revision': collector.http_revision}
+    finally:
+        collector.lock.release()
 
 
 def text_report(data):

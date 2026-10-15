@@ -60,7 +60,7 @@ const tests={
   await app.select();app.doc.hidden=true;app.run('usageUI.attempt=null;usageFetch()');await settle();assert.equal(requests(app).length,count+1,'hidden view does not collect');app.doc.hidden=false;
   app.reply=async()=>{throw Error('PRIVATE-EXCEPTION-TEXT')};app.find('usage:refresh').onclick();await settle();assert.match(text(app.content),/Non è possibile leggere/);assert.doesNotMatch(text(app.content),/PRIVATE-EXCEPTION-TEXT/);assert.ok(chart(app,'daily'),'old counters remain on failure');
   app.reply=async()=>clone(app.data);app.find('usage:retry').onclick();await settle();assert.equal(all(app.content,e=>e.getAttribute('role')==='alert').length,0);unique(app,'usage refreshed');
-  for(const request of app.requests.filter(r=>r.path==='/api/usage')){assert.equal(request.options.headers['X-Squadra-Token'],'token');assert.deepEqual(Object.keys(request.options.headers),['X-Squadra-Token']);assert.equal(request.options.method,undefined);assert.equal(request.options.body,undefined)}
+  for(const request of app.requests.filter(r=>r.path==='/api/usage')){assert.equal(request.options.headers['X-Squadra-Token'],'token');assert.equal(request.options.headers['X-Squadra-Usage-View'],'compact');assert.ok(Object.keys(request.options.headers).every(k=>['X-Squadra-Token','X-Squadra-Usage-View','X-Squadra-Usage-Revision'].includes(k)));assert.equal(request.options.method,undefined);assert.equal(request.options.body,undefined)}
  },
  async prices(){
   const app=await setup();await app.select();const cases=JSON.parse(fs.readFileSync(casesPath,'utf8'));

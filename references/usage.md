@@ -57,8 +57,25 @@ It returns tokens only; `/api/state` does not scan transcripts.
   expired observations are labelled. These are not per-model allowances. Claude
   transcripts do not supply measured quota.
 
-The in-process cache contains bounded selected observations only. Reads prioritize
-the tail, then extend backwards; an unread prefix remains partial. The normal
+The collector keeps bounded selected observations. First reads prioritize the
+tail, then extend backwards; an unread prefix remains partial. Appends keep the
+already counted records and continue both the historical scan and the new tail.
+Valid, consistent appends do not reduce a previously measured total. A conflicting
+duplicate, counter reset or proven source change remains an explicit limitation;
+the collector never hides a correction by keeping the larger of two totals.
+
+Change detection uses the file's device and inode, its size, and SHA-256 samples
+of the first up-to-64 KiB and the up-to-64 KiB immediately before the previously
+accepted end. Reuse checks the old boundary, not only the new tail. An unchanged
+in-process file stat needs no payload read. An append reads bounded samples and
+new bytes, without reparsing or recounting old records or hashing the whole
+prefix. Replacement, truncation or a changed sample invalidates that source's
+observations. **This is sampled change detection, not full-file integrity
+verification:** a same-length rewrite outside the sampled regions is not detected
+and retains its old counts until the file is replaced, truncated or changes in a
+sampled region. A restored cache verifies the same samples before reusing counts.
+
+The normal
 collection slice is 250 ms, checked between bounded record parses, with 64 KiB
 read chunks and at most 16 MiB per record. The normal backward window is 8 MiB;
 finishing one long record may extend it to 16 MiB + 64 KiB, plus the 64 KiB Codex
@@ -68,6 +85,38 @@ and 100,000 retained structural/numeric records per collector are allowed. Disco
 checks a bounded file inventory and refreshes at most every 30 seconds. The explicit
 Usage CLI repeats slices up to a 30-second deadline and reports partial coverage
 when it expires. Automatic Balance reads take one slice and reuse the same cache.
+
+## Disposable calculation cache
+
+To avoid restarting collection when the dashboard restarts, Usage keeps a private
+calculation cache under `~/.cache/squadra/usage-v1/`, using hashed cache and source
+keys. It contains only allowed numeric and structural observations: token counts,
+model names, times, session and hashed message identifiers, Codex quota figures,
+file identity, sampled fingerprints and collection offsets. It never contains
+conversation text or incomplete raw lines. Directory permissions are 0700 and
+cache files are written atomically with mode 0600. A versioned schema and payload
+digest are validated before reuse; missing, corrupt or incompatible entries are
+ignored and rebuilt from the original session files. Source ownership and symlink
+checks still apply.
+
+The cache is limited to 64 MiB per registry and 256 MiB overall, including temporary
+replacement space, with older entries evicted when necessary. Persistence failures
+do not prevent collection in memory. The location is outside the registry and
+project, so ordinary `checkpoint` and `save` do not include it; persistence is
+disabled if the destination overlaps either. It is safe to delete the cache:
+Usage will rebuild it, and no transcript or registry entry is removed. Deleting
+the cache does not remove the original session files.
+
+The protected `/api/usage` response has its own revision, independent of registry
+events. The Usage page can request a compact view and send its last revision using
+`X-Squadra-Usage-View: compact` and `X-Squadra-Usage-Revision`. A matching revision
+returns a small unchanged response. A busy collector returns a small busy response.
+In both cases the page keeps its last displayed numbers; while updating they are
+historical observations, not a new measurement. First load still shows loading.
+New session data and relevant time boundaries invalidate the revision even when
+no registry event was added. No new timer, write route, price header or provider
+request is involved; callers that do not request the compact view retain the full
+schema-1 response, including hourly and rolling fields.
 
 ## Suggestions and optional estimates
 
