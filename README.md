@@ -138,6 +138,15 @@ squadra --version
 
 Every release raises the version number. Plugins installed from the Store keep their version until `squadra plugin install <name>` runs again from the new release ([Plugins bundled in your release](#plugin-store)). Open windows keep the version they read until they restart, and a running squad keeps its protocol until you switch it explicitly.
 
+**Updating from 3.10.0 or earlier to 3.10.1: the registry gets lighter, and every window must move together.**
+- **Before you update,** save the squad: `squadra save --actor <your window> --to <a new folder>`. It is your way back.
+- **Your registry is read as it is.** Nothing is converted and the history already written is not touched. From the first command on 3.10.1, new events are written in the lighter format.
+- **Update every window at once,** Claude Code and Codex. A window still on 3.10.0 stops at the first new event with `Event integrity failure at sequence N`. That is on purpose: an old version stops rather than accept events it cannot read. Nothing is lost: update that window and it carries on.
+- **No way back on the same registry.** After the update, 3.10.0 cannot use that registry. To go back, restore the save you made before updating.
+- **If in doubt,** run `squadra doctor` on 3.10.1: it says when a registry needs 3.10.1 or later.
+- **Plugins from the Store:** run `squadra plugin install <name>` again, as after every release.
+- **If you installed Squadra from the Claude directory,** you get the version the directory lists until it moves to 3.10.1.
+
 ### Rule 0: find the windows and introduce yourself
 
 The first window that applies the skill becomes the coordinator: it finds every Codex, Claude or Cursor window of the project and introduces itself to each one. An existing coordinator in the same registry that answers a ping keeps the role; a pending or expired ping never transfers leadership or resources. The full rule is in [the skill](SKILL.md); census limits and joining in detail are in [startup and presentation](references/start.md#install-and-join-details).

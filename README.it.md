@@ -138,6 +138,15 @@ squadra --version
 
 Ogni rilascio alza il numero di versione. I plugin installati dallo Store mantengono la loro versione finché `squadra plugin install <nome>` non viene rieseguito dalla nuova release ([Plugin inclusi nella release](#plugin-store)). Le finestre già aperte mantengono la versione letta finché non si riavviano, e una squadra al lavoro mantiene il suo protocollo finché non la cambi esplicitamente.
 
+**Aggiornare dalla 3.10.0 o precedenti alla 3.10.1: il registro diventa più leggero, e tutte le finestre devono passare insieme.**
+- **Prima di aggiornare** salva la squadra: `squadra save --actor <la tua finestra> --to <una cartella nuova>`. È la tua strada per tornare indietro.
+- **Il registro che hai viene letto così com'è.** Niente viene convertito e la storia già scritta non si tocca. Dal primo comando sulla 3.10.1, gli eventi nuovi si scrivono nel formato più leggero.
+- **Aggiorna tutte le finestre insieme,** Claude Code e Codex. Una finestra rimasta alla 3.10.0 si ferma al primo evento nuovo con `Event integrity failure at sequence N`. È voluto: una versione vecchia si ferma invece di accettare eventi che non sa leggere. Non si perde niente: aggiorna quella finestra e riparte.
+- **Sullo stesso registro non si torna indietro.** Dopo l'aggiornamento la 3.10.0 non può più usare quel registro. Per tornare indietro ripristina il salvataggio fatto prima di aggiornare.
+- **Se hai dubbi,** esegui `squadra doctor` sulla 3.10.1: ti dice quando un registro richiede la 3.10.1 o successiva.
+- **Plugin dello Store:** esegui di nuovo `squadra plugin install <nome>`, come dopo ogni rilascio.
+- **Se hai installato Squadra dalla directory di Claude,** ricevi la versione indicata nella directory finché non passa alla 3.10.1.
+
 ### Regola 0: trovare le finestre e presentarsi
 
 La prima finestra che applica la skill diventa il coordinatore: trova ogni finestra Codex, Claude o Cursor del progetto e si presenta a ciascuna. Un coordinatore già presente nello stesso registro, che risponde a un ping, mantiene il ruolo; un ping in attesa o scaduto non trasferisce mai la guida o le risorse. La regola completa è nella [skill](SKILL.md); i limiti del censimento e come entrare in una squadra sono in [avvio e presentazione](references/start.md#install-and-join-details), in inglese.
