@@ -179,9 +179,11 @@ class Cache:
         self.home = Path(os.path.abspath(Path.home() if home is None else home))
         self.folder = self.home / '.cache' / 'squadra' / 'usage-v1'
         self.excluded = [Path(os.path.abspath(p)) for p in excluded]
+        self.notice = None
 
     @contextmanager
     def _folder(self, create=False):
+        self.notice = None
         name(self.key, HEX)
         require(not any(self.folder == p or p in self.folder.parents or self.folder in p.parents
                         for p in self.excluded))
@@ -189,7 +191,15 @@ class Cache:
         try:
             # Above HOME only the no-follow rule applies: system ancestors have different owners.
             for part in self.home.parts[1:]:
-                child = os.open(part, OPEN | os.O_DIRECTORY, dir_fd=fd)
+                try:
+                    child = os.open(part, OPEN | os.O_DIRECTORY, dir_fd=fd)
+                except OSError:
+                    try:
+                        if stat.S_ISLNK(os.stat(part, dir_fd=fd, follow_symlinks=False).st_mode):
+                            self.notice = 'cache_off_unsafe_path'
+                    except OSError:
+                        pass
+                    raise
                 os.close(fd)
                 fd = child
             directory(fd)
