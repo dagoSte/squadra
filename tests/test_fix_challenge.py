@@ -13,6 +13,7 @@ import test_squadra as support
 from fix_challenge import execute, register, prepare, evidence, binding, disposition
 from registry import Error, canonical, digest, fix_status, snapshot
 from squadra import deliver
+from source_manifests import transform_packet
 
 TEST = '''import pathlib, unittest
 class Bug(unittest.TestCase):
@@ -332,7 +333,13 @@ class FixChallenge(unittest.TestCase):
                                   '--reviewer', 'R', '--repo', str(self.repo), '--scope-file', str(self.scope), '--defect-fix'), 0)
         self.configure(name='F'); self.challenge(name='F'); self.review('F')
         t = self.store.state()['tasks']['F']
-        self.assertEqual(t['delivery']['packet_data']['fix_result'], t['fix_result'])
+        packet = t['delivery']['packet_data']
+        stored = (self.root / 'artifacts' / t['delivery']['packet']['sha256']).read_bytes()
+        self.assertEqual(packet, json.loads(stored))
+        self.assertEqual(t['delivery']['handoff'], 'review-' + digest(canonical(packet).encode()))
+        compared = transform_packet(packet, self.store.resolve_snapshot)
+        self.assertEqual(compared['fix_result'], t['fix_result'])
+        self.assertEqual(packet, json.loads(stored))
         self.assertEqual(t['reviews'][-1]['fix_disposition'], disposition(t))
         self.assertEqual(self.cli('close', '--actor', 'C', '--task', 'F'), 0)
 

@@ -8,7 +8,8 @@ import sys
 import unittest
 
 import test_squadra as support
-from registry import Store, Error, waits, snapshot, requirement_matrix
+from registry import Store, Error, waits, snapshot, requirement_matrix, canonical, digest
+from source_manifests import transform_packet
 from squadra import deliver, bindings
 from runtime import execute
 
@@ -60,7 +61,12 @@ class Features(unittest.TestCase):
         self.configured();self.proof(task="N")
         result=deliver(self.store,"A","N"); message=result["handoff"]
         state=self.store.state();packet=state["tasks"]["N"]["delivery"]["packet_data"]
-        self.assertEqual(packet["candidate"],snapshot(self.repo,self.root));self.assertEqual(packet["proofs"][0]["native_rc"],0)
+        stored = (self.root / "artifacts" / result["packet"]["sha256"]).read_bytes()
+        self.assertEqual(packet, json.loads(stored))
+        self.assertEqual(message, "review-" + digest(canonical(packet).encode()))
+        compared = transform_packet(packet, self.store.resolve_snapshot)
+        self.assertEqual(compared["candidate"],snapshot(self.repo,self.root));self.assertEqual(compared["proofs"][0]["native_rc"],0)
+        self.assertEqual(packet, json.loads(stored))
         self.assertIsNone(state["messages"][message]["ack"])
         count=len(self.store.events());deliver(self.store,"C","N",reconcile=True);self.assertEqual(len(self.store.events()),count)
         with self.assertRaises(Error):deliver(self.store,"R","N")

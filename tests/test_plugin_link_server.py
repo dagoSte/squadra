@@ -19,7 +19,7 @@ from dashboard import make_server
 from registry import Store
 from test_brand import POLICY
 from test_plugin_about_server import about
-from test_plugins import Fixtures, KEY, manifest, panel
+from test_plugins import Fixtures, KEY, manifest, panel, audited_state
 
 
 def chunk(kind, body):
@@ -202,8 +202,8 @@ class State(Fixtures, unittest.TestCase):
         original = Store.events; calls = []
         def counted(store): calls.append(1); return original(store)
         with patch.object(Store, 'events', counted):
-            status, headers, state = self.get('/api/state'); count = len(calls)
-            self.assertEqual(status, 200); self.assertEqual(count, 1)
+            status, headers, state = audited_state(self, lambda: self.get('/api/state')); count = len(calls)
+            self.assertEqual(status, 200); self.assertEqual(count, 2)
             expected = {**m, 'icon': 'data:image/png;base64,' + base64.b64encode(body).decode('ascii')}
             self.assertEqual(state['plugins'], {'key': self.key, 'plugins': [expected], 'refused': []})
             self.assertEqual(headers['Content-Security-Policy'], POLICY)
