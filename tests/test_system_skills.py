@@ -73,7 +73,7 @@ class RoutesAndPage(unittest.TestCase):
                 self.assertEqual(code, 200)
                 self.assertIn("default-src 'none'", headers['Content-Security-Policy'])
                 if route.endswith('skills'):
-                    self.assertEqual([s['id'] for s in body['skills']], ['errata', 'previsione', 'rasoio'])
+                    self.assertEqual([s['id'] for s in body['skills']], ['errata', 'previsione', 'rasoio', 'bilanciamento'])
                 else:
                     self.assertEqual(body['task'], 'T')
         self.assertEqual(self.request('/api/forecast', **{'X-Squadra-Record': 'unknown'})[0], 409)
@@ -372,7 +372,7 @@ class Audits(unittest.TestCase):
 class Activity(unittest.TestCase):
     def test_empty_and_unrecorded_are_distinct(self):
         values = skills.catalogue([], {'tasks': {}}, read_at=NOW)['skills']
-        self.assertEqual([s['total'] for s in values], [0, None, 0])
+        self.assertEqual([s['total'] for s in values], [0, None, 0, None])
         self.assertEqual(values[0]['daily'], [0] * 56)
         self.assertIsNone(values[1]['daily']); self.assertIsNone(values[1]['first'])
 

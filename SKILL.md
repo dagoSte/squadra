@@ -184,6 +184,17 @@ eligibility. Missing scope or fewer than three complete comparable tasks means n
 numeric estimate. `squadra forecast --task ID` is read-only and records no activation;
 the System skills page labels it **Computed on demand** rather than inventing a count.
 
+### Bilanciamento: follow the suggestion or record why not
+
+At task creation, briefing and start, read the automatically printed balance after the
+forecast and follow [bilanciamento](references/skills/bilanciamento.md). It ranks windows
+for building and for reading, with reasons. The coordinator follows the suggestion or
+records the reason in a decision linked to the task. The advice assigns nothing and
+never overrides independence, stand-by, route or permissions. An author is never a
+reader candidate. Tokens and quota appear only with `squadra balance` or the Balance
+page. Claude quota is an estimate against a reference the viewer declares: never quote
+it as a measurement.
+
 
 Read `references/work.md` for tasks, plan, proofs and review. Read
 `references/runtime.md` only if you must invoke a client automatically.

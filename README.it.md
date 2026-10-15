@@ -632,10 +632,10 @@ Il coordinatore può dichiarare `task --route light` per una modifica delimitata
 <a id="commands"></a>
 ## Comandi di squadra
 
-Ogni comando, raggruppato per scopo: **49 sottocomandi**, più `--version`. Usa `squadra <comando> --help` per le opzioni; i comandi del registro accettano `--root` o `SQUADRA_ROOT`. «Solo il coordinatore» segna ciò che solo il coordinatore può registrare: `task`, `route`, `supersede`, `brief`, `close`, `ask`, `decision`, `settings`, `pause`, `resume`, `save`, `standby`, `ping --sweep`, e la ricevuta che `restore-check` scrive nel registro vivo. Senza installare, gli stessi comandi girano come `python3 -B scripts/squadra.py <comando>`.
+Ogni comando, raggruppato per scopo: **50 sottocomandi**, più `--version`. Usa `squadra <comando> --help` per le opzioni; i comandi del registro accettano `--root` o `SQUADRA_ROOT`. «Solo il coordinatore» segna ciò che solo il coordinatore può registrare: `task`, `route`, `supersede`, `brief`, `close`, `ask`, `decision`, `settings`, `pause`, `resume`, `save`, `standby`, `ping --sweep`, e la ricevuta che `restore-check` scrive nel registro vivo. Senza installare, gli stessi comandi girano come `python3 -B scripts/squadra.py <comando>`.
 
 <details>
-<summary><strong>Tutti i 49 comandi, raggruppati per scopo</strong></summary>
+<summary><strong>Tutti i 50 comandi, raggruppati per scopo</strong></summary>
 
 ### Avvio e squadra
 
@@ -693,6 +693,7 @@ Ogni comando, raggruppato per scopo: **49 sottocomandi**, più `--version`. Usa 
 | `output` | Salva un aggiornamento sostanziale: testo, prove e prossimo passo. |
 | `board` | Mostra l’avanzamento per finestra con il tempo trascorso misurato e arrotondato, in italiano o in inglese con `--lang`; il coordinatore aggiunge le stime, indicate come tali, del tempo rimanente o dell’intera attività. |
 | `forecast` | Confronta un incarico aperto con lavori simili conclusi: tempi trascorsi osservati e percorso suggerito; sola lettura, nessuna cifra sotto tre esempi completi. |
+| `balance` | Suggerisce finestre e modelli in base a carico, quota e lavori simili, con i numeri di ogni suggerimento; sola lettura, non assegna nulla, quota di Claude solo come stima dichiarata. |
 | `usage` | Leggi i token locali per finestra, modello e incarico, con copertura e stime su prezzi inseriti da te; [dettagli](references/usage.md) in inglese. |
 
 ### Continuità
