@@ -174,6 +174,27 @@ class CacheNotice(unittest.TestCase):
         c = usage_cache.Cache(KEY, home=file)
         self.assertEqual(c.load(), {}); self.assertIsNone(getattr(c, 'notice', None))
 
+    def test_each_symlinked_cache_directory_has_a_notice_without_changing_data(self):
+        safe = self.f.collect()
+        parts = ('.cache', 'squadra', 'usage-v1')
+        for depth in range(len(parts)):
+            with self.subTest(component=parts[depth]):
+                home = self.f.folder/('home-'+str(depth)); home.mkdir(mode=0o700)
+                parent = home
+                for part in parts[:depth]:
+                    parent /= part; parent.mkdir(mode=0o700)
+                target = self.f.folder/('untouched-'+str(depth)); target.mkdir(mode=0o700)
+                (parent/parts[depth]).symlink_to(target, target_is_directory=True)
+                usage._COLLECTORS.clear()
+                with patch.dict(os.environ, HOME=str(home)):
+                    result = self.f.collect()
+                self.assertEqual(result['coverage'].get('notices'), ['cache_off_unsafe_path'])
+                for key in ('status','windows','models','tasks','days'):
+                    self.assertEqual(result[key], safe[key], key)
+                for key in ('status','reasons','sources','measured'):
+                    self.assertEqual(result['coverage'][key], safe['coverage'][key], key)
+                self.assertEqual(list(target.iterdir()), [], 'never writes through the link')
+
 
 class DashboardNotice(unittest.TestCase):
     def test_information_labels_and_cache_notice_in_both_languages(self):
