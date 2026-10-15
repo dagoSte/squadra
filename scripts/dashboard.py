@@ -388,7 +388,10 @@ def make_server(root, port=0):
                     task_id = unquote(self.headers.get('X-Squadra-Record', ''))
                     self.answer(200, json.dumps(forecast.calculate(recorded, events, task_id), ensure_ascii=False).encode())
                 elif path == '/api/balance':
-                    reference = balance.parse_reference(self.headers.get('X-Squadra-Balance-Reference'))
+                    try:
+                        reference = balance.parse_reference(self.headers.get('X-Squadra-Balance-Reference'))
+                    except Error:
+                        raise plugins.Refused('reference_invalid') from None
                     task_id = unquote(self.headers.get('X-Squadra-Record', '')) or None
                     self.answer(200, json.dumps(balance.calculate(recorded, events, task_id, usage.collect(events, recorded, roots=usage_roots),
                                                                   reference), ensure_ascii=False).encode())
