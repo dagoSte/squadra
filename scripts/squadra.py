@@ -759,7 +759,8 @@ def main(argv=None):
                 return 1
             print(json.dumps(result, ensure_ascii=False, indent=2))
             return 0
-        read_only = a.command in {'status', 'inbox', 'check', 'doctor'}
+        read_only = (a.command in {'status', 'inbox', 'check', 'doctor'} or
+                     (a.command == 'lesson' and a.list))
         store = Store(workspace_path(a.root), create=a.command == "init", read_only=read_only)
         result = dispatch(a, store)
         if a.command != "dash":

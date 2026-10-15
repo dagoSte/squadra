@@ -1,6 +1,7 @@
 """Run a repository's declared quick checks on the exact candidate before proof and delivery."""
 from __future__ import annotations
 
+from contextlib import ExitStack
 import json
 import os
 from pathlib import Path
@@ -9,7 +10,7 @@ import subprocess
 import time
 import uuid
 
-from registry import Error, digest, git, now, snapshot
+from registry import Error, atomic, canonical, digest, git, now, run_lease, run_lease_paths, snapshot
 
 NAME = ".squadra-precheck.json"
 DECLARATION_BYTES = 16 * 1024
@@ -90,7 +91,7 @@ def _mark(source):
     return {"head": source["head"], "sha256": source["sha256"]}
 
 
-def _check(store, repo, folder, argv, timeout, deadline, before):
+def _check(store, repo, folder, argv, timeout, deadline, before, *, lease_fd):
     """Run one check in its own process group; never raises an ordinary exception."""
     from runtime import terminate
     result = {"status": "failed", "native_rc": None, "started": now()}
@@ -103,9 +104,14 @@ def _check(store, repo, folder, argv, timeout, deadline, before):
         env = os.environ.copy()
         env.update(HOME=str(home), TMPDIR=str(tmp), PYTHONDONTWRITEBYTECODE="1")
         options = {"start_new_session": True} if os.name != "nt" else {"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP}
+        if os.name != "nt":
+            options["pass_fds"] = (lease_fd,)
+        metadata = run_lease_paths(store.root, folder.name)[2]
         with (folder / "stdout.log").open("wb") as stdout, (folder / "stderr.log").open("wb") as stderr:
+            atomic(metadata, canonical({"run": folder.name, "phase": "launching", "pgid": None}).encode())
             # Setup takes time too: no process starts once the total deadline has passed.
             if deadline - time.monotonic() <= 0:
+                atomic(metadata, canonical({"run": folder.name, "phase": "not-started", "pgid": None}).encode())
                 result.update(status="interrupted", error="deadline reached before start; not started")
             else:
                 try:
@@ -114,6 +120,7 @@ def _check(store, repo, folder, argv, timeout, deadline, before):
                 except OSError as exc:
                     result["error"] = "unrunnable: " + type(exc).__name__ + ": " + str(exc)
                 else:
+                    atomic(metadata, canonical({"run": folder.name, "phase": "spawned", "pgid": proc.pid}).encode())
                     wait = max(0.0, min(timeout, deadline - time.monotonic()))
                     try:
                         result["native_rc"] = proc.wait(timeout=wait)
@@ -149,6 +156,13 @@ def _check(store, repo, folder, argv, timeout, deadline, before):
             except Exception as exc:
                 result.update(status="failed", error="evidence capture failed: " + type(exc).__name__ + ": " + str(exc))
     return result
+
+
+def _receipt(store, item, result):
+    terminal = run_lease_paths(store.root, item["id"])[3]
+    atomic(terminal, canonical({"run": item["id"], "status": result["status"],
+                                "native_rc": result["native_rc"], "ended": result["ended"]}).encode())
+    item["receipt_saved"] = True
 
 
 def _line(folder, result):
@@ -188,39 +202,50 @@ def run(store, actor, task, current=None):
     runs = [{"id": uuid.uuid4().hex, "check": check} for check in spec["checks"]]
     for item in runs:
         item["folder"] = store.root / "runs" / item["id"]
-    store.batch([("run.start", actor, {
-        "id": item["id"], "task": task["id"], "mode": "precheck", "check": item["check"]["name"],
-        "argv": item["check"]["argv"], "timeout": item["check"]["timeout_seconds"], "folder": str(item["folder"]),
-        "declaration": declared, "before": _mark(before), "gate": False, "covers": [], "expected_rc": 0, **bound},
-        "run-start:" + item["id"]) for item in runs])
-    results = {}
-    stop = None
-    try:
+    with ExitStack() as leases:
+        # Queued checks are owned work too, before any start is visible to another command.
         for item in runs:
-            remaining = deadline - time.monotonic()
-            if stop or remaining <= 0:
-                results[item["id"]] = {"status": "interrupted", "native_rc": None, "seconds": 0, "ended": now(),
-                                       "error": stop or "deadline reached before start; not started"}
-                continue
-            result = _check(store, repo, item["folder"], item["check"]["argv"],
-                            item["check"]["timeout_seconds"], deadline, before)
-            if result.pop("changed", False):
-                stop = "not started: the source changed during an earlier check"
-            results[item["id"]] = result
-    except BaseException as exc:
-        stop = "not started: precheck interrupted (" + type(exc).__name__ + ")"
+            item["lease_fd"] = leases.enter_context(run_lease(store.root, item["id"]))
         for item in runs:
-            results.setdefault(item["id"], {"status": "interrupted", "native_rc": None, "seconds": 0,
-                                            "ended": now(), "error": stop})
-    finally:
-        ends = [("run.end", actor, {"id": item["id"], **results.get(item["id"], {
-                    "status": "interrupted", "native_rc": None, "seconds": 0, "ended": now(), "error": stop or "not started"})},
-                 "run-end:" + item["id"]) for item in runs]
+            metadata = run_lease_paths(store.root, item["id"])[2]
+            atomic(metadata, canonical({"run": item["id"], "phase": "not-started", "pgid": None}).encode())
+        store.batch([("run.start", actor, {
+            "id": item["id"], "task": task["id"], "mode": "precheck", "check": item["check"]["name"],
+            "argv": item["check"]["argv"], "timeout": item["check"]["timeout_seconds"], "folder": str(item["folder"]),
+            "declaration": declared, "before": _mark(before), "gate": False, "covers": [], "expected_rc": 0,
+            "lease_version": 1, **bound}, "run-start:" + item["id"]) for item in runs])
+        results = {}
+        stop = None
         try:
-            store.batch(ends)
-        except Exception as exc:
-            raise Error("precheck_failed: check results could not be recorded (" + type(exc).__name__ +
-                        "); runs left running: " + ", ".join(item["id"] for item in runs)) from exc
+            for item in runs:
+                remaining = deadline - time.monotonic()
+                if stop or remaining <= 0:
+                    results[item["id"]] = {"status": "interrupted", "native_rc": None, "seconds": 0, "ended": now(),
+                                           "error": stop or "deadline reached before start; not started"}
+                    continue
+                result = _check(store, repo, item["folder"], item["check"]["argv"],
+                                item["check"]["timeout_seconds"], deadline, before, lease_fd=item["lease_fd"])
+                if result.pop("changed", False):
+                    stop = "not started: the source changed during an earlier check"
+                results[item["id"]] = result
+                _receipt(store, item, result)
+        except BaseException as exc:
+            stop = "not started: precheck interrupted (" + type(exc).__name__ + ")"
+            for item in runs:
+                results.setdefault(item["id"], {"status": "interrupted", "native_rc": None, "seconds": 0,
+                                                "ended": now(), "error": stop})
+        finally:
+            ends = [("run.end", actor, {"id": item["id"], **results.get(item["id"], {
+                        "status": "interrupted", "native_rc": None, "seconds": 0, "ended": now(), "error": stop or "not started"})},
+                     "run-end:" + item["id"]) for item in runs]
+            try:
+                for item, (_, _, result, _) in zip(runs, ends):
+                    if not item.get("receipt_saved"):
+                        _receipt(store, item, result)
+                store.batch(ends)
+            except Exception as exc:
+                raise Error("precheck_failed: check results could not be recorded (" + type(exc).__name__ +
+                            "); runs left running: " + ", ".join(item["id"] for item in runs)) from exc
     seconds = round(time.monotonic() - t0, 3)
     failed = [(item, results[item["id"]]) for item in runs if results[item["id"]]["status"] != "passed"]
     if failed:
