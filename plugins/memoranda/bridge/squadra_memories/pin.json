@@ -548,6 +548,53 @@
         "task",
         "transport"
       ]
+    },
+    {
+      "label": "squadra 3.10.0",
+      "registry_py_sha256": "3a835fb55d2c71afb367a0a09b41875b86fd88ec585a1995fd11a304f9aba2b9",
+      "source_commit": "2c0287f064dd71d28c0df02bab42c70684ba1203",
+      "kinds": [
+        "ack",
+        "agent",
+        "ask",
+        "availability",
+        "benchmark",
+        "brief",
+        "challenge",
+        "close",
+        "decision",
+        "deliver",
+        "diagnostic",
+        "fix",
+        "init",
+        "legacy",
+        "lesson",
+        "lesson.ineffective",
+        "lesson.recall",
+        "lesson.retire",
+        "message",
+        "output",
+        "pause",
+        "plan",
+        "resource.acquire",
+        "resource.release",
+        "restore.check",
+        "restore.freeze",
+        "resume",
+        "review",
+        "route",
+        "run.abandon",
+        "run.cancel",
+        "run.end",
+        "run.progress",
+        "run.start",
+        "save",
+        "settings",
+        "start",
+        "supersede",
+        "task",
+        "transport"
+      ]
     }
   ]
 }
