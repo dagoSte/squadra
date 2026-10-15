@@ -186,6 +186,12 @@ registry; the sequence and hex checks below do not verify the event chain:
 head -n 1 /path/to/registry/events.jsonl
 ```
 
+Appending records keeps event #1 unchanged, but the file can lag behind a committed
+event after an interrupted projection update. Its first line supplies only the
+example's identity shortcut, not evidence that all current events are present.
+When a producer needs complete history, run `squadra export --root /path/to/registry`
+and compare the export's recorded sequence/head with the current Store view.
+
 The dashboard's own value is `plugins.key` in its `/api/state` response;
 [section 8](#testing-locally) shows how to compare the two. With a wrong key the page
 shows «No data for this registry». The exact rule:
@@ -331,7 +337,15 @@ python3 producer.py /path/to/registry
 Where the data comes from is up to you. A producer may also read the registry's
 `events.jsonl` and `state.json` and its registered artifacts, for example the optional
 [«worth remembering» declarations](work.md#da-ricordare-at-close) that agents attach at
-close. It only reads: squadra's CLI is the only writer in the registry folder. Apart
+close. `state.json` and complete mail/history exports are refreshed by `export`,
+`checkpoint` or `save`, not by every command. Request an explicit export before
+consuming those complete files, and check its recorded sequence/head for freshness;
+alternatively, use the supported version's verified Store accessors. Do not read
+an old mailbox projection to decide which messages to receive or transport: use
+the current `inbox`. Source fingerprints may reference immutable manifests;
+resolve the file list for source comparisons while retaining stored packet hashes.
+See [what each registry read verifies](recovery.md#registry-verification).
+The producer only reads: squadra's CLI is the only writer in the registry folder. Apart
 from the event #1 key, those formats are not part of the plugin contract, so test
 against the squadra version you support.
 

@@ -4,14 +4,55 @@
 
 `registry.sqlite3` is authoritative, with WAL and synchronous FULL. Transactional
 events, idempotent keys and a SHA-256 chain; content-addressed artifacts up to 16 MiB.
+Source-file inventories can be stored once in those artifacts: a reference retains
+the original source fingerprint and resolves to the same ordered file list at
+binding checks. Existing inline fingerprints and historical event bytes remain unchanged.
+
 `state.json`, `events.jsonl`, `stato.md`, `squadra-posta.md` and
-`posta/exchange-YYYY-MM-DD.md` are projections that `export` can regenerate.
-Do not edit them by hand. A crash between commit and projection does not erase the event.
+`posta/exchange-YYYY-MM-DD.md` are projections, not the authority. Read-only commands
+write neither the registry nor its projections. Ordinary writes append new canonical
+records to `events.jsonl` and update affected UTC days and bounded summaries; they
+do not regenerate the complete state and mailbox on every command. `state.json`
+and complete mail/history exports are refreshed by `export`, `checkpoint` or `save`.
+Use `squadra export --root /path/to/registry` before consuming complete exported files.
+Do not edit projections by hand. A crash between commit and projection does not
+erase the event, but can leave the files stale. Compare the export's recorded
+sequence/head with the current Store view; a shorter valid prefix is not proof of
+a complete current history. Receive or transport messages through the current
+`inbox`, not by treating a complete mailbox export as a live queue.
 
 `doctor` verifies the chain/artifacts and flags ACKs, runs without receipts and uncertain
 stops; `check` binds code, proofs, plan and review again. A valid log does not make a
 window's report true. Identities are trusted within the same account; there are no
 signatures or protection against someone who can rewrite the entire database.
+
+<a id="registry-verification"></a>
+
+## What is verified, and when
+
+The derived cache saves calculated state and indexes. Its proofs bind each requested
+value to the recorded cache root; the anchor identifies the event through which the
+cache has already been folded.
+
+| Operation | Verified during that operation |
+| --- | --- |
+| Ordinary commands, including `check` and an ordinary task's `close`; dashboard refresh after startup | The recorded anchor event and its hash, every newer event's hash and previous link, and authenticated proofs for each cache value or index read. |
+| `doctor`, `checkpoint`, `save`, `restore-check`, dashboard startup, and a release-gate task's `close` | The complete event chain and referenced artifacts/manifests, plus full replay to compare or rebuild the derived cache. |
+
+Ordinary reads do **not** reverify events before the anchor, untouched cache leaves,
+or that the cached root equals a complete replay of the reducer. A missing, foreign
+or invalid cache falls back to verified reconstruction. Verification failure never
+becomes a successful stale-cache response. These checks detect isolated corruption;
+they do not authenticate a coordinated rewrite of the journal, anchor and cache by
+someone with the same account.
+
+Upgrade every window together before the first new-format write. New events bind
+`format: 2` into their hash; legacy rows remain unchanged. Squadra 3.10.0 therefore
+refuses at the first such event with an integrity error, including status, check and
+close. This intentional refusal is not data loss: use the upgraded CLI, never bypass
+the verifier. New doctor/export commands verify the complete mixed-format history. Complete exports, checkpoints and immutable packet
+bytes retain their own identity: resolving source files does not rewrite an old event
+or change an existing handoff hash.
 
 <a id="stop-e-pacchetto-completo"></a>
 
@@ -114,8 +155,10 @@ package with `FAILED.json`, not a green backup. The destination must be new and 
 the sources and registry. `/tmp` is allowed only with `--temporary` for tests; choose a
 durable directory for work.
 
-`checkpoint --to /new/directory` remains available: a SQLite backup, artifacts and
-projections of the **registry only**. Do not copy an open SQLite database without its
+`checkpoint --to /new/directory` remains available: a SQLite backup, all referenced
+artifacts/source manifests and complete projections of the **registry only**, with
+checksums. The package is self-contained; it does not depend on the live registry's
+files remaining in place. Do not copy an open SQLite database without its
 WAL; do not delete WAL/SHM. `save` incorporates that checkpoint and adds the checkouts.
 It does not automatically copy full conversations, client authentication, installed
 dependencies or ignored files not explicitly included. Content-addressed logs are in
@@ -168,10 +211,12 @@ No command or shell execution, no remote scripts or CDN. The disconnected view k
 last page with a warning. Ctrl-C stops that server, not the agents. Do not expose the port
 or use it as a multi-user service.
 
-`/api/state` reuses a verified snapshot while SQLite's data version and the database/WAL
-file identity and change stamps are unchanged. Any change, including an older-row edit or
-a replaced database, requires verification of the complete chain again; a verification
-failure is reported rather than replaced with a cached success. Derived ages are never cached.
+Dashboard startup verifies the complete chain and referenced artifacts/manifests.
+Later reads use the anchor, suffix and requested-cache proofs in the
+[verification table](#registry-verification); they do not rescan every older event
+after each append. A missing, foreign or invalid cache requires verified
+reconstruction, and a verification failure is reported instead of a cached success.
+Derived ages are never cached.
 The response returns, using the same read-time clock,
 waits (`waits`), presence (`presence`), the decision graph (`graph`), each task's steps
 (`progress`) and communications (`comms`, at most the 500 most recent, without message
@@ -269,7 +314,7 @@ Every screenshot exists in both languages:
 | Decisions (Decisioni) | The decision graph, with details, task filter and zoom. |
 | Runs (Prove) | Task, who, kind, result, duration; command, native result, logs and timeout or cancel state in Details. |
 | Outputs (Output) | Saved updates and declared next steps. |
-| Timeline (Cronologia) | The latest 120 events; the full history stays in `events.jsonl`. |
+| Timeline (Cronologia) | The latest 120 events; use `export` for complete history in `events.jsonl` and check its recorded sequence/head against the current Store view. |
 | History (Storico) | Old records imported as historical, unverified copies. |
 
 **Words used below.**
@@ -296,4 +341,4 @@ Every screenshot exists in both languages:
 - **When context fills up**, on a real client signal or when constraints can no longer be reliably reconstructed, the agent saves a handover **before continuing**: task, identity, branch and SHA, open findings, pending ACKs, budgets, resources and one exact next step. It never invents token percentages. A fresh session ACKs, runs `doctor` and reconciles sources and resources before writing; a prepared prompt does not prove that a window started. The same window keeps its identity and updates `agent --session`; a different window needs a new seat. There is **no command that moves a task to another owner**: keep one writer, never duplicate a task to erase a budget, and earlier builders stay authors.
 - **A pause** blocks new work, reviews, runs and deliveries and keeps consultation and recovery, while a checkpoint alone pauses nothing. Stop only the processes you own; resume only on the owner's word, after reconciling processes and state. Other squads are never migrated or resumed.
 
-Always write through the CLI, never into the generated files. `export` regenerates the projections, `status` shows tasks, input and waits, and `doctor` checks the chain and the artifacts and reports pending ACKs or uncertain runs. Integrity is not proof that claims are true, nor cryptographic authentication of identities. `legacy --actor coord --path /old/packet` imports records as **historical, unverified copies**, never touching the originals, creating tasks or ACKs, or granting acceptance.
+Always write through the CLI, never into the generated files. `export` regenerates complete state, event and mail/history projections; `status` and `inbox` read current work and messages without rewriting those exports. `doctor` checks the complete chain and artifacts and reports pending ACKs or uncertain runs; the [verification table](#registry-verification) distinguishes this from ordinary reads. Integrity is not proof that claims are true, nor cryptographic authentication of identities. `legacy --actor coord --path /old/packet` imports records as **historical, unverified copies**, never touching the originals, creating tasks or ACKs, or granting acceptance.

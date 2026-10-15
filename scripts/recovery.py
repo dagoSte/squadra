@@ -159,7 +159,7 @@ def save(store, destination, repos=None, includes=None, temporary=False, declare
         store.checkpoint(destination / "registry")
         check = Store(destination / "registry")
         try:
-            events = check.events(); check.verify_artifacts()
+            events = check.audit()["events"]
             manifest["registry"] = {"event_count": len(events), "event_head": events[-1]["hash"] if events else '0'*64}
         finally: check.close()
         for repo, before, old_index, extra, extra_before in guards:
@@ -200,7 +200,7 @@ def restore_check(package, destination):
         shutil.copytree(package / "registry", target / "registry")
         store = Store(target / "registry")
         try:
-            events = store.events(); store.verify_artifacts()
+            events = store.audit()["events"]
             require({"event_count": len(events), "event_head": events[-1]["hash"] if events else '0'*64} == manifest["registry"], "Registry head/count mismatch")
             result["registry_integrity"] = "passed"
         finally: store.close()

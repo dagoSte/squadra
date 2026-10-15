@@ -615,13 +615,20 @@ squadra selftest --output /durable/selftest-001
 | File | Purpose |
 |---|---|
 | `registry.sqlite3` | Authoritative state; transactional events, WAL, synchronous FULL. |
-| `artifacts/` | Content-addressed copies of evidence. |
-| `events.jsonl` | Complete event projection with a SHA-256 chain. |
-| `state.json`, `stato.md` | Regenerable structured and readable status. |
-| `squadra-posta.md` | Shared mailbox projection. |
-| `posta/exchange-YYYY-MM-DD.md` | Daily UTC projection shared by all windows. |
+| `artifacts/` | Content-addressed evidence and source-file manifests; manifests preserve the original source fingerprint. |
+| `events.jsonl` | Event projection extended with committed events; may lag after an interrupted update. |
+| `state.json` | Complete structured export, refreshed by `export`, `checkpoint` or `save`. |
+| `stato.md`, `squadra-posta.md` | Readable status and mailbox projections; use the CLI for current work and inbox. |
+| `posta/exchange-YYYY-MM-DD.md` | Shared daily UTC projection; ordinary writes update affected days. |
 
-Always write through the CLI, never into the generated files; `doctor` checks the chain and the artifacts. Integrity is not proof that claims are true, nor cryptographic authentication of identities. [More](references/recovery.md#checkpoint-details).
+Read-only commands do not write the registry or its projections. Use `squadra export` when you need complete file exports, including mail/history. Before relying on a projection as complete, compare its recorded sequence/head with the current Store view; a committed event can be newer than its exported files. The cache keeps calculated state and indexes; its anchor is the last event already incorporated into that state.
+
+| Operation | What is verified |
+|---|---|
+| Ordinary commands, including `check` and an ordinary task's `close`; dashboard refresh after startup | The anchor event and its hash, all newer events and links, and authenticated proofs for each cache value or index read. |
+| `doctor`, `checkpoint`, `save`, `restore-check`, dashboard startup, and a release-gate task's `close` | The complete chain, referenced artifacts/manifests, and full replay to compare or rebuild the derived cache. |
+
+Ordinary reads do not reverify earlier events, untouched cache leaves, or the cached root against a complete replay of the reducer. A missing, foreign or invalid cache requires verified reconstruction; a failed verification never becomes a cached success. Upgrade every window together before the first new-format write. Events written by this version include a format marker in their hash: Squadra 3.10.0 stops with an integrity error at that marker, including on status/check/close. That refusal is intentional, not lost data; use the upgraded CLI. Older events stay unchanged. Always write through the CLI, never into generated files. Integrity does not prove that claims are true or authenticate identities cryptographically. [Details](references/recovery.md#registry-verification).
 
 ### Small changes: the light route
 
@@ -717,7 +724,7 @@ Every command, grouped by purpose: **50 subcommands**, plus `--version`. Use `sq
 |---|---|
 | `status` | Show tasks, what needs the owner, waits and the progress tables. |
 | `doctor` | Check the hash chain and the artifacts; report pending ACKs and uncertain runs. |
-| `export` | Regenerate the readable projections from the registry. |
+| `export` | Regenerate complete structured, readable and mail/history exports from the registry. |
 | `legacy` | Import old records as historical, unverified copies. |
 | `plugin` | List bundled plugins or install one from this release; no download or execution. |
 | `dash` | Open the local dashboard, read-only except declared settings and selections of installed plugins. |

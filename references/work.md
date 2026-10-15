@@ -468,9 +468,26 @@ proof of liveness and performs no actions.
 
 Omit `--task` when the text concerns coordination of the area, for example the
 arrival of an outside reviewer. Previous outputs do not change their association.
-Each write updates shared mail and the UTC day's projection in
-`posta/exchange-YYYY-MM-DD.md`; do not create authoritative copies per clone or
-edit these projections. `export` rebuilds them from events.
+Each write appends new event records and updates affected UTC days in
+`posta/exchange-YYYY-MM-DD.md` and bounded summaries. Complete `state.json` and
+mail/history exports are refreshed by `export`, `checkpoint` or `save`, not by
+every command. Do not create authoritative copies per clone or edit projections.
+A commit can precede its projection update: compare the exported sequence/head
+with the current Store view before treating a file as complete. Use the current
+`inbox` for reception and transport; an old complete mailbox is not a live queue.
+`squadra export` rebuilds the complete projections from verified authority.
+
+### Registry read boundaries
+
+Ordinary commands verify the anchor event and its hash, the newer event hashes and
+links, and authenticated proofs for the cache values/indexes they read. They do not
+reverify pre-anchor events, untouched leaves, or the cached root against complete
+reducer replay. Full verification runs in `doctor`, `checkpoint`, `save`,
+`restore-check`, dashboard startup and release-gate `close`; a missing, foreign or
+invalid cache also falls back to verified reconstruction. See the exact
+[verification table](recovery.md#registry-verification). Read-only commands do not
+write the registry or projections. Coordinate every writer's upgrade before new
+source-manifest references are used; unsupported older tools must refuse them.
 
 <a id="keep-alive-e-stand-by"></a>
 ## Keep-alive and stand-by

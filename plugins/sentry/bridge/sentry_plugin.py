@@ -122,7 +122,7 @@ def registry(root):
         try:
             events = store.events()
             p.require(events and events[0]['kind'] == 'init', 'registry_invalid')
-            return events[0]['hash'], store.state(events)
+            return events[0]['hash'], store.state(events, resolve=False)
         finally:
             store.close()
     except (Error, KeyError, ValueError, sqlite3.Error):

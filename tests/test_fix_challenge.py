@@ -364,9 +364,14 @@ class FixChallenge(unittest.TestCase):
         self.configure(); self.challenge(); self.review()
         for label, source in [('old', root / 'tests/fixtures/squadra-3.6.0'), ('new', root / 'plugins/playwright/bridge')]:
             isolated = self.base / label; isolated.mkdir(); shutil.copy(source / 'registry.py', isolated)
-            probe = "import registry,sys;s=registry.Store(sys.argv[1],read_only=True);state=s.state();s.close();assert 'fix_challenge' not in sys.modules;assert state['tasks']['T']['base'];print('ok')"
+            state_call = "s.state(resolve=False)" if label == 'new' else "s.state()"
+            probe = "import registry,sys;s=registry.Store(sys.argv[1],read_only=True);state=" + state_call + ";s.close();assert 'fix_challenge' not in sys.modules;assert state['tasks']['T']['base'];print('ok')"
             run = subprocess.run([sys.executable, '-B', '-c', probe, str(self.root)], cwd=isolated, capture_output=True, text=True)
-            self.assertEqual(run.returncode, 0, run.stderr)
+            if label == 'old':
+                self.assertNotEqual(run.returncode, 0)
+                self.assertIn('integrity', run.stderr.lower())
+            else:
+                self.assertEqual(run.returncode, 0, run.stderr)
 
     def test_dashboard_translates_bound_match_exception_and_pending(self):
         from dashboard_test_support import make_server

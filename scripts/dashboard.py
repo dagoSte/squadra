@@ -13,10 +13,11 @@ from urllib.parse import unquote, urlparse
 import webbrowser
 
 from registry import (Store, Error, digest, attention, waits, now, requirement_matrix, initial, apply, decision_graph,
-                      task_progress, presence, fix_status)
+                      task_progress, presence, fix_status, plain)
 from comms import communications
 from panel import activity
 from reads import read_value
+from source_manifests import materialize_known
 import plugins
 import plugin_settings
 import plugin_actions
@@ -53,6 +54,7 @@ class VerifiedView:
         self.monitor = None
         self.identity = self.marker = self.value = None
         self.reads_head = self.reads_value = None
+        self.verified_events = None
 
     def stamp(self):
         if self.path.is_symlink():
@@ -65,6 +67,7 @@ class VerifiedView:
             self.monitor = sqlite3.connect(self.path.as_uri() + '?mode=ro', uri=True,
                                            isolation_level=None, check_same_thread=False)
             self.identity, self.marker, self.value = identity, None, None
+            self.verified_events = None
         version = self.monitor.execute('PRAGMA data_version').fetchone()[0]
         def changed(path):
             try:
@@ -82,12 +85,30 @@ class VerifiedView:
             self.value = self.marker = None
             store = Store(self.root, read_only=True)
             try:
-                events = store.events()
+                prior = self.verified_events
+                suffix = None
+                if prior:
+                    tip = store.db.execute('SELECT seq,hash FROM events ORDER BY seq DESC LIMIT 1').fetchone()
+                    if tip and tip['seq'] > prior[-1]['seq']:
+                        suffix = store.events_since(prior[-1]['seq'], prior[-1]['hash'])
+                        if any(event.get('format') != 2 for event in suffix):
+                            suffix = None
+                if suffix is None:
+                    audited = store.audit()
+                    events, state = audited['events'], audited['state']
+                    if audited['cache'] == 'matched':
+                        cached = plain(store.view())
+                        if cached['event_count'] == state['event_count']:
+                            state = cached
+                else:
+                    events = prior + suffix
+                    state = plain(store.view())
+                    if state['event_count'] != events[-1]['seq']:
+                        audited = store.audit()
+                        events, state = audited['events'], audited['state']
+                self.verified_events = events
             finally:
                 store.close()
-            state = initial()
-            for event in events:
-                apply(state, event)
             state.update(root=str(self.root), graph=decision_graph(events), progress=task_progress(events),
                          requirements={key: requirement_matrix(task) for key, task in state['tasks'].items()})
             for task in state['tasks'].values():
@@ -100,6 +121,10 @@ class VerifiedView:
             if before == after:
                 self.marker, self.value = after, value
             return value
+
+    def record(self, kind, value):
+        """Resolve only a requested record, rechecking immutable inventory bytes."""
+        return materialize_known({kind: {'record': value}}, self.root / 'artifacts')[kind]['record']
 
     def reads(self):
         events, _, _ = self.read()
@@ -116,6 +141,7 @@ class VerifiedView:
                 self.monitor.close()
                 self.monitor = None
             self.value = self.marker = None
+            self.verified_events = None
             self.reads_head = self.reads_value = None
 
 
@@ -141,8 +167,7 @@ def make_server(root, port=0):
         # Reuse the verified key while the first record is unchanged.
         first = store.db.execute("SELECT * FROM events WHERE seq=1").fetchone()
         plugins.require(first is not None, "registry_invalid")
-        record = dict(first)
-        record["data"] = json.loads(record["data"])
+        record = store.decode_event(first)
         if record == verified_first:
             return record["hash"]
         return remember_key(store.events())
@@ -206,6 +231,8 @@ def make_server(root, port=0):
                                             compact=self.headers.get('X-Squadra-Usage-View') == 'compact')
                     self.answer(200, json.dumps(result, ensure_ascii=False).encode())
                 elif path == "/api/state":
+                    if self.headers.get('X-Squadra-View') != 'compact':
+                        state = materialize_known(recorded, view.root / 'artifacts')
                     key = remember_key(events)
                     state["plugins"] = {**plugin_actions.discover(plugin_home, key), "key": key}
                     state["attention"] = attention(state)
@@ -222,8 +249,10 @@ def make_server(root, port=0):
                         query = unquote(self.headers.get('X-Squadra-Search', '')).lower()
                         state['search'] = {'query': query, **{
                             kind: [key for key, record in recorded[kind].items()
-                                   if query and query in json.dumps(record, ensure_ascii=False,
-                                                                    separators=(',', ':')).lower()]
+                                   if query and (query in json.dumps(record, ensure_ascii=False,
+                                                                    separators=(',', ':')).lower()
+                                   or query in json.dumps(view.record(kind, record), ensure_ascii=False,
+                                                          separators=(',', ':')).lower())]
                             for kind in ('tasks', 'runs')}}
                         state.update(compact)
                     self.answer(200, json.dumps(state, ensure_ascii=False).encode())
@@ -233,7 +262,7 @@ def make_server(root, port=0):
                     if record is None:
                         self.answer(404, b'{"error":"record not found"}')
                     else:
-                        self.answer(200, json.dumps(record, ensure_ascii=False).encode())
+                        self.answer(200, json.dumps(view.record(kind, record), ensure_ascii=False).encode())
                 elif re.fullmatch(r"/api/artifact/[0-9a-f]{64}", path):
                     sha = path.rsplit("/", 1)[-1]
                     registered = set()
