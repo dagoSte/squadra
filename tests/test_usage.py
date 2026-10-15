@@ -564,6 +564,27 @@ class UsageCollector(unittest.TestCase):
             self.assertEqual(suggestion['metrics']['percent'], 85)
             self.assertIn(suggestion['window'], {w['identity'] for w in data['windows']})
 
+    def test_latest_quota_orders_fractional_instants_in_both_slots_and_orders(self):
+        for elapsed in (0.5, 1.5):
+            observations = []
+            for slot, minutes, older, newer in [('primary', 300, 10, 95),
+                                                ('secondary', 10080, 20, 90)]:
+                for at, percent in [(NOW - 10, older), (NOW - 10 + elapsed, newer)]:
+                    observations.append({'limit': slot, 'used_percent': percent,
+                                         'window_minutes': minutes, 'resets_at': stamp(NOW + 600),
+                                         'observed_at': stamp(at), 'model': 'gpt-5.4'})
+            for reverse in (False, True):
+                with self.subTest(elapsed=elapsed, reverse=reverse):
+                    ordered = list(reversed(observations)) if reverse else observations
+                    latest = usage.latest_quotas(ordered, NOW)
+                    self.assertEqual(len(latest), 2)
+                    self.assertEqual({q['limit']: q['used_percent'] for q in latest},
+                                     {'primary': 95, 'secondary': 90})
+                    self.assertTrue(all(q['observed_at'] == stamp(NOW - 10 + elapsed)
+                                        and q['status'] == 'measured' for q in latest))
+                    advice = usage.advice([], [{'identity': CODEX, 'quota': latest}], NOW)
+                    self.assertEqual(sorted(s['metrics']['percent'] for s in advice), [90, 95])
+
     def test_quota_fresh_stale_expired_and_distinct_windows_not_summed(self):
         self.seat(client='codex', session=CODEX)
         def quotas(reset):

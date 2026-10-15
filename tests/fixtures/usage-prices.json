@@ -536,5 +536,116 @@
         }
       ]
     }
+  },
+  {
+    "name": "maximum safe price is accepted",
+    "data": {
+      "status": "measured",
+      "models": [
+        {
+          "model": "model-a",
+          "totals": {
+            "input": 1,
+            "cache_read": 0,
+            "cache_creation": 0,
+            "output": 0,
+            "reasoning": 0,
+            "total": 1
+          },
+          "status": "measured"
+        }
+      ]
+    },
+    "prices": {
+      "currency": "USD",
+      "models": {
+        "model-a": {
+          "input": 9007199254740991
+        }
+      }
+    },
+    "expected": {
+      "currency": "USD",
+      "amount": 9007199254.740992,
+      "status": "estimated",
+      "excluded": [],
+      "models": [
+        {
+          "model": "model-a",
+          "amount": 9007199254.740992,
+          "status": "estimated"
+        }
+      ]
+    }
+  },
+  {
+    "name": "ordinary fractional price stays supported",
+    "data": {
+      "status": "measured",
+      "models": [
+        {
+          "model": "model-a",
+          "totals": {
+            "input": 1000000,
+            "cache_read": 0,
+            "cache_creation": 0,
+            "output": 0,
+            "reasoning": 0,
+            "total": 1000000
+          },
+          "status": "measured"
+        }
+      ]
+    },
+    "prices": {
+      "currency": "USD",
+      "models": {
+        "model-a": {
+          "input": 1.25
+        }
+      }
+    },
+    "expected": {
+      "currency": "USD",
+      "amount": 1.25,
+      "status": "estimated",
+      "excluded": [],
+      "models": [
+        {
+          "model": "model-a",
+          "amount": 1.25,
+          "status": "estimated"
+        }
+      ]
+    }
+  },
+  {
+    "name": "price above safe bound is refused",
+    "data": {
+      "status": "measured",
+      "models": [
+        {
+          "model": "model-a",
+          "totals": {
+            "input": 1,
+            "cache_read": 0,
+            "cache_creation": 0,
+            "output": 0,
+            "reasoning": 0,
+            "total": 1
+          },
+          "status": "measured"
+        }
+      ]
+    },
+    "prices": {
+      "currency": "USD",
+      "models": {
+        "model-a": {
+          "input": 9007199254740992
+        }
+      }
+    },
+    "error": "price_table_invalid"
   }
 ]

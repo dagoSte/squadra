@@ -619,7 +619,7 @@ def quota_status(q, now):
 
 def latest_quotas(quota, now):
     latest = {}
-    for q in sorted(quota, key=lambda q: q['observed_at']):
+    for q in sorted(quota, key=lambda q: instant(q['observed_at'])):
         latest[q['limit']] = quota_status(q, now)
     return list(latest.values())
 

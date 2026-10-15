@@ -3873,7 +3873,7 @@ function usageValidatePrices(prices){
  const models=Object.create(null);
  for(const [model,rates] of Object.entries(prices.models)){
   if(!/^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$/.test(model)||!rates||typeof rates!=='object'||Array.isArray(rates)||Object.keys(rates).some(k=>!usageKinds.includes(k)))invalid();
-  const own=Object.create(null);for(const kind of usageKinds)if(Object.hasOwn(rates,kind)){if(!usageNumber(rates[kind]))invalid();own[kind]=rates[kind]}models[model]=own;
+  const own=Object.create(null);for(const kind of usageKinds)if(Object.hasOwn(rates,kind)){if(!usageNumber(rates[kind])||rates[kind]>Number.MAX_SAFE_INTEGER)invalid();own[kind]=rates[kind]}models[model]=own;
  }
  return {currency:prices.currency,models};
 }
