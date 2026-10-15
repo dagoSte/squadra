@@ -1,6 +1,6 @@
 # Squadra privacy notice
 
-Updated 13 October 2026. [Italiano](PRIVACY.it.md).
+Updated 15 October 2026. [Italiano](PRIVACY.it.md).
 
 Squadra is software you run on your computer. Its author, Stefano D'Agostino,
 does not operate a service that collects data from Squadra. The coordination
@@ -32,6 +32,13 @@ inside a `0700` directory. This is not an encrypted vault. The settings API
 does not return saved secret values or copy those values into the registry.
 Saved requests are handled when a separate plugin producer or consumer runs;
 the dashboard does not execute those programs itself.
+
+The Usage page and `squadra usage` read the session files that Claude Code and
+Codex already keep in your HOME, for the windows registered in the squad. They
+parse each line and keep only token counts, model names, times and Codex quota
+figures, in memory; the text of the conversations is never stored, shown or
+sent. Prices and reference figures you enter on the page stay in your browser's
+local storage and are not written to the registry.
 
 ## The dashboard and external services
 

@@ -93,7 +93,7 @@ model names to nonnegative numeric rates for `input`, `cache_read`,
 `cache_creation` and `output`. Up to 100 model rows are allowed. The file is local,
 regular, not a symlink, and at most 64 KiB. No rate is inferred for a missing kind.
 
-## Interface for Balance
+## Interface for Balance (planned for 3.10.1)
 
 `scripts/usage.py:collect(events, state, *, roots=None, now=None,
 budget_seconds=0.25)` returns schema 1. Pass verified registry data; HTTP callers

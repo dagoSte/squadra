@@ -1,6 +1,6 @@
 # Informativa privacy di Squadra
 
-Aggiornata il 13 ottobre 2026. [English](PRIVACY.md).
+Aggiornata il 15 ottobre 2026. [English](PRIVACY.md).
 
 Squadra è un software che esegui sul tuo computer. Il suo autore, Stefano
 D'Agostino, non gestisce un servizio che raccoglie dati da Squadra. Il registro
@@ -34,6 +34,14 @@ cassaforte cifrata. L'API delle impostazioni non restituisce i valori dei
 segreti salvati e non li copia nel registro. La dashboard lascia al produttore
 o consumatore separato del plugin la gestione delle richieste salvate; non
 esegue direttamente quei programmi.
+
+La pagina «Consumi» e `squadra usage` leggono i file di sessione che Claude Code e
+Codex tengono già nella tua HOME, per le finestre registrate nella squadra.
+Leggono ogni riga e ne conservano in memoria solo i conteggi dei token, i nomi
+dei modelli, gli orari e i dati di quota di Codex; il testo delle conversazioni
+non viene mai salvato, mostrato né inviato. I prezzi e i valori di riferimento
+che inserisci nella pagina restano nella memoria locale del tuo browser e non
+vengono scritti nel registro.
 
 ## La dashboard e i servizi esterni
 
