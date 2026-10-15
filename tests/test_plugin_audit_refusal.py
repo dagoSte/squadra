@@ -7,10 +7,10 @@ import threading
 import unittest
 from unittest.mock import patch
 
+from test_plugins import Fixtures, panel
 import dashboard
 from registry import Store
 from test_brand import POLICY
-from test_plugins import Fixtures, panel
 
 
 class AuditRefusal(Fixtures, unittest.TestCase):
