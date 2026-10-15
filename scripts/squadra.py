@@ -289,7 +289,8 @@ def parser():
     commands = a.add_subparsers(dest="plugin_command", required=True)
     commands.add_parser("list")
     install = commands.add_parser("install"); install.add_argument("name")
-    sub.add_parser("status"); sub.add_parser("doctor"); sub.add_parser("export")
+    a = sub.add_parser("status"); a.add_argument("--all", action="store_true", help="Print every wait and the full detailed table")
+    sub.add_parser("doctor"); sub.add_parser("export")
     a = sub.add_parser("board"); a.add_argument("--lang", choices=["it", "en"], help="Override the workspace board language")
     a = sub.add_parser("dash"); a.add_argument("--port", type=int, default=0); a.add_argument("--open", action="store_true")
     a = sub.add_parser("selftest"); a.add_argument("--output", help="New directory for durable test receipts")
@@ -740,7 +741,7 @@ def main(argv=None):
                             visible[key] = {"head": value["head"], "sha256": value["sha256"], "files": len(value["files"])}
                 print(json.dumps(visible, ensure_ascii=False, indent=2))
             if a.command not in {"inbox", "doctor"}:
-                print(table(state, read_at=now(), events=events))
+                print(table(state, read_at=now(), events=events, compact=a.command != 'status' or not a.all))
             forecast_task = a.id if a.command == 'task' else getattr(a, 'task', None)
             if a.command in {'task', 'brief', 'start'} and forecast_task:
                 from forecast import calculate

@@ -1611,7 +1611,7 @@ def board(state, lang=None, read_at=None, events=(), *, live=True):
     return "\n".join(lines)
 
 
-def table(state, read_at=None, events=()):
+def table(state, read_at=None, events=(), *, compact=False):
     tasks = list(state["tasks"].values())
     view = attention(state)
     lines = [board(state, read_at=read_at, events=events, live=read_at is not None), "", "Serve a te:"]
@@ -1623,7 +1623,38 @@ def table(state, read_at=None, events=()):
         lines.append("Nessuna richiesta registrata — una domanda fatta solo in chat non compare qui.")
     if read_at is not None:
         lines += ["", "Attese calcolate al " + str(read_at) + ":"]
-        lines += ["- " + w["kind"] + " · " + str(w.get("task", w.get("id", ""))) + " · " + str(w["seconds"]) + "s · " + w["text"] for w in waits(state, read_at)]
+        waiting = waits(state, read_at)
+        if compact:
+            counts = {kind: sum(w['kind'] == kind for w in waiting)
+                      for kind in sorted({w['kind'] for w in waiting})}
+            lines.append(str(len(waiting)) + " totali · " + ", ".join(k + ": " + str(v) for k, v in counts.items()))
+            active = {state['agents'][actor]['identity'] for step in view['next_steps']
+                      if state['tasks'][step['task']]['status'] != 'done'
+                      for actor in step['who'] if actor in state['agents']}
+
+            def blocking(wait):
+                if wait['kind'] == 'alive':
+                    return any(state['agents'].get(actor, {}).get('identity') in active
+                               for actor in wait['who'])
+                if wait['kind'] != 'ack':
+                    return True
+                message = state['messages'].get(wait['id'], {})
+                task = state['tasks'].get(wait.get('task') or message.get('task') or message.get('related_task'), {})
+                if not task or task.get('superseded_by') or task['status'] == 'done':
+                    return False
+                if message.get('task') and task['status'] == 'waiting-ack':
+                    return True
+                delivery = task.get('delivery', {})
+                return task['status'] == 'delivered' and (wait['id'] == delivery.get('handoff')
+                    or wait['id'] in delivery.get('handoffs', []))
+
+            waiting = sorted((w for w in waiting if blocking(w)),
+                             key=lambda w: (-w['seconds'], w['kind'], str(w.get('task', w.get('id', '')))))[:5]
+        lines += ["- " + w["kind"] + " · " + str(w.get("task", w.get("id", ""))) + " · " + str(w["seconds"]) + "s · " + w["text"] for w in waiting]
+        if compact:
+            lines.append("Tutte le attese e i dettagli: squadra status --all.")
+    if compact:
+        return "\n".join(lines)
     lines += ["", "Prossimo passo per incarico:"]
     lines += ["- " + item["task"] + ": " + item["text"] for item in view["next_steps"]]
     if view["superseded"]:

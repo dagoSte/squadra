@@ -1,5 +1,12 @@
 # Task, proof, review and output
 
+Ordinary command output shows the board, every owner request, wait counts by kind
+and at most five waits that still block work, oldest first. Informational ACKs stay
+in the counts without displacing task assignments, current review handoffs, running
+processes or pings to windows with a pending step. Use `squadra status --all --root
+REGISTRY` for the complete previous text view and every wait. Saved `stato.md`,
+JSON results and dashboard data remain complete; this changes only console text.
+
 ## Forecast from comparable work
 
 `squadra forecast --task TASK --root REGISTRY` verifies and reads an existing

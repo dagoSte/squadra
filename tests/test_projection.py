@@ -70,7 +70,7 @@ class Projection(unittest.TestCase):
     def test_cli_table_uses_the_projected_state(self):
         out = io.StringIO()
         with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
-            self.assertEqual(main(["--root", str(self.root), "status"]), 0)
+            self.assertEqual(main(["--root", str(self.root), "status", "--all"]), 0)
         printed = out.getvalue()
         reference = table(self.store.state(), read_at="1970-01-01T00:00:00+00:00")
         # Only the read-time lines may differ between the two renderings.
