@@ -1,0 +1,540 @@
+[
+  {
+    "name": "disjoint kinds; reasoning is already output",
+    "data": {
+      "status": "measured",
+      "models": [
+        {
+          "model": "model-a",
+          "totals": {
+            "input": 1000000,
+            "cache_read": 500000,
+            "cache_creation": 250000,
+            "output": 125000,
+            "reasoning": 100000,
+            "total": 1875000
+          },
+          "status": "measured"
+        }
+      ]
+    },
+    "prices": {
+      "currency": "EUR",
+      "models": {
+        "model-a": {
+          "input": 2,
+          "cache_read": 0.2,
+          "cache_creation": 3,
+          "output": 8
+        }
+      }
+    },
+    "expected": {
+      "currency": "EUR",
+      "amount": 3.85,
+      "status": "estimated",
+      "excluded": [],
+      "models": [
+        {
+          "model": "model-a",
+          "amount": 3.85,
+          "status": "estimated"
+        }
+      ]
+    }
+  },
+  {
+    "name": "no prices means disabled",
+    "data": {
+      "status": "measured",
+      "models": [
+        {
+          "model": "model-a",
+          "totals": {
+            "input": 1000000,
+            "cache_read": 500000,
+            "cache_creation": 250000,
+            "output": 125000,
+            "reasoning": 100000,
+            "total": 1875000
+          },
+          "status": "measured"
+        }
+      ]
+    },
+    "prices": null,
+    "expected": null
+  },
+  {
+    "name": "empty table means disabled",
+    "data": {
+      "status": "measured",
+      "models": [
+        {
+          "model": "model-a",
+          "totals": {
+            "input": 1000000,
+            "cache_read": 500000,
+            "cache_creation": 250000,
+            "output": 125000,
+            "reasoning": 100000,
+            "total": 1875000
+          },
+          "status": "measured"
+        }
+      ]
+    },
+    "prices": {
+      "currency": "EUR",
+      "models": {}
+    },
+    "expected": null
+  },
+  {
+    "name": "exclude model with no rates",
+    "data": {
+      "status": "measured",
+      "models": [
+        {
+          "model": "model-a",
+          "totals": {
+            "input": 1000000,
+            "cache_read": 500000,
+            "cache_creation": 250000,
+            "output": 125000,
+            "reasoning": 100000,
+            "total": 1875000
+          },
+          "status": "measured"
+        },
+        {
+          "model": "model-b",
+          "totals": {
+            "input": 10,
+            "cache_read": 0,
+            "cache_creation": 0,
+            "output": 20,
+            "reasoning": 0,
+            "total": 30
+          },
+          "status": "measured"
+        }
+      ]
+    },
+    "prices": {
+      "currency": "EUR",
+      "models": {
+        "model-a": {
+          "input": 2,
+          "cache_read": 0.2,
+          "cache_creation": 3,
+          "output": 8
+        }
+      }
+    },
+    "expected": {
+      "currency": "EUR",
+      "amount": 3.85,
+      "status": "partial",
+      "excluded": [
+        {
+          "model": "model-b",
+          "reason": "missing_rate"
+        }
+      ],
+      "models": [
+        {
+          "model": "model-a",
+          "amount": 3.85,
+          "status": "estimated"
+        },
+        {
+          "model": "model-b",
+          "amount": null,
+          "status": "not_measured"
+        }
+      ]
+    }
+  },
+  {
+    "name": "unknown model",
+    "data": {
+      "status": "measured",
+      "models": [
+        {
+          "model": null,
+          "totals": {
+            "input": 1,
+            "cache_read": 2,
+            "cache_creation": 3,
+            "output": 4,
+            "reasoning": 0,
+            "total": 10
+          },
+          "status": "measured"
+        }
+      ]
+    },
+    "prices": {
+      "currency": "EUR",
+      "models": {
+        "model-a": {
+          "input": 2,
+          "cache_read": 0.2,
+          "cache_creation": 3,
+          "output": 8
+        }
+      }
+    },
+    "expected": {
+      "currency": "EUR",
+      "amount": null,
+      "status": "not_measured",
+      "excluded": [
+        {
+          "model": null,
+          "reason": "unknown_model"
+        }
+      ],
+      "models": [
+        {
+          "model": null,
+          "amount": null,
+          "status": "not_measured"
+        }
+      ]
+    }
+  },
+  {
+    "name": "unknown output",
+    "data": {
+      "status": "measured",
+      "models": [
+        {
+          "model": "model-a",
+          "totals": {
+            "input": 1,
+            "cache_read": 2,
+            "cache_creation": 3,
+            "output": null,
+            "reasoning": 0,
+            "total": 10
+          },
+          "status": "measured"
+        }
+      ]
+    },
+    "prices": {
+      "currency": "EUR",
+      "models": {
+        "model-a": {
+          "input": 2,
+          "cache_read": 0.2,
+          "cache_creation": 3,
+          "output": 8
+        }
+      }
+    },
+    "expected": {
+      "currency": "EUR",
+      "amount": null,
+      "status": "not_measured",
+      "excluded": [
+        {
+          "model": "model-a",
+          "reason": "missing_tokens"
+        }
+      ],
+      "models": [
+        {
+          "model": "model-a",
+          "amount": null,
+          "status": "not_measured"
+        }
+      ]
+    }
+  },
+  {
+    "name": "observed zero needs no rate",
+    "data": {
+      "status": "measured",
+      "models": [
+        {
+          "model": "model-a",
+          "totals": {
+            "input": 0,
+            "cache_read": 0,
+            "cache_creation": 0,
+            "output": 0,
+            "reasoning": 0,
+            "total": 0
+          },
+          "status": "measured"
+        }
+      ]
+    },
+    "prices": {
+      "currency": "EUR",
+      "models": {
+        "model-a": {}
+      }
+    },
+    "expected": {
+      "currency": "EUR",
+      "amount": 0,
+      "status": "estimated",
+      "excluded": [],
+      "models": [
+        {
+          "model": "model-a",
+          "amount": 0,
+          "status": "estimated"
+        }
+      ]
+    }
+  },
+  {
+    "name": "partial tokens remain partial cost",
+    "data": {
+      "status": "partial",
+      "models": [
+        {
+          "model": "model-a",
+          "totals": {
+            "input": 1000000,
+            "cache_read": 500000,
+            "cache_creation": 250000,
+            "output": 125000,
+            "reasoning": 100000,
+            "total": 1875000
+          },
+          "status": "measured"
+        }
+      ]
+    },
+    "prices": {
+      "currency": "EUR",
+      "models": {
+        "model-a": {
+          "input": 2,
+          "cache_read": 0.2,
+          "cache_creation": 3,
+          "output": 8
+        }
+      }
+    },
+    "expected": {
+      "currency": "EUR",
+      "amount": 3.85,
+      "status": "partial",
+      "excluded": [],
+      "models": [
+        {
+          "model": "model-a",
+          "amount": 3.85,
+          "status": "estimated"
+        }
+      ]
+    }
+  },
+  {
+    "name": "negative rate",
+    "data": {
+      "status": "measured",
+      "models": [
+        {
+          "model": "model-a",
+          "totals": {
+            "input": 1000000,
+            "cache_read": 500000,
+            "cache_creation": 250000,
+            "output": 125000,
+            "reasoning": 100000,
+            "total": 1875000
+          },
+          "status": "measured"
+        }
+      ]
+    },
+    "prices": {
+      "currency": "EUR",
+      "models": {
+        "model-a": {
+          "input": -1
+        }
+      }
+    },
+    "error": "price_table_invalid"
+  },
+  {
+    "name": "boolean rate",
+    "data": {
+      "status": "measured",
+      "models": [
+        {
+          "model": "model-a",
+          "totals": {
+            "input": 1000000,
+            "cache_read": 500000,
+            "cache_creation": 250000,
+            "output": 125000,
+            "reasoning": 100000,
+            "total": 1875000
+          },
+          "status": "measured"
+        }
+      ]
+    },
+    "prices": {
+      "currency": "EUR",
+      "models": {
+        "model-a": {
+          "input": true
+        }
+      }
+    },
+    "error": "price_table_invalid"
+  },
+  {
+    "name": "wrong currency",
+    "data": {
+      "status": "measured",
+      "models": [
+        {
+          "model": "model-a",
+          "totals": {
+            "input": 1000000,
+            "cache_read": 500000,
+            "cache_creation": 250000,
+            "output": 125000,
+            "reasoning": 100000,
+            "total": 1875000
+          },
+          "status": "measured"
+        }
+      ]
+    },
+    "prices": {
+      "currency": "EURO",
+      "models": {}
+    },
+    "error": "price_table_invalid"
+  },
+  {
+    "name": "unknown kind",
+    "data": {
+      "status": "measured",
+      "models": [
+        {
+          "model": "model-a",
+          "totals": {
+            "input": 1000000,
+            "cache_read": 500000,
+            "cache_creation": 250000,
+            "output": 125000,
+            "reasoning": 100000,
+            "total": 1875000
+          },
+          "status": "measured"
+        }
+      ]
+    },
+    "prices": {
+      "currency": "EUR",
+      "models": {
+        "model-a": {
+          "reasoning": 3
+        }
+      }
+    },
+    "error": "price_table_invalid"
+  },
+  {
+    "name": "known partial model subtotal is estimated",
+    "data": {
+      "status": "measured",
+      "models": [
+        {
+          "model": "model-a",
+          "totals": {
+            "input": 1000000,
+            "cache_read": 500000,
+            "cache_creation": 250000,
+            "output": 125000,
+            "reasoning": 100000,
+            "total": 1875000
+          },
+          "status": "partial"
+        }
+      ]
+    },
+    "prices": {
+      "currency": "EUR",
+      "models": {
+        "model-a": {
+          "input": 2,
+          "cache_read": 0.2,
+          "cache_creation": 3,
+          "output": 8
+        }
+      }
+    },
+    "expected": {
+      "currency": "EUR",
+      "amount": 3.85,
+      "status": "partial",
+      "excluded": [],
+      "models": [
+        {
+          "model": "model-a",
+          "amount": 3.85,
+          "status": "partial"
+        }
+      ]
+    }
+  },
+  {
+    "name": "small disjoint counts and reasoning subset",
+    "data": {
+      "status": "measured",
+      "models": [
+        {
+          "model": "model-a",
+          "status": "measured",
+          "totals": {
+            "input": 100,
+            "cache_read": 200,
+            "cache_creation": 300,
+            "output": 400,
+            "reasoning": 100,
+            "total": 1000
+          }
+        }
+      ]
+    },
+    "prices": {
+      "currency": "EUR",
+      "models": {
+        "model-a": {
+          "input": 1,
+          "cache_read": 2,
+          "cache_creation": 3,
+          "output": 4
+        }
+      }
+    },
+    "expected": {
+      "currency": "EUR",
+      "amount": 0.003,
+      "status": "estimated",
+      "excluded": [],
+      "models": [
+        {
+          "model": "model-a",
+          "amount": 0.003,
+          "status": "estimated"
+        }
+      ]
+    }
+  }
+]

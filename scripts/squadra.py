@@ -153,6 +153,9 @@ def parser():
     sub = p.add_subparsers(dest="command", required=True)
     a = sub.add_parser("forecast", help="Read-only comparison with similar completed tasks; no estimate below three samples")
     a.add_argument("--task", required=True)
+    a = sub.add_parser("usage", help="Read-only local token usage; partial coverage after a 30-second collection deadline")
+    a.add_argument("--json", action="store_true", help="Print the same measured data as JSON")
+    a.add_argument("--prices", metavar="FILE", help="Optional local price table for a labelled estimate; no default prices")
     a = sub.add_parser("init"); a.add_argument("--name", required=True); a.add_argument("--project", required=True)
     a.add_argument("--lang", choices=["it", "en"], help="Workspace board language (default it)")
     a.add_argument("--temporary", action="store_true", help="Explicit disposable test/demo workspace")
@@ -641,6 +644,21 @@ def main(argv=None):
     a = parser().parse_args(argv)
     store = None
     try:
+        if a.command == "usage":
+            import time
+            import usage
+            store = Store(workspace_path(a.root), read_only=True)
+            events = store.events()
+            state = store.state(events)
+            deadline = time.monotonic() + 30
+            while True:
+                result = usage.collect(events, state)
+                if result['coverage']['status'] != 'collecting' or time.monotonic() >= deadline:
+                    break
+            if a.prices:
+                result['cost'] = usage.estimate(result, usage.read_prices(a.prices))
+            print(json.dumps(result, ensure_ascii=False, indent=2) if a.json else usage.text_report(result))
+            return 0
         if a.command == "forecast":
             from forecast import calculate
             store = Store(workspace_path(a.root), read_only=True)
@@ -715,7 +733,7 @@ def main(argv=None):
                 print(json.dumps({'forecast': calculate(state, events, forecast_task)}, ensure_ascii=False, indent=2))
         return 0
     except (Error, OSError, ValueError, KeyError, RuntimeError) as exc:
-        if store and a.command not in {"census", "board", "forecast"}:
+        if store and a.command not in {"census", "board", "forecast", "usage"}:
             try:
                 diagnostic = {"command": a.command, "error": str(exc), "utc": now()}
                 if isinstance(getattr(a, "task", None), str):
@@ -724,7 +742,7 @@ def main(argv=None):
                 store.project()
             except Exception:
                 pass
-        print("Squadra: " + str(exc), file=sys.stderr)
+        print("Squadra: " + ("usage_unavailable" if a.command == 'usage' else str(exc)), file=sys.stderr)
         return 1
     finally:
         if store:

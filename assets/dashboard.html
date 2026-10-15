@@ -49,20 +49,20 @@ html:root{scroll-behavior:auto}
 .sq-brand{display:flex;align-items:center;gap:10px;padding:4px 6px 14px;min-height:46px}
 .sq-logo{display:grid;place-items:center;width:30px;height:30px;flex:none;border-radius:var(--sq-r-sm);background:var(--sq-accent-solid);color:var(--sq-on-accent);box-shadow:inset 0 0 0 2px var(--sq-highlight)}
 .sq-brand .wordmark{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-:is(#tabs,#plugin-links,#skills-links){display:flex;flex-direction:column;gap:2px}
-:is(#tabs,#plugin-links,#skills-links) button{display:flex;align-items:center;gap:12px;width:100%;min-height:40px;padding:8px 12px;border:0;border-radius:var(--sq-r-md);background:none;color:var(--sq-text);font-weight:500;text-align:left;white-space:nowrap;overflow:hidden}
-:is(#tabs,#plugin-links,#skills-links) button .sq-icon{order:-1;width:18px;height:18px;color:var(--sq-muted)}
-:is(#tabs,#plugin-links,#skills-links) button:hover{background:var(--sq-surface-2)}
-:is(#tabs,#plugin-links,#skills-links) button.active{background:var(--sq-accent-subtle);color:var(--sq-text);box-shadow:inset 3px 0 0 var(--sq-highlight)}
-:is(#tabs,#plugin-links,#skills-links) button.active .sq-icon{color:var(--sq-accent)}
-:is(#tabs,#plugin-links,#skills-links) button:focus-visible,#sidebar-toggle:focus-visible{outline-offset:-2px}
+:is(#tabs,#plugin-links,#skills-links,#usage-links){display:flex;flex-direction:column;gap:2px}
+:is(#tabs,#plugin-links,#skills-links,#usage-links) button{display:flex;align-items:center;gap:12px;width:100%;min-height:40px;padding:8px 12px;border:0;border-radius:var(--sq-r-md);background:none;color:var(--sq-text);font-weight:500;text-align:left;white-space:nowrap;overflow:hidden}
+:is(#tabs,#plugin-links,#skills-links,#usage-links) button .sq-icon{order:-1;width:18px;height:18px;color:var(--sq-muted)}
+:is(#tabs,#plugin-links,#skills-links,#usage-links) button:hover{background:var(--sq-surface-2)}
+:is(#tabs,#plugin-links,#skills-links,#usage-links) button.active{background:var(--sq-accent-subtle);color:var(--sq-text);box-shadow:inset 3px 0 0 var(--sq-highlight)}
+:is(#tabs,#plugin-links,#skills-links,#usage-links) button.active .sq-icon{color:var(--sq-accent)}
+:is(#tabs,#plugin-links,#skills-links,#usage-links) button:focus-visible,#sidebar-toggle:focus-visible{outline-offset:-2px}
 .sq-sidebar-foot{margin-top:auto;padding-top:10px;border-top:1px solid var(--sq-border)}
 #sidebar-toggle{display:flex;align-items:center;gap:12px;width:100%;min-height:40px;padding:8px 12px;border:0;background:none;color:var(--sq-muted);white-space:nowrap;overflow:hidden;text-align:left}
 #sidebar-toggle .sq-icon{width:18px;height:18px}
 .sq-icon-btn{display:none;align-items:center;justify-content:center;width:44px;height:44px;padding:0;border:0;background:none;color:var(--sq-text);border-radius:var(--sq-r-md)}
 .sq-icon-btn .sq-icon{width:20px;height:20px}
 .collapsed .sq-brand .wordmark{display:none}
-.collapsed :is(#tabs,#plugin-links,#skills-links) button,.collapsed #sidebar-toggle{width:48px;padding:8px 15px;gap:40px}
+.collapsed :is(#tabs,#plugin-links,#skills-links,#usage-links) button,.collapsed #sidebar-toggle{width:48px;padding:8px 15px;gap:40px}
 .sq-scrim{position:fixed;inset:0;z-index:25;background:var(--sq-backdrop)}
 .sq-page{display:flex;flex-direction:column;min-width:0}
 .sq-topbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:14px;height:var(--sq-topbar-h);padding:0 28px;background:var(--sq-topbar-bg);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);border-bottom:1px solid var(--sq-border)}
@@ -149,7 +149,7 @@ html:root{scroll-behavior:auto}
 button:focus-visible,select:focus-visible,summary:focus-visible,input:focus-visible{outline:2px solid var(--sq-focus);outline-offset:2px}
 @media (max-width:1279.98px){.sq-seg .sq-label{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}.sq-seg button{padding:3px 8px}}
 @media (max-width:1099.98px){.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.sq-topbar{padding:0 20px;gap:10px}main{padding:22px 20px 32px}.status{max-width:180px}}
-@media (max-width:699.98px){html{--sq-topbar-h:112px}.sq-app,.sq-app.collapsed{grid-template-columns:minmax(0,1fr)}.sq-sidebar{position:fixed;left:0;top:0;bottom:0;width:min(300px,86vw);transform:translateX(-105%);visibility:hidden;box-shadow:var(--sq-shadow-2);transition:transform var(--sq-dur) var(--sq-ease),visibility 0s linear var(--sq-dur)}.drawer-open .sq-sidebar{transform:none;visibility:visible;transition:transform var(--sq-dur) var(--sq-ease)}.sq-icon-btn{display:inline-flex}.sq-sidebar-foot{display:none}.collapsed .sq-brand .wordmark{display:block}.collapsed :is(#tabs,#plugin-links,#skills-links) button{width:100%;padding:8px 12px;gap:12px}.sq-topbar{flex-wrap:wrap;align-content:center;gap:6px 8px;padding:6px 12px}.sq-heading{flex:1 1 0}.sq-search{order:5;flex:1 1 100%}#search{font-size:16px;min-height:40px}.header-side{gap:6px}.status{max-width:44px;padding:5px 10px}.status span:last-child{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}main{padding:16px 12px 28px}.metrics{gap:10px}.metric{padding:14px}.metric strong{font-size:24px;line-height:30px}.sq-head{display:none}.sq-caption{padding:14px 16px 10px}.sq-table>.row{grid-template-columns:minmax(0,1fr);row-gap:6px;padding:14px 16px}.sq-cell[data-label]::before{content:attr(data-label);display:block;font-size:11px;line-height:16px;font-weight:600;color:var(--sq-muted)}.sq-foot,.sq-empty{padding:12px 16px}.sq-brow{grid-template-columns:minmax(80px,40%) minmax(0,1fr) auto}.dec-toolbar label{flex:1 1 100%;min-width:0}.dec-toolbar select{flex:1 1 auto;width:100%;min-width:0}}
+@media (max-width:699.98px){html{--sq-topbar-h:112px}.sq-app,.sq-app.collapsed{grid-template-columns:minmax(0,1fr)}.sq-sidebar{position:fixed;left:0;top:0;bottom:0;width:min(300px,86vw);transform:translateX(-105%);visibility:hidden;box-shadow:var(--sq-shadow-2);transition:transform var(--sq-dur) var(--sq-ease),visibility 0s linear var(--sq-dur)}.drawer-open .sq-sidebar{transform:none;visibility:visible;transition:transform var(--sq-dur) var(--sq-ease)}.sq-icon-btn{display:inline-flex}.sq-sidebar-foot{display:none}.collapsed .sq-brand .wordmark{display:block}.collapsed :is(#tabs,#plugin-links,#skills-links,#usage-links) button{width:100%;padding:8px 12px;gap:12px}.sq-topbar{flex-wrap:wrap;align-content:center;gap:6px 8px;padding:6px 12px}.sq-heading{flex:1 1 0}.sq-search{order:5;flex:1 1 100%}#search{font-size:16px;min-height:40px}.header-side{gap:6px}.status{max-width:44px;padding:5px 10px}.status span:last-child{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}main{padding:16px 12px 28px}.metrics{gap:10px}.metric{padding:14px}.metric strong{font-size:24px;line-height:30px}.sq-head{display:none}.sq-caption{padding:14px 16px 10px}.sq-table>.row{grid-template-columns:minmax(0,1fr);row-gap:6px;padding:14px 16px}.sq-cell[data-label]::before{content:attr(data-label);display:block;font-size:11px;line-height:16px;font-weight:600;color:var(--sq-muted)}.sq-foot,.sq-empty{padding:12px 16px}.sq-brow{grid-template-columns:minmax(80px,40%) minmax(0,1fr) auto}.dec-toolbar label{flex:1 1 100%;min-width:0}.dec-toolbar select{flex:1 1 auto;width:100%;min-width:0}}
 @media (prefers-reduced-motion: reduce){.sq-sidebar,.drawer-open .sq-sidebar,button{transition:none}button:active{transform:none}.sq-chart details[open]>summary .sq-icon,.sq-more details[open]>summary .sq-icon{transition:none}}
 @media (prefers-reduced-transparency: reduce){.sq-topbar{background:var(--sq-bg);-webkit-backdrop-filter:none;backdrop-filter:none}}
 .sq-status{margin:0 0 18px;max-width:60ch;font-size:20px;line-height:28px;font-weight:600;letter-spacing:-.01em}
@@ -316,7 +316,7 @@ dialog.sq-story{inset:0;margin:auto;width:min(820px,calc(100vw - 48px));height:a
 </style>
 </head><body>
 <button id="skip" type="button" class="sq-skip">Vai al contenuto</button>
-<div class="sq-app" id="app"><div class="sq-sidebar" id="sidebar"><div class="sq-brand"><span class="sq-logo" id="logo" aria-hidden="true"></span><span class="wordmark" id="wordmark">squadra</span><button id="sidebar-close" type="button" class="sq-icon-btn" aria-label="Chiudi il menù"></button></div><div id="connected-project" class="sq-project-card"></div><nav id="tabs" aria-label="Viste della dashboard"></nav><section class="sq-plugin-nav" id="skills-nav"><div id="skills-links"></div></section><section id="plugin-nav" class="sq-plugin-nav" aria-labelledby="plugin-label"><h2 id="plugin-label"></h2><div id="plugin-links"></div><div id="plugin-notices"></div></section><div class="sq-sidebar-foot"><button id="sidebar-toggle" type="button" aria-pressed="false"></button></div></div>
+<div class="sq-app" id="app"><div class="sq-sidebar" id="sidebar"><div class="sq-brand"><span class="sq-logo" id="logo" aria-hidden="true"></span><span class="wordmark" id="wordmark">squadra</span><button id="sidebar-close" type="button" class="sq-icon-btn" aria-label="Chiudi il menù"></button></div><div id="connected-project" class="sq-project-card"></div><nav id="tabs" aria-label="Viste della dashboard"></nav><section class="sq-plugin-nav" id="usage-nav"><div id="usage-links"></div></section><section class="sq-plugin-nav" id="skills-nav"><div id="skills-links"></div></section><section id="plugin-nav" class="sq-plugin-nav" aria-labelledby="plugin-label"><h2 id="plugin-label"></h2><div id="plugin-links"></div><div id="plugin-notices"></div></section><div class="sq-sidebar-foot"><button id="sidebar-toggle" type="button" aria-pressed="false"></button></div></div>
 <div class="sq-scrim" id="scrim" hidden></div>
 <div class="sq-page" id="page"><header class="sq-topbar" id="topbar"><button id="menu" type="button" class="sq-icon-btn" aria-controls="sidebar" aria-expanded="false" aria-label="Apri il menù"></button><div class="sq-heading"><h1 id="name">Sala di controllo</h1></div><div class="sq-search"><input id="search" type="search" placeholder="Cerca incarico, finestra, messaggio o skill" aria-label="Cerca nel registro"></div><div class="header-side"><div id="lang" class="lang"></div><div id="theme" class="sq-seg"></div><div id="notify-controls" class="sq-notify-controls"></div><div class="status" id="live"><span class="dot"></span><span>In attesa</span></div></div></header>
 <main id="main" tabindex="-1"><section id="loading" class="sq-loading" role="status" aria-live="polite"><span class="sq-spinner" aria-hidden="true"></span><h2 id="loading-title">Caricamento del progetto…</h2><p id="loading-help">Sto leggendo attività, messaggi e prove.</p><button id="loading-retry" type="button" hidden>Riprova</button></section><section id="connected-hero" class="sq-hero"></section><section id="connected-context" class="sq-context" hidden></section><div id="notice"></div><p id="status" class="sq-status"></p><div id="kpis" class="sq-kpis"></div><div id="content"></div><div id="charts" class="sq-charts"></div><div class="sq-legacy" id="legacy" hidden><button id="legacy-toggle" type="button" class="link" aria-expanded="false" aria-controls="legacy-body"></button><div id="legacy-body" class="sq-legacy-body"><div id="metrics" class="metrics"></div><div id="overview"></div></div></div><details class="sq-registry-details" id="registry-details" hidden><summary id="connected-registry-label">Dettagli del registro</summary><div id="project" class="sub mono">Connessione al registro…</div></details><div class="footer" id="footer">Una consegna non è un ACK. Un test passato non è una review. Una review non autorizza un rilascio.<br>Vista locale in sola lettura, salvo le impostazioni dei plugin e le selezioni salvate · nessuna azione sui client.</div></main></div></div>
@@ -1475,7 +1475,7 @@ function recordedWaiting(){
  for(const w of state.waits||[])p.append(row(tr('page.wait.over',{kind:descriptions[w.kind]||w.kind}),(w.task?taskTitle(w.task):w.id)+' · '+w.seconds+'s / '+w.threshold+'s · '+waitText(w),tr('page.wait.check')));addEmpty(p,view.waiting.length);for(const step of view.next_steps)p.append(row(taskTitle(step.task),stepText(step),step.status));return p;
 }
 function workOverview(){const p=panel(tr('connected.workNow'));headingKey(p.children[0],'work');p.className='panel sq-work';p.append(node('p',tr('connected.workIntro'),'sq-lede'));const all=Object.values(state.tasks).filter(matches),closed=all.filter(t=>!panelOpen(t));for(const t of all.filter(panelOpen))p.append(panelTaskCard(t));if(closed.length){const group=node('details',undefined,'sq-closed');group.open=panelUI.closedOpen;group.ontoggle=()=>{panelUI.closedOpen=group.open;if(group.open)panelClampSoon()};const summary=node('summary',tr('work.closed',{n:closed.length}));focusKey(summary,'work:closed');summary.setAttribute('data-focus-fallback','work');group.append(summary);for(const t of closed)group.append(panelTaskCard(t));p.append(group)}if(!all.length)p.append(node('p',tr('page.empty'),'empty'));const waits=node('details',undefined,'sq-waits');waits.open=panelUI.waitsOpen;waits.ontoggle=()=>{panelUI.waitsOpen=waits.open};const summary=node('summary',tr('work.waits'));focusKey(summary,'work:waits');summary.setAttribute('data-focus-fallback','work');waits.append(summary,recordedWaiting());if(state.presence?.some(a=>a.ping||a.availability==='stand-by'))waits.append(presencePanel());p.append(waits);return p}
-function render(){if(!state)return;const anchor=commsAnchor();if(typeof renderHeaderExtras==='function')renderHeaderExtras();$('name').textContent=state.workspace.name;$('project').textContent=tr('page.project',{project:state.workspace.project,count:state.event_count});$('project').setAttribute('title',$('project').textContent);const tasksList=Object.values(state.tasks),messages=Object.values(state.messages),runs=Object.values(state.runs);const done=tasksList.filter(t=>t.status==='done').length,unread=Object.values(state.progress||{}).filter(p=>p.state?.id==='closed-unread').length;$('metrics').replaceChildren();for(const [label,value,detail,glyph] of [[tr('page.metric.closed'),done+'/'+tasksList.length,unread?tr('page.metric.closedUnread',{count:unread}):tr('page.metric.closedSub'),'check2-all'],[tr('page.metric.identities'),new Set(Object.values(state.agents).map(a=>a.identity)).size,tr('page.metric.identitiesSub',{count:Object.keys(state.agents).length}),'people'],[tr('page.metric.acks'),messages.filter(m=>!m.ack).length,tr('page.metric.acksSub'),'envelope-exclamation'],[tr('page.metric.runs'),runs.filter(r=>['running','cleanup-unknown'].includes(r.status)).length,runs.some(r=>r.status==='cleanup-unknown')?tr('page.metric.runsUnknown'):tr('page.metric.runsPending'),'hourglass-split']]){const c=node('div',undefined,'metric');c.append(node('div',label,'label'),node('strong',value),node('div',detail,'sub'));if(typeof icon==='function')c.append(icon(glyph,'metric-icon'));$('metrics').append(c)}$('notice').replaceChildren();if(state.paused)$('notice').append(node('div',tr('page.paused'),'notice'));const tabs=['Quadro','Finestre','Incarichi','Posta','Comunicazioni','Decisioni','Letture','Prove','Output','Cronologia','Storico'];$('tabs').replaceChildren();tabs.forEach(t=>{const b=node('button',tr('tab.'+t),t===tab?'active':'');if(typeof panelTab==='function')panelTab(b,t);b.onclick=()=>{if(typeof connectedReset==='function')connectedReset();tab=t;if(typeof panelNavigate==='function')panelNavigate();render()};$('tabs').append(b)});if(typeof skillsNav==='function')skillsNav();const content=$('content');content.className=tab==='Quadro'?'sq-home':'';if(tab==='Comunicazioni')comms(content);else{if(tab==='SystemSkills'){skillsRender(content)}else if(tab==='Store'){storeRender(content)}else if(tab==='Letture'){readsRender(content)}else if(typeof pluginSelected==='function'&&pluginSelected()){pluginRender(content)}else{content.replaceChildren();if(tab==='Quadro'){content.append(ownerAttention(),workOverview(),connectedRail());const detail=node('details',undefined,'sq-full-detail');detail.append(node('summary',tr('page.detail')));const grid=node('div',undefined,'grid');const left=node('div'),right=node('div');left.append(recordedWaiting(),tasks('quadro-tasks'),outputs());const reserve=panel(tr('page.reserve.title'));for(const r of Object.values(state.resources))reserve.append(row(r.name,r.owner+' · '+r.reason,tr('page.reserved')));for(const d of state.decisions.slice(-5))reserve.append(row(d.actor,d.reason));addEmpty(reserve,Object.keys(state.resources).length+state.decisions.length);right.append(reserve,mail('quadro-mail'));grid.append(left,right);detail.append(grid);content.append(detail)}else content.append(({Finestre:team,Incarichi:tasks,Posta:mail,Prove:evidence,Output:outputs,Cronologia:timeline,Storico:legacyView,Decisioni:decisionsView})[tab]())}}commsRestore(anchor)}
+function render(){if(!state)return;const anchor=commsAnchor();if(typeof renderHeaderExtras==='function')renderHeaderExtras();$('name').textContent=state.workspace.name;$('project').textContent=tr('page.project',{project:state.workspace.project,count:state.event_count});$('project').setAttribute('title',$('project').textContent);const tasksList=Object.values(state.tasks),messages=Object.values(state.messages),runs=Object.values(state.runs);const done=tasksList.filter(t=>t.status==='done').length,unread=Object.values(state.progress||{}).filter(p=>p.state?.id==='closed-unread').length;$('metrics').replaceChildren();for(const [label,value,detail,glyph] of [[tr('page.metric.closed'),done+'/'+tasksList.length,unread?tr('page.metric.closedUnread',{count:unread}):tr('page.metric.closedSub'),'check2-all'],[tr('page.metric.identities'),new Set(Object.values(state.agents).map(a=>a.identity)).size,tr('page.metric.identitiesSub',{count:Object.keys(state.agents).length}),'people'],[tr('page.metric.acks'),messages.filter(m=>!m.ack).length,tr('page.metric.acksSub'),'envelope-exclamation'],[tr('page.metric.runs'),runs.filter(r=>['running','cleanup-unknown'].includes(r.status)).length,runs.some(r=>r.status==='cleanup-unknown')?tr('page.metric.runsUnknown'):tr('page.metric.runsPending'),'hourglass-split']]){const c=node('div',undefined,'metric');c.append(node('div',label,'label'),node('strong',value),node('div',detail,'sub'));if(typeof icon==='function')c.append(icon(glyph,'metric-icon'));$('metrics').append(c)}$('notice').replaceChildren();if(state.paused)$('notice').append(node('div',tr('page.paused'),'notice'));const tabs=['Quadro','Finestre','Incarichi','Posta','Comunicazioni','Decisioni','Letture','Prove','Output','Cronologia','Storico'];$('tabs').replaceChildren();tabs.forEach(t=>{const b=node('button',tr('tab.'+t),t===tab?'active':'');if(typeof panelTab==='function')panelTab(b,t);b.onclick=()=>{if(typeof connectedReset==='function')connectedReset();tab=t;if(typeof panelNavigate==='function')panelNavigate();render()};$('tabs').append(b)});if(typeof skillsNav==='function')skillsNav();if(typeof usageNav==='function')usageNav();const content=$('content');content.className=tab==='Quadro'?'sq-home':'';if(tab==='Comunicazioni')comms(content);else{if(tab==='Usage'){usageRender(content)}else if(tab==='SystemSkills'){skillsRender(content)}else if(tab==='Store'){storeRender(content)}else if(tab==='Letture'){readsRender(content)}else if(typeof pluginSelected==='function'&&pluginSelected()){pluginRender(content)}else{content.replaceChildren();if(tab==='Quadro'){content.append(ownerAttention(),workOverview(),connectedRail());const detail=node('details',undefined,'sq-full-detail');detail.append(node('summary',tr('page.detail')));const grid=node('div',undefined,'grid');const left=node('div'),right=node('div');left.append(recordedWaiting(),tasks('quadro-tasks'),outputs());const reserve=panel(tr('page.reserve.title'));for(const r of Object.values(state.resources))reserve.append(row(r.name,r.owner+' · '+r.reason,tr('page.reserved')));for(const d of state.decisions.slice(-5))reserve.append(row(d.actor,d.reason));addEmpty(reserve,Object.keys(state.resources).length+state.decisions.length);right.append(reserve,mail('quadro-mail'));grid.append(left,right);detail.append(grid);content.append(detail)}else content.append(({Finestre:team,Incarichi:tasks,Posta:mail,Prove:evidence,Output:outputs,Cronologia:timeline,Storico:legacyView,Decisioni:decisionsView})[tab]())}}commsRestore(anchor)}
 const loadUI={running:false,timer:null,error:null,query:'',searchAgain:false};
 function loadingLabels(){
  const failed=!!loadUI.error;
@@ -1509,6 +1509,7 @@ async function refresh(){
   if(typeof pluginActionReads!=='undefined')pluginActionReads.set(state,actionClock);
   if(typeof notifyPoll==='function')notifyPoll(state);
   render();
+  if(tab==='Usage'&&typeof usageFetch==='function')await usageFetch();
   $('live').className='status';$('live').setAttribute('aria-label',tr('page.live.connected',{time:new Date().toLocaleTimeString(uiLocale())}));
   $('live').replaceChildren(node('span',undefined,'dot'),node('span',tr('page.live.connected',{time:new Date().toLocaleTimeString(uiLocale())})));
  }catch(e){
@@ -2586,6 +2587,86 @@ panelStatic();
 'use strict';
 // View selections belong to the reader and never change registry data.
 Object.assign(I18N,{
+ "usage.title":{"it":"Consumi","en":"Usage"},
+ "tab.Usage":{"it":"Consumi","en":"Usage"},
+ "usage.intro":{"it":"I token misurati nelle finestre di questo progetto, suddivisi per modello e lavoro. I token sono unità di testo elaborate dal modello; non sono un addebito.","en":"Measured tokens in this project’s windows, by model and task. Tokens are units of text processed by a model; they are not a charge."},
+ "usage.loading":{"it":"Raccolta dei contatori locali…","en":"Collecting local counters…"},
+ "usage.refreshing":{"it":"Aggiornamento dei contatori…","en":"Refreshing counters…"},
+ "usage.error":{"it":"Non è possibile leggere i consumi. I dati precedenti, se presenti, sono conservati.","en":"Usage could not be read. Previous data, if any, is retained."},
+ "usage.retry":{"it":"Riprova","en":"Retry"},
+ "usage.refresh":{"it":"Aggiorna consumi","en":"Refresh usage"},
+ "usage.historical":{"it":"Osservazione passata, non quota attuale","en":"Past observation, not current quota"},
+ "usage.measured":{"it":"Misurato","en":"Measured"},
+ "usage.partial":{"it":"Parziale","en":"Partial"},
+ "usage.not_measured":{"it":"Non misurato","en":"Not measured"},
+ "usage.collecting":{"it":"Raccolta in corso: i totali comprendono solo la parte già letta.","en":"Collection in progress: totals include only the portion already read."},
+ "usage.limited":{"it":"Copertura incompleta: alcune fonti o intervalli non sono misurabili.","en":"Incomplete coverage: some sources or intervals cannot be measured."},
+ "usage.coverage":{"it":"Fonti misurate: {measured} su {sources}.","en":"Measured sources: {measured} of {sources}."},
+ "usage.observed":{"it":"Osservato alle {time}","en":"Observed at {time}"},
+ "usage.total":{"it":"Token misurati","en":"Measured tokens"},
+ "usage.windows":{"it":"Finestre misurate","en":"Measured windows"},
+ "usage.models":{"it":"Modelli osservati","en":"Observed models"},
+ "usage.daily":{"it":"Token per giorno","en":"Tokens per day"},
+ "usage.dailyNote":{"it":"Giorni UTC. I quattro tipi sono separati: il ragionamento è già incluso nell’output.","en":"UTC days. The four kinds are disjoint: reasoning is already included in output."},
+ "usage.byWindow":{"it":"Consumi per finestra","en":"Usage by window"},
+ "usage.byModel":{"it":"Consumi per modello","en":"Usage by model"},
+ "usage.byTask":{"it":"Lavori con più token","en":"Tasks using the most tokens"},
+ "usage.taskNote":{"it":"Attribuzione per intervalli di lavoro registrati. In caso di sovrapposizione, i token sono divisi in parti uguali tra gli incarichi e segnati come stima. Non dimostra quale lavoro abbia usato ogni token.","en":"Attribution follows recorded work intervals. Overlapping tasks receive equal shares, marked as estimates. This does not prove which task used each token."},
+ "usage.quota":{"it":"Quota Codex osservata nel tempo","en":"Observed Codex quota over time"},
+ "usage.quotaNote":{"it":"Ogni linea rappresenta una finestra e una quota del provider. I punti passati sono osservazioni storiche, non la quota attuale. Più finestre possono condividere lo stesso account: le percentuali non si sommano e non sono quote per modello.","en":"Each line represents one window and provider quota. Past points are historical observations, not the current quota. Several windows may share an account: percentages are not added and are not per-model allowances."},
+ "usage.input":{"it":"Input non in cache","en":"Uncached input"},
+ "usage.cache_read":{"it":"Cache letta","en":"Cache read"},
+ "usage.cache_creation":{"it":"Cache creata","en":"Cache creation"},
+ "usage.output":{"it":"Output","en":"Output"},
+ "usage.reasoning":{"it":"Ragionamento (già nell’output)","en":"Reasoning (already in output)"},
+ "usage.tokens":{"it":"Token","en":"Tokens"},
+ "usage.day":{"it":"Giorno UTC","en":"UTC day"},
+ "usage.window":{"it":"Finestra","en":"Window"},
+ "usage.model":{"it":"Modello","en":"Model"},
+ "usage.task":{"it":"Incarico","en":"Task"},
+ "usage.status":{"it":"Copertura","en":"Coverage"},
+ "usage.estimated":{"it":"Attribuzione stimata","en":"Estimated attribution"},
+ "usage.unknownModel":{"it":"Modello non identificato","en":"Unidentified model"},
+ "usage.unassigned":{"it":"Non attribuito a un incarico","en":"Not attributed to a task"},
+ "usage.noRows":{"it":"Nessuna osservazione disponibile. Questo non significa consumo zero.","en":"No observations available. This does not mean zero usage."},
+ "usage.chartSummary":{"it":"{measured} valori misurati; {unknown} non disponibili.","en":"{measured} measured values; {unknown} unavailable."},
+ "usage.table":{"it":"Mostra tutti i dati","en":"Show all data"},
+ "usage.chartLimit":{"it":"Grafico: prime {n} righe; la tabella contiene tutti i dati.","en":"Chart: first {n} rows; the table contains all data."},
+ "usage.time":{"it":"Osservazione","en":"Observation"},
+ "usage.percent":{"it":"Quota usata (%)","en":"Quota used (%)"},
+ "usage.slot":{"it":"Quota del provider","en":"Provider quota"},
+ "usage.windowMinutes":{"it":"Intervallo (min)","en":"Window (min)"},
+ "usage.reset":{"it":"Ripristino","en":"Reset"},
+ "usage.primary":{"it":"Principale","en":"Primary"},
+ "usage.secondary":{"it":"Secondaria","en":"Secondary"},
+ "usage.advice":{"it":"Suggerimenti per modello","en":"Suggestions by model"},
+ "usage.adviceNote":{"it":"Indicazioni basate sui contatori, da valutare. Non cambiano i modelli né promettono risparmi.","en":"Counter-based suggestions for you to assess. They do not change models or promise savings."},
+ "usage.noAdvice":{"it":"Non ci sono dati sufficienti per un suggerimento misurato.","en":"There is not enough evidence for a measured suggestion."},
+ "usage.adviceCache":{"it":"Su {total} token, {share}% proviene dalla cache letta. Mantieni il contesto utile riutilizzabile.","en":"Of {total} tokens, {share}% comes from cache reads. Keep useful context reusable."},
+ "usage.adviceOutput":{"it":"Su {total} token, {share}% è output. Valuta consegne più piccole quando sono sufficienti.","en":"Of {total} tokens, {share}% is output. Consider smaller deliverables when they are sufficient."},
+ "usage.adviceQuota":{"it":"Quota dell’account osservata qui: {percent}% nell’intervallo di {minutes} minuti. Pianifica il lavoro prima del ripristino.","en":"Account quota observed here: {percent}% over a {minutes}-minute window. Plan work before the reset."},
+ "usage.suggestion":{"it":"Suggerimento","en":"Suggestion"},
+ "usage.prices":{"it":"Stima con i tuoi prezzi","en":"Estimate with your prices"},
+ "usage.priceNote":{"it":"Facoltativo. Inserisci prezzi per un milione di token; restano in questo browser e non vengono inviati al server. Nessun prezzo è preimpostato. La quota dell’abbonamento non è una fattura.","en":"Optional. Enter prices per million tokens; they stay in this browser and are not sent to the server. No price is preset. Subscription quota is not an invoice."},
+ "usage.currency":{"it":"Valuta (codice di tre lettere)","en":"Currency (three-letter code)"},
+ "usage.rate":{"it":"{kind}, per un milione","en":"{kind}, per million"},
+ "usage.savePrices":{"it":"Salva prezzi nel browser","en":"Save prices in this browser"},
+ "usage.clearPrices":{"it":"Rimuovi prezzi","en":"Remove prices"},
+ "usage.saved":{"it":"Prezzi salvati in questo browser.","en":"Prices saved in this browser."},
+ "usage.storageFailed":{"it":"Il browser non consente il salvataggio. I prezzi non sono stati conservati.","en":"The browser does not allow saving. Prices were not retained."},
+ "usage.priceInvalid":{"it":"Usa una valuta di tre lettere e prezzi numerici non negativi; lascia vuoti quelli non disponibili.","en":"Use a three-letter currency and nonnegative numeric prices; leave unavailable prices blank."},
+ "usage.noPrice":{"it":"Stima disattivata: aggiungi i tuoi prezzi per calcolarla.","en":"Estimate disabled: add your prices to calculate it."},
+ "usage.estimate":{"it":"Stima: {amount} {currency}","en":"Estimate: {amount} {currency}"},
+ "usage.partialEstimate":{"it":"Stima parziale: {amount} {currency}","en":"Partial estimate: {amount} {currency}"},
+ "usage.noEstimate":{"it":"Stima non disponibile con questi prezzi e dati.","en":"Estimate unavailable with these prices and data."},
+ "usage.excluded":{"it":"Modelli esclusi dalla stima: {n}.","en":"Models excluded from the estimate: {n}."},
+ "usage.missing_rate":{"it":"Prezzo mancante","en":"Missing rate"},
+ "usage.missing_tokens":{"it":"Contatori incompleti","en":"Incomplete counters"},
+ "usage.unknown_model":{"it":"Modello sconosciuto","en":"Unknown model"},
+ "usage.reason":{"it":"Dati non disponibili o incompleti","en":"Data unavailable or incomplete"},
+ "usage.partialTime":{"it":"Intervallo temporale incompleto","en":"Incomplete time interval"},
+ "usage.details":{"it":"Dettagli della copertura","en":"Coverage details"},
+ "usage.privacy":{"it":"Solo contatori e metadati tecnici: nessun testo delle conversazioni viene conservato o mostrato.","en":"Only counters and technical metadata: no conversation text is retained or displayed."},
  'tab.SystemSkills':{it:'Skill di sistema',en:'System skills'},
  'skills.intro':{it:'Le istruzioni che aiutano gli agenti a imparare dagli errori, pianificare e semplificare. Si attivano quando servono; qui puoi vedere cosa fanno e le attività registrate.',en:'Instructions that help agents learn from mistakes, plan and simplify. They activate when needed; see what they do and their recorded activity here.'},
  'skills.search':{it:'Cerca una skill · /',en:'Search skills · /'},'skills.all':{it:'Sempre',en:'All time'},'skills.day':{it:'Ultime 24 ore',en:'Last 24 h'},'skills.period':{it:'Periodo delle attivazioni',en:'Activation period'},
@@ -2864,7 +2945,7 @@ function pluginSelected(){return tab==='Plugin'}
 function pluginCatalog(){return state?.plugins||{plugins:[],refused:[]}}
 function pluginManifest(){return (pluginCatalog().plugins||[]).find(p=>p.name===pluginView.selected)}
 function pluginLocal(value){return value?.[UI_LANG]||''}
-function activeNavigation(){return [...($('tabs')?.children||[]),...($('plugin-links')?.children||[]),...($('skills-links')?.children||[])].find(b=>b.className==='active')}
+function activeNavigation(){return [...($('tabs')?.children||[]),...($('plugin-links')?.children||[]),...($('skills-links')?.children||[]),...($('usage-links')?.children||[])].find(b=>b.className==='active')}
 function pluginText(tag,text,cls){const e=document.createElement(tag);e.textContent=text;if(cls)e.className=cls;return e}
 function pluginLogo(manifest,size){
  const src=manifest?.icon;
@@ -3765,6 +3846,184 @@ function skillsRender(content){
  if(skillsUI.attempt!==state&&!skillsUI.running)skillsFetch();
 }
 if(typeof document.addEventListener==='function')document.addEventListener('keydown',event=>{const active=document.activeElement,tag=(active?.tagName||active?.tag||'').toLowerCase();if(tab==='SystemSkills'&&event.key==='/'&&!['input','textarea','select'].includes(tag)&&active?.getAttribute?.('contenteditable')!=='true'){event.preventDefault?.();skillsUI.search?.focus()}});
+</script>
+
+<style id="squadra-usage-style">
+.sq-usage{max-width:1240px;margin:0 auto;min-width:0;padding-bottom:32px}.sq-usage h2{font:500 32px/1.2 var(--sq-display);margin:0 0 12px}.sq-usage-intro{max-width:850px;line-height:1.65;color:var(--muted)}.sq-usage-toolbar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:20px 0}.sq-usage-toolbar p{flex:1;min-width:180px;margin:0}.sq-usage-status{padding:12px 16px;border:1px solid var(--line);border-radius:10px;margin:16px 0;line-height:1.6}.sq-usage-status.warn{border-color:var(--orange)}.sq-usage-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin:24px 0}.sq-usage-stat{padding:20px;border:1px solid var(--line);border-radius:16px;background:var(--panel)}.sq-usage-stat strong{display:block;font-size:28px;font-weight:600;margin-top:9px;font-variant-numeric:tabular-nums}.sq-usage-stat span{color:var(--muted);font-size:13px}.sq-usage-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}.sq-usage-chart{min-width:0;overflow:hidden}.sq-usage-chart.wide{grid-column:1/-1}.sq-usage-chart h3{font-size:18px;margin:0 0 8px}.sq-usage-chart .sq-usage-note{line-height:1.6;font-size:13px;color:var(--muted);margin:8px 0 18px}.sq-usage-chart svg{display:block;width:100%;height:auto;max-height:420px}.sq-usage-chart svg text{fill:var(--text);font:12px var(--sq-font)}.sq-usage-chart .usage-k0{fill:var(--sq-accent);background:var(--sq-accent)}.sq-usage-chart .usage-k1{fill:var(--sq-chart-good);background:var(--sq-chart-good)}.sq-usage-chart .usage-k2{fill:var(--standby);background:var(--standby)}.sq-usage-chart .usage-k3{fill:var(--sq-chart-done);background:var(--sq-chart-done)}.sq-usage-legend{display:flex;flex-wrap:wrap;gap:8px 16px;margin:14px 0;font-size:12px}.sq-usage-legend span{display:inline-flex;align-items:center;gap:6px}.sq-usage-legend i{display:inline-block;width:10px;height:10px;border-radius:2px}.sq-usage-chart details{margin-top:16px}.sq-usage-chart summary,.sq-usage-prices>summary{cursor:pointer;font-weight:600;line-height:1.5}.sq-usage-table{overflow:auto;max-height:460px;max-width:100%;margin-top:12px}.sq-usage-table table{width:100%;font-size:12px;font-variant-numeric:tabular-nums}.sq-usage-table th,.sq-usage-table td{padding:10px 8px;overflow-wrap:anywhere;min-width:68px}.sq-usage-table th:first-child,.sq-usage-table td:first-child{min-width:105px}.sq-usage-advice,.sq-usage-prices{margin-top:24px;padding:24px;border:1px solid var(--line);border-radius:16px;background:var(--panel)}.sq-usage-advice h3{margin:0}.sq-usage-advice article{border-top:1px solid var(--line);padding-top:16px;margin-top:16px;line-height:1.6}.sq-usage-advice article h4{margin:0 0 7px}.sq-usage-prices label{display:flex;flex-direction:column;gap:7px;min-width:0;font-size:12px}.sq-usage-prices input{box-sizing:border-box;width:100%;max-width:100%;min-width:0;min-height:42px}.sq-usage-price-row{display:grid;grid-template-columns:minmax(120px,1.5fr) repeat(4,minmax(90px,1fr));gap:12px;align-items:end;margin:18px 0;padding:16px 0;border-top:1px solid var(--line)}.sq-usage-price-row strong{overflow-wrap:anywhere;align-self:center}.sq-usage-currency{max-width:220px}.sq-usage-price-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}.sq-usage-price-result{margin:20px 0 0;padding:16px;background:var(--sq-surface-2);border-radius:10px;line-height:1.6}.sq-usage-price-result strong{font-size:20px}.sq-usage button,.sq-usage summary{min-height:40px}.sq-usage [data-focus-key]:focus-visible{outline:2px solid var(--sq-accent);outline-offset:3px}.sq-usage svg .quota-line{stroke:var(--sq-accent);fill:none;stroke-width:2}.sq-usage .sq-usage-muted{color:var(--muted);font-size:12px;line-height:1.6}.sq-usage [hidden]{display:none}
+@media(max-width:700px){.sq-usage h2{font-size:27px}.sq-usage-grid{grid-template-columns:minmax(0,1fr)}.sq-usage-cards{grid-template-columns:minmax(0,1fr);gap:10px}.sq-usage-stat{padding:14px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px}.sq-usage-stat strong{font-size:23px;margin:0}.sq-usage-advice,.sq-usage-prices{padding:18px}.sq-usage-price-row{grid-template-columns:repeat(2,minmax(0,1fr))}.sq-usage-price-row strong{grid-column:1/-1}.sq-usage-chart svg{min-height:140px}.sq-usage-table table{font-size:11px}}
+</style>
+<script id="squadra-usage">
+'use strict';
+const usageKinds=['input','cache_read','cache_creation','output'];
+const usageSettingsKey='squadra.usage.settings.v1';
+const usageUI={data:null,error:false,flight:null,attempt:null,signature:null,element:null,controls:[],open:new Set(),draft:null,priceNotice:null};
+const usageNumber=n=>typeof n==='number'&&Number.isFinite(n)&&n>=0;
+const usageCount=n=>usageNumber(n)?n.toLocaleString(uiLocale()):tr('usage.not_measured');
+const usageModel=m=>m||tr('usage.unknownModel');
+function usageStatus(row){if(['stale','expired'].includes(row?.status))return tr('usage.historical');return tr('usage.'+(['measured','partial'].includes(row?.status)?row.status:'not_measured'))+(row?.estimated?' · '+tr('usage.estimated'):'')+(row?.partial_hour?' · '+tr('usage.partialTime'):'')}
+function usageReadSettings(){
+ try{const value=JSON.parse(localStorage.getItem(usageSettingsKey)||'null');if(value&&value.schema===1&&!Array.isArray(value))return value}catch(e){}
+ return {schema:1,prices:null,balance:{}};
+}
+function usageValidatePrices(prices){
+ if(prices===null||prices===undefined)return null;
+ const invalid=()=>{throw Error('price_table_invalid')};
+ if(typeof prices!=='object'||Array.isArray(prices)||typeof prices.currency!=='string'||!/^[A-Z]{3}$/.test(prices.currency)||!prices.models||typeof prices.models!=='object'||Array.isArray(prices.models))invalid();
+ if(Object.keys(prices).some(k=>!['currency','models'].includes(k))||Object.keys(prices.models).length>100)invalid();
+ const models=Object.create(null);
+ for(const [model,rates] of Object.entries(prices.models)){
+  if(!/^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$/.test(model)||!rates||typeof rates!=='object'||Array.isArray(rates)||Object.keys(rates).some(k=>!usageKinds.includes(k)))invalid();
+  const own=Object.create(null);for(const kind of usageKinds)if(Object.hasOwn(rates,kind)){if(!usageNumber(rates[kind]))invalid();own[kind]=rates[kind]}models[model]=own;
+ }
+ return {currency:prices.currency,models};
+}
+function usageWritePrices(prices){
+ const normalized=usageValidatePrices(prices),settings=usageReadSettings();
+ try{localStorage.setItem(usageSettingsKey,JSON.stringify({...settings,schema:1,prices:normalized}));return true}catch(e){return false}
+}
+function usageEstimate(data,prices){
+ const table=usageValidatePrices(prices);if(!table||!Object.keys(table.models).length)return null;
+ const models=[],excluded=[];let amount=0,known=0,partial=data?.status!=='measured';
+ for(const row of data?.models||[]){
+  const model=row.model,rates=Object.hasOwn(table.models,model)?table.models[model]:null;let reason=null,value=0;
+  if(!model)reason='unknown_model';else if(!row.totals||usageKinds.some(k=>!usageNumber(row.totals[k])))reason='missing_tokens';
+  else if(!rates||usageKinds.some(k=>row.totals[k]>0&&!usageNumber(rates[k])))reason='missing_rate';
+  if(reason){excluded.push({model,reason});models.push({model,amount:null,status:'not_measured'});continue}
+  for(const kind of usageKinds)value+=row.totals[kind]*(rates[kind]||0)/1000000;
+  if(!Number.isFinite(value))throw Error('price_table_invalid');
+  amount+=value;known++;partial=partial||row.status!=='measured';models.push({model,amount:value,status:row.status==='measured'?'estimated':'partial'});
+ }
+ if(!Number.isFinite(amount))throw Error('price_table_invalid');
+ return {currency:table.currency,amount:known?amount:null,status:known?(partial||excluded.length?'partial':'estimated'):'not_measured',excluded,models};
+}
+function usageNav(){
+ const links=$('usage-links');if(!links)return;$('usage-nav').setAttribute('aria-label',tr('usage.title'));
+ const b=node('button',tr('usage.title'),tab==='Usage'?'active':'');panelTab(b,'Usage');b.onclick=()=>{connectedReset();tab='Usage';usageUI.attempt=null;panelNavigate();render()};links.replaceChildren(b);
+}
+function usageControl(el,key){focusKey(el,'usage:'+key);el.setAttribute('data-focus-fallback','nav:Usage');usageUI.controls.push(el);return el}
+function usageButton(label,key,action){const b=usageControl(node('button',label),key);b.setAttribute('type','button');b.onclick=action;return b}
+function usagePayload(value){
+ const pick=(row,keys)=>Object.fromEntries(keys.filter(k=>Object.hasOwn(row||{},k)).map(k=>[k,row[k]]));
+ const totals=row=>row?pick(row,[...usageKinds,'reasoning','total']):null;
+ const quota=row=>pick(row,['identity','model','observed_at','limit','used_percent','window_minutes','resets_at','plan_type','status']);
+ const count=row=>({...pick(row,['identity','actors','client','model','task','day','status','estimated','partial_hour']),totals:totals(row.totals),reasons:(row.reasons||[]).filter(r=>typeof r==='string'&&/^[a-z][a-z0-9_]{0,60}$/.test(r))});
+ return {schema:1,observed_at:value.observed_at,status:value.status,coverage:pick(value.coverage,['status','sources','measured']),
+  windows:value.windows.map(w=>({...count(w),quota:(w.quota||[]).map(quota)})),models:value.models.map(count),tasks:value.tasks.map(count),days:value.days.map(count),quota_history:value.quota_history.map(quota),
+  suggestions:(value.suggestions||[]).map(s=>({...pick(s,['id','model','window','message_key']),vars:Object.fromEntries(Object.entries(s.vars||{}).filter(([k,v])=>['total','share','percent','minutes'].includes(k)&&usageNumber(v)))})),cost:null};
+}
+function usageFetch(){
+ if(tab!=='Usage'||document.hidden===true)return Promise.resolve();
+ if(usageUI.flight)return usageUI.flight;
+ if(usageUI.attempt===state)return Promise.resolve();
+ usageUI.attempt=state;usageUI.error=false;
+ usageUI.flight=(async()=>{
+  try{const value=await(await api('/api/usage')).json();if(value?.schema!==1||!Array.isArray(value.windows)||!Array.isArray(value.models)||!Array.isArray(value.days)||!Array.isArray(value.tasks)||!Array.isArray(value.quota_history))throw Error('usage_response_invalid');usageUI.data=usagePayload(value)}
+  catch(e){usageUI.error=true}
+  finally{usageUI.flight=null;if(tab==='Usage')render()}
+ })();return usageUI.flight;
+}
+function usageRetry(){usageUI.attempt=null;usageFetch();render()}
+function usageTable(headers,rows,key){
+ const wrap=usageControl(node('div',undefined,'sq-usage-table'),'table:'+key);wrap.setAttribute('role','region');wrap.setAttribute('aria-label',tr('usage.'+key));wrap.setAttribute('tabindex','0');
+ const table=node('table'),head=node('tr');headers.forEach(label=>{const th=node('th',label);th.setAttribute('scope','col');head.append(th)});table.append(head);
+ for(const values of rows){const trr=node('tr');values.forEach((value,i)=>{const cell=node(i?'td':'th',String(value));if(!i)cell.setAttribute('scope','row');trr.append(cell)});table.append(trr)}wrap.append(table);return wrap;
+}
+function usageDetail(key,title,body){
+ const details=node('details');details.open=usageUI.open.has(key);details.ontoggle=()=>{if(details.open)usageUI.open.add(key);else usageUI.open.delete(key)};
+ details.append(usageControl(node('summary',title),'details:'+key),body);return details;
+}
+function usageBarPlot(rows,stacked,summary){
+ const shown=rows.slice(0,24),height=Math.max(80,shown.length*34+10),svg=svgEl('svg',{viewBox:'0 0 560 '+height,role:'img','aria-label':summary});
+ const max=Math.max(1,...shown.map(r=>usageNumber(r.value)?r.value:0));
+ shown.forEach((r,i)=>{const y=12+i*34,label=svgEl('text',{x:0,y:y+11});label.textContent=Array.from(r.label).slice(0,23).join('');svg.append(label);
+  if(usageNumber(r.value)){let x=180;const values=stacked?usageKinds.map(k=>r.totals?.[k]):[r.value];values.forEach((value,j)=>{if(!usageNumber(value))return;const width=value/max*250,bar=svgEl('rect',{x,y,width,height:17,rx:2,class:'usage-k'+j});const title=svgEl('title');title.textContent=r.label+' · '+(stacked?tr('usage.'+usageKinds[j])+': ':'')+usageCount(value);bar.append(title);svg.append(bar);x+=width})}
+  const value=svgEl('text',{x:440,y:y+12});value.textContent=usageNumber(r.value)?usageCount(r.value):'—';svg.append(value);
+ });return svg;
+}
+function usageWindowLabel(row){
+ const actor=(row?.actors||[]).find(a=>state.agents?.[a]);return actor?panelWho(actor):row?.client?({codex:'Codex',claude:'Claude',cursor:'Cursor'}[row.client]||tr('usage.window')):tr('usage.window');
+}
+function usageIdentityLabel(identity){return usageWindowLabel(usageUI.data?.windows.find(w=>w.identity===identity))}
+function usageChart(key,rows,{stacked=false,note=null,headers=null,tableRows=null,plot=null,wide=false}={}){
+ const card=node('section',undefined,'panel sq-chart sq-usage-chart'+(wide?' wide':''));card.setAttribute('data-usage-chart',key);
+ const heading=usageControl(node('h3',tr('usage.'+key)),'chart:'+key);heading.setAttribute('tabindex','-1');card.append(heading);
+ if(note)card.append(node('p',tr(note),'sq-usage-note'));
+ const measured=rows.filter(r=>usageNumber(r.value)).length,summary=tr('usage.chartSummary',{measured,unknown:rows.length-measured});
+ if(rows.length)card.append(plot||usageBarPlot(rows,stacked,summary));else card.append(node('p',tr('usage.noRows'),'empty'));
+ if(key==='quota'&&rows.length){const legend=node('div',undefined,'sq-usage-legend'),groups=[...new Map(rows.map(r=>[JSON.stringify([r.identity,r.limit]),r])).values()];groups.forEach((r,i)=>{const label=node('span');label.append(node('i',undefined,'usage-k'+i%4),node('span',r.label+' · '+tr(['primary','secondary'].includes(r.limit)?'usage.'+r.limit:'usage.slot')));legend.append(label)});card.append(legend)}
+ if(stacked){const legend=node('div',undefined,'sq-usage-legend');usageKinds.forEach((k,i)=>{const label=node('span');label.append(node('i',undefined,'usage-k'+i),node('span',tr('usage.'+k)));legend.append(label)});card.append(legend)}
+ card.append(node('p',summary,'sq-usage-muted'));if(rows.length>24&&!plot)card.append(node('p',tr('usage.chartLimit',{n:24}),'sq-usage-muted'));
+ const columns=headers||[tr('usage.'+({byWindow:'window',byModel:'model',byTask:'task',daily:'day'}[key]||'time')),tr('usage.tokens'),tr('usage.status')];
+ card.append(usageDetail('chart:'+key,tr('usage.table'),usageTable(columns,tableRows||rows.map(r=>[r.label,usageCount(r.value),usageStatus(r)]),key)));return card;
+}
+function usageQuotaPlot(rows){
+ const summary=tr('usage.chartSummary',{measured:rows.filter(r=>usageNumber(r.value)).length,unknown:rows.filter(r=>!usageNumber(r.value)).length}),svg=svgEl('svg',{viewBox:'0 0 560 210',role:'img','aria-label':summary});
+ for(const pct of [0,50,100]){const y=175-pct*1.45,line=svgEl('path',{d:'M35 '+y+'H540',stroke:'var(--line)',fill:'none'}),label=svgEl('text',{x:0,y:y+4});label.textContent=pct+'%';svg.append(line,label)}
+ const times=rows.map(r=>Date.parse(r.observed_at)).filter(Number.isFinite),min=times.length?Math.min(...times):0,max=times.length?Math.max(...times):1,groups=new Map();
+ for(const row of rows){const key=JSON.stringify([row.identity,row.limit]);if(!groups.has(key))groups.set(key,[]);groups.get(key).push(row)}
+ let index=0;for(const points of groups.values()){
+  let path='',segment=false;for(const p of points.slice().sort((a,b)=>Date.parse(a.observed_at)-Date.parse(b.observed_at))){if(!usageNumber(p.value)||!Number.isFinite(Date.parse(p.observed_at))){segment=false;continue}const x=35+(Date.parse(p.observed_at)-min)/Math.max(1,max-min)*505,y=175-p.value*1.45;path+=(segment?' L':' M')+x.toFixed(2)+' '+y.toFixed(2);segment=true;const dot=svgEl('rect',{x:x-2,y:y-2,width:4,height:4,class:'usage-k'+index%4});svg.append(dot)}
+  if(path)svg.append(svgEl('path',{d:path,fill:'none',stroke:['var(--sq-accent)','var(--sq-chart-good)','var(--standby)','var(--sq-chart-done)'][index%4],'stroke-width':2,'stroke-dasharray':index%2?'5 3':'none'}));index++;
+ }
+ if(times.length){for(const [t,x,anchor] of [[min,35,'start'],[max,540,'end']]){const label=svgEl('text',{x,y:202,'text-anchor':anchor});label.textContent=new Date(t).toISOString().slice(5,16).replace('T',' ')+' UTC';svg.append(label)}}return svg;
+}
+function usageAdvisory(data){
+ const section=node('section',undefined,'sq-usage-advice');section.append(node('h3',tr('usage.advice')),node('p',tr('usage.adviceNote'),'sq-usage-muted'));let count=0;
+ for(const suggestion of data.suggestions||[]){
+  const keys={cache:'usage.adviceCache',output:'usage.adviceOutput',quota:'usage.adviceQuota'},key=keys[suggestion.id];if(!key||key!==suggestion.message_key)continue;
+  const names=suggestion.id==='quota'?['percent','minutes']:['total','share'];if(names.some(k=>!usageNumber(suggestion.vars?.[k])))continue;
+  const model=data.models.find(m=>m.model===suggestion.model),q=suggestion.id==='quota'?data.windows.find(w=>w.identity===suggestion.window)?.quota?.find(q=>q.used_percent===suggestion.vars.percent&&q.window_minutes===suggestion.vars.minutes):null;
+  if(suggestion.id==='quota'){const at=Date.parse(q?.observed_at),reset=Date.parse(q?.resets_at),age=Date.now()-at;if(q?.status!=='measured'||!Number.isFinite(age)||age<0||age>900000||!(reset>Date.now())||q.used_percent<80)continue}
+  else{const total=model?.totals?.total,n=model?.totals?.[suggestion.id==='cache'?'cache_read':'output'];if(model?.status!=='measured'||!usageNumber(total)||!usageNumber(n)||total<1000||n/total<(suggestion.id==='cache'?0.75:0.5)||suggestion.vars.total!==total||Math.abs(suggestion.vars.share-n/total*100)>0.1)continue}
+  const article=node('article');article.setAttribute('data-usage-advice',suggestion.id);article.append(node('h4',usageModel(suggestion.model)+' · '+tr('usage.suggestion')));
+  article.append(node('p',tr(key,Object.fromEntries(names.map(k=>[k,usageCount(suggestion.vars[k])])))));
+  if(suggestion.window)article.append(node('p',usageIdentityLabel(suggestion.window),'sq-usage-muted'));
+  if(suggestion.id==='quota'){if(q)article.append(node('p',tr('usage.reset')+': '+date(q.resets_at)+' · '+tr('usage.observed',{time:date(q.observed_at)}),'sq-usage-muted'))}
+  section.append(article);count++;
+ }if(!count)section.append(node('p',tr('usage.noAdvice')));return section;
+}
+function usageCostView(data){
+ const box=node('div',undefined,'sq-usage-price-result');box.setAttribute('aria-live','polite');let cost;
+ try{cost=usageEstimate(data,usageReadSettings().prices)}catch(e){box.append(node('p',tr('usage.priceInvalid')));return box}
+ if(!cost){box.append(node('p',tr('usage.noPrice')));return box}
+ if(cost.amount===null)box.append(node('p',tr('usage.noEstimate')));
+ else box.append(node('strong',tr(cost.status==='partial'?'usage.partialEstimate':'usage.estimate',{amount:cost.amount.toLocaleString(uiLocale(),{maximumFractionDigits:6}),currency:cost.currency})));
+ if(cost.excluded.length){box.append(node('p',tr('usage.excluded',{n:cost.excluded.length})));const list=node('ul');for(const r of cost.excluded)list.append(node('li',usageModel(r.model)+' · '+tr('usage.'+r.reason)));box.append(list)}return box;
+}
+function usagePriceForm(data){
+ if(!usageUI.draft){let prices;try{prices=usageValidatePrices(usageReadSettings().prices)}catch(e){}usageUI.draft=JSON.parse(JSON.stringify(prices||{currency:'',models:{}}))}
+ const draft=usageUI.draft,body=node('div');body.append(node('p',tr('usage.priceNote'),'sq-usage-muted'));
+ const label=node('label',tr('usage.currency'),'sq-usage-currency'),currency=usageControl(node('input'),'currency');currency.setAttribute('type','text');currency.setAttribute('maxlength','3');currency.setAttribute('autocomplete','off');currency.value=draft.currency;currency.oninput=()=>{draft.currency=currency.value.toUpperCase()};label.append(currency);body.append(label);
+ const names=[...new Set([...(data.models||[]).map(m=>m.model).filter(Boolean),...Object.keys(draft.models)])].sort();
+ for(const model of names){const row=node('div',undefined,'sq-usage-price-row');row.append(node('strong',model));for(const kind of usageKinds){const label=node('label',tr('usage.rate',{kind:tr('usage.'+kind)})),input=usageControl(node('input'),'price:'+model+':'+kind);input.setAttribute('type','number');input.setAttribute('min','0');input.setAttribute('step','any');input.setAttribute('inputmode','decimal');input.setAttribute('autocomplete','off');input.value=Object.hasOwn(draft.models[model]||{},kind)?String(draft.models[model][kind]):'';input.oninput=()=>{if(!Object.hasOwn(draft.models,model))Object.defineProperty(draft.models,model,{value:{},writable:true,enumerable:true,configurable:true});if(input.value==='')delete draft.models[model][kind];else draft.models[model][kind]=Number(input.value)};label.append(input);row.append(label)}body.append(row)}
+ const actions=node('div',undefined,'sq-usage-price-actions');actions.append(usageButton(tr('usage.savePrices'),'savePrices',()=>{try{usageUI.priceNotice=usageWritePrices(draft)?'saved':'storageFailed'}catch(e){usageUI.priceNotice='priceInvalid'}usageUI.signature=null;render()}),usageButton(tr('usage.clearPrices'),'clearPrices',()=>{usageUI.priceNotice=usageWritePrices(null)?'saved':'storageFailed';usageUI.draft=null;usageUI.signature=null;render()}));body.append(actions);
+ if(usageUI.priceNotice)body.append(node('p',tr('usage.'+usageUI.priceNotice)));
+ const details=usageDetail('prices',tr('usage.prices'),body);details.className='sq-usage-prices';return details;
+}
+function usageRender(content){
+ const data=usageUI.data,fetching=usageUI.flight!==null||usageUI.attempt!==state,signature=JSON.stringify([UI_LANG,data,usageUI.error,fetching,usageUI.priceNotice]);
+ if(signature!==usageUI.signature||!usageUI.element){
+  usageUI.signature=signature;usageUI.controls=[];const box=node('div',undefined,'sq-usage');usageUI.element=box;const heading=usageControl(node('h2',tr('usage.title')),'heading');heading.setAttribute('tabindex','-1');box.append(heading,node('p',tr('usage.intro'),'sq-usage-intro'));
+  const toolbar=node('div',undefined,'sq-usage-toolbar'),live=node('p',fetching?tr(data?'usage.refreshing':'usage.loading'):data?tr('usage.observed',{time:date(data.observed_at)}):tr('usage.not_measured'));live.setAttribute('role','status');live.setAttribute('aria-live','polite');toolbar.append(live,usageButton(tr('usage.refresh'),'refresh',usageRetry));box.append(toolbar);
+  if(usageUI.error){const error=node('div',undefined,'sq-usage-status warn');error.setAttribute('role','alert');error.append(node('p',tr('usage.error')),usageButton(tr('usage.retry'),'retry',usageRetry));box.append(error)}
+  if(data){
+   const coverage=node('div',undefined,'sq-usage-status'+(data.status==='measured'?'':' warn'));coverage.append(node('strong',usageStatus(data)),node('p',tr('usage.coverage',{measured:usageCount(data.coverage?.measured),sources:usageCount(data.coverage?.sources)})));if(['collecting','limited'].includes(data.coverage?.status))coverage.append(node('p',tr('usage.'+data.coverage.status)));box.append(coverage);
+   const windows=data.windows.filter(w=>usageNumber(w.totals?.total)),models=data.models.filter(m=>usageNumber(m.totals?.total)),total=windows.length?windows.reduce((n,w)=>n+w.totals.total,0):null,cards=node('div',undefined,'sq-usage-cards');
+   for(const [label,value] of [['total',total],['windows',windows.length],['models',models.length]]){const card=node('div',undefined,'sq-usage-stat');card.append(node('span',tr('usage.'+label)),node('strong',usageCount(value)));cards.append(card)}box.append(cards);
+   const grid=node('div',undefined,'sq-usage-grid'),daily=data.days.map(d=>({...d,label:d.day,value:d.totals?.total}));
+   grid.append(usageChart('daily',daily,{stacked:true,note:'usage.dailyNote',wide:true,headers:[tr('usage.day'),...usageKinds.map(k=>tr('usage.'+k)),tr('usage.tokens'),tr('usage.status')],tableRows:daily.map(d=>[d.label,...usageKinds.map(k=>usageCount(d.totals?.[k])),usageCount(d.value),usageStatus(d)])}));
+   const byValue=(a,b)=>(usageNumber(b.value)?b.value:-1)-(usageNumber(a.value)?a.value:-1);
+   grid.append(usageChart('byWindow',data.windows.map(w=>({...w,label:usageWindowLabel(w),value:w.totals?.total})).sort(byValue)),usageChart('byModel',data.models.map(m=>({...m,label:usageModel(m.model),value:m.totals?.total})).sort(byValue)));
+   const tasks=data.tasks.map(t=>({...t,label:t.task?taskTitle(t.task):tr('usage.unassigned'),value:t.totals?.total})).sort(byValue);grid.append(usageChart('byTask',tasks,{note:'usage.taskNote'}));
+   const quotas=data.quota_history.map(q=>({...q,label:usageIdentityLabel(q.identity),value:['measured','stale','expired'].includes(q.status)&&usageNumber(q.used_percent)&&q.used_percent<=100?q.used_percent:null}));
+   grid.append(usageChart('quota',quotas,{note:'usage.quotaNote',plot:quotas.length?usageQuotaPlot(quotas):null,headers:[tr('usage.window'),tr('usage.time'),tr('usage.slot'),tr('usage.percent'),tr('usage.windowMinutes'),tr('usage.reset'),tr('usage.status')],tableRows:quotas.map(q=>[q.label,date(q.observed_at),tr(['primary','secondary'].includes(q.limit)?'usage.'+q.limit:'usage.slot'),usageCount(q.value),usageCount(q.window_minutes),date(q.resets_at),usageStatus(q)])}));box.append(grid,usageAdvisory(data),usageCostView(data),usagePriceForm(data));
+   const details=node('div');for(const w of data.windows){const line=node('p',usageWindowLabel(w)+' · '+usageStatus(w));if(w.reasons?.length)line.append(node('span',' · '+tr('usage.reason')));details.append(line);if(w.reasons?.length){const technical=node('details');technical.append(node('summary',tr('ov.technical')),node('code',w.reasons.filter(r=>typeof r==='string'&&/^[a-z][a-z0-9_]{0,60}$/.test(r)).join(', ')));details.append(technical)}}box.append(usageDetail('coverage',tr('usage.details'),details));
+  }
+  box.append(node('p',tr('usage.privacy'),'sq-usage-muted'));
+ }
+ if(content.children[0]!==usageUI.element)content.replaceChildren(usageUI.element);for(const el of usageUI.controls)focusKey(el,el.getAttribute('data-focus-key'));
+ if(usageUI.attempt!==state&&!usageUI.flight)usageFetch();
+}
 </script>
 
 </body></html>

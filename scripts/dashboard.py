@@ -23,6 +23,7 @@ import plugin_actions
 import plugin_store
 import system_skills
 import forecast
+import usage
 
 SETTINGS_BODY_TIMEOUT = 5.0
 SETTINGS_STATUS = {'host_refused': 403, 'token_required': 401, 'origin_refused': 403,
@@ -125,6 +126,7 @@ def make_server(root, port=0):
     fonts = {"/fonts/" + name: (assets / "vendor/fonts" / name).read_bytes()
              for name in ("geist-var-latin.woff2", "fraunces-var-latin.woff2")}
     plugin_home = Path.home()
+    usage_roots = usage.source_roots()
     verified_first = None
     view = VerifiedView(root)
 
@@ -192,6 +194,8 @@ def make_server(root, port=0):
                 elif path == '/api/forecast':
                     task_id = unquote(self.headers.get('X-Squadra-Record', ''))
                     self.answer(200, json.dumps(forecast.calculate(recorded, events, task_id), ensure_ascii=False).encode())
+                elif path == '/api/usage':
+                    self.answer(200, json.dumps(usage.collect(events, recorded, roots=usage_roots), ensure_ascii=False).encode())
                 elif path == "/api/state":
                     key = remember_key(events)
                     state["plugins"] = {**plugin_actions.discover(plugin_home, key), "key": key}
