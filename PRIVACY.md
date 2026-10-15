@@ -35,9 +35,10 @@ the dashboard does not execute those programs itself.
 
 The Usage page and `squadra usage` read the session files that Claude Code and
 Codex already keep in your HOME, for the windows registered in the squad. They
-parse each line and keep only token counts, model names, times and Codex quota
-figures, in memory; the text of the conversations is never stored, shown or
-sent. Prices and reference figures you enter on the page stay in your browser's
+parse each line and keep only token counts, model names, times, Codex quota
+figures and the session and hashed message identifiers needed to count each
+message once, in memory; the text of the conversations is never stored, shown or
+sent. Prices you enter on the page stay in your browser's
 local storage and are not written to the registry.
 
 ## The dashboard and external services

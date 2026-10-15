@@ -38,9 +38,11 @@ esegue direttamente quei programmi.
 La pagina «Consumi» e `squadra usage` leggono i file di sessione che Claude Code e
 Codex tengono già nella tua HOME, per le finestre registrate nella squadra.
 Leggono ogni riga e ne conservano in memoria solo i conteggi dei token, i nomi
-dei modelli, gli orari e i dati di quota di Codex; il testo delle conversazioni
-non viene mai salvato, mostrato né inviato. I prezzi e i valori di riferimento
-che inserisci nella pagina restano nella memoria locale del tuo browser e non
+dei modelli, gli orari, i dati di quota di Codex e gli identificativi di
+sessione e di messaggio (questi ultimi ridotti a un'impronta hash) che servono a contare
+ogni messaggio una volta sola; il testo delle conversazioni
+non viene mai salvato, mostrato né inviato. I prezzi che inserisci nella pagina
+restano nella memoria locale del tuo browser e non
 vengono scritti nel registro.
 
 ## La dashboard e i servizi esterni
