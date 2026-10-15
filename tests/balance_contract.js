@@ -215,6 +215,7 @@ const tests={
   assert.match(css,/\.sq-balance-cards\{display:grid;grid-template-columns:repeat\(auto-fill,minmax\(min\(320px,100%\),1fr\)\)/,'cards shrink to the phone width');
   assert.match(css,/overflow-wrap:anywhere/,'long identities wrap');assert.match(css,/\.sq-balance \.sq-crow>\.sq-viz\{grid-column:1\/-1\}/,'the hourly strip spans the card under its model name');assert.match(css,/\[data-balance-rules\] :is\(table,tbody,tr,td\)\{display:block/,'the rules table becomes cards on a phone');assert.match(css,/var\(--sq-border/,'theme tokens, light and dark');
   assert.doesNotMatch(css,/#[0-9a-f]{3,6}\b/i,'no fixed colours outside the theme tokens');
+  assert.match(css,/\[data-balance-rule\] td:last-child \.sq-readable\{overflow-wrap:normal\}/,'the state word of a rule never breaks inside the word');
  }
 };
 (async()=>{assert.ok(tests[scenario]);await tests[scenario]();console.log('balance contract passed: '+scenario)})().catch(e=>{console.error(e);process.exitCode=1});
