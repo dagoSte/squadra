@@ -1,0 +1,138 @@
+{
+ "daily": [
+  [
+   "Giorno UTC",
+   "Input non in cache",
+   "Cache letta",
+   "Cache creata",
+   "Output",
+   "Token",
+   "Copertura"
+  ],
+  [
+   "2026-10-15",
+   "600",
+   "800",
+   "0",
+   "700",
+   "2100",
+   "Misurato"
+  ],
+  [
+   "2026-10-14",
+   "50",
+   "10",
+   "0",
+   "40",
+   "100",
+   "Misurato"
+  ]
+ ],
+ "byWindow": [
+  [
+   "Finestra",
+   "Token",
+   "Copertura"
+  ],
+  [
+   "Codex",
+   "1100",
+   "Misurato"
+  ],
+  [
+   "Claude",
+   "1000",
+   "Misurato"
+  ]
+ ],
+ "byModel": [
+  [
+   "Modello",
+   "Token",
+   "Copertura"
+  ],
+  [
+   "model-b",
+   "1100",
+   "Misurato"
+  ],
+  [
+   "model-a",
+   "1000",
+   "Misurato"
+  ],
+  [
+   "model-c",
+   "Non misurato",
+   "Non misurato"
+  ]
+ ],
+ "byTask": [
+  [
+   "Incarico",
+   "Token",
+   "Copertura"
+  ],
+  [
+   "Non attribuito a un incarico",
+   "2100",
+   "Misurato · Attribuzione stimata"
+  ]
+ ],
+ "quota": [
+  [
+   "Finestra",
+   "Osservazione",
+   "Quota del provider",
+   "Quota usata (%)",
+   "Intervallo (min)",
+   "Ripristino",
+   "Copertura"
+  ],
+  [
+   "Claude",
+   "15/10/2026, 11:00:00",
+   "Principale",
+   "40",
+   "300",
+   "15/10/2026, 15:00:00",
+   "Misurato"
+  ],
+  [
+   "Claude",
+   "15/10/2026, 11:30:00",
+   "Principale",
+   "Non misurato",
+   "300",
+   "15/10/2026, 15:00:00",
+   "Non misurato"
+  ],
+  [
+   "Claude",
+   "15/10/2026, 12:00:00",
+   "Principale",
+   "75",
+   "300",
+   "15/10/2026, 15:00:00",
+   "Misurato"
+  ],
+  [
+   "Claude",
+   "15/10/2026, 12:30:00",
+   "Principale",
+   "60",
+   "300",
+   "15/10/2026, 15:00:00",
+   "Misurato"
+  ],
+  [
+   "Claude",
+   "15/10/2026, 13:30:00",
+   "Principale",
+   "85",
+   "300",
+   "15/10/2026, 15:00:00",
+   "Misurato"
+  ]
+ ]
+}
