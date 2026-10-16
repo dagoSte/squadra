@@ -386,6 +386,7 @@ def make_server(root, port=0):
                     self.answer(200, json.dumps(system_skills.catalogue(events, recorded), ensure_ascii=False).encode())
                 elif path == '/api/forecast':
                     task_id = unquote(self.headers.get('X-Squadra-Record', ''))
+                    plugins.require(task_id in recorded['tasks'], 'unknown_task')
                     self.answer(200, json.dumps(forecast.calculate(recorded, events, task_id), ensure_ascii=False).encode())
                 elif path == '/api/balance':
                     try:
@@ -393,6 +394,7 @@ def make_server(root, port=0):
                     except Error:
                         raise plugins.Refused('reference_invalid') from None
                     task_id = unquote(self.headers.get('X-Squadra-Record', '')) or None
+                    plugins.require(task_id is None or task_id in recorded['tasks'], 'unknown_task')
                     self.answer(200, json.dumps(balance.calculate(recorded, events, task_id, usage.collect(events, recorded, roots=usage_roots),
                                                                   reference), ensure_ascii=False).encode())
                 elif path == '/api/usage':
