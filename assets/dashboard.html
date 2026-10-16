@@ -4015,7 +4015,7 @@ const skillsUI={data:null,attempt:null,running:false,error:false,query:'',range:
 const skillWords=value=>value?.[UI_LANG]||'';
 function skillsNav(){
  const links=$('skills-links');if(!links)return;$('skills-nav').setAttribute('aria-label',tr('tab.SystemSkills'));
- const b=node('button',tr('tab.SystemSkills'),tab==='SystemSkills'?'active':'');panelTab(b,'SystemSkills');b.onclick=()=>{connectedReset();tab='SystemSkills';skillsUI.attempt=null;panelNavigate();render()};links.replaceChildren(b);
+ const b=node('button',tr('tab.SystemSkills'),tab==='SystemSkills'?'active':'');panelTab(b,'SystemSkills');b.onclick=()=>{connectedReset();tab='SystemSkills';panelNavigate();skillOpen(null)};links.replaceChildren(b);
 }
 function skillButton(text,key,action){const b=node('button',text);b.onclick=action;focusKey(b,key);skillsUI.controls.push(b);return b}
 function skillTabKeys(tabs){const buttons=[...tabs.children];buttons.forEach((b,i)=>{b.setAttribute('tabindex',b.getAttribute('aria-selected')==='true'?'0':'-1');b.onkeydown=e=>{const next=e.key==='ArrowRight'?(i+1)%buttons.length:e.key==='ArrowLeft'?(i+buttons.length-1)%buttons.length:e.key==='Home'?0:e.key==='End'?buttons.length-1:null;if(next===null)return;e.preventDefault?.();b.blur?.();const key=buttons[next].getAttribute('data-focus-key');buttons[next].onclick();pageFocusables.get(key)?.focus()}})}
