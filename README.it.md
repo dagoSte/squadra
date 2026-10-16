@@ -696,106 +696,108 @@ Il coordinatore può dichiarare `task --route light` per una modifica delimitata
 <a id="commands"></a>
 ## Comandi di squadra
 
+Non serve scrivere questi comandi: **il modo consigliato è chiedere alla finestra in parole semplici**, come nella colonna *Oppure chiedi* e nei [prompt di esempio](#prompts); il comando lo esegue la finestra. I comandi sono quello che eseguono le finestre, e quello che puoi scrivere tu per controllare.
+
 Ogni comando, raggruppato per scopo: **50 sottocomandi**, più `--version`. Usa `squadra <comando> --help` per le opzioni; i comandi del registro accettano `--root` o `SQUADRA_ROOT`. «Solo il coordinatore» segna ciò che solo il coordinatore può registrare: `task`, `route`, `supersede`, `brief`, `close`, `ask`, `decision`, `settings`, `pause`, `resume`, `save`, `standby`, `ping --sweep`, e la ricevuta che `restore-check` scrive nel registro vivo. Senza installare, gli stessi comandi girano come `python3 -B scripts/squadra.py <comando>`.
 
 <details>
-<summary><strong>Tutti i 50 comandi, raggruppati per scopo</strong></summary>
+<summary><strong>Tutti i 50 comandi con i loro prompt, raggruppati per scopo</strong></summary>
 
 ### Avvio e squadra
 
-| Comando | Cosa fa |
-|---|---|
-| `--version` | Stampa la versione installata. |
-| `init` | Crea il registro di un progetto, con nome, lingua e budget di lettura. |
-| `agent` | Registra una finestra: identità, ruolo, client, checkout e le skill che ha letto davvero. |
-| `census` | Trova le finestre Codex, Claude e Cursor del progetto senza scrivere nulla; prima di `init` serve `--project`. |
-| `ping` | Manda una chiamata di presenza a una finestra (`--to`) o a tutte (`--all`); `--sweep` (solo il coordinatore) registra lo stand-by per una chiamata senza risposta, e il ritorno dopo un ACK nuovo. |
-| `standby` | Solo il coordinatore: mette una finestra in stand-by, o la fa tornare con `--resume`; lavoro, esecuzioni e riserve restano suoi. |
-| `settings` | Solo il coordinatore: imposta le soglie di attesa in secondi: `ack`, `delivered`, `reviewed`, `heartbeat`, `alive`. |
+| Comando | Cosa fa | Oppure chiedi |
+|---|---|---|
+| `--version` | Stampa la versione installata. | «Che versione di Squadra è installata?» |
+| `init` | Crea il registro di un progetto, con nome, lingua e budget di lettura. | «Usa la skill squadra e crea il registro di questo progetto in ~/.local/state/squadra/atlas.» |
+| `agent` | Registra una finestra: identità, ruolo, client, checkout e le skill che ha letto davvero. | «Registra questa finestra nella squadra, con le skill che hai letto davvero.» |
+| `census` | Trova le finestre Codex, Claude e Cursor del progetto senza scrivere nulla; prima di `init` serve `--project`. | «Trova le finestre Codex, Claude e Cursor che lavorano a questo progetto, senza scrivere nulla.» |
+| `ping` | Manda una chiamata di presenza a una finestra (`--to`) o a tutte (`--all`); `--sweep` (solo il coordinatore) registra lo stand-by per una chiamata senza risposta, e il ritorno dopo un ACK nuovo. | «Controlla quali finestre ci sono ancora: manda a tutte una chiamata di presenza.» |
+| `standby` | Solo il coordinatore: mette una finestra in stand-by, o la fa tornare con `--resume`; lavoro, esecuzioni e riserve restano suoi. | Al coordinatore: «Metti in stand-by la finestra revisora finché non te lo dico.» |
+| `settings` | Solo il coordinatore: imposta le soglie di attesa in secondi: `ack`, `delivered`, `reviewed`, `heartbeat`, `alive`. | Al coordinatore: «Segnala come attesa un ACK che manca da più di 10 minuti, invece di 15.» |
 
 ### Incarichi e piani
 
-| Comando | Cosa fa |
-|---|---|
-| `task` | Solo il coordinatore: assegna un incarico: responsabile, lettore, checkout, perimetro, prova, requisiti, dipendenze; `--supersedes` sostituisce un incarico aperto. |
-| `route` | Solo coordinatore: promuove con `--full`, conservando base/storia/budget; nuove prova e lettura. |
-| `supersede` | Solo il coordinatore: registra dopo che un incarico esistente e più recente sostituisce uno aperto, con lo stesso effetto di `--supersedes`. |
-| `brief` | Solo il coordinatore: descrive in parole semplici il progetto (`brief --project`) o un incarico (`brief --task ID`), da un file UTF-8 di al massimo 8192 byte. |
-| `plan` | Registra un piano prima della costruzione, da far leggere a un non autore. |
-| `start` | Segna che un incarico confermato è in costruzione. |
-| `resource` | Riserva o rilascia un gate, una porta o un database condivisi (`acquire`, `release`). |
+| Comando | Cosa fa | Oppure chiedi |
+|---|---|---|
+| `task` | Solo il coordinatore: assegna un incarico: responsabile, lettore, checkout, perimetro, prova, requisiti, dipendenze; `--supersedes` sostituisce un incarico aperto. | Al coordinatore: «Affida "Servizio di rotazione delle chiavi" alla finestra costruttrice, con la finestra revisora come lettore indipendente e l'intera suite di test come prova.» |
+| `route` | Solo coordinatore: promuove con `--full`, conservando base/storia/budget; nuove prova e lettura. | Al coordinatore: «T3 non è più una piccola modifica: passalo al percorso completo.» |
+| `supersede` | Solo il coordinatore: registra dopo che un incarico esistente e più recente sostituisce uno aperto, con lo stesso effetto di `--supersedes`. | Al coordinatore: «T7 sostituisce T5: registralo, conservando la storia di T5.» |
+| `brief` | Solo il coordinatore: descrive in parole semplici il progetto (`brief --project`) o un incarico (`brief --task ID`), da un file UTF-8 di al massimo 8192 byte. | Al coordinatore: «Scrivi in parole semplici il briefing di T1: perché esiste, per chi è e quando sarà finito.» |
+| `plan` | Registra un piano prima della costruzione, da far leggere a un non autore. | «Scrivi il piano di T1 e fallo leggere a un non autore prima di costruire.» |
+| `start` | Segna che un incarico confermato è in costruzione. | «Conferma l'incarico e comincia a costruirlo.» |
+| `resource` | Riserva o rilascia un gate, una porta o un database condivisi (`acquire`, `release`). | «Prima di lanciare il gate riserva il database di test, e rilascialo quando hai finito.» |
 
 ### Messaggi
 
-| Comando | Cosa fa |
-|---|---|
-| `send` | Scrive un messaggio a una finestra, eventualmente su un incarico o in risposta a un altro; `--info` indica un avviso che non chiede ACK (non con `--to-new`). |
-| `inbox` | Legge i messaggi di una finestra e le loro conferme. |
-| `ack` | Conferma un messaggio ricevuto davvero; può farlo solo il destinatario. |
-| `transport` | Consegna un messaggio a mano o tramite la coda di Codex (per un posto registrato con `--session`), e ne registra l'esito. |
+| Comando | Cosa fa | Oppure chiedi |
+|---|---|---|
+| `send` | Scrive un messaggio a una finestra, eventualmente su un incarico o in risposta a un altro; `--info` indica un avviso che non chiede ACK (non con `--to-new`). | «Scrivi al costruttore che le vecchie chiavi devono restare leggibili per un mese.» |
+| `inbox` | Legge i messaggi di una finestra e le loro conferme. | «Leggi i tuoi messaggi e dimmi quali aspettano ancora una conferma.» |
+| `ack` | Conferma un messaggio ricevuto davvero; può farlo solo il destinatario. | «Conferma i messaggi che hai letto davvero.» |
+| `transport` | Consegna un messaggio a mano o tramite la coda di Codex (per un posto registrato con `--session`), e ne registra l'esito. | «Il revisore non ha visto il mio messaggio: prepara la consegna manuale e registra che l'inoltro è ancora da fare.» |
 
 ### Prova, lettura e chiusura
 
-| Comando | Cosa fa |
-|---|---|
-| `prove` | Esegue la prova concordata sui file esatti congelati e ne conserva l'esito nativo. |
-| `probe` | Registra un test indipendente, compreso un controllo negativo che deve fallire. |
-| `deliver` | Consegna al lettore un pacchetto immutabile del candidato provato. |
-| `advance` | Riconcilia un passaggio già consegnato, senza costruire né approvare. |
-| `review` | Registra il verdetto di un non autore su un piano o sul codice: accettato, correzioni richieste o bloccato. |
-| `check` | Controlla che prova, lettura e candidato corrispondano ancora. |
-| `close` | Solo il coordinatore: registra la fine di un incarico controllato. |
-| `challenge` | Dimostra che un fix dichiarato fallisce senza la modifica, oppure esegue la sonda autonoma a tre input. |
-| `lesson` | Registra quello che un esito negativo ha insegnato (errata), segna una lezione come inefficace o la ritira, oppure elenca le lezioni; briefing e avvio mostrano quelle pertinenti. |
+| Comando | Cosa fa | Oppure chiedi |
+|---|---|---|
+| `prove` | Esegue la prova concordata sui file esatti congelati e ne conserva l'esito nativo. | «Congela la modifica ed esegui la prova concordata.» |
+| `probe` | Registra un test indipendente, compreso un controllo negativo che deve fallire. | Al revisore: «Esegui un tuo test sul candidato, con un controllo negativo che deve fallire, e registralo.» |
+| `deliver` | Consegna al lettore un pacchetto immutabile del candidato provato. | «Consegna al revisore il candidato provato.» |
+| `advance` | Riconcilia un passaggio già consegnato, senza costruire né approvare. | «T1 è già stato consegnato: riconcilia il passaggio, senza costruire né approvare nulla.» |
+| `review` | Registra il verdetto di un non autore su un piano o sul codice: accettato, correzioni richieste o bloccato. | Al revisore: «Leggi il candidato congelato di T1 e registra il tuo verdetto.» |
+| `check` | Controlla che prova, lettura e candidato corrispondano ancora. | «Controlla che prova, lettura e candidato di T1 corrispondano ancora.» |
+| `close` | Solo il coordinatore: registra la fine di un incarico controllato. | Al coordinatore: «Chiudi T1 se il controllo passa, poi mostrami la tabella dell'avanzamento.» |
+| `challenge` | Dimostra che un fix dichiarato fallisce senza la modifica, oppure esegue la sonda autonoma a tre input. | «Dimostra che il fix di T2 serve: il suo test deve fallire senza la modifica.» |
+| `lesson` | Registra quello che un esito negativo ha insegnato (errata), segna una lezione come inefficace o la ritira, oppure elenca le lezioni; briefing e avvio mostrano quelle pertinenti. | «Registra cosa ci ha insegnato questo test fallito, così i prossimi briefing lo mostrano.» |
 
 ### Proprietario e output
 
-| Comando | Cosa fa |
-|---|---|
-| `ask` | Solo il coordinatore: registra una domanda per il proprietario, con opzioni e una raccomandazione, prima di mostrarla. |
-| `decision` | Solo il coordinatore: registra una risposta, un ritiro, un'istruzione del proprietario (`--owner-words`, `--channel`) o una motivazione, collegate con `--task` e `--follows`. |
-| `output` | Salva un aggiornamento sostanziale: testo, prove e prossimo passo. |
-| `board` | Mostra l’avanzamento per finestra con il tempo trascorso misurato e arrotondato, in italiano o in inglese con `--lang`; il coordinatore aggiunge le stime, indicate come tali, del tempo rimanente o dell’intera attività. |
-| `forecast` | Confronta un incarico aperto con lavori simili conclusi: tempi trascorsi osservati e percorso suggerito; sola lettura, nessuna cifra sotto tre esempi completi. |
-| `balance` | Suggerisce finestre e modelli in base a carico, quota e lavori simili, con i numeri di ogni suggerimento; sola lettura, non assegna nulla, quota di Claude solo come stima dichiarata. |
-| `usage` | Leggi i token locali per finestra, modello e incarico, con copertura e stime su prezzi inseriti da te; [dettagli](references/usage.md) in inglese. |
+| Comando | Cosa fa | Oppure chiedi |
+|---|---|---|
+| `ask` | Solo il coordinatore: registra una domanda per il proprietario, con opzioni e una raccomandazione, prima di mostrarla. | Al coordinatore: «Prima di farmi la domanda, registrala con le opzioni e la tua raccomandazione.» |
+| `decision` | Solo il coordinatore: registra una risposta, un ritiro, un'istruzione del proprietario (`--owner-words`, `--channel`) o una motivazione, collegate con `--task` e `--follows`. | Al coordinatore: «Registra la mia decisione su T1, come l'ho scritta qui: "Teniamo leggibili le vecchie chiavi per un mese".» |
+| `output` | Salva un aggiornamento sostanziale: testo, prove e prossimo passo. | «Salva questo aggiornamento con le prove e il prossimo passo, prima di mostrarmelo.» |
+| `board` | Mostra l’avanzamento per finestra con il tempo trascorso misurato e arrotondato, in italiano o in inglese con `--lang`; il coordinatore aggiunge le stime, indicate come tali, del tempo rimanente o dell’intera attività. | «Mostrami l'avanzamento per finestra, con il tempo trascorso.» |
+| `forecast` | Confronta un incarico aperto con lavori simili conclusi: tempi trascorsi osservati e percorso suggerito; sola lettura, nessuna cifra sotto tre esempi completi. | «Quanto tempo hanno richiesto lavori simili a T5? Conviene il percorso leggero?» |
+| `balance` | Suggerisce finestre e modelli in base a carico, quota e lavori simili, con i numeri di ogni suggerimento; sola lettura, non assegna nulla, quota di Claude solo come stima dichiarata. | «A quale finestra o modello conviene dare il prossimo incarico?» |
+| `usage` | Leggi i token locali per finestra, modello e incarico, con copertura e stime su prezzi inseriti da te; [dettagli](references/usage.md) in inglese. | «Quanti token hanno consumato finestre e modelli?» |
 
 ### Continuità
 
-| Comando | Cosa fa |
-|---|---|
-| `pause` | Solo il coordinatore: ferma nuovo lavoro, letture ed esecuzioni, lasciando possibili consultazione e ripristino. |
-| `resume` | Solo il coordinatore: riprende dopo la parola esplicita del proprietario e una riconciliazione. |
-| `checkpoint` | Copia il registro, i suoi artefatti e le viste derivate in una cartella nuova. |
-| `save` | Solo il coordinatore: impacchetta il registro con ogni repository Git registrato e il lavoro in corso. |
-| `restore-check` | Dimostra un pacchetto ripristinandolo davvero in una cartella nuova; registrare la ricevuta nel registro vivo spetta solo al coordinatore. |
+| Comando | Cosa fa | Oppure chiedi |
+|---|---|---|
+| `pause` | Solo il coordinatore: ferma nuovo lavoro, letture ed esecuzioni, lasciando possibili consultazione e ripristino. | Al coordinatore: «Metti in pausa la squadra: niente lavoro nuovo finché non te lo dico.» |
+| `resume` | Solo il coordinatore: riprende dopo la parola esplicita del proprietario e una riconciliazione. | Al coordinatore: «Riprendi il lavoro: prima riconcilia, poi dimmi il prossimo passo.» |
+| `checkpoint` | Copia il registro, i suoi artefatti e le viste derivate in una cartella nuova. | «Fai un checkpoint del registro in una cartella nuova.» |
+| `save` | Solo il coordinatore: impacchetta il registro con ogni repository Git registrato e il lavoro in corso. | Al coordinatore: «Salva il registro e il codice di ogni repository, compreso il lavoro non finito.» |
+| `restore-check` | Dimostra un pacchetto ripristinandolo davvero in una cartella nuova; registrare la ricevuta nel registro vivo spetta solo al coordinatore. | «Dimostra che il salvataggio funziona ripristinandolo in una cartella nuova.» |
 
 ### Runner nativi
 
-| Comando | Cosa fa |
-|---|---|
-| `run` | Avvia un turno non interattivo del client Codex o Claude registrato, per leggere o per costruire. |
-| `cancel` | Chiede di fermare un'esecuzione posseduta; con `--abandon`, `--reason` e `--evidence`, la finestra che ha avviato un'esecuzione la dichiara orfana, senza processo e senza risultati. |
+| Comando | Cosa fa | Oppure chiedi |
+|---|---|---|
+| `run` | Avvia un turno non interattivo del client Codex o Claude registrato, per leggere o per costruire. | «Avvia un turno non interattivo di Codex che legga il candidato di T1.» |
+| `cancel` | Chiede di fermare un'esecuzione posseduta; con `--abandon`, `--reason` e `--evidence`, la finestra che ha avviato un'esecuzione la dichiara orfana, senza processo e senza risultati. | «Ferma l'esecuzione che hai avviato per T1.» |
 
 ### Stato e storico
 
-| Comando | Cosa fa |
-|---|---|
-| `status` | Mostra incarichi, richieste per il proprietario, le attese raggruppate e le tabelle dell'avanzamento; `--all` stampa tutte le attese e la tabella completa. |
-| `doctor` | Controlla la catena di hash e gli artefatti; segnala ACK in sospeso ed esecuzioni incerte. |
-| `export` | Rigenera dal registro le esportazioni complete strutturate, leggibili e della storia della posta. |
-| `legacy` | Importa vecchi record come copie storiche non verificate. |
-| `plugin` | Elenca i plugin inclusi o ne installa uno da questa release; non scarica né esegue codice. |
-| `dash` | Apre la dashboard locale, in sola lettura salvo impostazioni e selezioni dichiarate dei plugin installati. |
+| Comando | Cosa fa | Oppure chiedi |
+|---|---|---|
+| `status` | Mostra incarichi, richieste per il proprietario, le attese raggruppate e le tabelle dell'avanzamento; `--all` stampa tutte le attese e la tabella completa. | «A che punto siamo? Mostrami la tabella dell'avanzamento e cosa aspetta una mia decisione.» |
+| `doctor` | Controlla la catena di hash e gli artefatti; segnala ACK in sospeso ed esecuzioni incerte. | «Controlla che il registro sia integro e dimmi quali ACK sono in sospeso.» |
+| `export` | Rigenera dal registro le esportazioni complete strutturate, leggibili e della storia della posta. | «Esporta il registro in forma leggibile, con la storia della posta.» |
+| `legacy` | Importa vecchi record come copie storiche non verificate. | «Importa i nostri vecchi record come copie storiche non verificate.» |
+| `plugin` | Elenca i plugin inclusi o ne installa uno da questa release; non scarica né esegue codice. | Al coordinatore: «Quali plugin sono inclusi in questa release? Installa quello di Playwright.» |
+| `dash` | Apre la dashboard locale, in sola lettura salvo impostazioni e selezioni dichiarate dei plugin installati. | «Apri nel mio browser la dashboard di squadra per questo registro.» |
 
 ### Verifiche del toolkit
 
-| Comando | Cosa fa |
-|---|---|
-| `selftest` | Esegue i controlli sintetici del toolkit (serve Node.js), senza chiamate ai modelli. |
-| `bench-example` | Scrive l'esempio del confronto offline con client finti. |
-| `bench-run` | Esegue un confronto registrato in anticipo. |
-| `bench-score` | Assegna i punteggi a un confronto con la sua sonda separata. |
+| Comando | Cosa fa | Oppure chiedi |
+|---|---|---|
+| `selftest` | Esegue i controlli sintetici del toolkit (serve Node.js), senza chiamate ai modelli. | «Esegui il self-test di Squadra e dimmi l'esito.» |
+| `bench-example` | Scrive l'esempio del confronto offline con client finti. | «Prepara l'esempio di confronto offline, con client finti.» |
+| `bench-run` | Esegue un confronto registrato in anticipo. | «Esegui il confronto che abbiamo registrato in anticipo.» |
+| `bench-score` | Assegna i punteggi a un confronto con la sua sonda separata. | «Assegna i punteggi al confronto con la sua sonda separata.» |
 
 </details>
 

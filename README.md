@@ -694,106 +694,108 @@ The coordinator may declare `task --route light` for a bounded, reversible chang
 <a id="commands"></a>
 ## Squadra commands
 
+You do not have to type these commands: **asking your window in plain words is the recommended way**, as in the *Or just ask* column and the [example prompts](#prompts), and the window runs the command for you. The commands are what the windows run, and what you can type yourself to check.
+
 Every command, grouped by purpose: **50 subcommands**, plus `--version`. Use `squadra <command> --help` for the flags; registry commands accept `--root` or `SQUADRA_ROOT`. «Coordinator only» marks what only the coordinator can record: `task`, `route`, `supersede`, `brief`, `close`, `ask`, `decision`, `settings`, `pause`, `resume`, `save`, `standby`, `ping --sweep`, and the receipt that `restore-check` writes into the live registry. Without installing, the same commands run as `python3 -B scripts/squadra.py <command>`.
 
 <details>
-<summary><strong>All 50 commands, grouped by purpose</strong></summary>
+<summary><strong>All 50 commands and their prompts, grouped by purpose</strong></summary>
 
 ### Start and team
 
-| Command | What it does |
-|---|---|
-| `--version` | Print the installed version. |
-| `init` | Create the registry for a project, with its name, language and review budgets. |
-| `agent` | Register a window: identity, role, client, checkout, and the skills it actually read. |
-| `census` | Find the project's Codex, Claude and Cursor windows without writing anything; `--project` is required before `init`. |
-| `ping` | Send a presence call to one window (`--to`) or to all (`--all`); `--sweep` (coordinator only) records stand-by for an unanswered call, and the return after a fresh ACK. |
-| `standby` | Coordinator only: put a window in stand-by, or bring it back with `--resume`; its work, runs and reservations stay its own. |
-| `settings` | Coordinator only: set the wait thresholds in seconds: `ack`, `delivered`, `reviewed`, `heartbeat`, `alive`. |
+| Command | What it does | Or just ask |
+|---|---|---|
+| `--version` | Print the installed version. | “Which version of Squadra is installed?” |
+| `init` | Create the registry for a project, with its name, language and review budgets. | “Use the squadra skill and create the registry for this project in ~/.local/state/squadra/atlas.” |
+| `agent` | Register a window: identity, role, client, checkout, and the skills it actually read. | “Register this window in the squad, with the skills you actually read.” |
+| `census` | Find the project's Codex, Claude and Cursor windows without writing anything; `--project` is required before `init`. | “Find the Codex, Claude and Cursor windows working on this project, without writing anything.” |
+| `ping` | Send a presence call to one window (`--to`) or to all (`--all`); `--sweep` (coordinator only) records stand-by for an unanswered call, and the return after a fresh ACK. | “Check which windows are still there: send a presence call to all of them.” |
+| `standby` | Coordinator only: put a window in stand-by, or bring it back with `--resume`; its work, runs and reservations stay its own. | To the coordinator: “Put the reviewer window in stand-by until I say otherwise.” |
+| `settings` | Coordinator only: set the wait thresholds in seconds: `ack`, `delivered`, `reviewed`, `heartbeat`, `alive`. | To the coordinator: “Show a missing ACK as a wait after 10 minutes instead of 15.” |
 
 ### Tasks and plans
 
-| Command | What it does |
-|---|---|
-| `task` | Coordinator only: assign a task: owner, reviewer, checkout, scope, proof, requirements, dependencies; `--supersedes` replaces an open task. |
-| `route` | Coordinator only: promote with `--full`, keeping the base/history/budgets; new proof and read. |
-| `supersede` | Coordinator only: record afterwards that an existing, later task replaces an open one, with the same effect as `--supersedes`. |
-| `brief` | Coordinator only: describe the project (`brief --project`) or a task (`brief --task ID`) in plain words, from a UTF-8 file of at most 8192 bytes. |
-| `plan` | Record a plan before building, to be read by a non-author. |
-| `start` | Mark a confirmed task as being built. |
-| `resource` | Reserve or release a shared gate, port or database (`acquire`, `release`). |
+| Command | What it does | Or just ask |
+|---|---|---|
+| `task` | Coordinator only: assign a task: owner, reviewer, checkout, scope, proof, requirements, dependencies; `--supersedes` replaces an open task. | To the coordinator: “Assign ‘Key rotation service’ to the builder window, with the reviewer window as independent reader and the whole test suite as proof.” |
+| `route` | Coordinator only: promote with `--full`, keeping the base/history/budgets; new proof and read. | To the coordinator: “T3 is no longer a small change: move it to the full route.” |
+| `supersede` | Coordinator only: record afterwards that an existing, later task replaces an open one, with the same effect as `--supersedes`. | To the coordinator: “T7 replaces T5: record it, keeping the history of T5.” |
+| `brief` | Coordinator only: describe the project (`brief --project`) or a task (`brief --task ID`) in plain words, from a UTF-8 file of at most 8192 bytes. | To the coordinator: “Write a plain-words brief of T1: why it exists, for whom, and when it is finished.” |
+| `plan` | Record a plan before building, to be read by a non-author. | “Write your plan for T1 and have a non-author read it before you build.” |
+| `start` | Mark a confirmed task as being built. | “Confirm your assignment and start building it.” |
+| `resource` | Reserve or release a shared gate, port or database (`acquire`, `release`). | “Reserve the test database before you run the gate, and release it when you are done.” |
 
 ### Messages
 
-| Command | What it does |
-|---|---|
-| `send` | Write a message to a window, optionally about a task or in reply to another; `--info` marks a notice that needs no ACK (not with `--to-new`). |
-| `inbox` | Read a window's messages and their confirmations. |
-| `ack` | Confirm a message you actually received; only the recipient can do it. |
-| `transport` | Deliver a message by hand or through the Codex queue (for a seat registered with `--session`), and record the outcome. |
+| Command | What it does | Or just ask |
+|---|---|---|
+| `send` | Write a message to a window, optionally about a task or in reply to another; `--info` marks a notice that needs no ACK (not with `--to-new`). | “Tell the builder that the old keys must stay readable for a month.” |
+| `inbox` | Read a window's messages and their confirmations. | “Read your messages and tell me which ones still need a confirmation.” |
+| `ack` | Confirm a message you actually received; only the recipient can do it. | “Confirm the messages you have actually read.” |
+| `transport` | Deliver a message by hand or through the Codex queue (for a seat registered with `--session`), and record the outcome. | “The reviewer has not seen my message: prepare the manual handoff and record that it still has to be forwarded.” |
 
 ### Proof, review and closure
 
-| Command | What it does |
-|---|---|
-| `prove` | Run the agreed proof on the exact frozen files and keep its native result. |
-| `probe` | Record an independent test, including a negative control that must fail. |
-| `deliver` | Hand over an immutable packet of the proven candidate to its reviewer. |
-| `advance` | Reconcile a handoff that was already delivered, without building or approving. |
-| `review` | Record a non-author verdict on a plan or on the code: accepted, changes required or blocked. |
-| `check` | Check that proof, review and candidate still match. |
-| `close` | Coordinator only: record the end of a checked task. |
-| `challenge` | Prove a declared fix fails without the change, or run a standalone three-input oracle. |
-| `lesson` | Record what a red taught (errata), mark a lesson ineffective or retire it, or list lessons; brief and start show the matching ones. |
+| Command | What it does | Or just ask |
+|---|---|---|
+| `prove` | Run the agreed proof on the exact frozen files and keep its native result. | “Freeze your change and run the agreed proof on it.” |
+| `probe` | Record an independent test, including a negative control that must fail. | To the reviewer: “Run your own test on the candidate, with a negative control that must fail, and record it.” |
+| `deliver` | Hand over an immutable packet of the proven candidate to its reviewer. | “Deliver the proven candidate to its reviewer.” |
+| `advance` | Reconcile a handoff that was already delivered, without building or approving. | “T1 was already delivered: reconcile the handoff, without building or approving anything.” |
+| `review` | Record a non-author verdict on a plan or on the code: accepted, changes required or blocked. | To the reviewer: “Read the frozen candidate of T1 and record your verdict.” |
+| `check` | Check that proof, review and candidate still match. | “Check that the proof, the review and the candidate of T1 still match.” |
+| `close` | Coordinator only: record the end of a checked task. | To the coordinator: “Close T1 if its check passes, then show me the progress table.” |
+| `challenge` | Prove a declared fix fails without the change, or run a standalone three-input oracle. | “Show that the fix in T2 matters: its test must fail without the change.” |
+| `lesson` | Record what a red taught (errata), mark a lesson ineffective or retire it, or list lessons; brief and start show the matching ones. | “Record what this failed test taught us, so the next briefs show it.” |
 
 ### Owner and outputs
 
-| Command | What it does |
-|---|---|
-| `ask` | Coordinator only: record a question for the owner, with options and a recommendation, before showing it. |
-| `decision` | Coordinator only: record an answer, a withdrawal, an owner instruction (`--owner-words`, `--channel`) or a reason, linked with `--task` and `--follows`. |
-| `output` | Save one substantive update: text, evidence and the next step. |
-| `board` | Show progress by window with measured approximate elapsed time, in Italian or English with `--lang`; the coordinator adds labelled estimates of remaining or total task time. |
-| `forecast` | Compare an open task with similar completed work: observed elapsed times and a route suggestion; read-only, no figures below three complete samples. |
-| `balance` | Suggest windows and models by load, quota and similar work, with the numbers behind each suggestion; read-only, assigns nothing, Claude quota only as a labelled estimate. |
-| `usage` | Read local token usage by window, model and task, with coverage and optional user-priced estimates; [details](references/usage.md). |
+| Command | What it does | Or just ask |
+|---|---|---|
+| `ask` | Coordinator only: record a question for the owner, with options and a recommendation, before showing it. | To the coordinator: “Before you ask me, record the question with its options and your recommendation.” |
+| `decision` | Coordinator only: record an answer, a withdrawal, an owner instruction (`--owner-words`, `--channel`) or a reason, linked with `--task` and `--follows`. | To the coordinator: “Record my decision on T1, as typed here: ‘Keep the old keys readable for a month.’” |
+| `output` | Save one substantive update: text, evidence and the next step. | “Save this update with its evidence and the next step before you show it to me.” |
+| `board` | Show progress by window with measured approximate elapsed time, in Italian or English with `--lang`; the coordinator adds labelled estimates of remaining or total task time. | “Show me the progress by window, with the time spent.” |
+| `forecast` | Compare an open task with similar completed work: observed elapsed times and a route suggestion; read-only, no figures below three complete samples. | “How long did work like T5 take before, and does the light route suit it?” |
+| `balance` | Suggest windows and models by load, quota and similar work, with the numbers behind each suggestion; read-only, assigns nothing, Claude quota only as a labelled estimate. | “Which window or model should take the next task?” |
+| `usage` | Read local token usage by window, model and task, with coverage and optional user-priced estimates; [details](references/usage.md). | “How many tokens has each window and model used?” |
 
 ### Continuity
 
-| Command | What it does |
-|---|---|
-| `pause` | Coordinator only: stop new work, reviews and runs, keeping consultation and recovery. |
-| `resume` | Coordinator only: resume after the owner's explicit word and a reconciliation. |
-| `checkpoint` | Copy the registry, its artifacts and projections to a new folder. |
-| `save` | Coordinator only: package the registry with every registered Git repository and its unfinished work. |
-| `restore-check` | Prove a package by actually restoring it into a new folder; recording the receipt in the live registry is coordinator only. |
+| Command | What it does | Or just ask |
+|---|---|---|
+| `pause` | Coordinator only: stop new work, reviews and runs, keeping consultation and recovery. | To the coordinator: “Pause the squad: no new work until I say so.” |
+| `resume` | Coordinator only: resume after the owner's explicit word and a reconciliation. | To the coordinator: “Resume the squad: reconcile first, then tell me the next step.” |
+| `checkpoint` | Copy the registry, its artifacts and projections to a new folder. | “Take a checkpoint of the registry in a new folder.” |
+| `save` | Coordinator only: package the registry with every registered Git repository and its unfinished work. | To the coordinator: “Save the registry and the code of every repository, unfinished work included.” |
+| `restore-check` | Prove a package by actually restoring it into a new folder; recording the receipt in the live registry is coordinator only. | “Prove the save works by restoring it into a new folder.” |
 
 ### Native runners
 
-| Command | What it does |
-|---|---|
-| `run` | Start a non-interactive turn of the registered Codex or Claude client, to read or to build. |
-| `cancel` | Ask for an owned run to stop; with `--abandon`, `--reason` and `--evidence`, the window that started a run declares it orphaned, with no process and no results. |
+| Command | What it does | Or just ask |
+|---|---|---|
+| `run` | Start a non-interactive turn of the registered Codex or Claude client, to read or to build. | “Start a non-interactive Codex turn to read the candidate of T1.” |
+| `cancel` | Ask for an owned run to stop; with `--abandon`, `--reason` and `--evidence`, the window that started a run declares it orphaned, with no process and no results. | “Stop the run you started for T1.” |
 
 ### Status and history
 
-| Command | What it does |
-|---|---|
-| `status` | Show tasks, what needs the owner, the grouped waits and the progress tables; `--all` prints every wait and the full detailed table. |
-| `doctor` | Check the hash chain and the artifacts; report pending ACKs and uncertain runs. |
-| `export` | Regenerate complete structured, readable and mail/history exports from the registry. |
-| `legacy` | Import old records as historical, unverified copies. |
-| `plugin` | List bundled plugins or install one from this release; no download or execution. |
-| `dash` | Open the local dashboard, read-only except declared settings and selections of installed plugins. |
+| Command | What it does | Or just ask |
+|---|---|---|
+| `status` | Show tasks, what needs the owner, the grouped waits and the progress tables; `--all` prints every wait and the full detailed table. | “Where are we? Show me the progress table and what needs my decision.” |
+| `doctor` | Check the hash chain and the artifacts; report pending ACKs and uncertain runs. | “Check that the registry is intact and tell me which ACKs are pending.” |
+| `export` | Regenerate complete structured, readable and mail/history exports from the registry. | “Export the registry in readable form, mail history included.” |
+| `legacy` | Import old records as historical, unverified copies. | “Import our old records as historical, unverified copies.” |
+| `plugin` | List bundled plugins or install one from this release; no download or execution. | To the coordinator: “Which plugins come with this release? Install the Playwright one.” |
+| `dash` | Open the local dashboard, read-only except declared settings and selections of installed plugins. | “Open the squadra dashboard for this registry in my browser.” |
 
 ### Toolkit checks
 
-| Command | What it does |
-|---|---|
-| `selftest` | Run the synthetic checks of the toolkit (Node.js required), with no model calls. |
-| `bench-example` | Write the offline comparison example with fake clients. |
-| `bench-run` | Run a preregistered comparison. |
-| `bench-score` | Score a comparison run against its separate oracle. |
+| Command | What it does | Or just ask |
+|---|---|---|
+| `selftest` | Run the synthetic checks of the toolkit (Node.js required), with no model calls. | “Run the Squadra self-test and tell me the result.” |
+| `bench-example` | Write the offline comparison example with fake clients. | “Write the offline comparison example, with fake clients.” |
+| `bench-run` | Run a preregistered comparison. | “Run the comparison we registered in advance.” |
+| `bench-score` | Score a comparison run against its separate oracle. | “Score the comparison run against its separate oracle.” |
 
 </details>
 
