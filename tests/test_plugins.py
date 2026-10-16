@@ -321,7 +321,7 @@ class Server(Fixtures, unittest.TestCase):
     def test_shipped_plugin_javascript_contract(self):
         node = shutil.which('node'); self.assertIsNotNone(node, 'Node required, never skipped')
         fixture = Path(self.temp.name) / 'state.json'; fixture.write_text(json.dumps(self.get('/api/state')[2]))
-        for scenario in ('render', 'refresh', 'shell', 'place', 'refusals'):
+        for scenario in ('render', 'refresh', 'shell', 'place', 'refusals', 'collapsed'):
             with self.subTest(scenario=scenario):
                 result = subprocess.run([node, str(ROOT / 'tests/plugins_contract.js'), str(ROOT / 'assets/dashboard.html'), str(fixture), scenario], capture_output=True, text=True, timeout=60)
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)

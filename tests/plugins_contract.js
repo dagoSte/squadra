@@ -98,6 +98,34 @@ const tests={
   assert.match(text(app.doc.getElementById('plugin-notices')),/rifiutato \(unsafe_permissions\)/);
   next.plugins.refused[0].name='example';await app.refresh(next);
   assert.match(text(app.doc.getElementById('plugin-notices')),/example: rifiutato \(unsafe_permissions\)/);
+ },
+ async collapsed(){
+  const css=[...page.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/g)].map(m=>m[1]).join('\n').replace(/\/\*[\s\S]*?\*\//g,'');
+  const top=[],nested=[];
+  for(let i=0;i<css.length;){
+   const open=css.indexOf('{',i);if(open<0)break;
+   let depth=1,j=open+1;for(;depth&&j<css.length;j++){if(css[j]==='{')depth++;else if(css[j]==='}')depth--}
+   const head=css.slice(i,open).trim(),body=css.slice(open+1,j-1);
+   if(head.startsWith('@'))nested.push(body);else top.push({selectors:head.split(',').map(s=>s.trim()),body});
+   i=j;
+  }
+  const decls=body=>body.split(';').map(d=>d.trim()).filter(Boolean).sort();
+  const hidden=top.find(r=>r.selectors.includes('.sq-vh'));assert.ok(hidden,'visually hidden helper');
+  const notes=top.filter(r=>r.selectors.some(s=>/#plugin-notices$/.test(s)));
+  const folded=notes.filter(r=>r.selectors.some(s=>/^\.collapsed #plugin-notices$/.test(s)));
+  assert.equal(folded.length,1,'the collapsed menu has one rule for the plugin notes');
+  assert.deepEqual(decls(folded[0].body),decls(hidden.body),'collapsed notes are hidden from sight and still read by assistive technology');
+  for(const r of notes.filter(r=>!folded.includes(r)))assert.doesNotMatch(r.body,/display:none|visibility:hidden|clip:/,'the expanded menu shows the notes');
+  for(const body of nested)assert.doesNotMatch(body,/#plugin-notices/,'small screens and the drawer keep the expanded notes');
+  const empty=clone(base);empty.plugins={plugins:[],refused:[{name:'example',code:'unsafe_permissions'}],key:base.plugins.key};
+  const app=await setup({fixture:empty,stored:{'squadra-sidebar':'collapsed'}});
+  assert.match(app.doc.getElementById('app').className,/\bcollapsed\b/);
+  assert.match(text(app.doc.getElementById('plugin-notices')),/Nessun plugin installato.*example: rifiutato \(unsafe_permissions\)/);
+  app.run("setLanguage('en')");await settle();
+  assert.match(text(app.doc.getElementById('plugin-notices')),/No plugins installed.*example: refused \(unsafe_permissions\)/);
+  const phone=await setup({fixture:empty,phone:true,stored:{'squadra-sidebar':'collapsed'}});
+  assert.doesNotMatch(phone.doc.getElementById('app').className,/\bcollapsed\b/,'the drawer never takes the collapsed layout');
+  assert.match(text(phone.doc.getElementById('plugin-notices')),/Nessun plugin installato/);
  }
 };
 (async()=>{assert.ok(tests[scenario],'known scenario');await tests[scenario]();console.log('plugins contract passed: '+scenario)})().catch(e=>{console.error(e);process.exitCode=1});
