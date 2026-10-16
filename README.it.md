@@ -51,10 +51,6 @@ Una squadra mescola finestre Claude Code e Codex, e ogni fornitore ti mostra sol
 | Aggiornamento della dashboard quando nulla è cambiato | 8 MB | 0,2 KB |
 | Totali dei Consumi mentre le finestre lavorano | salivano e scendevano | solo in crescita (50 campioni, nessuno più basso) |
 
-<!-- TOKEN ROW for the coordinator: before publishing, move this row into the table above if it was measured; otherwise delete this comment.
-| Token che una finestra Claude spende per un «a che punto siamo» | circa 5.000 | circa 1.900 |
--->
-
 **3.10.0**
 - **Pagina «Consumi»: i token spesi dai modelli.** Squadra legge i file di sessione che Claude Code e Codex tengono già sul tuo computer e ne conserva solo i conteggi dei token, con modello, orario e gli identificativi di sessione e di messaggio che servono a contarli una volta sola: non salva, non mostra e non invia mai il testo delle conversazioni. Li mostra per finestra, giorno, modello e incarico, con grafici e suggerimenti per modello. La quota di Codex è misurata, per ogni finestra del fornitore; un costo stimato compare solo se inserisci i tuoi prezzi. `squadra usage` stampa gli stessi dati.
 - Plugin: memoranda 1.0.5, Playwright 1.0.6, Sentry 0.1.3.
