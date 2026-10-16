@@ -47,6 +47,29 @@ const tests={
   assert.equal(all(app.content,e=>String(key(e)).startsWith('skills:event:')).length,0);
   app.find('skills:back').onclick();await settle();assert.equal(key(app.doc.activeElement),'skills:search');unique(app,'skill detail');
  },
+ async sidebarBack(){
+  const ids=['errata','previsione','rasoio','bilanciamento'];
+  for(const language of ['it-IT','en-US'])for(const phone of [false,true]){
+   const app=await setup({language,phone});await app.select();
+   for(const id of ids){
+    await app.open(id);app.run("skillsUI.expanded=true;skillsUI.mode='prompt';render()");
+    const fetched=app.fetched.filter(p=>p==='/api/skills').length;
+    if(phone)app.doc.getElementById('menu').onclick();
+    await app.select();
+    assert.deepEqual(all(app.content,e=>e.getAttribute('data-skill')).map(e=>e.getAttribute('data-skill')),ids,'sidebar returns from '+id+' to the list');
+    assert.equal(app.run('skillsUI.selected'),null);assert.equal(app.run('skillsUI.expanded'),false);assert.equal(app.run('skillsUI.mode'),'trigger');
+    assert.equal(key(app.doc.activeElement),'skills:search','same focus as breadcrumb');
+    assert.equal(app.fetched.filter(p=>p==='/api/skills').length,fetched,'same fresh data as breadcrumb');
+    assert.equal(app.run('panelUI.drawer'),false);
+   }
+   await app.open('errata');await app.tab('Finestre');
+   assert.equal(app.run('tab'),'Finestre');assert.equal(app.run('skillsUI.selected'),'errata','other menu entries keep their behaviour');
+   await app.select();assert.equal(app.run('skillsUI.selected'),null);assert.ok(app.find('skills:open:errata'));
+   app.run("skillsUI.query='rasoio';skillsUI.range='day';render()");await app.open('rasoio');await app.select();
+   assert.equal(app.find('skills:search').value,'rasoio');assert.equal(app.find('skills:range:day').getAttribute('aria-selected'),'true');
+   assert.deepEqual(all(app.content,e=>e.getAttribute('data-skill')).map(e=>e.getAttribute('data-skill')),['rasoio'],'list filters retained like breadcrumb');
+  }
+ },
  async safeGuide(){
   const app=await setup();const guide='# Synthetic guide\n<script>evil()</script>\n![pixel](https://example.invalid/pixel.png)\n[bad](javascript:evil)\n[good](https://example.invalid/help)\n'+Array.from({length:30},(_,i)=>'Line '+i).join('\n');
   app.data.skills[0].guide=guide;await app.select();await app.open('errata');

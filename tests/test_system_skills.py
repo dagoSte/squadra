@@ -108,6 +108,9 @@ class RoutesAndPage(unittest.TestCase):
     def test_js_system_skills_detail_origin_event_task_links_and_focus(self):
         self.contract('detail')
 
+    def test_js_system_skills_sidebar_returns_to_list_like_breadcrumb(self):
+        self.contract('sidebarBack')
+
     def test_js_system_skills_safe_guide_expansion_and_no_remote_assets(self):
         self.contract('safeGuide')
 
