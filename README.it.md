@@ -734,7 +734,7 @@ Ogni comando, raggruppato per scopo: **50 sottocomandi**, più `--version`. Usa 
 | `send` | Scrive un messaggio a una finestra, eventualmente su un incarico o in risposta a un altro; `--info` indica un avviso che non chiede ACK (non con `--to-new`). | «Scrivi al costruttore che le vecchie chiavi devono restare leggibili per un mese.» |
 | `inbox` | Legge i messaggi di una finestra e le loro conferme. | «Leggi i tuoi messaggi e dimmi quali aspettano ancora una conferma.» |
 | `ack` | Conferma un messaggio ricevuto davvero; può farlo solo il destinatario. | «Conferma i messaggi che hai letto davvero.» |
-| `transport` | Consegna un messaggio a mano o tramite la coda di Codex (per un posto registrato con `--session`), e ne registra l'esito. | «Il revisore non ha visto il mio messaggio: consegnaglielo a mano e registra l'esito.» |
+| `transport` | Consegna un messaggio a mano o tramite la coda di Codex (per un posto registrato con `--session`), e ne registra l'esito. | «Il revisore non ha visto il mio messaggio: prepara la consegna manuale e registra che l'inoltro è ancora da fare.» |
 
 ### Prova, lettura e chiusura
 

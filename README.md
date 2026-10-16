@@ -732,7 +732,7 @@ Every command, grouped by purpose: **50 subcommands**, plus `--version`. Use `sq
 | `send` | Write a message to a window, optionally about a task or in reply to another; `--info` marks a notice that needs no ACK (not with `--to-new`). | “Tell the builder that the old keys must stay readable for a month.” |
 | `inbox` | Read a window's messages and their confirmations. | “Read your messages and tell me which ones still need a confirmation.” |
 | `ack` | Confirm a message you actually received; only the recipient can do it. | “Confirm the messages you have actually read.” |
-| `transport` | Deliver a message by hand or through the Codex queue (for a seat registered with `--session`), and record the outcome. | “The reviewer has not seen my message: deliver it by hand and record the outcome.” |
+| `transport` | Deliver a message by hand or through the Codex queue (for a seat registered with `--session`), and record the outcome. | “The reviewer has not seen my message: prepare the manual handoff and record that it still has to be forwarded.” |
 
 ### Proof, review and closure
 
