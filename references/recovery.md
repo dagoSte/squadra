@@ -306,6 +306,9 @@ Every screenshot exists in both languages:
 | Communications, one pair | [EN](../docs/images/dashboard-comms-pair-en.png) | [IT](../docs/images/dashboard-comms-pair-it.png) |
 | Decisions | [EN](../docs/images/dashboard-decisions-en.png) | [IT](../docs/images/dashboard-decisions-it.png) |
 | Reads | [EN](../docs/images/dashboard-reads-en.png) | [IT](../docs/images/dashboard-reads-it.png) |
+| Usage | [EN](../docs/images/dashboard-usage-en.png) | [IT](../docs/images/dashboard-usage-it.png) |
+| Balance | [EN](../docs/images/dashboard-balance-en.png) | [IT](../docs/images/dashboard-balance-it.png) |
+| System skills | [EN](../docs/images/dashboard-system-skills-en.png) | [IT](../docs/images/dashboard-system-skills-it.png) |
 | Plugin page | [EN](../docs/images/dashboard-plugins-en.png) | [IT](../docs/images/dashboard-plugins-it.png) |
 | Plugin settings | [EN](../docs/images/dashboard-plugin-settings-en.png) | [IT](../docs/images/dashboard-plugin-settings-it.png) |
 | Plugin memories | [EN](../docs/images/dashboard-plugin-memories-en.png) | [IT](../docs/images/dashboard-plugin-memories-it.png) |

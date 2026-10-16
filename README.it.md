@@ -35,15 +35,32 @@ Una squadra mescola finestre Claude Code e Codex, e ogni fornitore ti mostra sol
 
 - **Bilanciamento (nuova skill di sistema).** Consigli su finestre e modelli in base a carico, quota e storia, con i numeri su cui si basa ogni consiglio. Non assegna niente. La pagina dice a parole semplici cosa controlla, i valori di oggi e perché non c'è nessun consiglio quando non ce n'è.
 - **I totali dei Consumi restano stabili mentre i file di sessione crescono.** I calcoli salvati si riusano al riavvio della dashboard; un file riscritto viene ricontato, e una cache assente o non sicura (per esempio con un collegamento simbolico nel percorso) viene ricostruita, come la pagina Consumi segnala.
-- **Comandi che costano meno token alle finestre.** Ogni comando stampava nella finestra che lo lanciava l'intero elenco degli avvisi aperti; ora stampa una risposta breve, e l'elenco completo solo su richiesta (sulla nostra squadra, meno di 3 KB per comando invece di fino a 89 KB).
-- **Un registro che resta veloce mentre la storia cresce.** Un comando ora legge e scrive solo ciò che è cambiato, non tutta la storia (misurato su una copia del nostro registro di 8.500 eventi: «a che punto siamo» da 8,6 a 1,2 secondi, l'invio di un messaggio a un'altra finestra da 27 a 3,2 secondi). La verifica dell'intera catena resta, nei momenti indicati nella guida.
+- **Comandi che costano meno token alle finestre.** Ogni comando stampava nella finestra che lo lanciava l'intero elenco degli avvisi aperti; ora stampa una risposta breve, e `squadra status --all` stampa l'elenco completo (le misure sono nella tabella qui sotto).
+- **Un registro che resta veloce mentre la storia cresce.** Un comando ora legge e scrive solo ciò che è cambiato, non tutta la storia; su una copia del nostro registro di 8.500 eventi, l'invio di un messaggio a un'altra finestra è passato da 27 a 3,2 secondi. La verifica dell'intera catena resta, nei momenti indicati nella guida.
 - **Una dashboard più leggera** che scarica solo ciò che è cambiato, e **grafici animati** nelle pagine Consumi e Bilanciamento.
-- **Messaggi solo informativi** che non chiedono risposta: non restano più aperti come attese.
+- **Messaggi solo informativi** (`send --info`) che non chiedono risposta: non restano più aperti come attese.
 - Plugin: memoranda 1.0.6, Playwright 1.0.7, Sentry 0.1.4.
+
+**Misurato sulla nostra squadra.** Il nostro coordinatore ha preso queste misure sul registro di questa squadra (circa 9.980 eventi) dopo l'installazione della 3.10.1. I due tempi «prima» vengono dagli stessi comandi cronometrati su una copia precedente dello stesso registro, prima della modifica. Dopo l'aggiornamento, i primi comandi costruiscono un'istantanea verificata in circa 6 secondi; i tempi qui sotto sono quelli dei comandi successivi.
+
+| Cosa abbiamo misurato | Prima | Con la 3.10.1 |
+|---|---|---|
+| «A che punto siamo» (`squadra status`) | 8,6 s | 0,85 s |
+| Salvare un aggiornamento (`squadra output`) | 10,7 s | 0,86 s |
+| Risposta stampata da un comando | 75–95 KB | circa 2,2 KB |
+| Aggiornamento della dashboard quando nulla è cambiato | 8 MB | 0,2 KB |
+| Totali dei Consumi mentre le finestre lavorano | salivano e scendevano | solo in crescita (50 campioni, nessuno più basso) |
+
+<!-- TOKEN ROW for the coordinator: before publishing, move this row into the table above if it was measured; otherwise delete this comment.
+| Token che una finestra Claude spende per un «a che punto siamo» | circa 5.000 | circa 1.900 |
+-->
 
 **3.10.0**
 - **Pagina «Consumi»: i token spesi dai modelli.** Squadra legge i file di sessione che Claude Code e Codex tengono già sul tuo computer e ne conserva solo i conteggi dei token, con modello, orario e gli identificativi di sessione e di messaggio che servono a contarli una volta sola: non salva, non mostra e non invia mai il testo delle conversazioni. Li mostra per finestra, giorno, modello e incarico, con grafici e suggerimenti per modello. La quota di Codex è misurata, per ogni finestra del fornitore; un costo stimato compare solo se inserisci i tuoi prezzi. `squadra usage` stampa gli stessi dati.
 - Plugin: memoranda 1.0.5, Playwright 1.0.6, Sentry 0.1.3.
+
+<details>
+<summary><strong>Versioni precedenti</strong></summary>
 
 **3.9.1**
 - **Ritocchi all'interfaccia.** Più spazio nella pagina «Skill di sistema» e tra i suoi blocchi; il grassetto nelle descrizioni delle skill appare come grassetto; l'obiettivo del progetto e la guida alla lettura compaiono solo nella panoramica; più badge in cima a questa pagina.
@@ -64,6 +81,8 @@ Una squadra mescola finestre Claude Code e Codex, e ogni fornitore ti mostra sol
 - **Plugin Sentry (anteprima).** Porta in Squadra riepiloghi ripuliti degli errori. Gratis · Sviluppo finanziato da memoranda. Provato solo con una connessione simulata.
 - **Una vista Letture più comoda.** Mantiene lo scorrimento della tabella, mostra schede sul telefono e perde lo spazio vuoto; i passi numerati dei plugin hanno un solo segno.
 - Plugin: memoranda 1.0.2, Playwright 1.0.3, Sentry 0.1.0.
+
+</details>
 
 ## Cosa la rende diversa
 
@@ -419,11 +438,25 @@ squadra dash --open
 
 Grafici, tabelle ordinabili, una finestra «Leggi» per i testi lunghi, suoni e avvisi quando si chiude un passo, IT / EN e tema chiaro o scuro: [ogni parte della pagina, vista per vista](references/recovery.md#dashboard-page), in inglese, con ogni schermata in entrambe le lingue.
 
-Viste: **Quadro**, **Finestre**, **Incarichi**, **Posta**, **Comunicazioni**, **Decisioni**, **Prove**, **Output**, **Cronologia** e **Storico**; che cosa mostra ognuna è nella [guida della pagina](references/recovery.md#dashboard-page).
+Viste: **Quadro**, **Finestre**, **Incarichi**, **Posta**, **Comunicazioni**, **Decisioni**, **Prove**, **Output**, **Cronologia** e **Storico**; che cosa mostra ognuna è nella [guida della pagina](references/recovery.md#dashboard-page). **Consumi**, **Bilanciamento** e **Skill di sistema** hanno voci proprie nel menù, mostrate qui sotto.
 
 **Comunicazioni** mostra chi parla con chi, in frasi semplici. Inviato non vuol dire letto: solo una conferma registrata dimostra la lettura.
 
 ![La vista Comunicazioni: filtri in alto, chi parla con chi e una cronologia con frasi in parole semplici](docs/images/dashboard-comms-it.png)
+
+**Consumi** mostra i token spesi da ogni finestra, per giorno, finestra, modello e incarico, letti dai file di sessione che Claude Code e Codex tengono già; ne conserva i conteggi dei token, con modello, orario e gli identificativi di sessione e di messaggio che servono a contarli una volta sola, e non salva, non mostra e non invia mai il testo delle conversazioni ([dettagli](references/usage.md), in inglese).
+
+![La pagina Consumi: i token misurati per giorno, per finestra e per modello](docs/images/dashboard-usage-it.png)
+
+**Bilanciamento** suggerisce a quale finestra o modello conviene dare il prossimo incarico, in base a carico, quota e lavori simili, con i numeri su cui si basa ogni suggerimento; non assegna niente ([dettagli](references/skills/bilanciamento.md), in inglese).
+
+![La pagina Bilanciamento: un consiglio, le regole che controlla con i valori di oggi, e carico e quota di ogni finestra](docs/images/dashboard-balance-it.png)
+
+**Skill di sistema** elenca le quattro skill incluse ([errata](references/skills/errata.md), [previsione](references/skills/previsione.md), [rasoio](references/skills/rasoio.md), [bilanciamento](references/skills/bilanciamento.md), in inglese), con cosa fa ognuna, la sua attività registrata e l'esito del controllo di sicurezza sui suoi file.
+
+![La pagina Skill di sistema: ogni skill inclusa con cosa fa e le attivazioni registrate](docs/images/dashboard-system-skills-it.png)
+
+*Le pagine Consumi, Bilanciamento e Skill di sistema sullo stesso registro dimostrativo Atlas, con file di sessione dimostrativi senza testo di conversazioni ([in inglese](docs/images/dashboard-usage-en.png), [Bilanciamento in inglese](docs/images/dashboard-balance-en.png), [Skill di sistema in inglese](docs/images/dashboard-system-skills-en.png)).*
 
 **Aggiornamento e sicurezza.** La pagina si aggiorna ogni due secondi, sospende gli aggiornamenti quando la scheda è nascosta e si aggiorna subito al ritorno. Offre la ricerca nel testo e apre gli artefatti registrati in una finestra. È **in sola lettura salvo impostazioni e selezioni dichiarate dei plugin installati**; le azioni sul registro passano dalla CLI. Ascolta su `127.0.0.1`, verifica Host e token, controlla Origin per il salvataggio di impostazioni e selezioni, e non carica script remoti né CDN. `--port` sceglie una porta (senza, ne cerca una libera); `Ctrl-C` chiude il server della dashboard, non gli agenti; se si disconnette, la pagina conserva l'ultima vista con un avviso.
 
@@ -452,7 +485,7 @@ Schemi, dimensioni, limiti e codici di rifiuto esatti: [contratto dei plugin](re
 
 Apri **Plugin → Store** per vedere il catalogo della release in esecuzione, i comandi di installazione e lo stato locale. Si aggiorna solo all'apertura o con **Aggiorna catalogo**; non c'è un pulsante per installare. I siti dei plugin si aprono al clic in una nuova scheda. Chiedi al coordinatore di eseguire il comando mostrato, che usa questa installazione di Squadra.
 
-![La pagina Store: i plugin inclusi nella release in esecuzione, prima quelli basati su MCP, ognuno con autore, versione, licenza, prezzo, data della revisione e il comando di installazione per il coordinatore](docs/images/dashboard-plugin-store-it.png)
+![Le schede della pagina Store: i plugin inclusi nella release in esecuzione, prima quelli basati su MCP, ognuno con autore, versione, licenza, prezzo, data della revisione e il comando di installazione per il coordinatore](docs/images/dashboard-plugin-store-it.png)
 
 `squadra plugin list` mostra il catalogo della release e `squadra plugin install <nome>` copia un plugin incluso; nulla viene scaricato o eseguito. Con un'installazione tramite `/plugin`, chiedi al coordinatore di eseguirli con `python3 <cartella della release>/scripts/squadra.py`.
 
@@ -557,7 +590,7 @@ squadra output --actor coord --task T1 --file /evidence/update.md \
   --next "Lettura indipendente del candidato congelato" --artifact /evidence/result.json
 ```
 
-Salva **un output sostanziale per ogni passo completato**; il prossimo passo che dichiara non prova che sia successo qualcosa. Risposte, destinatari attesi e trasporti: [dettagli](references/work.md#readme-protocol-details), in inglese.
+Salva **un output sostanziale per ogni passo completato**; il prossimo passo che dichiara non prova che sia successo qualcosa. Un avviso di avanzamento che non chiede risposta si manda con `send --info`: resta visibile senza aspettare un ACK. Risposte, destinatari attesi e trasporti: [dettagli](references/work.md#readme-protocol-details), in inglese.
 
 | Finestra / ruolo | Incarico / candidato | Esito / prova | Skill | Traccia / prossimo passo |
 |---|---|---|---|---|
@@ -592,7 +625,7 @@ Parole riferite, ritiri e che cosa non vale mai come decisione: [dettagli](refer
 
 ## Attese, risorse e presenza
 
-Le attese si calcolano quando una vista viene letta; valori predefiniti in secondi: **ACK 900**, **delivered 3600**, **reviewed 1800**, **heartbeat 1800**, **alive 300**. Un avviso non riprova, non riassegna e non rilascia nulla. Riserva gate, porte e database prima di usarli. **Lo stand-by non ferma nulla:** non annulla processi, non rilascia risorse, non trasferisce ruoli e non riassegna lavoro.
+Le attese si calcolano quando una vista viene letta; valori predefiniti in secondi: **ACK 900**, **delivered 3600**, **reviewed 1800**, **heartbeat 1800**, **alive 300**. Un avviso non riprova, non riassegna e non rilascia nulla. I comandi stampano le attese raggruppate, al massimo cinque; `squadra status --all` le stampa tutte. Riserva gate, porte e database prima di usarli. **Lo stand-by non ferma nulla:** non annulla processi, non rilascia risorse, non trasferisce ruoli e non riassegna lavoro.
 
 Soglie, chiamate di presenza e perché tutte le finestre dovrebbero usare la stessa versione: [dettagli](references/work.md#readme-protocol-details), in inglese.
 
@@ -696,7 +729,7 @@ Ogni comando, raggruppato per scopo: **50 sottocomandi**, più `--version`. Usa 
 
 | Comando | Cosa fa |
 |---|---|
-| `send` | Scrive un messaggio a una finestra, eventualmente su un incarico o in risposta a un altro. |
+| `send` | Scrive un messaggio a una finestra, eventualmente su un incarico o in risposta a un altro; `--info` indica un avviso che non chiede ACK (non con `--to-new`). |
 | `inbox` | Legge i messaggi di una finestra e le loro conferme. |
 | `ack` | Conferma un messaggio ricevuto davvero; può farlo solo il destinatario. |
 | `transport` | Consegna un messaggio a mano o tramite la coda di Codex (per un posto registrato con `--session`), e ne registra l'esito. |
@@ -742,13 +775,13 @@ Ogni comando, raggruppato per scopo: **50 sottocomandi**, più `--version`. Usa 
 | Comando | Cosa fa |
 |---|---|
 | `run` | Avvia un turno non interattivo del client Codex o Claude registrato, per leggere o per costruire. |
-| `cancel` | Chiede di fermare un'esecuzione posseduta. |
+| `cancel` | Chiede di fermare un'esecuzione posseduta; con `--abandon`, `--reason` e `--evidence`, la finestra che ha avviato un'esecuzione la dichiara orfana, senza processo e senza risultati. |
 
 ### Stato e storico
 
 | Comando | Cosa fa |
 |---|---|
-| `status` | Mostra incarichi, richieste per il proprietario, attese e le tabelle dell'avanzamento. |
+| `status` | Mostra incarichi, richieste per il proprietario, le attese raggruppate e le tabelle dell'avanzamento; `--all` stampa tutte le attese e la tabella completa. |
 | `doctor` | Controlla la catena di hash e gli artefatti; segnala ACK in sospeso ed esecuzioni incerte. |
 | `export` | Rigenera dal registro le esportazioni complete strutturate, leggibili e della storia della posta. |
 | `legacy` | Importa vecchi record come copie storiche non verificate. |

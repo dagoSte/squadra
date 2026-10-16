@@ -35,15 +35,32 @@ A squad mixes Claude Code and Codex windows, and each provider shows you only it
 
 - **Balance (new system skill).** Advice on windows and models by load, quota and history, with the numbers each piece of advice rests on. It assigns nothing. The page says in plain words what it checks, today's values, and why there is no advice when there is none.
 - **Usage totals stay stable while session files grow.** Saved calculations let a dashboard restart reuse earlier counts; a file that was rewritten is counted again, and a missing or unsafe cache (for example a symbolic link on its path) is rebuilt, which the Usage page says.
-- **Commands that cost the windows fewer tokens.** Every command used to print the whole list of open waits into the window that ran it; now it prints a short answer and the full list on request (on our squad, under 3 KB per command instead of up to 89 KB).
-- **A registry that stays fast as the history grows.** A command now reads and writes what changed, not the whole history (measured on a copy of our 8,500-event registry: «where are we» from 8.6 s to 1.2 s, sending a message to another window from 27 s to 3.2 s). Integrity checks still cover the whole chain at the moments listed in the guide.
+- **Commands that cost the windows fewer tokens.** Every command used to print the whole list of open waits into the window that ran it; now it prints a short answer, and `squadra status --all` prints the full list (the figures are in the table below).
+- **A registry that stays fast as the history grows.** A command now reads and writes what changed, not the whole history; on a copy of our 8,500-event registry, sending a message to another window went from 27 s to 3.2 s. Integrity checks still cover the whole chain at the moments listed in the guide.
 - **A lighter dashboard** that downloads only what changed, and **animated charts** on the Usage and Balance pages.
-- **Information messages** that expect no reply no longer stay open as waits.
+- **Information messages** (`send --info`) that expect no reply no longer stay open as waits.
 - Plugins: memoranda 1.0.6, Playwright 1.0.7, Sentry 0.1.4.
+
+**Measured on our own squad.** Our coordinator took these figures on this squad's registry (about 9,980 events) after installing 3.10.1. The two «before» times come from the same commands timed on an earlier copy of the same registry, before the change. After the upgrade, the first commands build a verified snapshot in about 6 s; the times below are for the commands after it.
+
+| What we measured | Before | With 3.10.1 |
+|---|---|---|
+| «Where are we» (`squadra status`) | 8.6 s | 0.85 s |
+| Saving an output (`squadra output`) | 10.7 s | 0.86 s |
+| Answer printed by a command | 75–95 KB | about 2.2 KB |
+| Dashboard refresh when nothing changed | 8 MB | 0.2 KB |
+| Usage totals while windows work | went up and down | only grow (50 samples, none lower) |
+
+<!-- TOKEN ROW for the coordinator: before publishing, move this row into the table above if it was measured; otherwise delete this comment.
+| Tokens a Claude window spends on one «where are we» | about 5,000 | about 1,900 |
+-->
 
 **3.10.0**
 - **Usage page: tokens spent by the models.** Squadra reads the session files Claude Code and Codex already keep on your computer and keeps only the token counts, with the model, time and session and message identifiers needed to count each message once; it never stores, shows or sends the text of the conversations. It shows them per window, day, model and task, with charts and suggestions per model. Codex quota is shown as measured, for each provider window; an estimated cost appears only if you enter your own prices. `squadra usage` prints the same data.
 - Plugins: memoranda 1.0.5, Playwright 1.0.6, Sentry 0.1.3.
+
+<details>
+<summary><strong>Earlier versions</strong></summary>
 
 **3.9.1**
 - **Interface fixes.** More room on the System skills page and between its blocks; bold text in skill descriptions shows as bold; the project goal and the reading help appear on the overview only; more badges at the top of this page.
@@ -64,6 +81,8 @@ A squad mixes Claude Code and Codex windows, and each provider shows you only it
 - **Sentry plugin (preview).** It brings sanitised error summaries into Squadra. FREE · Sponsored by memoranda. Tested with a synthetic connection only.
 - **A friendlier Reads view.** It keeps the table's scroll position, shows cards on phones and loses the blank band; numbered plugin steps show one marker.
 - Plugins: memoranda 1.0.2, Playwright 1.0.3, Sentry 0.1.0.
+
+</details>
 
 ## What makes it different
 
@@ -417,11 +436,25 @@ squadra dash --open
 
 Charts, sortable tables, a «Read» dialog for long texts, sounds and notices when a step closes, IT / EN and light / dark: [every part of the page, view by view](references/recovery.md#dashboard-page), with every screenshot in both languages.
 
-Views: **Summary**, **Windows**, **Tasks**, **Mail**, **Communications**, **Decisions**, **Runs**, **Outputs**, **Timeline** and **History**; what each one shows is in [the page guide](references/recovery.md#dashboard-page).
+Views: **Summary**, **Windows**, **Tasks**, **Mail**, **Communications**, **Decisions**, **Runs**, **Outputs**, **Timeline** and **History**; what each one shows is in [the page guide](references/recovery.md#dashboard-page). **Usage**, **Balance** and **System skills** have their own menu entries, shown below.
 
 **Communications** shows who talks to whom, in plain sentences. Sent is not read: only a recorded confirmation proves reading.
 
 ![The Communications view: filters on top, who talks to whom, and a timeline in plain sentences](docs/images/dashboard-comms-en.png)
+
+**Usage** shows the tokens each window spent, by day, window, model and task, read from the session files Claude Code and Codex already keep; it keeps the token counts, with the model, time and the session and message identifiers needed to count each message once, and never stores, shows or sends the text of the conversations ([details](references/usage.md)).
+
+![The Usage page: measured tokens per day, by window and by model](docs/images/dashboard-usage-en.png)
+
+**Balance** suggests which window or model should take the next task, by load, quota and similar work, with the numbers behind each suggestion; it assigns nothing ([details](references/skills/bilanciamento.md)).
+
+![The Balance page: one piece of advice, the rules it checks with today's values, and each window's load and quota](docs/images/dashboard-balance-en.png)
+
+**System skills** lists the four built-in skills ([errata](references/skills/errata.md), [previsione](references/skills/previsione.md), [rasoio](references/skills/rasoio.md), [bilanciamento](references/skills/bilanciamento.md)), with what each does, its recorded activity and the security scan result for its files.
+
+![The System skills page: each built-in skill with what it does and its recorded activations](docs/images/dashboard-system-skills-en.png)
+
+*The Usage, Balance and System skills pages on the same synthetic Atlas registry, with synthetic session files that contain no conversation text ([Italian](docs/images/dashboard-usage-it.png), [Balance in Italian](docs/images/dashboard-balance-it.png), [System skills in Italian](docs/images/dashboard-system-skills-it.png)).*
 
 **Refresh and safety.** The page refreshes every two seconds, pauses while the tab is hidden, and refreshes immediately when you return. It offers text search and opens registered artifacts in a dialog. It is **read-only except declared settings and selections of installed plugins**; registry actions use the CLI. It listens on `127.0.0.1`, checks Host and token, checks Origin for settings and selection writes, and loads no remote scripts or CDN. `--port` picks a port (by default a free one); `Ctrl-C` closes the dashboard server, not the agents; a disconnected page keeps its last view with a warning.
 
@@ -450,7 +483,7 @@ Exact schemas, sizes, limits and refusal codes: [plugin contract](references/plu
 
 Open **Plugins → Store** to see the running release's catalogue, its install commands and local installation status. It refreshes only when opened or when you choose **Refresh catalogue**; there is no install button. Homepage links open on a click in a new tab. Ask the coordinator to run the displayed command, which targets this installation of Squadra.
 
-![The Store page: the plugins bundled in the running release, MCP-based first, each with publisher, version, licence, price, review date and the install command for the coordinator](docs/images/dashboard-plugin-store-en.png)
+![The Store page's cards: the plugins bundled in the running release, MCP-based first, each with publisher, version, licence, price, review date and the install command for the coordinator](docs/images/dashboard-plugin-store-en.png)
 
 `squadra plugin list` shows the release's catalogue and `squadra plugin install <name>` copies a bundled plugin; nothing is downloaded or run. With a `/plugin` installation, ask the coordinator to run them through `python3 <release root>/scripts/squadra.py`.
 
@@ -555,7 +588,7 @@ squadra output --actor coord --task T1 --file /evidence/update.md \
   --next "Independent read of the frozen candidate" --artifact /evidence/result.json
 ```
 
-Save **one substantive output per completed step**; its declared next step is not evidence that anything happened. Replies, expected recipients and transports: [details](references/work.md#readme-protocol-details).
+Save **one substantive output per completed step**; its declared next step is not evidence that anything happened. A progress notice that needs no reply goes with `send --info`: it stays visible without waiting for an ACK. Replies, expected recipients and transports: [details](references/work.md#readme-protocol-details).
 
 | Window / role | Task / candidate | Result / evidence | Skills | Trace / next step |
 |---|---|---|---|---|
@@ -590,7 +623,7 @@ Relayed words, withdrawals and what never counts as a decision: [details](refere
 
 ## Waits, resources and presence
 
-Waits are computed when a view is read; defaults in seconds: **ACK 900**, **delivered 3600**, **reviewed 1800**, **heartbeat 1800**, **alive 300**. A warning never retries, reassigns or releases anything. Reserve gates, ports and databases before use. **Stand-by stops nothing:** it does not cancel processes, release resources, transfer roles or reassign work.
+Waits are computed when a view is read; defaults in seconds: **ACK 900**, **delivered 3600**, **reviewed 1800**, **heartbeat 1800**, **alive 300**. A warning never retries, reassigns or releases anything. Commands print the waits grouped, at most five; `squadra status --all` prints every one. Reserve gates, ports and databases before use. **Stand-by stops nothing:** it does not cancel processes, release resources, transfer roles or reassign work.
 
 Thresholds, presence calls and why every window should run the same version: [details](references/work.md#readme-protocol-details).
 
@@ -694,7 +727,7 @@ Every command, grouped by purpose: **50 subcommands**, plus `--version`. Use `sq
 
 | Command | What it does |
 |---|---|
-| `send` | Write a message to a window, optionally about a task or in reply to another. |
+| `send` | Write a message to a window, optionally about a task or in reply to another; `--info` marks a notice that needs no ACK (not with `--to-new`). |
 | `inbox` | Read a window's messages and their confirmations. |
 | `ack` | Confirm a message you actually received; only the recipient can do it. |
 | `transport` | Deliver a message by hand or through the Codex queue (for a seat registered with `--session`), and record the outcome. |
@@ -740,13 +773,13 @@ Every command, grouped by purpose: **50 subcommands**, plus `--version`. Use `sq
 | Command | What it does |
 |---|---|
 | `run` | Start a non-interactive turn of the registered Codex or Claude client, to read or to build. |
-| `cancel` | Ask for an owned run to stop. |
+| `cancel` | Ask for an owned run to stop; with `--abandon`, `--reason` and `--evidence`, the window that started a run declares it orphaned, with no process and no results. |
 
 ### Status and history
 
 | Command | What it does |
 |---|---|
-| `status` | Show tasks, what needs the owner, waits and the progress tables. |
+| `status` | Show tasks, what needs the owner, the grouped waits and the progress tables; `--all` prints every wait and the full detailed table. |
 | `doctor` | Check the hash chain and the artifacts; report pending ACKs and uncertain runs. |
 | `export` | Regenerate complete structured, readable and mail/history exports from the registry. |
 | `legacy` | Import old records as historical, unverified copies. |
