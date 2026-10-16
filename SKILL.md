@@ -1,6 +1,7 @@
 ---
 name: squadra
 description: Coordinates work entrusted to several Codex, Claude, Cursor or mixed windows, with tasks, acknowledgements, proofs, a non-author reviewer and a persistent registry. Includes squadra dash to view the activity and squadra selftest to test the protocol. Use when the owner asks for a squad (squadra), a coordinator/builders/reviewer, resuming a squad or its dashboard; it does not impose this scheme on ordinary changes in a single window.
+compatibility: Runs locally with Python 3; the dashboard listens on 127.0.0.1. Network access occurs through optional plugins and MCP services you install and configure, coding clients and tools you authorize, and external links you open. Squadra does not automatically upload its registry to its author.
 ---
 
 # Squadra 3
