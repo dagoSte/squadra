@@ -151,11 +151,13 @@ class DashboardTransfer(unittest.TestCase):
 
     def test_plugin_change_invalidates_without_a_registry_event(self):
         with patch.object(dashboard.plugin_actions, 'discover', return_value={'installed': []}):
-            before, _ = self.compact()
+            before = self.state(**{'X-Squadra-View': 'compact', 'X-Squadra-State-Token': ''})
+            self.assertEqual(before['audit'], {'status': 'complete'})
             same, _ = self.compact(before['change_token'])
             self.assertTrue(same['not_modified'])
         with patch.object(dashboard.plugin_actions, 'discover', return_value={'installed': ['new']}):
             after, _ = self.compact(before['change_token'])
+        self.assertNotEqual(before['change_token'], after['change_token'])
         self.assertEqual(before['registry_head'], after['registry_head'])
         self.assertEqual(after['plugins']['installed'], ['new'])
 
