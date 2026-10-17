@@ -17,6 +17,7 @@ import subprocess
 import tempfile
 import uuid
 import unicodedata
+import weakref
 
 
 VERSION = "3.10.2"
@@ -74,6 +75,11 @@ OWNER_TEXT_EN = {
 
 FINDINGS_BYTES = 16 * 1024
 SEVERITIES = ('grave', 'minor', 'info')
+# SQLite's write-ahead log is cut back to this size once its frames are in the database file.
+WAL_LIMIT = 64 * 1024 * 1024
+# After a commit the writer never waits for readers: a held log is left for a later commit or doctor --repair.
+TRIM_BUSY_MS = 0
+BUSY_MS = 30000
 
 
 def validate_findings(value):
@@ -732,8 +738,11 @@ def attention(state):
             "superseded": replaced}
 
 
-def waits(state, at, settings=None, *, attention_value=None):
-    """Calculate ages on a caller-supplied UTC clock; alerts never perform actions."""
+def waits(state, at, settings=None, *, attention_value=None, fold=True):
+    """Calculate ages on a caller-supplied UTC clock; alerts never perform actions.
+
+    Rows waiting on a window in stand-by come back as one 'stand-by' row per window; fold=False keeps them
+    apart, each with its own threshold."""
     supplied = (state["workspace"].get("wait_seconds", {}) | state["workspace"].get("message_wait_seconds", {})
                 | getattr(state, 'wait_context', {}).get('settings', {}) | (settings or {}))
     thresholds = WAIT_SECONDS | {k: v for k, v in supplied.items() if k in WAIT_SECONDS}
@@ -748,6 +757,7 @@ def waits(state, at, settings=None, *, attention_value=None):
     items += [{"kind": "heartbeat", "id": r["id"], "task": r["task"], "who": [r["agent"]],
                "utc": r.get("heartbeat", r["utc"]), "text": "Heartbeat vecchio; presenza del processo non dedotta"}
               for r in live_runs(state, "running")]
+    aged = []
     for item in items:
         if not item.get("utc"):
             continue
@@ -755,8 +765,14 @@ def waits(state, at, settings=None, *, attention_value=None):
         require(stamp.tzinfo is not None, "Timezone-aware event required")
         seconds = max(0, int((clock - stamp).total_seconds()))
         threshold = thresholds.get(item["kind"], 0)
-        if seconds >= threshold:
-            result.append({**item, "seconds": seconds, "threshold": threshold, "as_of": clock.isoformat()})
+        # Mail to a window in stand-by is counted at any age; a run only once its heartbeat is old.
+        if seconds >= threshold or item["kind"] != "heartbeat" and held_window(state, item):
+            aged.append({**item, "seconds": seconds, "threshold": threshold, "as_of": clock.isoformat()})
+    for item in fold_standby(state, aged) if fold else aged:
+        if item["kind"] == "stand-by":
+            item = {**item, "seconds": max(0, int((clock - dt.datetime.fromisoformat(item["utc"])).total_seconds())),
+                    "threshold": 0, "as_of": clock.isoformat()}
+        result.append(item)
     for row in presence(state, clock, thresholds):
         if row["due"] and row["availability"] == "active" and row["agent"] == state["messages"][row["ping"]]["to"]:
             result.append({"kind": "alive", "id": row["ping"], "who": [row["agent"]],
@@ -779,13 +795,85 @@ def fold_forward_waits(rows):
             (w['id'] in forwarded or forwarded.intersection(w.get('handoffs', []))))]
 
 
-def forwarding_lines(waiting, lang='it'):
-    rows = [w for w in waiting if w['kind'] == 'to-forward']
+def held_window(state, row):
+    """The window in stand-by a wait row waits on: the recipient of mail without ACK or forwarding, or the owner
+    of a run with an old heartbeat. Pool handoffs and task steps wait on no single window."""
+    if row['kind'] == 'to-forward':
+        window = row.get('to')
+    elif row['kind'] in {'ack', 'heartbeat'} and not row.get('handoffs') and len(row.get('who', [])) == 1:
+        window = row['who'][0]
+    else:
+        return None
+    return window if window in state['agents'] and standby(state, window) else None
+
+
+def standby_text(window, messages, runs, reason, en):
+    if en:
+        head = (f"{messages} message{'s' * (messages != 1)} to {window}" if messages
+                else f"{runs} run{'s' * (runs != 1)} of {window}")
+        text = head + ' on stand-by' + (' (' + reason + ')' if reason else '')
+        return text + (f" · {runs} run{'s' * (runs != 1)} of {window}, state uncertain" if messages and runs
+                       else ', state uncertain' if runs else '')
+    head = (f"{messages} {'messaggio' if messages == 1 else 'messaggi'} a {window}" if messages
+            else f"{runs} {'esecuzione' if runs == 1 else 'esecuzioni'} di {window}")
+    text = head + ' in stand-by' + (' (' + reason + ')' if reason else '')
+    return text + (f" · {runs} {'esecuzione' if runs == 1 else 'esecuzioni'} di {window}, stato incerto" if messages and runs
+                   else ', stato incerto' if runs else '')
+
+
+def fold_standby(state, rows):
+    """Rows waiting on a window in stand-by leave the list: one counted row per window, with the recorded reason.
+
+    Read-time only. The messages stay without ACK and the runs uncertain: an ACK still closes a message, and a
+    recorded return (standby --resume or a sweep) brings the rows back."""
+    kept, held = [], {}
+    for row in rows:
+        window = held_window(state, row)
+        if window is None:
+            kept.append(row)
+            continue
+        group = held.setdefault(window, {'messages': [], 'runs': [], 'utc': None})
+        names = group['runs' if row['kind'] == 'heartbeat' else 'messages']
+        if row['id'] not in names:
+            names.append(row['id'])
+        if row.get('utc') and (group['utc'] is None or
+                               dt.datetime.fromisoformat(row['utc']) < dt.datetime.fromisoformat(group['utc'])):
+            group['utc'] = row['utc']
+    for window, group in held.items():
+        availability = state['agents'][window]['availability']
+        counts, reason = (len(group['messages']), len(group['runs'])), availability.get('reason', '')
+        kept.append({'kind': 'stand-by', 'id': window, 'who': [window], **group, 'count': sum(counts),
+                     'reason': reason, 'since': availability.get('utc'),
+                     'text': standby_text(window, *counts, reason, False),
+                     'text_en': standby_text(window, *counts, reason, True)})
+    return kept
+
+
+def fold_recorded(state, rows, timed):
+    """fold_standby over the recorded waits, also counting the old runs the timed waits fold for each window."""
+    runs = [{'kind': 'heartbeat', 'id': run, 'who': [w['id']], 'utc': w['utc']}
+            for w in timed if w['kind'] == 'stand-by' for run in w['runs']]
+    return fold_standby(state, list(rows) + runs)
+
+
+def standby_lines(rows, lang='it'):
+    rows = [w for w in rows if w['kind'] == 'stand-by']
     if not rows:
         return []
-    return ['', 'To forward:' if lang == 'en' else 'Da inoltrare:'] + [
+    en = lang == 'en'
+    return ['', 'On stand-by, not counted among the waits (an ACK still closes a message; standby --resume '
+                'brings the waits back):' if en else
+                'In stand-by, fuori dalle attese (un ACK chiude comunque un messaggio; standby --resume '
+                'riporta le attese):'] + ['- ' + w['text_en' if en else 'text'] for w in rows]
+
+
+def forwarding_lines(waiting, lang='it'):
+    """Forwarding owed by the coordinator, then the windows in stand-by; callers pass fold_standby rows."""
+    rows = [w for w in waiting if w['kind'] == 'to-forward']
+    lines = ['', 'To forward:' if lang == 'en' else 'Da inoltrare:'] + [
         '- ' + w['id'] + ' · ' + w['utc'] + ' · ' + w.get('text_en' if lang == 'en' else 'text', w['text'])
-        + (' · ' + w['ack_command'] if w.get('ack_command') else '') for w in rows]
+        + (' · ' + w['ack_command'] if w.get('ack_command') else '') for w in rows] if rows else []
+    return lines + standby_lines(waiting, lang)
 
 
 def fix_binding(task):
@@ -835,6 +923,142 @@ def contract_matches(task, record):
         if record.get("fix_binding") != fix_binding(task):
             return False
     return not task.get("contract") or record.get("contract") == task["contract"]
+
+
+SHARED_START_PREDICATE = "kind='run.start' AND instr(data, '\"shared_proof\":')>0"
+SHARED_RUN_FIELDS = ('contract', 'fix_binding', 'light')
+SHARED_IMMUTABLE_FIELDS = ('task', 'mode', 'argv', 'before', 'gate', 'expected_rc', 'covers', 'stage',
+                           'folder', 'timeout', 'lease_version', 'shared_proof', *SHARED_RUN_FIELDS)
+
+
+def proof_binding(task):
+    """The task contract a shared execution agreed before it started."""
+    fields = ('repo', 'base', 'proof', 'expected', 'full_gate', 'scope', 'plan', 'requirements',
+              'route', 'contract', 'light_policy')
+    value = {key: plain(task.get(key)) for key in fields}
+    if task.get('fix'):
+        value['fix_binding'] = fix_binding(task)
+    return digest(canonical(value).encode())
+
+
+def shared_coverage(state, task_ids, covers):
+    require(len(task_ids) == len(set(task_ids)), 'shared_proof_invalid: duplicate task')
+    require(all(name in state['tasks'] for name in task_ids), 'shared_proof_invalid: unknown task')
+    ids = {name: [r['id'] for r in state['tasks'][name].get('requirements', [])] for name in task_ids}
+    require(set(covers) <= {key for values in ids.values() for key in values},
+            'shared_proof_invalid: unknown covered requirement')
+    for name, values in ids.items():
+        require(set(values) <= set(covers), 'shared_proof_invalid: missing coverage for ' + name + ': ' +
+                ', '.join(key for key in values if key not in covers))
+    return ids
+
+
+def shared_record(state, task_id, also, before, argv, gate, expected_rc, covers):
+    """Bind each served task; this changes no reducer record."""
+    require(isinstance(also, (list, tuple)) and also and all(isinstance(name, str) for name in also),
+            'shared_proof_invalid: additional task IDs required')
+    names = [task_id, *also]
+    coverage = shared_coverage(state, names, covers)
+    tasks = [state['tasks'][name] for name in names]
+    require(expected_rc == 0, 'shared_proof_invalid: a proof must expect exit zero')
+    require(isinstance(argv, list) and argv and all(isinstance(arg, str) and arg for arg in argv),
+            'shared_proof_invalid: proof argv required')
+    for task in tasks:
+        require(str(Path(task['repo']).resolve()) == before['repo'],
+                'shared_proof_invalid: repository/source differs: ' + task['id'])
+    require(snapshot(before['repo']) == before, 'shared_proof_invalid: source changed before start')
+    entries = []
+    for task in tasks:
+        require(task['status'] not in {'done', 'waiting-ack'} and not task.get('superseded_by'),
+                'shared_proof_invalid: task is closed, superseded or unacknowledged: ' + task['id'])
+        require(not task.get('proof') or task['proof'] == argv,
+                'shared_proof_invalid: proof argv differs: ' + task['id'])
+        require(task.get('expected') == tasks[0].get('expected'),
+                'shared_proof_invalid: expected test count differs: ' + task['id'])
+        require(not task.get('full_gate') or gate, 'shared_proof_invalid: task requires the gate: ' + task['id'])
+        ids = coverage[task['id']]
+        plan = task.get('plan')
+        if plan:
+            path = Path(plan['original'])
+            require(path.is_file() and digest(path.read_bytes()) == plan['sha256'],
+                    'Original plan changed; re-register/review it: ' + task['id'])
+        entry = {'task': task['id'], 'repo': before['repo'], 'source': before['sha256'],
+                 'binding': proof_binding(task), 'expected': task.get('expected'), 'covers': ids}
+        if task.get('fix'):
+            entry['fix_binding'] = fix_binding(task)
+        if task.get('contract') or task.get('route') == 'light':
+            from light_route import check_contract, measure
+            check_contract(task)
+            entry['contract'] = task['contract']
+            if task['route'] == 'light':
+                entry['light'] = measure(task, before)
+        entries.append(entry)
+    return {'v': 1, 'primary_binding': entries[0]['binding'], 'tasks': entries[1:]}, entries[0]['covers']
+
+
+def shared_members(run):
+    """Task IDs associated with one physical execution, primary first."""
+    metadata = plain(run.get('shared_proof'))
+    if metadata is None:
+        return [run['task']]
+    require(isinstance(metadata, dict) and set(metadata) == {'v', 'primary_binding', 'tasks'} and
+            type(metadata['v']) is int and metadata['v'] == 1 and
+            isinstance(metadata['primary_binding'], str) and ARTIFACT_DIGEST.fullmatch(metadata['primary_binding']) and
+            isinstance(metadata['tasks'], list) and metadata['tasks'],
+            'shared_proof_invalid: unsupported shared proof')
+    require(all(isinstance(item, dict) and isinstance(item.get('task'), str) and
+                isinstance(item.get('covers'), list) and all(isinstance(key, str) for key in item['covers'])
+                for item in metadata['tasks']),
+            'shared_proof_invalid: invalid member')
+    names = [run['task'], *[item['task'] for item in metadata['tasks']]]
+    require(len(names) == len(set(names)), 'shared_proof_invalid: duplicate member')
+    return names
+
+
+def completed_members(start, end):
+    # Old writers can end a run, but cannot change the contract bound at its start.
+    if any(key in end for key in (*SHARED_IMMUTABLE_FIELDS, 'agent', 'utc')):
+        return [start['task']]
+    try:
+        return shared_members(start)
+    except Error:
+        return [start['task']]
+
+
+def validate_shared_start(state, actor, data):
+    names = shared_members(data)
+    covers = list(data.get('covers', [])) + [key for item in data['shared_proof']['tasks'] for key in item.get('covers', [])]
+    expected, primary_covers = shared_record(state, names[0], names[1:], data['before'], data['argv'],
+                                             data.get('gate', False), data.get('expected_rc', 0), covers)
+    require(data['mode'] == 'proof' and data['shared_proof'] == expected and data.get('covers', []) == primary_covers,
+            'shared_proof_invalid: shared binding changed')
+    for entry in expected['tasks']:
+        member = {key: value for key, value in data.items() if key not in (*SHARED_RUN_FIELDS, 'shared_proof')}
+        member.update(task=entry['task'], covers=entry['covers'])
+        member.update({key: entry[key] for key in SHARED_RUN_FIELDS if key in entry})
+        validate(state, 'run.start', actor, member)
+
+
+def effective_proof(task, run, entry):
+    """An attributed copy; the physical run and raw task remain unchanged."""
+    if not (run['mode'] == 'proof' and run['status'] == 'passed' and run.get('native_rc') == 0 and
+            run.get('expected_rc', 0) == 0 and run.get('after') == run['before'] and
+            entry.get('binding') == proof_binding(task) and entry.get('repo') == run['before']['repo'] and
+            entry.get('source') == run['before']['sha256'] and
+            str(Path(task['repo']).resolve()) == entry['repo'] and
+            (not task.get('proof') or run['argv'] == task['proof']) and
+            (not task.get('full_gate') or run.get('gate')) and
+            entry.get('expected') == task.get('expected') and
+            set(entry.get('covers', [])) == {r['id'] for r in task.get('requirements', [])}):
+        return None
+    if task.get('expected') is not None:
+        counts = run.get('counts', {})
+        if sum(counts.values()) != task['expected'] or any(counts.get(key) for key in ('failed', 'error', 'errors')):
+            return None
+    proof = {key: value for key, value in run.items() if key not in SHARED_RUN_FIELDS}
+    proof.update(task=task['id'], shared_from=run['task'], covers=entry['covers'])
+    proof.update({key: entry[key] for key in SHARED_RUN_FIELDS if key in entry})
+    return proof
 
 
 def current_proofs(task, current):
@@ -1235,13 +1459,19 @@ def decision_graph(events):
             source = next((n for n in reversed(chains.get(task, [])) if n["kind"] == wanted and n.get("sha256") == d.get("binding")), None)
             step(task, node, [(source["id"], stage + "-read")] if source else [])
         elif kind == "run.start":
-            runs[d.get("id")] = {"task": task, "mode": d.get("mode"), "gate": bool(d.get("gate"))}
+            runs[d.get("id")] = d
         elif kind == "run.end" and runs.get(d.get("id"), {}).get("mode") == "proof":
             run, after = runs[d["id"]], d.get("after") or {}
             node = add("event:" + str(seq), "proof", event, seq, run=d["id"], status=d.get("status"),
                        native_rc=d.get("native_rc"), counts=d.get("counts"), error=d.get("error"),
-                       after_sha=after.get("sha256"), after_head=after.get("head"), gate=run["gate"])
+                       after_sha=after.get("sha256"), after_head=after.get("head"), gate=bool(run.get("gate")))
             step(run["task"], node, [])
+            for member in completed_members(run, d)[1:]:
+                chain = chains.setdefault(member, [])
+                link(chain[-1]['id'] if chain else names['task'].get(member), node['id'],
+                     'cronologia' if chain else 'of-task', recorded=not bool(chain))
+                chain.append(node)
+                node['tasks'].append(member)
         elif kind == "deliver":
             snapshot, packet = d.get("snapshot") or {}, d.get("packet_data")
             node = add("event:" + str(seq), "delivery", event, seq, sha256=snapshot.get("sha256"),
@@ -1294,8 +1524,10 @@ def task_progress(events):
             fact["starts"].append(mark)
         elif kind == "run.start":
             runs[d["id"]] = d
-        elif kind == "run.end" and runs.get(d["id"], {}).get("mode") == "proof" and runs[d["id"]].get("task") in facts:
-            facts[runs[d["id"]]["task"]]["proofs"].append({**d, **mark})
+        elif kind == "run.end" and runs.get(d["id"], {}).get("mode") == "proof":
+            for member in completed_members(runs[d['id']], d):
+                if member in facts:
+                    facts[member]['proofs'].append({**d, **mark})
         elif fact is not None and kind == "deliver":
             fact["deliveries"].append({**mark, "sha": d["snapshot"].get("sha256")})
         elif fact is not None and kind == "diagnostic" and d.get("command") in {"deliver", "advance"}:
@@ -1590,6 +1822,8 @@ def validate(state, kind, actor, d, stored_packet=None):
                         "Acquire exclusive gate resource first")
                 require(not any(r.get("gate") for r in live_runs(state, "running")),
                         "A whole gate is already running, including under the same owner")
+            if 'shared_proof' in d:
+                validate_shared_start(state, actor, d)
         if kind == "review":
             if 'findings' in d:
                 validate_findings(d['findings'])
@@ -1677,6 +1911,19 @@ def validate(state, kind, actor, d, stored_packet=None):
         require(actor == run["agent"] or coordinator, "Run owner/coordinator required")
         require(run["status"] == "running", "Run already ended")
         task = state["tasks"][run["task"]]
+        if kind == 'run.end' and run.get('shared_proof') is not None:
+            require(not set((*SHARED_IMMUTABLE_FIELDS, 'agent', 'utc')).intersection(d), 'Shared run contract is immutable')
+            if d.get('status') == 'passed':
+                require(d.get('native_rc') == 0 and run.get('expected_rc', 0) == 0 and d.get('after') == run['before'],
+                        'Shared proof does not keep its native source binding')
+                if task.get('expected') is not None:
+                    counts = d.get('counts', {})
+                    require(sum(counts.values()) == task['expected'] and
+                            not any(counts.get(key) for key in ('failed', 'error', 'errors')),
+                            'Shared proof test counts do not match the agreed collection')
+                require(run['shared_proof']['primary_binding'] == proof_binding(task) and
+                        all(item['binding'] == proof_binding(state['tasks'][item['task']])
+                            for item in run['shared_proof']['tasks']), 'Shared task contract changed during proof')
         if kind == "run.end" and d.get("reconciled") is not None:
             require(actor == run["agent"], "Only the original run starter may reconcile its run")
             require(bool(run.get("lease_version")), "Only a leased run has a receipt or logs to reconcile from")
@@ -1938,21 +2185,73 @@ def protect_registry_root(root):
         require(ignored.returncode == 0, 'Registry folder is not ignored by Git: ' + str(root))
 
 
+class Connection(sqlite3.Connection):
+    """A connection that finishes its own cursors when it closes.
+
+    sqlite3 defers closing a connection while one of its statements is unfinished, so a cursor still
+    referenced elsewhere would keep the closed connection's read snapshot, and stop every checkpoint, until
+    that cursor is collected. Both cursor() and execute() are tracked: the C execute() does not call cursor()."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._cursors, self._prune_at = [], 64
+
+    def _track(self, cursor):
+        refs = self._cursors
+        refs.append(weakref.ref(cursor))
+        if len(refs) >= self._prune_at:
+            refs[:] = [ref for ref in refs if ref() is not None]
+            self._prune_at = max(64, 2 * len(refs))
+        return cursor
+
+    def cursor(self, *args, **kwargs):
+        return self._track(super().cursor(*args, **kwargs))
+
+    def execute(self, *args):
+        return self._track(super().execute(*args))
+
+    def executemany(self, *args):
+        return self._track(super().executemany(*args))
+
+    def executescript(self, *args):
+        return self._track(super().executescript(*args))
+
+    def close(self):
+        refs, self._cursors = self._cursors, []
+        failure = None
+        for ref in refs:
+            cursor = ref()
+            if cursor is not None:
+                try:
+                    cursor.close()
+                except sqlite3.Error as exc:
+                    failure = failure or exc
+        super().close()
+        if failure is not None:
+            raise failure
+
+
 class Store:
-    def __init__(self, root, create=False, read_only=False):
+    def __init__(self, root, create=False, read_only=False, *, database=None):
+        """`database` opens a private copy read-only; the root stays the live registry for its anchor and artifacts."""
         self.root = Path(root).resolve()
         self.read_only = read_only
+        self.database = None if database is None else Path(database)
+        # The live file identity whose private copy audit() reads; only the dashboard's background audit sets it.
+        self._audit_copy = None
         self._views = []
         self._integrity_failed = False
         self._cache_mismatch = False
         self._summary_context = None
         self._wait_memo = None
+        self._shared_start_memo = None
         self.commit_count = 0
         self.last_commit = None
+        require(self.database is None or (read_only and not create), "A registry copy opens read-only")
         if create:
             protect_registry_root(self.root)
         require(self.root.is_dir(), "Unknown workspace: " + str(self.root))
-        self.path = self.root / "registry.sqlite3"
+        self.path = self.root / "registry.sqlite3" if self.database is None else self.database
         require(not self.path.is_symlink(), "Registry symlink refused")
         if not create:
             require(self.path.is_file(), "Workspace not initialized")
@@ -1967,11 +2266,12 @@ class Store:
                     handle.flush()
                     os.fsync(handle.fileno())
         self.db = sqlite3.connect(self.path.as_uri() + "?mode=ro" if read_only else self.path,
-                                  uri=read_only, timeout=30, isolation_level=None)
+                                  uri=read_only, timeout=BUSY_MS / 1000, isolation_level=None, factory=Connection)
         self.db.row_factory = sqlite3.Row
         if read_only:
             return
         self.db.execute("PRAGMA journal_mode=WAL")
+        self.db.execute("PRAGMA journal_size_limit=%d" % WAL_LIMIT)
         self.db.execute("PRAGMA synchronous=FULL")
         self.db.executescript("""
           CREATE TABLE IF NOT EXISTS events (seq INTEGER PRIMARY KEY, id TEXT UNIQUE NOT NULL,
@@ -1982,20 +2282,62 @@ class Store:
           CREATE TRIGGER IF NOT EXISTS no_delete BEFORE DELETE ON events
             BEGIN SELECT RAISE(ABORT, 'append-only'); END;
         """)
+        if self.db.execute("SELECT 1 FROM sqlite_master WHERE type='index' AND name='shared_proof_starts'").fetchone() is None:
+            busy = self.db.execute('PRAGMA busy_timeout').fetchone()[0]
+            try:
+                self.db.execute('PRAGMA busy_timeout=0')
+                self.db.execute('CREATE INDEX IF NOT EXISTS shared_proof_starts ON events(seq) WHERE ' + SHARED_START_PREDICATE)
+            except sqlite3.DatabaseError:
+                pass  # An optional discovery index; the authenticated view remains authoritative.
+            finally:
+                self.db.execute('PRAGMA busy_timeout=' + str(busy))
         columns = {row[1] for row in self.db.execute("PRAGMA table_info(events)")}
         if 'hash_format' not in columns:
             self.db.execute("ALTER TABLE events ADD COLUMN hash_format INTEGER")
         os.chmod(self.path, 0o600)
 
     def release_views(self):
-        for view in self._views:
-            view.close()
-        self._views.clear()
+        """Close every view even when one fails; the first failure is raised afterwards."""
+        views, self._views = self._views, []
+        failure = None
+        for view in views:
+            try:
+                view.close()
+            except BaseException as exc:
+                failure = failure or exc
+        if failure is not None:
+            raise failure
 
     def close(self):
-        self.release_views()
+        """The database is closed even when a view or the close itself fails; the first failure is raised."""
+        failure = None
+        try:
+            self.release_views()
+        except BaseException as exc:
+            failure = exc
         self._summary_context = self._wait_memo = None
-        self.db.close()
+        try:
+            self.db.close()
+        except BaseException as exc:
+            failure = failure or exc
+        if failure is not None:
+            raise failure
+
+    def compact_wal(self, busy_ms):
+        """One TRUNCATE checkpoint that waits at most busy_ms for readers: (busy, frames, backfilled)."""
+        self.db.execute("PRAGMA busy_timeout=%d" % busy_ms)
+        try:
+            return tuple(self.db.execute("PRAGMA main.wal_checkpoint(TRUNCATE)").fetchone())
+        finally:
+            self.db.execute("PRAGMA busy_timeout=%d" % BUSY_MS)
+
+    def _trim_wal(self):
+        """After a commit, an oversized write-ahead log is copied back and emptied if no reader holds it."""
+        try:
+            if os.stat(str(self.path) + "-wal").st_size > WAL_LIMIT:
+                self.compact_wal(TRIM_BUSY_MS)
+        except (OSError, sqlite3.Error):
+            pass  # The commit stands; the next commit, or doctor --repair, tries again.
 
     def decode_event(self, row):
         event = {k: row[k] for k in ["id", "utc", "kind", "actor", "previous"]}
@@ -2036,12 +2378,18 @@ class Store:
         return resolve(value, self.root / "artifacts")
 
     def task(self, name, state=None):
-        from source_manifests import materialize_task
-        from registry_cache import plain
-        return materialize_task(plain((state if state is not None else self.view())["tasks"][name]),
-                                self.root / "artifacts")
+        return self.resolved(state)['tasks'][name]
 
-    def resolved(self, state=None):
+    def shared_starts(self, count):
+        """A bounded memo of discovery hints; callers still verify the authenticated run."""
+        marker = count, self.db.execute('PRAGMA data_version').fetchone()[0]
+        if self._shared_start_memo is None or self._shared_start_memo[0] != marker:
+            rows = self.db.execute('SELECT actor,data FROM events WHERE ' + SHARED_START_PREDICATE + ' AND seq<=?',
+                                   (count,)).fetchall()
+            self._shared_start_memo = marker, [(row['actor'], json.loads(row['data'])) for row in rows]
+        return self._shared_start_memo[1]
+
+    def resolved(self, state=None, *, compact=False):
         from source_manifests import materialize_task, transform_run
         source = self.view() if state is None else state
         store = self
@@ -2051,8 +2399,55 @@ class Store:
         result.current = current_index(source)
         if hasattr(source, 'wait_context'):
             result.wait_context = source.wait_context
-        result['tasks'] = ReadEntities(source['tasks'], lambda _, task: materialize_task(plain(task), store.root / 'artifacts'))
-        result['runs'] = ReadEntities(source['runs'], lambda _, run: transform_run(plain(run), store.resolve_snapshot))
+        associations = None
+
+        def task_value(name, task):
+            nonlocal associations
+            if associations is None:
+                associations = {}
+                for actor, start in store.shared_starts(source['event_count']):
+                    run_id = start['id']
+                    if run_id not in source['runs']:
+                        continue
+                    run = source['runs'][run_id]
+                    if start.get('shared_proof') is None:
+                        continue
+                    try:
+                        shared_members(start)
+                    except Error:
+                        continue
+                    def same(key):
+                        left, right = plain(run.get(key)), start.get(key)
+                        if key == 'before' and left != right:
+                            left, right = store.resolve_snapshot(left), store.resolve_snapshot(right)
+                        return left == right
+                    if run['agent'] != actor or not all(same(key) for key in SHARED_IMMUTABLE_FIELDS):
+                        continue
+                    for entry in start['shared_proof']['tasks']:
+                        associations.setdefault(entry['task'], []).append((run, entry))
+            if compact and name not in associations:
+                return task
+            value = materialize_task(plain(task), store.root / 'artifacts')
+            if name in associations:
+                seen = {proof['id'] for proof in value['proofs']}
+                added = []
+                for raw, entry in associations[name]:
+                    if raw['id'] not in seen:
+                        run = transform_run(plain(raw), store.resolve_snapshot)
+                        proof = effective_proof(value, run, plain(entry))
+                        if proof is not None:
+                            if compact:
+                                proof.update(before=plain(raw['before']), after=plain(raw['after']))
+                            added.append(proof)
+                            seen.add(proof['id'])
+                if added:
+                    base = plain(task) if compact else value
+                    return {**base, 'proofs': [*base['proofs'], *added]}
+            return task if compact else value
+
+        result['tasks'] = ReadEntities(source['tasks'], task_value)
+        if not compact:
+            result['runs'] = ReadEntities(source['runs'], lambda _, run: transform_run(plain(run), store.resolve_snapshot))
         return result
 
     def normalized_state(self, events, writer=None):
@@ -2067,7 +2462,28 @@ class Store:
         return state
 
     def audit(self, cancelled=None):
-        """Full chain/artifact verification and independent derived-root comparison."""
+        """Full chain/artifact verification and independent derived-root comparison.
+
+        A store the dashboard marks with the live file's identity audits a private copy taken now, so the long
+        read never holds the live write-ahead log; a copy of a file that changed meanwhile is refused."""
+        if self._audit_copy is None:
+            return self._audit(cancelled)
+        from registry_prepare import AuditSnapshot
+        snapshot = AuditSnapshot(self.root, self._audit_copy, cancelled=cancelled)
+        try:
+            result = snapshot.store._audit(cancelled)
+            self._cache_mismatch = snapshot.store._cache_mismatch
+        except BaseException as exc:
+            self._integrity_failed = True
+            try:
+                snapshot.close()
+            except BaseException as cleanup:
+                exc.add_note('The audit copy was not removed either: ' + str(cleanup))
+            raise
+        snapshot.close()
+        return result
+
+    def _audit(self, cancelled=None):
         from registry_cache import Tree, load
         from registry_radix import IntegrityError
         def check_cancelled():
@@ -2082,6 +2498,7 @@ class Store:
         own_transaction = not self.db.in_transaction
         if own_transaction:
             self.db.execute('BEGIN')
+        completed = False
         try:
             check_cancelled()
             events = self.events()
@@ -2127,16 +2544,31 @@ class Store:
             from registry_prepare import cache_presence
             status = 'matched' if agrees else 'unavailable' if prefix_agrees else cache_presence(self)
             self._cache_mismatch = status == 'mismatch'
-            return {'events': events, 'state': state, 'cache': status,
-                    'scrubbed': scrub_report(self.root, events, scrubbed)}
+            result = {'events': events, 'state': state, 'cache': status,
+                      'scrubbed': scrub_report(self.root, events, scrubbed)}
+            completed = True
+            return result
         except BaseException:
             self._integrity_failed = True
             raise
         finally:
+            # The read must end on every path: a failed COMMIT falls back to ROLLBACK, and its error is
+            # raised only when the audit itself succeeded, so an audit failure is never masked.
+            ending = None
             if cancelled is not None:
-                self.db.set_progress_handler(None, 0)
+                try:
+                    self.db.set_progress_handler(None, 0)
+                except BaseException as exc:
+                    ending = exc
             if own_transaction:
-                self.db.execute('COMMIT')
+                try:
+                    self.db.execute('COMMIT')
+                except BaseException as exc:
+                    ending = ending or exc
+                    if self.db.in_transaction:
+                        self.db.execute('ROLLBACK')
+            if ending is not None and completed:
+                raise ending
 
     def _rebuild_cache(self, events=None):
         from registry_cache import Tree, initialize, save
@@ -2182,7 +2614,7 @@ class Store:
         require(not self._cache_mismatch, 'Cache mismatch; run squadra doctor --repair')
         from registry_cache import load
         from registry_radix import IntegrityError
-        reader = Store(self.root, read_only=True)
+        reader = Store(self.root, read_only=True, database=self.database)
         reader.db.execute('BEGIN')
         try:
             tree, meta = load(reader)
@@ -2380,10 +2812,6 @@ class Store:
             from registry_cache import save
             save(self, tree, last_seq, previous)
             self.db.execute("COMMIT")
-            if appended:
-                self.commit_count += len(appended)
-                self.last_commit = appended[-1]
-            return saved
         except IntegrityError as exc:
             self.db.execute('ROLLBACK')
             exc.force_replacement = loaded
@@ -2391,6 +2819,11 @@ class Store:
         except BaseException:
             self.db.execute("ROLLBACK")
             raise
+        if appended:
+            self.commit_count += len(appended)
+            self.last_commit = appended[-1]
+        self._trim_wal()
+        return saved
 
     def repair_cache(self):
         """Explicitly rebuild derived tables; a saved package is not a writable workspace."""
@@ -2478,7 +2911,7 @@ class Store:
             else:
                 lines = ["# Squadra · riepilogo corrente", "", "Registro #" + str(state['event_count']),
                          "Stato e posta completi: squadra export"]
-            lines += forwarding_lines(view['waiting'], state['workspace'].get('lang', 'it'))
+            lines += forwarding_lines(fold_standby(state, view['waiting']), state['workspace'].get('lang', 'it'))
             lines += ["", "| Window | Next step |" if en_summary else "| Finestra | Prossimo passo |", "|---|---|"]
             for actor in state['agents']:
                 if index is not None:
@@ -2510,6 +2943,7 @@ class Store:
                 self.db.execute("BEGIN")
                 events = self.events()
                 state = self.state(events)
+                state['tasks'] = plain(self.resolved(state)['tasks'])
                 state.pop("root", None)
                 self.db.execute("COMMIT")
                 atomic(self.root / "state.json", (canonical(state) + "\n").encode())
@@ -2721,10 +3155,12 @@ def table(state, read_at=None, events=(), *, compact=False, lang=None, attention
                      else "Nessuna richiesta registrata — una domanda fatta solo in chat non compare qui.")
     lang = state['workspace'].get('lang', 'it')
     if read_at is None:
-        lines += forwarding_lines(view['waiting'], lang)
+        lines += forwarding_lines(fold_standby(state, view['waiting']), lang)
     if read_at is not None:
         lines += ["", ("Waits computed at " if en else "Attese calcolate al ") + str(read_at) + ":"]
         waiting = waits(state, read_at, attention_value=view)
+        held = [w for w in waiting if w['kind'] == 'stand-by']
+        waiting = [w for w in waiting if w['kind'] != 'stand-by']
         if compact:
             counts = {kind: sum(w['kind'] == kind for w in waiting)
                       for kind in sorted({w['kind'] for w in waiting})}
@@ -2768,6 +3204,7 @@ def table(state, read_at=None, events=(), *, compact=False, lang=None, attention
                      if w.get('count', 1) > 1 else "")
                   + " · " + (w['text_en'] if en and w.get('text_en') else wait_text(w, en))
                   + (' · ' + w['ack_command'] if w.get('ack_command') else '') for w in waiting]
+        lines += standby_lines(held, 'en' if en else 'it')
         if compact:
             lines.append("All waits and details: squadra status --all." if en
                          else "Tutte le attese e i dettagli: squadra status --all.")

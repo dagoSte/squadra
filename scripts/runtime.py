@@ -10,7 +10,8 @@ import subprocess
 import time
 import uuid
 
-from registry import Error, require, snapshot, now, atomic, canonical, run_lease, run_lease_paths
+from registry import (Error, require, snapshot, now, atomic, canonical, run_lease, run_lease_paths,
+                      shared_record, validate)
 
 REVIEW_SCHEMA = {"type": "object", "additionalProperties": False, "properties": {
     "verdict": {"type": "string", "enum": ["accepted", "changes-required", "blocked"]},
@@ -140,15 +141,15 @@ def terminate(proc):
 
 def execute(store, actor, task_id, argv=None, mode="proof", prompt=None,
             timeout=120, gate=False, executable=None, run_id=None, stage="code", expected_rc=0, covers=None,
-            *, checked=None):
+            *, checked=None, also=None):
     run_id = run_id or uuid.uuid4().hex
     with run_lease(store.root, run_id) as lease_fd:
         return _execute_owned(store, actor, task_id, argv, mode, prompt, timeout, gate, executable,
-                              run_id, stage, expected_rc, covers, checked=checked, lease_fd=lease_fd)
+                              run_id, stage, expected_rc, covers, checked=checked, also=also, lease_fd=lease_fd)
 
 
 def _execute_owned(store, actor, task_id, argv, mode, prompt, timeout, gate, executable,
-                   run_id, stage, expected_rc, covers, *, checked, lease_fd):
+                   run_id, stage, expected_rc, covers, *, checked, also, lease_fd):
     state = store.resolved()
     require(task_id in state["tasks"], "Unknown task")
     task = state["tasks"][task_id]
@@ -177,11 +178,13 @@ def _execute_owned(store, actor, task_id, argv, mode, prompt, timeout, gate, exe
         route_record["contract"] = task["contract"]
         if mode == "proof" and task["route"] == "light":
             route_record["light"] = measure(task, before)
+    shared = None
+    if also:
+        require(mode == 'proof', 'Only proof runs may serve additional tasks')
+        shared, covers = shared_record(state, task_id, also, before, argv, gate, expected_rc, covers or [])
     folder = store.root / "runs" / run_id
-    folder.mkdir(parents=True, mode=0o700, exist_ok=False)
     if mode in {"read", "build"}:
         require(prompt is not None, "Model run requires a prompt file")
-        (folder / "schema.json").write_text(json.dumps(REVIEW_SCHEMA))
         if mode == "read":
             prompt = ("Read-only independent examination. Do not edit, publish, send messages or claim tests ran. "
                       "Return the requested structured verdict, actual coverage and limitations.\n" + prompt)
@@ -200,6 +203,12 @@ def _execute_owned(store, actor, task_id, argv, mode, prompt, timeout, gate, exe
               "expected_rc": expected_rc, "requested_model": agent.get("model"), "covers": covers or [], **route_record}
     record.update(fix_record)
     record["lease_version"] = 1
+    if shared is not None:
+        record['shared_proof'] = shared
+        validate(state, 'run.start', actor, record)
+    folder.mkdir(parents=True, mode=0o700, exist_ok=False)
+    if mode in {"read", "build"}:
+        (folder / "schema.json").write_text(json.dumps(REVIEW_SCHEMA))
     _, _, lease_metadata, terminal_receipt = run_lease_paths(store.root, run_id)
     atomic(lease_metadata, canonical({"run": run_id, "phase": "not-started", "pgid": None}).encode())
     store.append("run.start", actor, record, "run-start:" + run_id)
@@ -263,6 +272,11 @@ def _execute_owned(store, actor, task_id, argv, mode, prompt, timeout, gate, exe
                 require(sum(counts.values()) == task["expected"] and not counts.get("failed") and
                         not counts.get("error") and not counts.get("errors"), "Executed test counts do not match agreed collection")
                 result["counts"] = counts
+            if shared is not None:
+                current = store.resolved()
+                all_covers = [*record['covers'], *[key for entry in shared['tasks'] for key in entry['covers']]]
+                final, _ = shared_record(current, task_id, also, after, argv, gate, expected_rc, all_covers)
+                require(final == shared, 'Shared task contract changed during proof')
             result["status"] = "matched" if mode == "probe" else "passed"
     except KeyboardInterrupt:
         result.update(status="interrupted", error="Owner interruption")
@@ -287,6 +301,14 @@ def _execute_owned(store, actor, task_id, argv, mode, prompt, timeout, gate, exe
                     result.update(status="failed", error="Evidence capture failed: " + str(exc))
         atomic(terminal_receipt, canonical({"run": run_id, "status": result["status"],
                                            "native_rc": result["native_rc"], "ended": result["ended"]}).encode())
-        store.append("run.end", actor, result, "run-end:" + run_id)
+        try:
+            store.append("run.end", actor, result, "run-end:" + run_id)
+        except Error as exc:
+            if shared is None or result['status'] != 'passed':
+                raise
+            result.update(status='failed', error='Shared terminal binding refused: ' + str(exc))
+            atomic(terminal_receipt, canonical({"run": run_id, "status": result['status'],
+                                               "native_rc": result['native_rc'], "ended": result['ended']}).encode())
+            store.append("run.end", actor, result, "run-end:" + run_id)
         store.publish()
     return result

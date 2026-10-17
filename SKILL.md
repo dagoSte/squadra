@@ -65,6 +65,10 @@ while there is independent work to give it.
   is written: the parts proceed together and are joined afterwards.
 - The final read of a release is done together by a Claude reader and a Codex
   reader, neither of them an author of what it reads.
+- The coordinator builds only the integration and the release. Lanes go to the
+  builders, chosen with `squadra balance`, so the coordinator keeps its context for mail,
+  routing and seams. When no other builder is available, the coordinator may build a
+  lane and says so in its output.
 - The coordinator reads its own mail in the registry at every step: a window may
   receive work directly from the owner and report it only there.
 - Dependencies, reservations, budgets and reader independence remain: parallelism does
@@ -100,10 +104,15 @@ declared but not recorded is written as such.
 - **Rule 6 — state the cost before spending money.** Before any paid call (model APIs,
   voice, images, cloud runs) the window states the expected cost and a cap, stops at the
   cap, and reports what was spent and on what. No secret key enters chat, logs or files.
-- **Rule 7 — the owner chooses the review mode.** Default: a non-author read of every lane
-  plus the final dual read. On the owner's word a release uses one final review only:
-  lanes are merged on delivery and the final dual read (Claude and Codex) covers every
-  lane, with one fix round. The choice is recorded as a decision.
+- **Rule 7 — every lane is read once, its fixes in the final block.** Default: one full
+  non-author read of every lane. When that read asks for changes, the fix is proven and
+  merged into the integration without a read of its own; the release's final dual read
+  (Claude and Codex, each reading what it did not author) covers every fix delta together
+  with the seams, with one fix round for the whole. The coordinator records which final
+  read covers which delta and replaces the open lane task with the final-read task
+  (`supersede`). On the owner's word a release uses another mode, recorded as a decision:
+  a re-read of every fix by the reader who raised it, or one final review only, where
+  lanes are merged on delivery without any read of their own.
 - **Rule 8 — faster next time.** At every close the coordinator reads where the task's
   time went (the dashboard measures waiting for the acknowledgement, building, waiting
   for the read and fix rounds), writes one line «Faster next time: …» in its closing
@@ -114,9 +123,10 @@ declared but not recorded is written as such.
     with an accepted non-author code read and a green proof enter the release. The others
     move to the next patch release, recorded as deferred with «missed cut-off». Only the
     owner's word extends a cut-off.
-  - **Scoped final reads.** When every lane already has its own accepted non-author code
-    read, the two final reads cover the integration seams only: conflict resolutions,
-    version, pins, mirrors and release docs, from the lane heads to the release head.
+  - **Scoped final reads.** When every lane already has its own non-author code read, the
+    two final reads cover the fix deltas no lane read has accepted (Rule 7) and the
+    integration seams: conflict resolutions, version, pins, mirrors and release docs, from
+    the lane heads to the release head.
     The whole-suite proof still runs on the release head. Small light tasks registered
     `--read-at-gate` have no read of their own, so the release task (`--release-gate`)
     must cover each of them, or the coordinator explicitly defers one
@@ -129,8 +139,9 @@ declared but not recorded is written as such.
     (`task --reviewer` repeated) does this by itself: the first free member claims it.
 - **Rule 10 — a fix round fixes only the problem.** When a read asks for a change:
   - the fix is one small task on the same branch carrying only that change;
-  - the reader who raised the problem reads only that delta, and the reads already
-    accepted on the rest stand, recorded by the coordinator as a decision;
+  - its delta is read in the release's final dual read (Rule 7), or, in the re-read mode,
+    by the reader who raised the problem; the reads already accepted on the rest stand,
+    recorded by the coordinator as a decision;
   - the proof is the parallel whole-suite runner when the repository has it: it is
     complete and faster than a serial subset (measured on 2026-10-14: 953 tests in
     about 105 s, against 228 s for the 416 tests that read the changed files).

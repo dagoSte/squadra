@@ -144,6 +144,8 @@ class OrphanRuns(Squad):
                 os.killpg(group, 0)
             except ProcessLookupError:
                 return True
+            except PermissionError:
+                return False
             return False
         self.wait_for(gone, 'the orphaned check to end')
         marker.unlink()

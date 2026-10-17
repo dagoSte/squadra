@@ -1,6 +1,7 @@
 """Declared settings: real private files/HTTP, never a live plugin or credential."""
 from contextlib import redirect_stderr
 from copy import deepcopy
+import errno
 import fcntl
 import http.client
 import io
@@ -332,7 +333,12 @@ class HTTP(SettingsFixture, unittest.TestCase):
             with socket.create_connection(('127.0.0.1',self.server.server_port),timeout=2) as sock:
                 body=json.dumps({'values':{'agent_key':SECRET}}).encode()
                 headers=f'POST /api/plugin/example/settings HTTP/1.0\r\nHost: 127.0.0.1:{self.server.server_port}\r\nX-Squadra-Token: {self.token}\r\nContent-Type: application/json\r\nContent-Length: {len(body)}\r\n\r\n'
-                sock.sendall(headers.encode()+body);sock.shutdown(socket.SHUT_RDWR)
+                sock.sendall(headers.encode()+body)
+                try:
+                    sock.shutdown(socket.SHUT_RDWR)
+                except OSError as exc:
+                    if exc.errno != errno.ENOTCONN:
+                        raise
             self.assertTrue(completed.wait(2))
         self.assertTrue(self.read()[1]['set']);self.assertEqual((self.base/'secrets/agent_key').read_bytes(),SECRET.encode())
 

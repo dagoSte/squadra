@@ -120,6 +120,7 @@ class DashboardTransfer(unittest.TestCase):
 
     def test_overdue_delivery_keeps_conditional_http_available(self):
         with patch.object(dashboard, 'now', return_value='2026-10-12T14:00:00+00:00'):
+            self.state(**{'X-Squadra-View': 'compact', 'X-Squadra-State-Token': ''})
             first, _ = self.compact()
             self.assertTrue(any(w['kind'] == 'delivered' and w['task'] == self.task_id
                                 for w in first['waits']))

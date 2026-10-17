@@ -26,9 +26,61 @@ class InputRefusal(Error):
     """A missing ID supplied to the CLI, without a diagnostic event."""
 
 
+# doctor --repair waits at most this long for readers before it leaves the write-ahead log as it is.
+REPAIR_BUSY_MS = 10000
+
+
+def repair_wal(store):
+    """doctor --repair: one TRUNCATE checkpoint with a bounded wait for readers; it deletes nothing."""
+    from registry_prepare import saved_registry
+    if saved_registry(store.root):
+        return {'skipped': 'saved package or checkpoint'}
+    wal = Path(str(store.path) + '-wal')
+    size = lambda: wal.stat().st_size if wal.exists() else 0
+    before = size()
+    writer = Store(store.root)
+    try:
+        busy, frames, backfilled = writer.compact_wal(REPAIR_BUSY_MS)
+    finally:
+        writer.close()
+    return {'truncated': busy == 0, 'readers_prevented': busy == 1, 'frames': frames, 'backfilled': backfilled,
+            'bytes_before': before, 'bytes_after': size()}
+
+
 def known_id(values, key, kind):
     if key not in values:
         raise InputRefusal('Unknown ' + kind + ': ' + str(key))
+
+
+def coverage_preflight(state, task_ids, covers):
+    """The CLI guard precedes prechecks; a shared invocation covers each member completely."""
+    ids = []
+    for task_id in task_ids:
+        known_id(state['tasks'], task_id, 'task')
+        ids.extend(r['id'] for r in state['tasks'][task_id].get('requirements', []))
+    if ids and not covers:
+        raise InputRefusal('prove requires --covers for requirement IDs: ' + ', '.join(dict.fromkeys(ids)))
+    unknown = [value for value in covers if value not in ids]
+    if unknown:
+        raise InputRefusal('Unknown requirement IDs in --covers: ' + ', '.join(unknown))
+    if len(task_ids) > 1:
+        for task_id in task_ids:
+            missing = [r['id'] for r in state['tasks'][task_id].get('requirements', []) if r['id'] not in covers]
+            if missing:
+                raise InputRefusal('Shared prove requires --covers for ' + task_id + ': ' + ', '.join(missing))
+
+
+def coverage_on_this_source(store, task_ids, current):
+    results = {}
+    state = store.view()
+    for task_id in task_ids:
+        task = store.task(task_id, state)
+        ids = [r['id'] for r in task.get('requirements', [])]
+        if ids:
+            covered = {ident for p in current_proofs(task, current) for ident in p.get('covers', [])}
+            results[task_id] = {'source': current['sha256'], 'covered': [i for i in ids if i in covered],
+                                'uncovered': [i for i in ids if i not in covered]}
+    return results
 
 
 def resolve_follows(state, values):
@@ -207,6 +259,11 @@ def deliver(store, actor, task_id, reconcile=False):
                   "scope": task["scope"], "plan": task.get("plan"), "requirements": task.get("requirements", []),
                   "proofs": current_proofs(task, current),
                   "instructions": "ACK this exact message, read frozen candidate in an isolated copy, record independent verdict and limitations; never publish or edit the candidate."}
+        shared_notes = ["Shared proof run " + proof['id'] + " from task " + proof['shared_from'] +
+                        "; this additional-task read requires a build whose prove --help lists --also."
+                        for proof in packet['proofs'] if proof.get('shared_from')]
+        if shared_notes:
+            packet['instructions'] += '\n' + '\n'.join(shared_notes)
         if task.get("contract"):
             packet["contract"] = task["contract"]
             if "light" in data:
@@ -225,6 +282,8 @@ def deliver(store, actor, task_id, reconcile=False):
         message = "review-" + key
         artifact = store.artifact_bytes((canonical(packet) + "\n").encode(), message + ".json", "generated-handoff:" + message)
         body = candidate_line(current, task_id) + "\nImmutable packet " + artifact["sha256"] + " in " + str(store.root / "artifacts") + ".\nActual recipient ACK required before independent review."
+        if shared_notes:
+            body += '\n' + '\n'.join(shared_notes)
         if task.get("pool"):
             # Members in stand-by get no handoff; the pool is refused only when every member is.
             members = active_pool(state, task)
@@ -363,6 +422,8 @@ def parser():
         a.add_argument("--timeout", type=int, default=120 if command != "run" else 600)
         if command in {"prove", "probe"}:
             if command == "prove":
+                a.add_argument('--also', action='append', default=[], metavar='TASK',
+                               help='Serve another task with the same exact proof execution (repeatable)')
                 a.add_argument("--gate", action="store_true")
                 a.add_argument("--covers", action="append", default=[])
             else:
@@ -380,6 +441,7 @@ def parser():
     a.add_argument("--reason"); a.add_argument("--evidence", help="Explicit squadra-run-abandon/1 observation JSON")
     a = sub.add_parser("resource"); a.add_argument("action", choices=["acquire", "release"])
     a.add_argument("--actor", required=True); a.add_argument("--name", required=True); a.add_argument("--reason", required=True)
+    a.add_argument("--wait", type=float, help="Acquire only: wait in FIFO order up to SECONDS (0 joins without sleeping)", metavar="SECONDS")
     for command in ["pause", "resume", "decision"]:
         a = sub.add_parser(command); a.add_argument("--actor", required=True); a.add_argument("--reason", required=True)
         if command == "decision":
@@ -505,9 +567,10 @@ def inbox(state, agents, everything=False, message=None):
 
 def dispatch(a, store):
     command = a.command
-    state = None if command == 'doctor' else store.view()
+    waiting = command == 'resource' and a.action == 'acquire' and a.wait is not None
+    state = None if command == 'doctor' or waiting else store.view()
     actor = getattr(a, "actor", "system")
-    if isinstance(getattr(a, 'actor', None), str):
+    if isinstance(getattr(a, 'actor', None), str) and not waiting:
         known_id(state['agents'], actor, 'agent')
     task_id = getattr(a, 'task', None)
     if isinstance(task_id, str) and command != 'supersede':
@@ -706,14 +769,21 @@ def dispatch(a, store):
         from runtime import execute
         argv = a.argv[1:] if command != "run" and a.argv and a.argv[0] == "--" else getattr(a, "argv", None)
         checked = None
+        proof_tasks = [a.task, *getattr(a, 'also', [])]
+        if command == 'prove':
+            coverage_preflight(state, proof_tasks, a.covers)
         if command == "prove" and a.task in state["tasks"]:
+            if a.also:
+                from registry import shared_coverage
+                shared_coverage(state, [a.task, *a.also], a.covers)
             from precheck import run as precheck
             checked = precheck(store, actor, state["tasks"][a.task])
+        shared = {'also': a.also} if command == 'prove' and a.also else {}
         result = execute(store, actor, a.task, argv=argv, mode=a.mode if command == "run" else "proof" if command == "prove" else "probe",
                          prompt=Path(a.prompt_file).read_text() if command == "run" else None,
                          timeout=a.timeout, gate=getattr(a, "gate", False), executable=getattr(a, "cli", None),
                          stage=getattr(a, "stage", "code"), expected_rc=getattr(a, "expected_rc", 0), covers=getattr(a, "covers", []),
-                         checked=checked[0] if checked else None)
+                         checked=checked[0] if checked else None, **shared)
         if result["status"] not in {"passed", "matched"}:
             if command == "prove":
                 from errata import hint
@@ -724,6 +794,10 @@ def dispatch(a, store):
             raise Error(json.dumps(result, ensure_ascii=False))
         if checked:
             result["precheck"] = checked[1]
+        if command == 'prove':
+            coverage = coverage_on_this_source(store, proof_tasks, result['after'])
+            if coverage:
+                result['coverage_on_this_source'] = coverage
         return result
     elif command == "cancel":
         if a.abandon:
@@ -754,7 +828,15 @@ def dispatch(a, store):
             require(not a.reason and not a.evidence, "--reason and --evidence require --abandon")
             store.append("run.cancel", actor, {"id": a.run})
     elif command == "resource":
-        store.append("resource." + a.action, actor, {"name": a.name, "reason": a.reason})
+        require(a.wait is None or a.action == 'acquire', '--wait applies only to resource acquire')
+        if waiting:
+            from resource_wait import acquire, CacheUnavailable
+            try:
+                acquire(store, actor, a.name, a.reason, a.wait)
+            except CacheUnavailable as exc:
+                raise InputRefusal(str(exc)) from exc
+        else:
+            store.append("resource." + a.action, actor, {"name": a.name, "reason": a.reason})
     elif command == "ask":
         store.append("ask", actor, {"id": a.id, "question": a.question,
                      "options": json.loads(Path(a.options_file).read_text()), "recommended": a.recommended,
@@ -860,6 +942,9 @@ def dispatch(a, store):
         return {"status":result["status"],"folder":str(folder.resolve()),"mode":result.get("mode"),"quality_claim":False}
     elif command == "doctor":
         from registry import attention
+        from registry_prepare import wal_state
+        # Read before doctor's own read begins, so its snapshot is not among the readers reported.
+        wal = wal_state(store.root)
         if a.quick:
             from registry_prepare import quick
             store.db.execute('BEGIN')
@@ -873,6 +958,7 @@ def dispatch(a, store):
             elif a.repair and checked['cache'] != 'matched':
                 checked = store.repair_cache()
             count, state = len(checked['events']), checked['state']
+        compaction = repair_wal(store) if a.repair else None
         columns = {row[1] for row in store.db.execute('PRAGMA table_info(events)')}
         modern = ('hash_format' in columns and
                   store.db.execute('SELECT 1 FROM events WHERE hash_format=2 LIMIT 1').fetchone() is not None)
@@ -893,6 +979,7 @@ def dispatch(a, store):
                 "pending_ack": pending_ack_ids(state, attention_value=view),
                 "waits": waits(state, now(), attention_value=view),
                 **({"scrubbed": checked["scrubbed"], "scrubbed_note": SCRUB_NOTE} if checked.get("scrubbed") else {}),
+                "wal": wal, **({"wal_compaction": compaction} if compaction is not None else {}),
                 "warning": "Integrity verifies the record, not truth of agents' claims or external process liveness"}
     elif command == "dash":
         from dashboard import serve

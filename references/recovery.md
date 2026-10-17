@@ -41,7 +41,7 @@ cache has already been folded.
 | Quick resume check (`doctor --quick`) | The anchor, newer suffix and demanded cache values; no full historical/artifact audit or replay-root comparison. The output labels this limited scope. |
 | Explicit `usage`/`balance` calculations, a lesson's source check, and the lesson hint after a failed proof | The complete event hash chain and the requested historical evidence. These reads do not perform a full artifact audit. |
 | `doctor`, `export`, `checkpoint`, `save`, `restore-check`, and a release-gate task's `close` | The complete event chain and referenced artifacts/manifests, plus full replay to compare or rebuild the derived cache. |
-| Dashboard startup | The ordinary verified path serves data while a full chain/artifact/replay audit runs in the background. A visible status marks the pending audit; failure stops data responses and removes the displayed data. |
+| Dashboard startup | The ordinary verified path serves data while a full chain/artifact/replay audit runs in the background on a private copy of the registry. A visible status marks the pending audit; failure stops data responses and removes the displayed data. |
 
 Use read-only `doctor --quick` when resuming. Run `doctor` without that flag for
 the complete audit. A full audit reports cache/journal disagreement as a mismatch:
@@ -50,6 +50,41 @@ default doctor exits nonzero and the dashboard refuses data. Explicit
 root inside a saved package or checkpoint. Healthy doctor and quick doctor never
 repair or publish. Cold reconstruction and release-gate audits happen outside
 the exclusive write transaction; a concurrent change can require a retry.
+
+<a id="registry-wal"></a>
+
+### The write-ahead log (`registry.sqlite3-wal`)
+
+SQLite writes new records to `registry.sqlite3-wal` first and copies them into
+`registry.sqlite3` at a checkpoint. A checkpoint cannot copy past the oldest
+snapshot a reader still holds, so a reader that never ends makes the log grow.
+Squadra keeps it bounded on its own:
+
+- every writer limits the log to 64 MB once its frames are in the database, and
+  after a commit that leaves it larger, tries to copy it back and empty it, waiting
+  at most 0.2 seconds for readers;
+- the dashboard's background audit reads a private copy of the registry, made in a
+  few seconds outside the registry folder and removed afterwards, so its long read
+  never holds the log; an interrupted, failed or changed copy is never reported as
+  a completed audit;
+- a closed connection finishes its own statements, so a leftover read cannot keep it
+  holding the log.
+
+`doctor` and `doctor --quick` print a `wal` line, read from SQLite's own index
+without locking or checkpointing anything: `bytes` is the log's size, `frames` the
+records it holds and `backfilled` those already copied into the database. When the
+index cannot be read consistently, both counters read `unknown`. When another
+process holds an old snapshot, `oldest_held_read_mark` and a `note` say so: "a
+reader has held a snapshot since frame N of M". Close that reader, usually an idle
+dashboard or tool from an older Squadra or another program reading the registry,
+then run `doctor --repair`.
+
+`doctor --repair` adds `wal_compaction`: one checkpoint that copies the log into
+the database and empties it, waiting at most 10 seconds for readers.
+`readers_prevented: true` means a reader still holds an old snapshot; the log
+stays as it was, and nothing is lost. It deletes no event, artifact or run: the
+event count and chain head are the same before and after. Inside a saved package
+or checkpoint it is skipped. Never delete the `-wal` or `-shm` files by hand.
 
 The other ordinary reads above do **not** reverify events before the anchor, untouched cache leaves,
 or that the cached root equals a complete replay of the reducer. A missing, foreign

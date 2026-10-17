@@ -256,6 +256,34 @@ gate --reason ...`, then `prove --gate`, finally `resource release` after the
 terminal receipt. The label does not prove the command is the whole suite:
 the coordinator must agree on the correct command and project reservations.
 
+### One execution for the two final reads
+
+When final-read tasks bind the same repository, exact source snapshot, proof argv
+and expected test count, one physical proof can serve them both. First verify
+that **each reader's actual executable** lists `--also` in `prove --help`;
+the version string alone does not distinguish refreshed builds. Otherwise prove
+each task separately. Deliveries, handoff ACKs, independent reads, checks and
+closes remain separate for each task.
+
+```sh
+squadra prove --help
+squadra resource acquire --actor builder --name gate --reason "Both final reads"
+squadra prove --actor builder --task REL-CODEX --also REL-CLAUDE --gate --timeout 2400 \
+  --covers RF1 --covers RF2 -- python3 -B tools/parallel_tests.py
+squadra resource release --actor builder --name gate --reason "Run ended"
+squadra deliver --actor builder --task REL-CODEX
+squadra deliver --actor builder --task REL-CLAUDE
+```
+
+Repeat `--also` for additional tasks. `--covers` must cover every requirement of
+every served task (the example assumes RF1/RF2 are the complete union). Before
+starting, every member's assignment, dependencies, plan, route and proof contract
+must qualify. One run ID, process, native result and source binding are retained;
+each task sees its own coverage. A failed, interrupted or changed-source run
+cannot qualify any member. The secondary handoff names the physical run and its
+primary task. Older builds still read and audit the registry, but see the extra
+task as unproven and refuse its delivery, formal read, check or close.
+
 ### Parallel whole-suite proof
 
 For this repository, the coordinator may agree on
@@ -619,14 +647,15 @@ reducer replay. At startup/resume use read-only `doctor --quick` for explicitly
 limited anchor, suffix and demanded-cache checks. Full verification runs in
 `doctor` without `--quick`, `export`, `checkpoint`, `save`,
 `restore-check` and release-gate `close`. Dashboard startup performs the same full
-audit in the background: ordinary verified data is marked pending until completion,
+audit in the background, on a private copy of the registry: ordinary verified data is marked pending until completion,
 and an audit failure stops data responses and removes the displayed view. A missing, foreign or
 invalid cache also falls back to verified reconstruction. See the exact
 [verification table](recovery.md#registry-verification). Read-only commands do not
 write the registry or projections. A full audit reports cache/journal disagreement
 as a mismatch, not a successful fallback. Default doctor refuses it; explicit
 `doctor --repair` rebuilds derived tables and re-audits, but refuses saved packages
-and checkpoint folders. The dashboard never repairs: its audit fails closed.
+and checkpoint folders; it also copies the [write-ahead log](recovery.md#registry-wal)
+back into the database. The dashboard never repairs: its audit fails closed.
 Cold-cache computation and release-gate auditing happen before the short write
 transaction; concurrent changes may produce a plain retryable refusal.
 Coordinate every writer's upgrade before new
@@ -678,6 +707,20 @@ Stand-by **does not** cancel processes, release resources, transfer roles or
 reassign work. Return **does not** restart anything. No response is not proof
 that a process ended. No timer or dashboard read changes state. The census
 remains a partial snapshot, to be supplemented with the clients.
+
+**Waits on a window in stand-by are counted, not listed.** Mail to a window in
+stand-by leaves «Who is waiting» in `status`, `stato.md` and the dashboard: its
+ACK and to-forward waits become one line per window, for example «3 messages to
+core-A on stand-by (Window closed)», in Italian «3 messaggi a core-A in stand-by
+(Window closed)». The old heartbeats of that window's runs fold into the same line
+(«1 run of core-A, state uncertain»), and the runs themselves stay listed with
+their uncertain result: a run without a receipt is never declared stopped. This
+is computed at read time and records nothing. The messages stay without ACK:
+an ACK from the window still closes one, the pending-ACK count and the mail
+filter still include them, and `standby --resume` (or a return through the
+sweep) brings their waits back. Pool handoffs and task steps are not folded.
+To silence a window that is gone for good, put it in stand-by with a reason, even
+when it has not answered for days: no ping is needed for an explicit `standby`.
 
 Earlier registries can be read without migration. After new presence events,
 all writing windows must use the same updated version: an earlier CLI does not
@@ -995,6 +1038,38 @@ squadra standby --actor coord --agent builder --resume --reason "Availability co
 - **Presence:** `ping --all` calls each other active identity once, skipping stand-by; a pending ping is reused and never extended. The sweep counts only a ping a transport reported `delivered: true`. `--to` can call a window in stand-by, whose real ACK lets it return at the next sweep; old ACKs, aliases and new registrations never do.
 - **Only the coordinator changes availability**, with `ping --sweep` (re-checked inside the transaction) or `standby`. All aliases of a window share its stand-by, during which new assignments and review handoffs to it are refused.
 - **Stand-by stops nothing:** it **does not cancel processes, release resources, transfer roles or reassign work**; return restarts nothing; no timer or page view changes the state; an unanswered ping proves no absence.
+
+### Waiting for a resource and declaring proof coverage
+
+`resource acquire --actor builder --name gate --reason "Frozen candidate" --wait 3600`
+waits up to one hour, in arrival order among callers using `--wait`. The command
+prints the holder and initial queue position once, polls every 0.2 seconds without
+journal or projection writes, and reserves only after an actual release. A timeout
+records one refusal; a dead waiter does not block the line. `--wait 0` joins the
+line without sleeping, and a holder (including an alias of its identity) refuses
+immediately. Without `--wait`, immediate acquisition/refusal is unchanged; older
+or immediate callers do not join the line and may win a reservation race.
+
+Waiting requires POSIX locks and a private queue for one OS user: 0700 directories
+and 0600 files under `resource-waits/` in the registry. Shared-user queues and
+Windows waiting are refused explicitly; immediate resource commands remain
+available. Each poll closes its SQLite transaction before sleeping and demands
+only authenticated cache leaves. A missing, foreign or stale cache refuses
+waiting rather than replaying/rebuilding history in a poll; prepare a moved or
+copied registry with an ordinary write first, and use `doctor` for integrity
+details. Queue tickets are runtime sidecars, outside checkpoints and the journal.
+Non-ticket entries such as Finder's .DS_Store are ignored without opening or
+removing them; ticket and mutex safety checks still apply. If the queue mutex
+stays busy until the deadline, the refusal says "Resource queue mutex busy;
+wait deadline expired", rather than claiming the resource is already reserved.
+
+On a task with requirements, `prove` needs explicit `--covers ID` before any
+precheck or proof starts. Partial coverage is allowed. A successful proof prints
+`coverage_on_this_source`, with covered and uncovered IDs per task; it counts
+only passing proofs with the current contract on the same exact source. This
+summary is not delivery or review acceptance. Tasks without requirements keep
+their previous behavior. A shared proof's coverage is the union of member IDs;
+the shared-proof preflight also requires complete coverage for every member.
 
 Every window writing to one registry should run the same Squadra version, or some rules may not be enforced; moving a working squad to another version is an explicit, authorized step.
 

@@ -17,7 +17,7 @@ from urllib.parse import unquote, urlparse
 import webbrowser
 
 from registry import (Store, Error, digest, attention, waits, now, requirement_matrix, initial, apply, decision_graph, decision_id,
-                      task_progress, presence, fix_status, plain, wait_view, scrub_index)
+                      task_progress, presence, fix_status, plain, wait_view, scrub_index, fold_recorded, pending_ack_ids)
 from comms import communications
 from panel import activity
 from reads import read_value
@@ -165,7 +165,7 @@ def landing_records(recorded, compact):
         if item.get('delivery'):
             item['delivery'] = {k: v for k, v in item['delivery'].items() if k != 'proofs'}
         item['proofs'] = [{k: v for k, v in proof.items() if k in {
-            'id', 'utc', 'status', 'native_rc', 'seconds', 'counts', 'error', 'covers'}}
+            'id', 'utc', 'status', 'native_rc', 'seconds', 'counts', 'error', 'covers', 'shared_from'}}
             for proof in item.get('proofs', [])]
         result['tasks'][key] = item
     result['messages'] = {key: {**message, 'body': preview(message['body']),
@@ -201,9 +201,10 @@ def detail_patch(recorded, events, compact, section, record):
 
 
 def transfer_signature(head, query, plugins_value, waiting, present, activity_value, audit=None):
-    """Time ages are local; threshold membership and bucket changes are semantic."""
+    """Time ages are local; threshold membership, a stand-by row's members and bucket changes are semantic."""
     value = [head, query, plugins_value, audit,
              [(w['kind'], w.get('id'), w.get('task'), w.get('who', []), w.get('threshold'))
+              + ((w.get('messages'), w.get('runs')) if w['kind'] == 'stand-by' else ())
               for w in waiting],
              [(p['agent'], p['due']) for p in present],
              {k: v for k, v in activity_value.items() if k != 'as_of'}]
@@ -332,6 +333,8 @@ class VerifiedView:
                 self.audit_thread.start()
 
     def _audit_worker(self):
+        """Audit a private copy of the queued file, so the audit's long read never holds the live write-ahead log."""
+        from registry_prepare import StaleSnapshot
         while True:
             with self.audit_lock:
                 if self.closed or self.audit_pending is None:
@@ -342,6 +345,7 @@ class VerifiedView:
                 cancel = self.audit_cancel = threading.Event()
             store = None
             audited = failure = None
+            stale = False
             try:
                 if self.path.is_symlink():
                     raise Error('Registry symlink refused')
@@ -349,19 +353,26 @@ class VerifiedView:
                 if (before.st_dev, before.st_ino) != identity:
                     continue
                 store = Store(self.root, read_only=True)
+                store._audit_copy = identity
                 with self.audit_lock:
                     self.audit_store = store
                 audited = store.audit(cancelled=cancel.is_set)
                 if audited.get('cache') == 'mismatch':
                     raise Error('Cache mismatch; run squadra doctor --repair')
+            except StaleSnapshot:
+                stale = True  # The next read sees the new file and queues its own audit.
             except Exception as exc:
                 failure = str(exc)
             finally:
                 if store is not None:
-                    store.close()
+                    try:
+                        store.close()
+                    except Exception as exc:
+                        failure = failure or 'Registry audit cleanup failed: ' + str(exc)
                 with self.audit_lock:
-                    if self.audit_store is store:
-                        self.audit_store = None
+                    self.audit_store = None
+            if stale:
+                continue
             try:
                 current = self.path.lstat()
                 same_file = not self.path.is_symlink() and (current.st_dev, current.st_ino) == identity
@@ -461,24 +472,27 @@ class VerifiedView:
         if suffix and previous is not None and previous['events'] is prior and previous['cached']:
             try:
                 events = prior + suffix
-                view = store.view()
+                view = store.resolved(store.view(), compact=True)
                 # Only two views read from the derived cache share one record form; a replay fallback does not.
                 if getattr(view, 'current', None) is not None:
                     raw = store.state(events, resolve=False, with_waits=False)
-                    state = refreshed(previous['state'], view, previous['raw'], raw)
+                    shared_change = any(event['kind'] in {'run.start', 'run.end'} and
+                                        raw['runs'].get(event['data'].get('id'), {}).get('shared_proof')
+                                        for event in suffix)
+                    state = plain(view) if shared_change else refreshed(previous['state'], view, previous['raw'], raw)
                     if state['event_count'] == events[-1]['seq']:
                         return events, state, raw, True
             except (Error, KeyError, TypeError, ValueError):
                 pass
         events = store.events()
-        view = store.view()
+        view = store.resolved(store.view(), compact=True)
         cached, state = getattr(view, 'current', None) is not None, plain(view)
         if state['event_count'] != (events[-1]['seq'] if events else 0):
             store.db.execute('BEGIN')
             try:
                 events = store.events()
                 state = store.state(events, resolve=False)
-                state = plain(wait_view(state, state.wait_context))
+                state = plain(store.resolved(wait_view(state, state.wait_context), compact=True))
             finally:
                 store.db.execute('COMMIT')
             cached = False
@@ -488,8 +502,9 @@ class VerifiedView:
         """Keep this head's wait, presence and activity membership until the first instant one can change."""
         clock = datetime.fromisoformat(stamp).timestamp()
         far = datetime.fromtimestamp(clock + FAR_SECONDS, timezone.utc).isoformat()
+        # Unfolded rows: a stand-by row hides the deadlines of the heartbeats it may come to count.
         crossings = [clock + FAR_SECONDS - row['seconds'] + row['threshold']
-                     for row in waits(state, far) + [r for r in presence(state, far) if r.get('ping')]]
+                     for row in waits(state, far, fold=False) + [r for r in presence(state, far) if r.get('ping')]]
         future = [moment for moment in crossings if moment > clock]
         boundary = (math.floor(clock / ACTIVITY_STEP) + 1) * ACTIVITY_STEP
         with self.reply_lock:
@@ -728,7 +743,10 @@ def make_server(root, port=0):
                         state = landing_records(recorded, compact)
                         state.update(change_token=revision, server_time=stamp)
                     state["plugins"] = plugin_value
-                    state["attention"] = attention(recorded)
+                    recorded_view = attention(recorded)
+                    # The page lists waits without the mail to windows in stand-by; its pending ACKs keep that mail.
+                    state["attention"] = {**recorded_view, "waiting": fold_recorded(recorded, recorded_view["waiting"], waiting),
+                                          "pending_ack": pending_ack_ids(recorded, attention_value=recorded_view)}
                     state["waits"], state["presence"] = waiting, present
                     state["project_started"] = events[0]["utc"]
                     state["events"] = [{**event, 'data': {}, 'detail_pending': True} for event in events[-120:]] if conditional else events[-120:]

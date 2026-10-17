@@ -49,6 +49,11 @@ https://github.com/user-attachments/assets/8f38a443-b738-48f8-b562-9b072419b5f0
 - **Si installa ovunque.** L'installatore funziona con una umask di gruppo condivisa e con una cartella home collegata. Con Python più vecchio della 3.12 si rifiuta con una riga chiara.
 - **L'inglese resta inglese.** Uno spazio di lavoro in inglese riceve l'inglese in ogni comando.
 - **Ingresso e presenza.** Una nuova finestra può rispondere al suo primo appello di presenza, e il giro di presenza del coordinatore lascia attivo il coordinatore stesso.
+- **In fila, invece che a tentativi.** `resource acquire --wait SECONDI` tiene il posto in fila per una risorsa occupata, come la suite dei test, invece di fallire finché non si libera: le finestre che aspettano con `--wait` la ottengono nell'ordine in cui l'hanno chiesta, e mentre aspettano non si registra nulla. `prove` controlla prima di partire che la prova copra i requisiti dell'incarico, così una prova lunga non va mai buttata per un `--covers` mancante.
+- **Una sola prova per le due letture finali.** `prove --also <incarico>` fa valere una sola esecuzione della suite per più incarichi sullo stesso codice congelato, come le letture finali Claude e Codex di un rilascio; ogni incarico controlla comunque i propri requisiti. Usala quando lo Squadra di ogni lettore elenca `--also` in `squadra prove --help`; altrimenti prova ogni incarico per conto suo.
+- **Le finestre che non ci sono più non riempiono le attese.** La posta per una finestra messa in stand-by compare come una riga per finestra, per esempio «12 messaggi a core-A in stand-by (finestra chiusa)», e torna appena la finestra rientra.
+- **Un registro che resta piccolo.** Il file di appoggio del registro torna piccolo dopo le scritture, anche con la dashboard aperta; `doctor` ne riporta la dimensione e `doctor --repair` lo compatta. Non si cancella nulla.
+- **Il coordinatore coordina, e i rilasci partono prima.** Il coordinatore costruisce solo l'unione e il rilascio, e affida le corsie ai costruttori. Ogni corsia è letta una volta per intero; le sue correzioni si rileggono insieme nella lettura finale del rilascio, con un solo giro di correzione.
 - Plugin: memoranda 1.0.7, Playwright 1.0.8, Sentry 0.1.5.
 
 **Misurato sulla nostra squadra.** Il nostro coordinatore ha lanciato lo stesso script sulla dashboard della 3.10.1 pubblicata e poi della 3.10.2, sulla stessa copia del registro di questa squadra (11.488 eventi), su un computer a 8 core con un carico moderato (load average tra 5 e 11 durante le misure): cinque aggiornamenti, ciascuno dopo un nuovo messaggio, e tre ricerche. Il tempo è quello che la dashboard impiega per elaborare una richiesta. Qui la dashboard era già aperta sulla copia prima della sua prima scrittura, quindi il primo aggiornamento ha pagato una lettura completa in più (8,5 s): un registro copiato o spostato ricollega la propria cache alla prima scrittura nella nuova posizione, e una dashboard già aperta lì paga una lettura completa all'aggiornamento successivo. La tabella mostra gli aggiornamenti seguenti.
@@ -185,6 +190,8 @@ Installa da un checkout pulito, senza modifiche fuori dai commit, con una **nuov
 
 **Con /plugin.** In Claude Code esegui `/plugin marketplace update squadra`, poi `/plugin update squadra@squadra`, poi riavvia Claude Code. Per Codex esegui `codex plugin marketplace upgrade`, poi di nuovo `codex plugin add squadra@squadra`.
 
+**Se hai installato la 3.10.2 prima del pomeriggio del 17 ottobre 2026,** i miglioramenti elencati sotto la 3.10.2 nelle Novità, pubblicati con lo stesso numero di versione, arrivano in Claude Code solo reinstallando, perché `/plugin update` risponde che la 3.10.2 è già l'ultima: esegui `/plugin marketplace update squadra`, poi `/plugin uninstall squadra@squadra` e `/plugin install squadra@squadra`, poi riavvia Claude Code. Codex e l'installatore autonomo li ricevono con i passi soliti. Per controllare, chiedi alla finestra «Mostrami l'aiuto del comando `resource` di squadra»: l'aggiornamento elenca `--wait`.
+
 **Con l'installatore autonomo.** Dalla 3.6.1 in poi le versioni conservano la loro storia: esegui `git pull`, poi di nuovo l'installatore, con una nuova cartella di backup ogni volta. Un checkout della 3.6.0 o precedente richiede invece `git fetch origin` e `git reset --hard origin/main`, che cancella le modifiche locali di quel checkout.
 
 ```sh
@@ -194,7 +201,7 @@ python3 -B scripts/install.py \
 squadra --version
 ```
 
-Ogni rilascio alza il numero di versione. I plugin installati dallo Store mantengono la loro versione finché `squadra plugin install <nome>` non viene rieseguito dalla nuova release ([Plugin inclusi nella release](#plugin-store)). Le finestre già aperte mantengono la versione letta finché non si riavviano, e una squadra al lavoro mantiene il suo protocollo finché non la cambi esplicitamente.
+Ogni rilascio alza il numero di versione, tranne un aggiornamento dello stesso rilascio annunciato nelle Novità, come per la 3.10.2 il 17 ottobre 2026. I plugin installati dallo Store mantengono la loro versione finché `squadra plugin install <nome>` non viene rieseguito dalla nuova release ([Plugin inclusi nella release](#plugin-store)). Le finestre già aperte mantengono la versione letta finché non si riavviano, e una squadra al lavoro mantiene il suo protocollo finché non la cambi esplicitamente.
 
 **Aggiornare dalla 3.10.1 alla 3.10.2: il registro resta com'è.**
 - **Le finestre possono passare una alla volta.** Finestre 3.10.1 e 3.10.2 condividono lo stesso registro mentre le aggiorni; niente viene convertito.
@@ -238,7 +245,7 @@ Usage e Balance misurano una finestra solo attraverso questo, e la coda di Codex
 <a id="rule-1"></a>
 ### Regola 1: lavoro in parallelo
 
-Il coordinatore affida subito lavoro indipendente a ogni finestra disponibile (Codex, Claude, Cursor interattivo), e nessuna finestra resta ferma mentre c'è lavoro: un costruttore per albero, letture su copie congelate, e la lettura finale di un rilascio fatta da un lettore Claude e da un lettore Codex nello stesso momento. Il coordinatore legge la posta del registro a ogni passo, perché una finestra può ricevere lavoro direttamente dal proprietario e riferirlo solo lì.
+Il coordinatore affida subito lavoro indipendente a ogni finestra disponibile (Codex, Claude, Cursor interattivo), e nessuna finestra resta ferma mentre c'è lavoro: un costruttore per albero, letture su copie congelate, e la lettura finale di un rilascio fatta da un lettore Claude e da un lettore Codex nello stesso momento. Il coordinatore costruisce solo l'unione e il rilascio e affida le corsie ai costruttori, così resta attento alla posta e alle giunture. Il coordinatore legge la posta del registro a ogni passo, perché una finestra può ricevere lavoro direttamente dal proprietario e riferirlo solo lì.
 
 ### Regola 2: la tabella sempre visibile
 
@@ -246,7 +253,7 @@ Ogni aggiornamento al proprietario mostra la tabella di `squadra board`: **In co
 
 ### Regole 3–10: metodo
 
-Leggi prima di citare; registra la decisione prima di cambiare un test che fissa un requisito; ogni corsia parallela ha i suoi file; dichiara costo e tetto prima di spendere; la modalità di revisione la sceglie il proprietario; ogni chiusura dice come far andare più veloce l'incarico successivo; e il rilascio parte in orario: un'ora limite due ore dopo che il contenuto è fissato, riletture finali limitate all'unione quando ogni corsia è già stata letta, la prova in parallelo come prova di rilascio, e una lettura ferma passa a un lettore libero; un giro di correzione corregge solo il problema e lo rilegge solo chi lo ha segnalato. Tutte le regole per intero: la [skill](SKILL.md).
+Leggi prima di citare; registra la decisione prima di cambiare un test che fissa un requisito; ogni corsia parallela ha i suoi file; dichiara costo e tetto prima di spendere; ogni corsia è letta una volta per intero e le sue correzioni si rileggono insieme nella lettura finale del rilascio, salvo che il proprietario scelga un'altra modalità; ogni chiusura dice come far andare più veloce l'incarico successivo; e il rilascio parte in orario: un'ora limite due ore dopo che il contenuto è fissato, riletture finali limitate all'unione quando ogni corsia è già stata letta, la prova in parallelo come prova di rilascio, e una lettura ferma passa a un lettore libero; un giro di correzione corregge solo il problema. Tutte le regole per intero: la [skill](SKILL.md).
 
 <a id="prompts"></a>
 ## Prompt di esempio

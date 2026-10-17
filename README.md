@@ -49,6 +49,11 @@ https://github.com/user-attachments/assets/6ea747a5-a993-4aa7-a58d-1b2b7f908720
 - **Install anywhere.** The installer works under a shared-group umask and with a linked home folder. On Python older than 3.12 it refuses with one clear line.
 - **English stays English.** An English workspace gets English in every command.
 - **Joining and presence.** A new window can answer its first presence call, and the coordinator's own sweep keeps the coordinator active.
+- **Waiting in line.** `resource acquire --wait SECONDS` keeps your place in line for a busy resource, such as the test gate, instead of failing until it is free: windows that wait with `--wait` get it in the order they asked, and nothing is recorded while they wait. `prove` checks before it starts that the run covers the task's requirements, so a long proof is never thrown away for a missing `--covers`.
+- **One proof for both final reads.** `prove --also <task>` lets one run of the suite serve several tasks on the same frozen code, such as a release's Claude and Codex final reads; each task still checks its own requirements. Use it when every reader's Squadra lists `--also` in `squadra prove --help`; otherwise prove each task on its own.
+- **Windows that are gone stop filling the waits.** Mail to a window you put in stand-by shows as one line per window, for example «12 messages to core-A on stand-by (window closed)», and comes back as soon as the window returns.
+- **A registry that stays small.** The registry's journal file goes back to a small size after writes, even with a dashboard open; `doctor` reports its size and `doctor --repair` compacts it. Nothing is deleted.
+- **The coordinator coordinates, and releases leave sooner.** The coordinator builds only the integration and the release, and gives the lanes to the builders. Every lane is read once in full; its fixes are read together in the release's final read, with one fix round.
 - Plugins: memoranda 1.0.7, Playwright 1.0.8, Sentry 0.1.5.
 
 **Measured on our own squad.** Our coordinator ran the same script against the dashboard of published 3.10.1 and then of 3.10.2, on the same copy of this squad's registry (11,488 events), on an 8-core machine under moderate load (load average 5 to 11 during the runs): five updates, each after one new message, and three searches. Time is the dashboard's own processing time for one request. Here the dashboard was already open on the copy before its first write, so the first update paid one more full read (8.5 s): a copied or moved registry has its cache re-bound by its first write in the new place, and a dashboard already open there pays one full read on the next update. The table shows the updates after it.
@@ -185,6 +190,8 @@ Install from a clean, committed checkout with a **new backup directory** each ti
 
 **With /plugin.** In Claude Code, run `/plugin marketplace update squadra`, then `/plugin update squadra@squadra`, then restart Claude Code. For Codex, run `codex plugin marketplace upgrade`, then `codex plugin add squadra@squadra` again.
 
+**If you installed 3.10.2 before the afternoon of 17 October 2026,** the improvements listed under 3.10.2 in What's new, published under the same version number, reach Claude Code only through a reinstall, because `/plugin update` answers that 3.10.2 is already the latest: run `/plugin marketplace update squadra`, then `/plugin uninstall squadra@squadra` and `/plugin install squadra@squadra`, then restart Claude Code. Codex and the standalone installer pick them up with the usual steps. To check, ask the window «Show me the help of squadra's `resource` command»: the refresh lists `--wait`.
+
 **With the standalone installer.** From 3.6.1 on, releases keep their history: run `git pull`, then the installer again, with a new backup folder each time. A checkout of 3.6.0 or earlier needs `git fetch origin` and `git reset --hard origin/main` instead, which discards any local edit in that checkout.
 
 ```sh
@@ -194,7 +201,7 @@ python3 -B scripts/install.py \
 squadra --version
 ```
 
-Every release raises the version number. Plugins installed from the Store keep their version until `squadra plugin install <name>` runs again from the new release ([Plugins bundled in your release](#plugin-store)). Open windows keep the version they read until they restart, and a running squad keeps its protocol until you switch it explicitly.
+Every release raises the version number, except a refresh of the same release announced in What's new, as for 3.10.2 on 17 October 2026. Plugins installed from the Store keep their version until `squadra plugin install <name>` runs again from the new release ([Plugins bundled in your release](#plugin-store)). Open windows keep the version they read until they restart, and a running squad keeps its protocol until you switch it explicitly.
 
 **Updating from 3.10.1 to 3.10.2: the registry stays as it is.**
 - **Windows can move one at a time.** 3.10.1 and 3.10.2 windows share the same registry while you update them; nothing is converted.
@@ -238,7 +245,7 @@ window only through it, and the Codex queue needs it.
 <a id="rule-1"></a>
 ### Rule 1: work in parallel
 
-The coordinator gives independent work to every available window at once (Codex, Claude, interactive Cursor), and no window waits idle while some exists: one builder per tree, reads on frozen copies, and a release's final read by a Claude reader and a Codex reader at the same time. The coordinator reads its registry mail at every step, because a window may get work directly from the owner and report it only there.
+The coordinator gives independent work to every available window at once (Codex, Claude, interactive Cursor), and no window waits idle while some exists: one builder per tree, reads on frozen copies, and a release's final read by a Claude reader and a Codex reader at the same time. The coordinator builds only the integration and the release, and gives the lanes to the builders, so it keeps its attention for mail and seams. The coordinator reads its registry mail at every step, because a window may get work directly from the owner and report it only there.
 
 ### Rule 2: the progress table is always visible
 
@@ -246,7 +253,7 @@ Every update to the owner shows the table from `squadra board`: **In progress**,
 
 ### Rules 3–10: method
 
-Read before you cite; record a decision before a pinned test changes; parallel lanes own their files; state the cost and a cap before spending; the owner chooses the review mode; every close says how the next task can go faster; and a release leaves on time: a cut-off two hours after its scope is fixed, final reads scoped to the integration when every lane was already read, the parallel runner as release proof, and a stalled read moved to a free reader; a fix round fixes only the problem, read only by whoever raised it. Every rule in full: [the skill](SKILL.md).
+Read before you cite; record a decision before a pinned test changes; parallel lanes own their files; state the cost and a cap before spending; every lane is read once in full and its fixes are read together in the release's final read, unless the owner chooses another mode; every close says how the next task can go faster; and a release leaves on time: a cut-off two hours after its scope is fixed, final reads scoped to the integration when every lane was already read, the parallel runner as release proof, and a stalled read moved to a free reader; a fix round fixes only the problem. Every rule in full: [the skill](SKILL.md).
 
 <a id="prompts"></a>
 ## Example prompts
