@@ -12,8 +12,9 @@ binding checks. Existing inline fingerprints and historical event bytes remain u
 `posta/exchange-YYYY-MM-DD.md` are projections, not the authority. Read-only commands
 write neither the registry nor its projections. Ordinary writes append new canonical
 records to `events.jsonl` and update affected UTC days and bounded summaries; they
-do not regenerate the complete state and mailbox on every command. `state.json`
-and complete mail/history exports are refreshed by `export`, `checkpoint` or `save`.
+do not regenerate the complete state and mailbox on every command. In the live registry,
+`state.json` and complete mail/history exports are refreshed by `export` (and by a recorded
+`restore-check`); `checkpoint` and `save` write them into their copy, not into the live folder.
 Use `squadra export --root /path/to/registry` before consuming complete exported files.
 Do not edit projections by hand. A crash between commit and projection does not
 erase the event, but can leave the files stale. Compare the export's recorded
@@ -37,9 +38,18 @@ cache has already been folded.
 | Operation | Verified during that operation |
 | --- | --- |
 | Other ordinary commands, including `check` and an ordinary task's `close`; dashboard refresh after startup | The recorded anchor event and its hash, every newer event's hash and previous link, and authenticated proofs for each cache value or index read. |
+| Quick resume check (`doctor --quick`) | The anchor, newer suffix and demanded cache values; no full historical/artifact audit or replay-root comparison. The output labels this limited scope. |
 | Explicit `usage`/`balance` calculations, a lesson's source check, and the lesson hint after a failed proof | The complete event hash chain and the requested historical evidence. These reads do not perform a full artifact audit. |
 | `doctor`, `export`, `checkpoint`, `save`, `restore-check`, and a release-gate task's `close` | The complete event chain and referenced artifacts/manifests, plus full replay to compare or rebuild the derived cache. |
 | Dashboard startup | The ordinary verified path serves data while a full chain/artifact/replay audit runs in the background. A visible status marks the pending audit; failure stops data responses and removes the displayed data. |
+
+Use read-only `doctor --quick` when resuming. Run `doctor` without that flag for
+the complete audit. A full audit reports cache/journal disagreement as a mismatch:
+default doctor exits nonzero and the dashboard refuses data. Explicit
+`doctor --repair` rebuilds the stored derived cache and re-audits; it refuses a
+root inside a saved package or checkpoint. Healthy doctor and quick doctor never
+repair or publish. Cold reconstruction and release-gate audits happen outside
+the exclusive write transaction; a concurrent change can require a retry.
 
 The other ordinary reads above do **not** reverify events before the anchor, untouched cache leaves,
 or that the cached root equals a complete replay of the reducer. A missing, foreign
@@ -118,7 +128,7 @@ artifact, not in an `--include` outside the selected repositories.
 If the tool supports a new session, the coordinator may start one to continue already
 authorized work. Otherwise prepare the exact prompt and declare the handoff still
 pending. The receiving session must actually acknowledge the message, read the mandate,
-handover and mail, run `doctor` and compare sources, WIP and reservations. Continue only
+handover and mail, run `doctor --quick` and compare sources, WIP and reservations. Continue only
 after an actual ownership handoff: no second writer or equivalent new tasks to reset
 budgets.
 
@@ -172,7 +182,9 @@ the registry; keep an explicit copy of any additional external evidence.
 
 Filters cover `.env*`, private keys/certificates, credential names and `PRIVATE KEY`
 headers: untracked matches are excluded and listed; tracked matches or matches at HEAD
-cause the package to be refused, because the bundle carries their history. This does
+cause the package to be refused, because the bundle carries their history. A tracked
+template ending in `.example`, `.sample`, `.template` or `.dist` (such as `.env.example`)
+is judged by its content only: a `PRIVATE KEY` header still refuses it. This does
 not find every secret: **there is no complete scan of Git history or registry artifacts**.
 Inspect the data before sharing it.
 
@@ -193,8 +205,9 @@ contents and staging. It verifies the copied registry's chain, artifacts, count 
 It writes `RESTORE-RESULT.json` and the path mapping in `RESUME.md`, without changing the
 original package or live registry. After verification, it adds a tool `restore.freeze`
 receipt only to the recovered copy, pausing it; the verified historical head remains in
-the report. You may add `--root /live-registry --actor coord` to record the receipt there
-after successful verification.
+the report. With `--actor coord`, the receipt is recorded after successful verification in
+the live registry, chosen with `--root` or `SQUADRA_ROOT` like every registry command; any
+other actor is refused before anything is restored.
 
 Recovered authority and acceptances are **historical**: paths change, and the candidate
 fingerprint includes the path. Do not silently remap a review; reread the mandate, mail
@@ -202,12 +215,49 @@ and receipts, reconcile sources/resources and wait for an explicit owner request
 `resume`. Restoration neither starts processes nor publishes. Checksums detect accidental
 changes; they do not protect against someone who can also replace the manifest and checksums.
 
+<a id="removing-a-leaked-artifact"></a>
+
+## Removing a leaked artifact
+
+Artifacts are files the registry keeps by their SHA-256 digest under `<root>/artifacts`.
+When one records a secret by mistake (a token, a key, a captured environment), the
+coordinator removes the file without breaking the registry:
+
+1. Find the digest: it is the file name under `artifacts/`, and the record that cites it
+   (a task scope, a report, an output) shows it.
+2. Delete `<root>/artifacts/<digest>`.
+3. Record `squadra decision --actor coord --scrub-artifact <digest> --reason "Leaked session token"`.
+
+Steps 2 and 3 work in either order. The decision is an ordinary `decision` event with a
+`scrub` field naming the digest and the tasks that reference it; only a coordinator can
+record it, and only for a digest that a recorded event registered. A source-file manifest
+cannot be scrubbed, because the registry resolves recorded snapshots from it.
+
+From then on the full audit (`doctor`, `export`, `checkpoint`, `save`, `restore-check`, a
+release gate's `close` and the dashboard's background audit) accepts the missing file and
+reports it as `scrubbed`, with its decision. Every other missing file still fails, and so
+does a scrubbed file that is present but changed: the decision covers absence only. The
+dashboard answers a scrubbed artifact with a plain «Scrubbed by decision …», in the
+workspace language, instead of its content.
+
+The event chain is untouched: the digest stays, and text recorded inline in events (a
+brief, a message, an output's text, a decision reason) stays in the history. Copies made
+before (checkpoints, saves, other disks) still hold the file; delete it there too, and
+rotate the leaked secret anyway.
+
+Published Squadra 3.10.1 does not know the `scrub` field. It replays the decision as an
+ordinary one, but its full audit, its dashboard, and its `check` or `close` of a task that
+references the scrubbed artifact still fail on the missing file until that window updates.
+
 <a id="dashboard-e-versioni"></a>
 
 ## Dashboard and versions
 
 `squadra dash --open` listens on 127.0.0.1, on a free port. The token is in the URL fragment;
 the API requires a token and exact Host: recorded state and artifacts and plugin data projections.
+A script sends the token in the `X-Squadra-Token` header, for example
+`curl -H "X-Squadra-Token: <token>" http://127.0.0.1:<port>/api/state`; without the token
+the API answers 401, and with any other Host 403.
 Guarded POSTs for plugin settings and action selections write only the declared files.
 No command or shell execution, no remote scripts or CDN. The disconnected view keeps the
 last page with a warning. Ctrl-C stops that server, not the agents. Do not expose the port
@@ -240,7 +290,21 @@ against complete task/run records, including omitted paths and hashes, are retur
 `search` with the query and the matching task/run IDs. The page waits for the matching reply
 before replacing its search results. The technical-data buttons read `/api/detail/task` or
 `/api/detail/run` with the URI-encoded record ID in `X-Squadra-Record`, under the same token
-and exact-Host checks. They return only records of this registry, never arbitrary file paths.
+and Host checks (`127.0.0.1`, `localhost` or `[::1]` with the dashboard's port; any other Host is
+refused). They return only records of this registry, never arbitrary file paths.
+`/api/forecast` returns, under the same checks, the comparison `squadra forecast --task`
+prints for the task whose URI-encoded ID is in `X-Squadra-Record`; an unknown task gets
+409 `unknown_task`. The page does not call it.
+
+A changed registry is read again only from its new events: records they did not change are reused
+with their requirements, fix status and compact form, and the reply equals a full rebuild. An idle
+poll with the same head answers «not modified» without recomputing waits, presence or activity until
+one of them can cross a threshold. The page sends `X-Squadra-Delta: 1`; when the server still holds
+the reply named by the page's token, a changed poll returns only what differs from it (`delta`), and
+a changed search alone, before any threshold or 15-minute boundary, returns only the new results.
+A held reply's `server_time` is the instant its ages were computed, and the page ages them from there
+to the reply's current time. Otherwise, and for every client that does not ask, the whole reply. The complete view (no `X-Squadra-View`) is refused with
+`full_state_too_large` when it would materialize more than 200,000 source-inventory entries.
 
 Initial load and page reload show a loading message; later refreshes keep the current view
 with a small updating indicator. Each GET has a 15-second deadline covering the response
@@ -254,10 +318,13 @@ truncation measurement is grouped and limited to visible content.
 without generating ACKs or tasks. Active squads remain on their frozen protocol/version;
 a new installation does not migrate them.
 
-`selftest --output /new/directory` keeps RESULT.json and logs; without the argument it uses
-`~/.local/state/squadra/selftests/ID`. The overall timeout is 900 seconds (15 minutes), with
-headroom for the full suite. Synthetic tests, no model quota or product gate. Node.js is
-required: the dashboard's JavaScript contracts fail without Node; they are not skipped.
+`selftest --output /new/directory` keeps RESULT.json and logs outside the Squadra source;
+without the argument it uses `~/.local/state/squadra/selftests/ID`. It runs the suite with
+`tools/parallel_tests.py`, which fails when a collected test did not run; `--timeout SECONDS`
+(default 1800) bounds the whole run and each test module. An interrupted run reports how
+many tests its finished modules completed, out of those collected. Synthetic tests, no model
+quota or product gate. Node.js is required: the dashboard's JavaScript contracts fail
+without Node; they are not skipped.
 Comparative quality requires the separate harness in [benchmark.md](benchmark.md).
 
 <a id="dashboard-page"></a>
@@ -347,7 +414,7 @@ Every screenshot exists in both languages:
 *Moved from the README, word for word.*
 
 - **`checkpoint`** copies **only the registry**, its artifacts and projections. **`save`**, coordinator only, adds every registered Git root (history bundles, HEAD, branch, index and worktree patches, untracked files) into a new destination outside registry and sources (`--temporary` for throwaway ones); `--repo` makes a declared partial package and `--include` adds ignored files inside a selected repository. Sources that change meanwhile refuse a green package. Builders and readers ask the coordinator for it within the existing scope, without asking the owner again.
-- **`restore-check`** verifies checksums before opening anything, restores into a new folder and compares the result; the restored copy is paused, old acceptances are historical, nothing restarts by itself, and `--root` with `--actor` records the receipt in the live registry.
+- **`restore-check`** verifies checksums before opening anything, restores into a new folder and compares the result; the restored copy is paused, old acceptances are historical, nothing restarts by itself, and `--actor coord` records the receipt in the live registry (`--root` or `SQUADRA_ROOT`); any other actor is refused before restoring.
 - **When context fills up**, on a real client signal or when constraints can no longer be reliably reconstructed, the agent saves a handover **before continuing**: task, identity, branch and SHA, open findings, pending ACKs, budgets, resources and one exact next step. It never invents token percentages. A fresh session ACKs, runs `doctor` and reconciles sources and resources before writing; a prepared prompt does not prove that a window started. The same window keeps its identity and updates `agent --session`; a different window needs a new seat. There is **no command that moves a task to another owner**: keep one writer, never duplicate a task to erase a budget, and earlier builders stay authors.
 - **A pause** blocks new work, reviews, runs and deliveries and keeps consultation and recovery, while a checkpoint alone pauses nothing. Stop only the processes you own; resume only on the owner's word, after reconciling processes and state. Other squads are never migrated or resumed.
 

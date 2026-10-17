@@ -8,8 +8,8 @@ import shutil
 import subprocess
 import tempfile
 
-import dashboard
 import test_dashboard_performance as fixtures
+import dashboard
 import test_panel as panel
 
 
@@ -37,6 +37,7 @@ class DashboardTransfer(unittest.TestCase):
         return status, json.loads(raw)
 
     def test_idle_response_is_small_and_state_is_retained(self):
+        self.state(**{'X-Squadra-View': 'compact', 'X-Squadra-State-Token': ''})
         first, size = self.compact()
         self.assertIn('change_token', first)
         again, idle_size = self.compact(first['change_token'])
@@ -107,6 +108,7 @@ class DashboardTransfer(unittest.TestCase):
     def test_presence_threshold_and_activity_bucket_invalidate(self):
         self.store.append('message', 'C', {'id': 'PING', 'to': 'A', 'body': 'Ping',
                                           'ping': True, 'availability_event': None})
+        self.store.append('transport', 'C', {'message': 'PING', 'via': 'codex-queue', 'delivered': True})
         with patch.object(dashboard, 'now', return_value='2026-10-12T12:04:59+00:00'):
             before, _ = self.compact()
         with patch.object(dashboard, 'now', return_value='2026-10-12T12:05:00+00:00'):
@@ -127,6 +129,7 @@ class DashboardTransfer(unittest.TestCase):
     def test_signature_covers_identity_of_every_real_wait_kind(self):
         self.store.append('message', 'C', {'id': 'PING', 'to': 'A', 'body': 'Ping',
                                           'ping': True, 'availability_event': None})
+        self.store.append('transport', 'C', {'message': 'PING', 'via': 'codex-queue', 'delivered': True})
         state = self.store.state()
         reviewed = deepcopy(state['tasks'][self.task_id])
         reviewed.update(id='REVIEWED', status='reviewed', coordinator='C')

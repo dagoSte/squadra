@@ -3,17 +3,21 @@ from __future__ import annotations
 
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
+import os
 from pathlib import Path
 import re
 import secrets
 import sqlite3
 import threading
 import time
+from datetime import datetime, timezone
+import math
+import unicodedata
 from urllib.parse import unquote, urlparse
 import webbrowser
 
-from registry import (Store, Error, digest, attention, waits, now, requirement_matrix, initial, apply, decision_graph,
-                      task_progress, presence, fix_status, plain)
+from registry import (Store, Error, digest, attention, waits, now, requirement_matrix, initial, apply, decision_graph, decision_id,
+                      task_progress, presence, fix_status, plain, wait_view, scrub_index)
 from comms import communications
 from panel import activity
 from reads import read_value
@@ -49,6 +53,106 @@ def preview(text):
     text = str(text or '')
     short = text.split('\n', 1)[0][:240]
     return short + '…' if short != text else text
+
+
+# Only these human fields enter search; source inventories and metadata stay out.
+SEARCH_FIELDS = {
+    'tasks': 'id title brief.text owner reviewer authors.* depends.* requirements.*.text scope.name plan.name brief.artifact.name',
+    'runs': 'task agent',
+    'messages': 'id from to task related_task body',
+    'outputs': 'task agent text next artifacts.*.name',
+    'decisions': 'id name actor reason owner_words answers withdraws choice tasks.*',
+    'asks': 'id actor task question options.*.label options.*.say evidence.*.name',
+    'reviews': 'task reviewer notes findings.*.title report.name',
+}
+
+
+def search_fields(kind, record):
+    def leaves(value, path):
+        if not path:
+            return [value] if isinstance(value, str) else []
+        key, *tail = path
+        if key == '*':
+            return [text for item in value for text in leaves(item, tail)] if isinstance(value, list) else []
+        return leaves(value.get(key), tail) if isinstance(value, dict) else []
+    return [text for path in SEARCH_FIELDS.get(kind, '').split()
+            for text in leaves(record, path.split('.'))]
+
+
+def search_normalize(text):
+    return ''.join(c for c in unicodedata.normalize('NFD', text)
+                   if unicodedata.category(c)[0] != 'M').lower()
+
+
+def search_match(fields, query):
+    text = '\n'.join(re.sub(r'(?<!\w)[a-f0-9]{32,}(?!\w)', ' ', search_normalize(s)) for s in fields)
+    return all(re.search(r'(?<!\w)' + re.escape(word), text) for word in search_normalize(query).split())
+
+
+def search_records(recorded, events, query):
+    result = {'query': query, **{kind: [] for kind in SEARCH_FIELDS}, 'results': [], 'total': 0}
+    if not query.strip():
+        return result
+    positions = {kind: {} for kind in SEARCH_FIELDS}
+    decisions, reviews = {}, {}
+
+    def position(kind, identity, event):
+        if identity:
+            positions[kind][identity] = {key: event[key] for key in ('seq', 'utc', 'actor')}
+
+    for event in events:
+        kind, d = event['kind'], event['data']
+        if kind == 'task':
+            position('tasks', d['id'], event)
+            position('tasks', d.get('supersedes'), event)
+        elif kind in {'brief', 'plan', 'start', 'deliver', 'review', 'route', 'fix', 'close', 'supersede'}:
+            position('tasks', d.get('task'), event)
+        if kind in {'run.start', 'run.end', 'run.cancel', 'run.abandon'}:
+            position('runs', d['id'], event)
+        elif kind == 'message':
+            position('messages', d['id'], event)
+        elif kind in {'ack', 'transport'}:
+            position('messages', d['message'], event)
+            if kind == 'ack':
+                position('tasks', recorded['messages'].get(d['message'], {}).get('task'), event)
+        elif kind == 'output':
+            position('outputs', event['id'], event)
+        elif kind == 'ask':
+            position('asks', d['id'], event)
+        elif kind == 'decision':
+            identity = decision_id(d, event['seq'])
+            decisions[identity] = {**d, 'id': identity, 'actor': event['actor']}
+            position('decisions', identity, event)
+            position('asks', d.get('answers') or d.get('withdraws'), event)
+        elif kind == 'review':
+            reviews[event['id']] = {**d, 'reviewer': event['actor']}
+            position('reviews', event['id'], event)
+
+    records = {**{kind: recorded[kind] for kind in ('tasks', 'runs', 'messages', 'asks')},
+               'outputs': {o['event']: o for o in recorded['outputs']},
+               'decisions': decisions, 'reviews': reviews}
+    rows = []
+    for kind, values in records.items():
+        for identity, record in values.items():
+            if not search_match(search_fields(kind, record), query):
+                continue
+            result[kind].append(identity)
+            headline = next((record.get(key) for key in ('title', 'body', 'text', 'question', 'reason', 'notes', 'task')
+                             if isinstance(record.get(key), str) and record[key].strip()), identity)
+            rows.append({'kind': kind, 'id': identity, **positions[kind].get(identity, {'seq': 0, 'utc': '', 'actor': ''}),
+                         'text': preview(headline), 'outcome': record.get('status') or record.get('verdict') or '',
+                         'task': identity if kind == 'tasks' else record.get('task')})
+    rows.sort(key=lambda row: (-row['seq'], row['kind'], row['id']))
+    result.update(results=rows[:100], total=len(rows))
+    return result
+
+
+def compact_map(records, kept, kept_compact):
+    """compact_records over a record map, reusing the projection of every record that is still the same object."""
+    if {'head', 'sha256', 'files'} <= records.keys():
+        return compact_records(records)
+    return {name: kept_compact[name] if kept.get(name) is record and name in kept_compact else compact_records(record)
+            for name, record in records.items()}
 
 
 def landing_records(recorded, compact):
@@ -106,6 +210,83 @@ def transfer_signature(head, query, plugins_value, waiting, present, activity_va
     return digest(json.dumps(value, ensure_ascii=False, sort_keys=True).encode())
 
 
+FAR_SECONDS = 10 * 365 * 86400
+# The complete view materializes every source inventory; past this many entries the compact view and details apply.
+FULL_FILES_LIMIT = 200000
+
+
+def inventory_size(state):
+    """Source-inventory entries the complete view would materialize: listed files plus manifest counts."""
+    total, stack = 0, [state.get(key) for key in ('tasks', 'runs', 'challenges')]
+    while stack:
+        value = stack.pop()
+        if isinstance(value, dict):
+            files, manifest = value.get('files'), value.get('manifest')
+            if 'head' in value and isinstance(files, (list, dict)):
+                total += len(files)
+            if isinstance(manifest, dict) and isinstance(manifest.get('count'), int):
+                total += manifest['count']
+            stack.extend(value.values())
+        elif isinstance(value, list):
+            stack.extend(value)
+    return total
+
+ACTIVITY_STEP = 900
+# Lists whose items carry a stable unique field; a delta sends their changed items and the new order.
+KEYED_LISTS = {'outputs': 'event', 'events': 'seq'}
+
+
+def transfer_delta(old, new):
+    """What changed between two landing replies: whole values, record maps and keyed lists.
+
+    A landing's server_time is the instant its clock-bearing rows were computed, so it travels like any value."""
+    delta = {'set': {}, 'remove': [key for key in old if key not in new], 'maps': {}, 'lists': {}}
+    for key, value in new.items():
+        if key == 'change_token' or (key in old and old[key] == value):
+            continue
+        before = old.get(key)
+        if (isinstance(value, dict) and isinstance(before, dict) and value
+                and all(isinstance(item, dict) for item in value.values())):
+            delta['maps'][key] = {'order': list(value), 'set': {name: item for name, item in value.items()
+                                                                 if before.get(name) != item}}
+        elif key in KEYED_LISTS and isinstance(value, list) and isinstance(before, list):
+            field = KEYED_LISTS[key]
+            known = {item[field]: item for item in before}
+            delta['lists'][key] = {'by': field, 'order': [item[field] for item in value],
+                                   'set': {str(item[field]): item for item in value if known.get(item[field]) != item}}
+        else:
+            delta['set'][key] = value
+    return delta
+
+
+def same_chain(events, prior):
+    """A freshly decoded journal equal to the verified one; decoding re-checks every row's hash."""
+    return [event['hash'] for event in events] == [event['hash'] for event in prior]
+
+
+# Event kinds that add or link decision-graph nodes; any other suffix leaves the graph as it was.
+GRAPH_KINDS = {'ask', 'close', 'decision', 'deliver', 'plan', 'restore.freeze', 'resume', 'pause', 'review',
+               'run.end', 'run.start', 'supersede', 'task'}
+
+
+def refreshed(previous, view, old, new):
+    """Reuse every plain record whose reducer record is unchanged; materialize the rest from the view."""
+    state = {}
+    for key in view.keys():
+        before, after = old.get(key), new.get(key)
+        if key not in previous:
+            state[key] = plain(view[key])
+        elif before == after:
+            state[key] = previous[key]
+        elif isinstance(after, dict) and isinstance(before, dict) and all(isinstance(v, dict) for v in after.values()):
+            records, kept = view[key], previous[key]
+            state[key] = {name: kept[name] if name in kept and before.get(name) == after.get(name) else plain(records[name])
+                          for name in records.keys()}
+        else:
+            state[key] = plain(view[key])
+    return state
+
+
 class VerifiedView:
     """Reuse verified data until SQLite or the underlying files change."""
     def __init__(self, root):
@@ -116,17 +297,24 @@ class VerifiedView:
         self.identity = self.marker = self.value = None
         self.reads_head = self.reads_value = None
         self.verified_events = None
+        self.base = None
+        self.held = None
+        self.replies = {}
+        self.reply_lock = threading.Lock()
         self.audit_lock = threading.Lock()
         self.audit_thread = self.audit_cancel = self.audit_store = None
         self.audit_pending = self.audit_failure = None
         self.audit_generation = 0
         self.audit_state = 'running'
+        self.audit_scrubbed = []
         self.closed = False
 
     def audit_info(self):
         with self.audit_lock:
             if self.audit_failure is not None:
                 raise Error(self.audit_failure)
+            if self.audit_state == 'complete' and self.audit_scrubbed:
+                return {'status': self.audit_state, 'scrubbed': list(self.audit_scrubbed)}
             return {'status': self.audit_state}
 
     def _queue_audit(self, identity):
@@ -164,6 +352,8 @@ class VerifiedView:
                 with self.audit_lock:
                     self.audit_store = store
                 audited = store.audit(cancelled=cancel.is_set)
+                if audited.get('cache') == 'mismatch':
+                    raise Error('Cache mismatch; run squadra doctor --repair')
             except Exception as exc:
                 failure = str(exc)
             finally:
@@ -188,6 +378,7 @@ class VerifiedView:
                 common = min(len(known or []), len(rows))
                 if common and known[common - 1]['hash'] == rows[common - 1]['hash']:
                     self.audit_state = 'complete'
+                    self.audit_scrubbed = audited.get('scrubbed') or []
 
     def stamp(self):
         if self.path.is_symlink():
@@ -200,7 +391,7 @@ class VerifiedView:
             self.monitor = sqlite3.connect(self.path.as_uri() + '?mode=ro', uri=True,
                                            isolation_level=None, check_same_thread=False)
             self.identity, self.marker, self.value = identity, None, None
-            self.verified_events = None
+            self.verified_events = self.base = None
         version = self.monitor.execute('PRAGMA data_version').fetchone()[0]
         def changed(path):
             try:
@@ -218,41 +409,44 @@ class VerifiedView:
             before = self.stamp()
             if self.value is not None and before == self.marker:
                 return self.value
-            self.value = self.marker = None
+            previous, self.value, self.marker = self.base, None, None
             store = Store(self.root, read_only=True)
             try:
                 prior = self.verified_events
                 suffix = None
                 if prior:
                     tip = store.db.execute('SELECT seq,hash FROM events ORDER BY seq DESC LIMIT 1').fetchone()
-                    if tip and tip['seq'] > prior[-1]['seq']:
+                    if tip and tip['seq'] >= prior[-1]['seq']:
                         suffix = store.events_since(prior[-1]['seq'], prior[-1]['hash'])
                         if any(event.get('format') != 2 for event in suffix):
                             suffix = None
-                if suffix is None:
-                    events = store.events()
-                    state = plain(store.view())
+                if suffix == [] and previous is not None and previous['events'] is prior and (
+                        previous['version'] == before[0] or same_chain(store.events(), prior)):
+                    # File churn, or a write that left the journal as it was: the verified reply stands.
+                    previous['version'] = before[0]
+                    value = previous['value']
                 else:
-                    events = prior + suffix
-                    state = plain(store.view())
-                if state['event_count'] != (events[-1]['seq'] if events else 0):
-                    store.db.execute('BEGIN')
-                    try:
-                        events = store.events()
-                        state = store.state(events, resolve=False)
-                    finally:
-                        store.db.execute('COMMIT')
-                    suffix = None
-                self.verified_events = events
+                    suffix = suffix or None
+                    events, state, raw, cached = self.rebuild(store, prior, suffix, previous)
+                    self.verified_events = events
+                    graph = (previous['graph'] if suffix and previous is not None
+                             and not any(event['kind'] in GRAPH_KINDS for event in suffix)
+                             else decision_graph(events))
+                    # A record refreshed() reused is the previous read's own object, so its derived values stand.
+                    kept = previous['state'] if previous is not None else {'tasks': {}, 'runs': {}, 'requirements': {}}
+                    kept_compact = previous['value'][2] if previous is not None else {'tasks': {}, 'runs': {}}
+                    state.update(root=str(self.root), graph=graph, progress=task_progress(events),
+                                 requirements={key: kept['requirements'][key] if kept['tasks'].get(key) is task
+                                               else requirement_matrix(task) for key, task in state['tasks'].items()})
+                    state['tasks'] = {key: task if kept['tasks'].get(key) is task
+                                      else ({**task, 'fix_status': fix_status(task)} if task.get('fix') else task)
+                                      for key, task in state['tasks'].items()}
+                    compact = {key: compact_map(state[key], kept[key], kept_compact[key]) for key in ('tasks', 'runs')}
+                    value = events, state, compact
+                    self.base = {'events': events, 'raw': raw, 'state': state, 'graph': graph, 'value': value,
+                                 'cached': cached, 'version': before[0]}
             finally:
                 store.close()
-            state.update(root=str(self.root), graph=decision_graph(events), progress=task_progress(events),
-                         requirements={key: requirement_matrix(task) for key, task in state['tasks'].items()})
-            for task in state['tasks'].values():
-                if task.get('fix'):
-                    task['fix_status'] = fix_status(task)
-            compact = {key: compact_records(state[key]) for key in ('tasks', 'runs')}
-            value = events, state, compact
             after = self.stamp()
             # A concurrent commit may leave a valid older snapshot, but it must not be cached as current.
             if before == after:
@@ -261,6 +455,81 @@ class VerifiedView:
                 self._queue_audit(self.identity)
             self.audit_info()
             return value
+
+    def rebuild(self, store, prior, suffix, previous):
+        """Today's plain view; after an appended suffix only the records it changed are materialized again."""
+        if suffix and previous is not None and previous['events'] is prior and previous['cached']:
+            try:
+                events = prior + suffix
+                view = store.view()
+                # Only two views read from the derived cache share one record form; a replay fallback does not.
+                if getattr(view, 'current', None) is not None:
+                    raw = store.state(events, resolve=False, with_waits=False)
+                    state = refreshed(previous['state'], view, previous['raw'], raw)
+                    if state['event_count'] == events[-1]['seq']:
+                        return events, state, raw, True
+            except (Error, KeyError, TypeError, ValueError):
+                pass
+        events = store.events()
+        view = store.view()
+        cached, state = getattr(view, 'current', None) is not None, plain(view)
+        if state['event_count'] != (events[-1]['seq'] if events else 0):
+            store.db.execute('BEGIN')
+            try:
+                events = store.events()
+                state = store.state(events, resolve=False)
+                state = plain(wait_view(state, state.wait_context))
+            finally:
+                store.db.execute('COMMIT')
+            cached = False
+        return events, state, store.state(events, resolve=False, with_waits=False), cached
+
+    def hold_parts(self, events, state, stamp, audit, waiting, present, activity_value):
+        """Keep this head's wait, presence and activity membership until the first instant one can change."""
+        clock = datetime.fromisoformat(stamp).timestamp()
+        far = datetime.fromtimestamp(clock + FAR_SECONDS, timezone.utc).isoformat()
+        crossings = [clock + FAR_SECONDS - row['seconds'] + row['threshold']
+                     for row in waits(state, far) + [r for r in presence(state, far) if r.get('ping')]]
+        future = [moment for moment in crossings if moment > clock]
+        boundary = (math.floor(clock / ACTIVITY_STEP) + 1) * ACTIVITY_STEP
+        with self.reply_lock:
+            self.held = ((events[-1]['hash'], json.dumps(audit, sort_keys=True)), min(future + [boundary]),
+                         (waiting, present, activity_value))
+
+    def held_parts(self, events, stamp, audit):
+        """The held membership while head and audit status are unchanged and nothing has crossed a threshold."""
+        with self.reply_lock:
+            held = self.held
+        if (held is None or held[0] != (events[-1]['hash'], json.dumps(audit, sort_keys=True))
+                or datetime.fromisoformat(stamp).timestamp() >= held[1]):
+            return None
+        return held[2]
+
+    def search_base(self, token, head, audit, plugins_value, held):
+        """The landing held for this token when only the query can differ from it: same head, audit and plugins,
+        and the wait, presence and activity membership still held, so its clock-bearing rows only aged."""
+        with self.reply_lock:
+            base = self.replies.get(token) if token else None
+        if (base is None or held is None or base['registry_head']['hash'] != head or base['audit'] != audit
+                or base['plugins'] != plugins_value
+                or transfer_signature(head, '', plugins_value, base['waits'], base['presence'], base['activity'], audit)
+                != transfer_signature(head, '', plugins_value, *held, audit)):
+            return None
+        return base
+
+    def transfer_reply(self, token, revision, landing, stamp):
+        """A delta against the client's held reply when the server still has it; otherwise the whole landing."""
+        with self.reply_lock:
+            base = self.replies.get(token) if token else None
+            self.replies = {key: value for key, value in self.replies.items() if key != revision}
+            self.replies[revision] = landing
+            while len(self.replies) > 2:
+                self.replies.pop(next(iter(self.replies)))
+        if base is None:
+            return json.dumps(landing, ensure_ascii=False).encode()
+        return json.dumps({'delta': transfer_delta(base, landing), 'base_token': token, 'change_token': revision,
+                           'server_time': stamp, 'registry_head': landing['registry_head']},
+                          ensure_ascii=False).encode()
 
     def record(self, kind, value):
         """Resolve only a requested record, rechecking immutable inventory bytes."""
@@ -296,8 +565,17 @@ class VerifiedView:
                 self.monitor.close()
                 self.monitor = None
             self.value = self.marker = None
-            self.verified_events = None
+            self.verified_events = self.base = None
             self.reads_head = self.reads_value = None
+
+
+def scrubbed_text(decision, sha, lang):
+    """The plain answer for an artifact whose file a coordinator scrub decision removed."""
+    if lang == "en":
+        return ("Scrubbed by decision " + decision + ": this artifact was removed from the registry on purpose. "
+                "The record keeps only its digest " + sha + ".")
+    return ("Documento rimosso con la decisione " + decision + ": il file è stato tolto di proposito dal registro, "
+            "che ne conserva solo l'impronta " + sha + ".")
 
 
 def make_server(root, port=0):
@@ -332,7 +610,7 @@ def make_server(root, port=0):
         def log_message(self, *args):
             pass
 
-        def answer(self, status, body, content="application/json; charset=utf-8"):
+        def answer(self, status, body, content="application/json; charset=utf-8", headers=None):
             if status not in (401, 403, 405) and urlparse(self.path).path.startswith('/api/'):
                 try:
                     view.audit_info()
@@ -346,12 +624,18 @@ def make_server(root, port=0):
             self.send_header("X-Content-Type-Options", "nosniff")
             self.send_header("Referrer-Policy", "no-referrer")
             self.send_header("Content-Security-Policy", "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; font-src 'self'; frame-ancestors 'none'; base-uri 'none'")
+            for name, value in (headers or {}).items():
+                self.send_header(name, value)
             self.end_headers()
             self.wfile.write(body)
 
+        def hosts(self):
+            """Loopback names that reach this server; any other Host keeps DNS rebinding out."""
+            port = str(self.server.server_port)
+            return {"127.0.0.1:" + port, "localhost:" + port, "[::1]:" + port}
+
         def do_GET(self):
-            expected = "127.0.0.1:" + str(self.server.server_port)
-            if self.headers.get("Host") != expected:
+            if self.headers.get_all("Host", []) not in ([host] for host in self.hosts()):
                 self.answer(403, b'{"error":"host refused"}'); return
             path = urlparse(self.path).path
             if path == "/":
@@ -359,7 +643,8 @@ def make_server(root, port=0):
             # A stylesheet's font request cannot carry the token header; the fonts are public, fixed files.
             if path in fonts:
                 self.answer(200, fonts[path], "font/woff2"); return
-            if not secrets.compare_digest(self.headers.get("X-Squadra-Token", ""), token):
+            given = self.headers.get_all("X-Squadra-Token", [])
+            if len(given) != 1 or not secrets.compare_digest(given[0].encode("utf-8", "surrogateescape"), token.encode()):
                 self.answer(401, b'{"error":"token required"}'); return
             try:
                 view.audit_info()
@@ -407,11 +692,29 @@ def make_server(root, port=0):
                     audit = view.audit_info()
                     stamp = now()
                     plugin_value = {**plugin_actions.discover(plugin_home, key), "key": key}
-                    waiting, present = waits(state, stamp), presence(state, stamp)
-                    activity_value = activity(events, stamp)
                     is_compact = self.headers.get('X-Squadra-View') == 'compact'
                     conditional = is_compact and 'X-Squadra-State-Token' in self.headers
                     query = unquote(self.headers.get('X-Squadra-Search', '')).lower() if is_compact else ''
+                    token_held = (self.headers.get('X-Squadra-State-Token')
+                                  if conditional and self.headers.get('X-Squadra-Delta') == '1' else None)
+                    if conditional:
+                        held = view.held_parts(events, stamp, audit)
+                        if held is not None and self.headers.get('X-Squadra-State-Token') == transfer_signature(
+                                events[-1]['hash'], query, plugin_value, *held, audit):
+                            self.answer(200, json.dumps({'not_modified': True, 'change_token': self.headers.get('X-Squadra-State-Token'),
+                                                         'server_time': stamp}).encode())
+                            return
+                        # Only the query changed: the held landing stands, with new results and its own server_time.
+                        base = view.search_base(token_held, events[-1]['hash'], audit, plugin_value, held)
+                        if base is not None:
+                            revision = transfer_signature(events[-1]['hash'], query, plugin_value, *held, audit)
+                            landing = {**base, 'change_token': revision, 'search': search_records(recorded, events, query)}
+                            self.answer(200, view.transfer_reply(token_held, revision, landing, stamp))
+                            return
+                    waiting, present = waits(state, stamp), presence(state, stamp)
+                    activity_value = activity(events, stamp)
+                    if conditional:
+                        view.hold_parts(events, state, stamp, audit, waiting, present, activity_value)
                     revision = transfer_signature(events[-1]['hash'], query, plugin_value,
                                                   waiting, present, activity_value, audit) if conditional else None
                     if conditional and self.headers.get('X-Squadra-State-Token') == revision:
@@ -419,6 +722,7 @@ def make_server(root, port=0):
                                                      'server_time': stamp}).encode())
                         return
                     if not is_compact:
+                        plugins.require(inventory_size(recorded) <= FULL_FILES_LIMIT, 'full_state_too_large')
                         state = materialize_known(recorded, view.root / 'artifacts')
                     if conditional:
                         state = landing_records(recorded, compact)
@@ -434,19 +738,13 @@ def make_server(root, port=0):
                     state["comms"] = communications(recorded, events, waiting, stamp)
                     state["activity"] = activity_value
                     if is_compact:
-                        state['search'] = {'query': query, **{
-                            kind: [key for key, record in recorded[kind].items()
-                                   if query and (query in json.dumps(record, ensure_ascii=False,
-                                                                    separators=(',', ':')).lower()
-                                   or query in json.dumps(view.record(kind, record), ensure_ascii=False,
-                                                          separators=(',', ':')).lower())]
-                            for kind in (('tasks', 'runs', 'messages') if conditional else ('tasks', 'runs'))}}
-                        if conditional:
-                            state['search']['outputs'] = [output.get('event') for output in recorded['outputs']
-                                if query and query in json.dumps(output, ensure_ascii=False).lower()]
-                        else:
+                        state['search'] = search_records(recorded, events, query)
+                        if not conditional:
                             state.update(compact)
-                    self.answer(200, json.dumps(state, ensure_ascii=False).encode())
+                    if conditional:
+                        self.answer(200, view.transfer_reply(token_held, revision, state, stamp))
+                    else:
+                        self.answer(200, json.dumps(state, ensure_ascii=False).encode())
                 elif path == '/api/detail/view':
                     if self.headers.get('X-Squadra-State-Head') != events[-1]['hash']:
                         self.answer(409, b'{"error":"state_changed"}')
@@ -482,7 +780,13 @@ def make_server(root, port=0):
                     collect(events)  # Keep replaced plans and briefs accessible through their recorded events.
                     if sha not in registered:
                         self.answer(404, b'{"error":"unregistered artifact"}'); return
-                    body = (Path(root) / "artifacts" / sha).read_bytes()
+                    path = Path(root) / "artifacts" / sha
+                    scrub = None if os.path.lexists(path) else scrub_index(events).get(sha)
+                    if scrub:
+                        self.answer(200, scrubbed_text(scrub["decision"], sha, recorded["workspace"].get("lang")).encode(),
+                                    "text/plain; charset=utf-8", {"X-Squadra-Artifact": "scrubbed"})
+                        return
+                    body = path.read_bytes()
                     if digest(body) != sha:
                         raise Error("Artifact integrity failed")
                     self.answer(200, body, "text/plain; charset=utf-8")
@@ -521,12 +825,12 @@ def make_server(root, port=0):
                 self.do_OPTIONS()
                 return
             try:
-                expected = '127.0.0.1:' + str(self.server.server_port)
-                plugins.require(self.headers.get_all('Host', []) == [expected], 'host_refused')
+                hosts = self.headers.get_all('Host', [])
+                plugins.require(len(hosts) == 1 and hosts[0] in self.hosts(), 'host_refused')
                 tokens = self.headers.get_all('X-Squadra-Token', [])
                 plugins.require(len(tokens) == 1 and secrets.compare_digest(tokens[0].encode('utf-8'), token.encode()), 'token_required')
                 origin = self.headers.get_all('Origin', [])
-                plugins.require(not origin or origin == ['http://' + expected], 'origin_refused')
+                plugins.require(not origin or origin == ['http://' + hosts[0]], 'origin_refused')
                 types = self.headers.get_all('Content-Type', [])
                 plugins.require(len(types) == 1 and re.fullmatch(r'application/json(?:\s*;\s*charset=utf-8)?', types[0], re.I), 'content_type')
                 plugins.require(not self.headers.get_all('Transfer-Encoding'), 'invalid_length')

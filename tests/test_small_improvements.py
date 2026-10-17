@@ -73,7 +73,7 @@ class Information(unittest.TestCase):
         def queue(argv, **kwargs):
             calls.append(argv)
             return subprocess.CompletedProcess(argv, 0, '--thread --message' if '--help' in argv else 'queued', '')
-        with patch('subprocess.run', side_effect=queue):
+        with patch('squadra.run_group', side_effect=queue):
             receipt = self.call('transport', '--actor', 'C', '--message', 'notice', '--via', 'codex-queue')
         self.assertEqual(receipt['ack'], 'not required; information only')
         self.assertIn('no ACK required', calls[-1][-1]); self.assertNotIn('ACK via squadra ack', calls[-1][-1])

@@ -170,14 +170,23 @@ class Pool(Fixture, unittest.TestCase):
         self.assertEqual([w["who"] for w in view["waiting"] if w["kind"] == "delivered"], [["R3"]])
         self.assertEqual(next(s for s in view["next_steps"] if s["task"] == "P")["who"], ["R3"])
 
-    def test_a_member_in_stand_by_refuses_the_whole_delivery(self):
+    def test_a_member_in_stand_by_gets_no_handoff_and_only_a_pool_all_in_stand_by_is_refused(self):
         self.full_task("P", pool=["R", "R2"])
         self.proved("P")
-        self.store.append("availability", "C", {"agent": "R2", "status": "stand-by", "reason": "Window away"})
+        for member in ("R", "R2"):
+            self.store.append("availability", "C", {"agent": member, "status": "stand-by", "reason": "Window away"})
         before = len(self.store.events())
-        with self.assertRaisesRegex(Error, "Reviewer is in stand-by; no new review handoff: R2"):
+        with self.assertRaisesRegex(Error, "Reviewer is in stand-by; no new review handoff: R, R2"):
             deliver(self.store, "A", "P")
         self.assertEqual(len(self.store.events()), before)
+        self.store.append("availability", "C", {"agent": "R", "status": "active", "reason": "Window back"})
+        result = deliver(self.store, "A", "P")
+        self.assertEqual([h.rsplit("-", 1)[1] for h in result["handoffs"]], ["R"])
+        self.assertEqual(result["skipped_standby"], ["R2"])
+        task = self.store.state()["tasks"]["P"]
+        self.assertEqual(task["pool"], ["R", "R2"])
+        pool = [w for w in attention(self.store.state())["waiting"] if w["kind"] == "ack" and w.get("task") == "P"]
+        self.assertEqual([w["who"] for w in pool], [["R"]])
 
     def test_light_pool_read_run_needs_the_claimant(self):
         data = {"id": "LP", "title": "Small", "owner": "A", "reviewer": None, "pool": ["R", "R2"],

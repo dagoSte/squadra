@@ -2,7 +2,7 @@
 from contextlib import redirect_stdout
 import io
 import json
-from unittest.mock import Mock, patch
+from unittest.mock import ANY, Mock, patch
 import unittest
 
 import test_source_consumers as source_support
@@ -83,7 +83,7 @@ class RegistryReadSeams(unittest.TestCase):
         with patch('usage.collect', return_value=result) as collect:
             self.assertEqual(json.loads(self.run_main(store, ['usage', '--json'])), result)
         store.state.assert_called_once_with(events, resolve=False)
-        collect.assert_called_once_with(events, state)
+        collect.assert_called_once_with(events, state, budget_seconds=ANY)
 
     def test_balance_resolves_only_forecast_bindings_from_raw_state(self):
         state, events, expected = self.referenced()

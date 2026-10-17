@@ -45,6 +45,58 @@ def relative(name):
     return parts
 
 
+class Named(p.Refused):
+    """A refusal that names its folder and, when chmod can repair it, the mode argument; str() stays the code."""
+    def __init__(self, code, path, repair=None):
+        super().__init__(code)
+        self.path, self.repair = path, repair
+
+
+def where(fd, name=None):
+    """Absolute path of an open folder, joined with name, for messages only; None where the system cannot tell."""
+    try:
+        if hasattr(fcntl, 'F_GETPATH'):
+            path = os.fsdecode(fcntl.fcntl(fd, fcntl.F_GETPATH, bytes(1024)).split(b'\0', 1)[0])
+        else:
+            path = os.readlink('/proc/self/fd/' + str(fd))
+    except OSError:
+        return None
+    return path if name is None else os.path.join(path, name)
+
+
+def opened(parent, name):
+    try:
+        return p._open(parent, name, directory=True)
+    except p.Refused as exc:
+        raise Named(exc.code, name if parent is None else where(parent, name)) from None
+
+
+def checked(fd, private=False):
+    try:
+        p.check_directory(fd, private=private)
+    except p.Refused:
+        own = os.fstat(fd).st_uid == os.getuid()
+        raise Named('unsafe_permissions', where(fd), ('700' if private else 'go-w') if own else None) from None
+
+
+def explain(exc, root=None):
+    """CLI text for a refusal: its code, the path it names and, for an unsafe folder, the exact repair."""
+    path = getattr(exc, 'path', None)
+    if not path:
+        return exc.code
+    if exc.code == 'symlink':
+        return 'symlink: ' + path + ' is a symbolic link, which the Store does not follow'
+    if exc.code != 'unsafe_permissions':
+        return exc.code + ': ' + path
+    if exc.repair is None:
+        return 'unsafe_permissions: ' + path + ' belongs to another user'
+    root = os.path.realpath(RELEASE_ROOT if root is None else root)
+    # One recursive repair covers a release tree copied or cloned under a group-writable umask.
+    inside = os.path.commonpath([root, os.path.realpath(path)]) == root
+    command = ['chmod', '-R', 'go-w', root] if inside else ['chmod', exc.repair, path]
+    return 'unsafe_permissions: ' + path + ' is open to other users; repair: ' + shlex.join(command)
+
+
 @contextmanager
 def directory(parent, name, *, private=False, create=False):
     if create:
@@ -53,9 +105,9 @@ def directory(parent, name, *, private=False, create=False):
             os.fsync(parent)
         except FileExistsError:
             pass
-    fd = p._open(parent, name, directory=True)
+    fd = opened(parent, name)
     try:
-        p.check_directory(fd, private=private)
+        checked(fd, private=private)
         yield fd
     finally:
         os.close(fd)
@@ -63,7 +115,8 @@ def directory(parent, name, *, private=False, create=False):
 
 @contextmanager
 def home_root(home, create=False):
-    with directory(None, os.fspath(home)) as home_fd:
+    # HOME itself may be a link (network or managed homes); every level below it is opened without following.
+    with directory(None, os.path.realpath(home)) as home_fd:
         with directory(home_fd, '.squadra', create=create) as squad:
             with directory(squad, 'plugins', create=create) as root:
                 yield root
@@ -310,18 +363,18 @@ def install(home, name, root=None):
     release = release_info(root)
     with home_root(home, create=True) as target, install_lock(target):
         try:
-            fd = p._open(target, name, directory=True)
+            fd = opened(target, name)
         except p.Refused as exc:
             if exc.code != 'not_found':
                 raise
             os.mkdir(name, 0o700, dir_fd=target)
             os.fsync(target)
-            fd = p._open(target, name, directory=True)
+            fd = opened(target, name)
             fresh = True
         else:
             fresh = False
         try:
-            p.check_directory(fd, private=True)
+            checked(fd, private=True)
             previous = None if fresh else receipt(fd, name)
             version = value['manifest']['about']['version']
             if previous and previous['state'] == 'upgrading':

@@ -8,7 +8,7 @@ La skill di squadra più completa per Claude Code, Codex e Cursor.
 
 **Gratuita e open source** — licenza MIT, nessun account, tutto gira sul tuo computer.
 
-**Versione 3.10.1** · Gratuita · MIT · Toolkit locale · Python 3.12+ · macOS / POSIX
+**Versione 3.10.2** · Gratuita · MIT · Toolkit locale · Python 3.12+ · macOS / POSIX
 
 [English](README.md) · **Italiano** · [Privacy](PRIVACY.it.md)
 
@@ -29,29 +29,55 @@ Si installa con `/plugin` in Claude Code e Codex. **Per installarla:** vedi [Ins
 <a id="news"></a>
 ## Novità
 
-**3.10.1 — vedi quanto spende davvero ogni finestra AI, e a chi conviene dare il prossimo lavoro**
+**3.10.2 — messaggi che arrivano sempre, e una dashboard che sta al passo con una squadra al lavoro**
 
-Una squadra mescola finestre Claude Code e Codex, e ogni fornitore ti mostra solo i propri consumi. Squadra 3.10.1 li mette tutti in un'unica vista, lavoro per lavoro: quale finestra ha speso quanti token, con quale modello, rispetto a quale quota, e a quale finestra o modello conviene dare il prossimo lavoro. Per ogni consiglio vedi anche il perché. Il calcolo avviene sul tuo computer, a partire dai file di sessione che i programmi già tengono; il testo delle conversazioni non viene salvato, mostrato né inviato da nessuna parte.
+Il coordinatore può consegnare ogni messaggio alla sua finestra, la dashboard aggiorna solo ciò che è cambiato e la casella di ricerca trova il lavoro passato dalle parole che le persone hanno scritto. Il formato del registro non cambia.
 
 **Guarda il film delle novità, due minuti — attiva l'audio nel lettore:**
 
 https://github.com/user-attachments/assets/8f38a443-b738-48f8-b562-9b072419b5f0
 
+- **I messaggi arrivano sempre.** Il coordinatore può consegnare qualsiasi messaggio, anche uno scritto da una finestra Codex nella sandbox, e ogni tentativo di consegna resta registrato. Una finestra Claude riceve la propria posta appena arriva con `squadra inbox --follow`. Un messaggio per una finestra Codex che nessuno ha ancora consegnato compare per primo, come «da inoltrare», con da quanto tempo aspetta.
+- **Attese che dicono il vero.** Le attese elencano solo ciò che è ancora aperto: le conferme di un incarico chiuso ne escono, e un piano che aspetta il suo lettore vi compare.
+- **Ricerca.** La casella di ricerca trova il lavoro passato dalle parole che le persone hanno scritto, in qualsiasi ordine e con o senza accenti, comprese decisioni, domande e letture. Il menu a tendina mostra prima i risultati più recenti e finisce con una domanda pronta per il tuo agente.
+- **I più recenti in cima, ovunque.** Ogni elenco e ogni scelta dell'incarico mostra per primi gli elementi più recenti.
+- **Una dashboard che sta al passo.** Dopo un nuovo evento la pagina aggiorna solo ciò che è cambiato; una pagina ferma non costa quasi nulla, e una ricerca invia solo i suoi risultati.
+- **Risposte più brevi.** `task`, `brief` e `start` stampano un riepilogo breve. `inbox` senza opzioni mostra i messaggi che aspettano te più gli ultimi 10; `--all` mostra tutto.
+- **Un registro più sicuro.** Una nuova cartella del registro viene ignorata da Git, così non finisce in un commit per sbaglio. Una scrittura lenta trattiene le altre finestre solo per poco. `doctor` lavora in sola lettura e segnala una cache danneggiata; `doctor --repair` la ripara e `--quick` fa un controllo veloce. I comandi spiegano gli errori a parole semplici. Un file finito nel registro per errore si può rimuovere con una decisione registrata.
+- **Salvataggio e ripristino affidabili.** `save` funziona su progetti grandi e sui repository che tracciano `.env.example`; il ritorno a una versione precedente funziona con l'una e con l'altra versione; un pacchetto di salvataggio si ripristina anche dopo che l'hai aperto, e il lavoro messo da parte con lo stash torna indietro.
+- **Consumi e Bilanciamento misurano ogni finestra registrata come indica la guida** (`--session`), anche sui computer con molte conversazioni salvate.
+- **Si installa ovunque.** L'installatore funziona con una umask di gruppo condivisa e con una cartella home collegata. Con Python più vecchio della 3.12 si rifiuta con una riga chiara.
+- **L'inglese resta inglese.** Uno spazio di lavoro in inglese riceve l'inglese in ogni comando.
+- **Ingresso e presenza.** Una nuova finestra può rispondere al suo primo appello di presenza, e il giro di presenza del coordinatore lascia attivo il coordinatore stesso.
+- Plugin: memoranda 1.0.7, Playwright 1.0.8, Sentry 0.1.5.
+
+**Misurato sulla nostra squadra.** Il nostro coordinatore ha lanciato lo stesso script sulla dashboard della 3.10.1 pubblicata e poi della 3.10.2, sulla stessa copia del registro di questa squadra (11.488 eventi), su un computer a 8 core con un carico moderato (load average tra 5 e 11 durante le misure): cinque aggiornamenti, ciascuno dopo un nuovo messaggio, e tre ricerche. Il tempo è quello che la dashboard impiega per elaborare una richiesta. Qui la dashboard era già aperta sulla copia prima della sua prima scrittura, quindi il primo aggiornamento ha pagato una lettura completa in più (8,5 s): un registro copiato o spostato ricollega la propria cache alla prima scrittura nella nuova posizione, e una dashboard già aperta lì paga una lettura completa all'aggiornamento successivo. La tabella mostra gli aggiornamenti seguenti.
+
+| Cosa abbiamo misurato | 3.10.1 | 3.10.2 |
+|---|---|---|
+| Aggiornamento della pagina dopo un nuovo messaggio | 4,7–5,3 s, 8,2 MB | 0,17 s, 0,56 MB |
+| Una ricerca | 3,1–6,6 s, 8,3 MB | 0,4 s, al massimo 0,13 MB |
+| Aggiornamento della pagina quando nulla è cambiato | 0,02 s | circa 0,001 s |
+
+**3.10.1 — vedi quanto spende davvero ogni finestra AI, e a chi conviene dare il prossimo lavoro**
+
+Una squadra mescola finestre Claude Code e Codex, e ogni fornitore ti mostra solo i propri consumi. Squadra 3.10.1 li mette tutti in un'unica vista, lavoro per lavoro: quale finestra ha speso quanti token, con quale modello, rispetto a quale quota, e a quale finestra o modello conviene dare il prossimo lavoro. Per ogni consiglio vedi anche il perché. Il calcolo avviene sul tuo computer, a partire dai file di sessione che i programmi già tengono; il testo delle conversazioni non viene salvato, mostrato né inviato da nessuna parte.
+
 - **Bilanciamento (nuova skill di sistema).** Consigli su finestre e modelli in base a carico, quota e storia, con i numeri su cui si basa ogni consiglio. Non assegna niente. La pagina dice a parole semplici cosa controlla, i valori di oggi e perché non c'è nessun consiglio quando non ce n'è.
-- **I totali dei Consumi restano stabili mentre i file di sessione crescono.** I calcoli salvati si riusano al riavvio della dashboard; un file riscritto viene ricontato, e una cache assente o non sicura (per esempio con un collegamento simbolico nel percorso) viene ricostruita, come la pagina Consumi segnala.
-- **Comandi che costano meno token alle finestre.** Ogni comando stampava nella finestra che lo lanciava l'intero elenco degli avvisi aperti; ora stampa una risposta breve, e `squadra status --all` stampa l'elenco completo (le misure sono nella tabella qui sotto).
+- **I totali dei Consumi restano stabili mentre i file di sessione crescono.** I calcoli salvati si riusano al riavvio della dashboard; un file riscritto viene ricontato, e una cache assente o danneggiata viene ricostruita. Se una cartella nel percorso della cache è un collegamento simbolico, la cache resta spenta e la pagina Consumi lo segnala: i numeri restano corretti, ma a ogni riavvio la dashboard rilegge i file di sessione.
+- **Comandi che costano meno token alle finestre.** Ogni comando stampava nella finestra che lo lanciava l'intero elenco degli avvisi aperti; ora stampa una risposta breve, e `squadra status --all` stampa l'elenco completo. `task`, `brief` e `start` aggiungono la previsione e un bilanciamento breve, la prima finestra per costruire e per leggere con il suo motivo; `squadra balance --task` stampa la classifica completa (le misure sono nella tabella qui sotto).
 - **Un registro che resta veloce mentre la storia cresce.** Un comando ora legge e scrive solo ciò che è cambiato, non tutta la storia; su una copia del nostro registro di 8.500 eventi, l'invio di un messaggio a un'altra finestra è passato da 27 a 3,2 secondi. La verifica dell'intera catena resta, nei momenti indicati nella guida.
 - **Una dashboard più leggera** che scarica solo ciò che è cambiato, e **grafici animati** nelle pagine Consumi e Bilanciamento.
 - **Messaggi solo informativi** (`send --info`) che non chiedono risposta: non restano più aperti come attese.
 - Plugin: memoranda 1.0.6, Playwright 1.0.7, Sentry 0.1.4.
 
-**Misurato sulla nostra squadra.** Il nostro coordinatore ha preso queste misure sul registro di questa squadra (circa 9.980 eventi) dopo l'installazione della 3.10.1. I due tempi «prima» vengono dagli stessi comandi cronometrati su una copia precedente dello stesso registro, prima della modifica. Dopo l'aggiornamento, i primi comandi costruiscono un'istantanea verificata in circa 6 secondi; i tempi qui sotto sono quelli dei comandi successivi.
+**Misurato sulla nostra squadra.** Il nostro coordinatore ha preso queste misure sul registro di questa squadra (circa 9.980 eventi) dopo l'installazione della 3.10.1. I due tempi «prima» vengono dagli stessi comandi cronometrati su una copia precedente dello stesso registro, prima della modifica. Una cache mancante o spostata richiede una ricostruzione verificata alla prima scrittura; il costo dipende dal registro e dalla macchina. I comandi di sola lettura ricostruiscono dai dati verificati finché la cache non è disponibile. I tempi qui sotto descrivono i comandi successivi con cache pronta, non un tempo garantito di avvio.
 
 | Cosa abbiamo misurato | Prima | Con la 3.10.1 |
 |---|---|---|
 | «A che punto siamo» (`squadra status`) | 8,6 s | 0,85 s |
 | Salvare un aggiornamento (`squadra output`) | 10,7 s | 0,86 s |
-| Risposta stampata da un comando | 75–95 KB | circa 2,2 KB |
+| Risposta stampata da un comando | 75–95 KB | circa 2,2 KB; `task`, `brief` e `start` circa 2,0 KB con 10 finestre (squadra sintetica), previsione e bilanciamento compresi |
 | Aggiornamento della dashboard quando nulla è cambiato | 8 MB | 0,2 KB |
 | Totali dei Consumi mentre le finestre lavorano | salivano e scendevano | solo in crescita (50 campioni, nessuno più basso) |
 
@@ -140,7 +166,7 @@ codex plugin marketplace add dagoSte/squadra
 codex plugin add squadra@squadra
 ```
 
-Il plugin porta la skill, i suoi script, i riferimenti e la dashboard. Non aggiunge il comando `squadra` al PATH: gli agenti eseguono `python3 <cartella della skill>/scripts/squadra.py`. Usa il plugin oppure l'installatore autonomo, non entrambi, così la skill non viene registrata due volte.
+Il plugin porta la skill, i suoi script, i riferimenti e la dashboard. Non aggiunge il comando `squadra` al PATH: gli agenti eseguono `python3 <cartella della skill>/scripts/squadra.py`, anche per le istruzioni che Squadra stampa, come `squadra ack …`. Se vuoi il comando `squadra`, usa al posto del plugin l'installatore autonomo qui sotto. Usa il plugin oppure l'installatore autonomo, non entrambi, così la skill non viene registrata due volte.
 
 ### Installatore autonomo (aggiunge il comando `squadra`)
 
@@ -153,7 +179,7 @@ export PATH="$HOME/.local/bin:$PATH"
 squadra --version
 ```
 
-Installa da un checkout pulito, senza modifiche fuori dai commit, con una **nuova cartella di backup** ogni volta; l'installatore conserva le skill e il comando precedenti, così puoi tornare indietro. Senza installare, usa `python3 -B scripts/squadra.py <comando>`. [Dettagli e ritorno alla versione precedente](references/start.md#install-and-join-details), in inglese.
+Installa da un checkout pulito, senza modifiche fuori dai commit, con una **nuova cartella di backup** ogni volta; l'installatore conserva le skill e il comando precedenti, così puoi tornare indietro. La riga `export PATH` vale solo per quel terminale: aggiungila al profilo della shell (per esempio `~/.zshrc` o `~/.bashrc`) perché i terminali nuovi trovino `squadra`. Senza installare, usa `python3 -B scripts/squadra.py <comando>`. [Dettagli e ritorno alla versione precedente](references/start.md#install-and-join-details), in inglese.
 
 ### Aggiornare
 
@@ -170,14 +196,21 @@ squadra --version
 
 Ogni rilascio alza il numero di versione. I plugin installati dallo Store mantengono la loro versione finché `squadra plugin install <nome>` non viene rieseguito dalla nuova release ([Plugin inclusi nella release](#plugin-store)). Le finestre già aperte mantengono la versione letta finché non si riavviano, e una squadra al lavoro mantiene il suo protocollo finché non la cambi esplicitamente.
 
-**Aggiornare dalla 3.10.0 o precedenti alla 3.10.1: il registro diventa più leggero, e tutte le finestre devono passare insieme.**
-- **Prima di aggiornare** salva la squadra: `squadra save --actor <la tua finestra> --to <una cartella nuova>`. È la tua strada per tornare indietro.
+**Aggiornare dalla 3.10.1 alla 3.10.2: il registro resta com'è.**
+- **Le finestre possono passare una alla volta.** Finestre 3.10.1 e 3.10.2 condividono lo stesso registro mentre le aggiorni; niente viene convertito.
+- **Due cose aspettano l'ultima finestra.** Una modifica delle impostazioni fatta da una finestra 3.10.1 riporta ai valori predefiniti le due nuove soglie di attesa (`to-forward` e `plan`). E rimuovere un file finito nel registro per errore, con una decisione registrata, fa fallire su quel file mancante la verifica completa e la dashboard di una finestra 3.10.1: aggiorna tutte le finestre prima di rimuoverne uno.
+- **Plugin dello Store:** esegui di nuovo `squadra plugin install <nome>`, come dopo ogni rilascio.
+
+**Aggiornare dalla 3.10.0 o precedenti alla 3.10.1: meno lavoro ripetuto sulla storia, e tutte le finestre devono passare insieme.**
+- **Prima di aggiornare** il coordinatore salva la squadra: `squadra save --actor <coordinatore> --to <una cartella nuova>`. È la tua strada per tornare indietro.
 - **Il registro che hai viene letto così com'è.** Niente viene convertito e la storia già scritta non si tocca. Dal primo comando sulla 3.10.1, gli eventi nuovi si scrivono nel formato più leggero.
 - **Aggiorna tutte le finestre insieme,** Claude Code e Codex. Una finestra rimasta alla 3.10.0 si ferma al primo evento nuovo con `Event integrity failure at sequence N`. È voluto: una versione vecchia si ferma invece di accettare eventi che non sa leggere. Non si perde niente: aggiorna quella finestra e riparte.
-- **Sullo stesso registro non si torna indietro.** Dopo l'aggiornamento la 3.10.0 non può più usare quel registro. Per tornare indietro ripristina il salvataggio fatto prima di aggiornare.
+- **Sullo stesso registro non si torna indietro.** Dopo l'aggiornamento la 3.10.0 non può più usare quel registro. Per tornare indietro ripristina il salvataggio fatto prima di aggiornare, con l'una o l'altra versione, poi continua a usare la versione vecchia sulla copia ripristinata: il primo comando della 3.10.1 o successiva su quella copia scrive di nuovo il formato più recente.
 - **Se hai dubbi,** esegui `squadra doctor` sulla 3.10.1: ti dice quando un registro richiede la 3.10.1 o successiva.
 - **Plugin dello Store:** esegui di nuovo `squadra plugin install <nome>`, come dopo ogni rilascio.
 - **Se hai installato Squadra dalla directory di Claude,** ricevi la versione indicata nella directory finché non passa alla 3.10.1.
+
+La prima finestra che scrive su un registro precedente o spostato costruisce la cache; le altre attendono. Se un comando risponde `registry busy, retry`, riprova quando la prima scrittura è terminata.
 
 ### Regola 0: trovare le finestre e presentarsi
 
@@ -188,15 +221,19 @@ Poi crea un unico registro durevole, fuori dalle cartelle temporanee:
 ```sh
 export SQUADRA_ROOT="$HOME/.local/state/squadra/my-project"
 squadra init --name "My project" --project /path/to/project
-squadra agent --id coord --identity window-01 \
-  --role coordinator --client codex --repo /path/to/project
-squadra agent --id builder --identity window-02 \
+squadra agent --id coord --identity window-01 --session CLAUDE-SESSION-ID \
+  --role coordinator --client claude --repo /path/to/project
+squadra agent --id builder --identity window-02 --session CLAUDE-SESSION-ID \
   --role builder --client claude --repo /path/to/builder-checkout
-squadra agent --id reader --identity window-03 \
+squadra agent --id reader --identity window-03 --session CODEX-THREAD-ID \
   --role reviewer --client codex --repo /path/to/reader-checkout
 squadra status
 squadra dash --open
 ```
+
+`--session` è l'identificativo della sessione della finestra: il nome del file della sua trascrizione in
+`~/.claude/projects/<progetto>/`, senza `.jsonl`, per Claude Code, l'UUID alla fine del suo file `~/.codex/sessions/…/rollout-…` per Codex.
+Usage e Balance misurano una finestra solo attraverso questo, e la coda di Codex ne ha bisogno.
 
 <a id="rule-1"></a>
 ### Regola 1: lavoro in parallelo
@@ -280,6 +317,8 @@ Fai un checkpoint e mostrami la tabella dell'avanzamento. Non pubblicare nulla.
 ```text
 Apri nel mio browser la dashboard di squadra per questo registro.
 ```
+
+Una finestra Codex la cui sandbox blocca la rete non può aprire la porta locale della dashboard: chiedilo a una finestra Claude.
 
 **Registrare una decisione (coordinatore)**
 
@@ -388,7 +427,7 @@ Il lettore può aggiungere osservazioni limitate con `review --findings-file`; v
 7. **Il costruttore prova e consegna:** `prove` esegue la verifica concordata sui file esatti; `deliver` li consegna.
 8. **Legge qualcun altro:** un lettore che non ha scritto il lavoro registra il verdetto con `review`.
 9. **Il coordinatore chiude:** `check`, poi `close`.
-10. **Controlla chi risponde ancora:** `ping --all`; `ping --sweep` mette in stand-by una finestra che non ha risposto, senza fermare nulla di ciò che esegue.
+10. **Controlla chi risponde ancora:** il coordinatore lancia `ping --all`; `ping --sweep` mette in stand-by una finestra che non ha risposto, senza fermare nulla di ciò che esegue.
 11. **Apri la dashboard** con `dash --open`; «Come leggere questa pagina» spiega ogni termine.
 12. **Registra quello che dice il proprietario** con `decision`, `--owner-words`, `--channel` e `--task`.
 
@@ -458,7 +497,7 @@ Viste: **Quadro**, **Finestre**, **Incarichi**, **Posta**, **Comunicazioni**, **
 
 *Le pagine Consumi, Bilanciamento e Skill di sistema sullo stesso registro dimostrativo Atlas, con file di sessione dimostrativi senza testo di conversazioni ([in inglese](docs/images/dashboard-usage-en.png), [Bilanciamento in inglese](docs/images/dashboard-balance-en.png), [Skill di sistema in inglese](docs/images/dashboard-system-skills-en.png)).*
 
-**Aggiornamento e sicurezza.** La pagina si aggiorna ogni due secondi, sospende gli aggiornamenti quando la scheda è nascosta e si aggiorna subito al ritorno. Offre la ricerca nel testo e apre gli artefatti registrati in una finestra. È **in sola lettura salvo impostazioni e selezioni dichiarate dei plugin installati**; le azioni sul registro passano dalla CLI. Ascolta su `127.0.0.1`, verifica Host e token, controlla Origin per il salvataggio di impostazioni e selezioni, e non carica script remoti né CDN. `--port` sceglie una porta (senza, ne cerca una libera); `Ctrl-C` chiude il server della dashboard, non gli agenti; se si disconnette, la pagina conserva l'ultima vista con un avviso.
+**Aggiornamento e sicurezza.** La pagina si aggiorna ogni due secondi, sospende gli aggiornamenti quando la scheda è nascosta e si aggiorna subito al ritorno. La ricerca trova incarichi, esecuzioni, messaggi, risultati, decisioni, domande e letture per inizio di parola, senza distinguere gli accenti; il menù mostra prima i più recenti e offre un prompt da copiare per il tuo agente. Gli artefatti registrati si aprono in una finestra. È **in sola lettura salvo impostazioni e selezioni dichiarate dei plugin installati**; le azioni sul registro passano dalla CLI. Ascolta su `127.0.0.1`, verifica Host e token, controlla Origin per il salvataggio di impostazioni e selezioni, e non carica script remoti né CDN. `--port` sceglie una porta (senza, ne cerca una libera); `Ctrl-C` chiude il server della dashboard, non gli agenti; se si disconnette, la pagina conserva l'ultima vista con un avviso.
 
 <a id="plugins"></a>
 ### Plugin di dati locali
@@ -549,7 +588,7 @@ Ogni riquadro del grafo è un fatto registrato; le linee continue sono collegame
 
 **Le regole della lettura:** blocca solo un rilievo grave; il resto si corregge subito con una verifica di un non autore o si registra come attività da seguire, con un responsabile e un'occasione di verifica. **Mai passare comandi al proprietario.** Tutte le regole: [dettagli](references/work.md#readme-protocol-details), in inglese.
 
-**Contratto, prova, lettura e chiusura.** Tieni le prove fuori dal checkout consegnato: `scope.md` (comportamento, percorsi posseduti, dipendenze, risorse, verifiche, confini del rilascio), `argv.json` come elenco esatto di argomenti, non una stringa di shell (`["python3", "-B", "-m", "unittest", "discover", "-s", "tests", "-v"]`), e un `requirements.json` facoltativo (`[{"id": "R1", "text": "I valori si sommano correttamente"}]`).
+**Contratto, prova, lettura e chiusura.** Tieni le prove fuori dal checkout consegnato: `scope.md` (comportamento, percorsi posseduti, dipendenze, risorse, verifiche, confini del rilascio), `argv.json` come elenco esatto di argomenti, non una stringa di shell (`["python3", "-B", "-m", "unittest", "discover", "-s", "tests", "-v"]`), e un `requirements.json` facoltativo (`[{"id": "R1", "text": "I valori si sommano correttamente"}, {"id": "R2", "text": "La somma di una lista vuota è zero"}]`).
 
 ```sh
 squadra task --actor coord --id T1 --owner builder --reviewer reader \
@@ -643,7 +682,7 @@ Soglie, chiamate di presenza e perché tutte le finestre dovrebbero usare la ste
 ```sh
 squadra checkpoint --to /durable/checkpoint-001
 squadra save --actor coord --to /durable/recovery-001
-squadra restore-check --from /durable/recovery-001 --to /durable/restore-test-001
+squadra restore-check --actor coord --from /durable/recovery-001 --to /durable/restore-test-001
 squadra pause --actor coord --reason "Il proprietario ha chiesto lo stop"
 squadra doctor
 squadra resume --actor coord --reason "Il proprietario ha ripreso esplicitamente"
@@ -674,7 +713,7 @@ squadra selftest --output /durable/selftest-001
 | `registry.sqlite3` | Stato di riferimento; eventi transazionali, WAL, synchronous FULL. |
 | `artifacts/` | Prove ed elenchi dei file sorgente indirizzati per contenuto; gli elenchi conservano l'impronta originale del codice. |
 | `events.jsonl` | Vista degli eventi aggiornata aggiungendo quelli registrati; può restare indietro dopo un'interruzione. |
-| `state.json` | Esportazione strutturata completa, aggiornata da `export`, `checkpoint` o `save`. |
+| `state.json` | Esportazione strutturata completa, aggiornata nel registro attivo da `export`; `checkpoint` e `save` la scrivono nella loro copia. |
 | `stato.md`, `squadra-posta.md` | Viste leggibili dello stato e della posta; usa la CLI per lavoro e messaggi correnti. |
 | `posta/exchange-YYYY-MM-DD.md` | Vista giornaliera in UTC comune a tutte le finestre; le scritture ordinarie aggiornano i giorni interessati. |
 
@@ -683,11 +722,12 @@ I comandi di sola lettura non scrivono nel registro né nelle sue viste derivate
 | Operazione | Cosa viene verificato |
 |---|---|
 | Altri comandi ordinari, compresi `check` e `close` di un incarico ordinario; aggiornamenti della dashboard dopo l'avvio | L'evento usato come punto di ripartenza e la sua impronta, tutti gli eventi e collegamenti successivi, e le prove d'integrità di ogni valore o indice letto dalla cache. |
+| Controllo rapido alla ripresa (`doctor --quick`) | Il punto di ripartenza, gli eventi successivi e i valori della cache richiesti; il rapporto dichiara i limiti, senza controllo storico completo, di tutti gli artefatti o confronto con la ricostruzione completa. |
 | Calcoli espliciti `usage`/`balance`, controllo della fonte di una lezione e suggerimento di una lezione dopo una prova fallita | L'intera catena delle impronte degli eventi e le prove storiche richieste. Queste letture non controllano tutti gli artefatti. |
 | `doctor`, `export`, `checkpoint`, `save`, `restore-check` e `close` di un incarico di verifica del rilascio | L'intera catena, gli artefatti e gli elenchi dei file richiamati, e la ricostruzione completa per confrontare o rigenerare la cache. |
 | Avvio della dashboard | Il percorso ordinario verificato mostra i dati mentre il controllo completo di catena, artefatti e ricostruzione viene eseguito in sottofondo. Uno stato visibile segnala il controllo in corso; se fallisce, il server smette di fornire dati e la pagina rimuove quelli mostrati. |
 
-Le altre letture ordinarie indicate sopra non ricontrollano gli eventi precedenti, le parti della cache non lette o la sua impronta complessiva rispetto alla ricostruzione completa dello stato. Una cache mancante, estranea o non valida richiede una ricostruzione verificata; una verifica fallita non diventa un successo grazie alla cache. Aggiorna tutte le finestre insieme prima della prima scrittura nel nuovo formato. Gli eventi di questa versione includono un indicatore di formato nella loro impronta: Squadra 3.10.0 si ferma con un errore di integrità a quel punto, anche con status/check/close. Il rifiuto è intenzionale, non una perdita di dati; usa la CLI aggiornata. Gli eventi precedenti restano invariati. Scrivi sempre attraverso la CLI, mai nei file generati. L'integrità non prova che le affermazioni siano vere, né autentica crittograficamente le identità. [Dettagli](references/recovery.md#registry-verification), in inglese.
+Le altre letture ordinarie indicate sopra non ricontrollano gli eventi precedenti, le parti della cache non lette o la sua impronta complessiva rispetto alla ricostruzione completa dello stato. Una cache mancante o estranea richiede una ricostruzione verificata. Se il controllo completo trova una discordanza tra cache e registro, `doctor` resta in sola lettura e rifiuta il risultato; anche la dashboard smette di fornire dati. Usa esplicitamente `doctor --repair` in un registro scrivibile per ricostruire la cache; salvataggi e checkpoint rifiutano la riparazione. Una verifica fallita non diventa un successo grazie alla cache. Gli indici derivati possono aumentare lo spazio usato; il nuovo formato degli eventi non promette un database più piccolo. Aggiorna tutte le finestre insieme prima della prima scrittura nel nuovo formato. Gli eventi di questa versione includono un indicatore di formato nella loro impronta: Squadra 3.10.0 si ferma con un errore di integrità a quel punto, anche con status/check/close. Il rifiuto è intenzionale, non una perdita di dati; usa la CLI aggiornata. Gli eventi precedenti restano invariati. Scrivi sempre attraverso la CLI, mai nei file generati. L'integrità non prova che le affermazioni siano vere, né autentica crittograficamente le identità. [Dettagli](references/recovery.md#registry-verification), in inglese.
 
 ### Piccole modifiche: il percorso leggero
 
@@ -698,7 +738,7 @@ Il coordinatore può dichiarare `task --route light` per una modifica delimitata
 
 Non serve scrivere questi comandi: **il modo consigliato è chiedere alla finestra in parole semplici**, come nella colonna *Oppure chiedi* e nei [prompt di esempio](#prompts); il comando lo esegue la finestra. I comandi sono quello che eseguono le finestre, e quello che puoi scrivere tu per controllare.
 
-Ogni comando, raggruppato per scopo: **50 sottocomandi**, più `--version`. Usa `squadra <comando> --help` per le opzioni; i comandi del registro accettano `--root` o `SQUADRA_ROOT`. «Solo il coordinatore» segna ciò che solo il coordinatore può registrare: `task`, `route`, `supersede`, `brief`, `close`, `ask`, `decision`, `settings`, `pause`, `resume`, `save`, `standby`, `ping --sweep`, e la ricevuta che `restore-check` scrive nel registro vivo. Senza installare, gli stessi comandi girano come `python3 -B scripts/squadra.py <comando>`.
+Ogni comando, raggruppato per scopo: **50 sottocomandi**, più `--version`. Usa `squadra <comando> --help` per le opzioni; i comandi del registro accettano `--root` o `SQUADRA_ROOT`. «Solo il coordinatore» segna ciò che solo il coordinatore può registrare: `task`, `route`, `supersede`, `brief`, `close`, `ask`, `decision`, `settings`, `pause`, `resume`, `save`, `standby`, `ping --all`, `ping --sweep`, e la ricevuta che `restore-check` scrive nel registro vivo. Senza installare, gli stessi comandi girano come `python3 -B scripts/squadra.py <comando>`.
 
 <details>
 <summary><strong>Tutti i 50 comandi con i loro prompt, raggruppati per scopo</strong></summary>
@@ -710,8 +750,8 @@ Ogni comando, raggruppato per scopo: **50 sottocomandi**, più `--version`. Usa 
 | `--version` | Stampa la versione installata. | «Che versione di Squadra è installata?» |
 | `init` | Crea il registro di un progetto, con nome, lingua e budget di lettura. | «Usa la skill squadra e crea il registro di questo progetto in ~/.local/state/squadra/atlas.» |
 | `agent` | Registra una finestra: identità, ruolo, client, checkout e le skill che ha letto davvero. | «Registra questa finestra nella squadra, con le skill che hai letto davvero.» |
-| `census` | Trova le finestre Codex, Claude e Cursor del progetto senza scrivere nulla; prima di `init` serve `--project`. | «Trova le finestre Codex, Claude e Cursor che lavorano a questo progetto, senza scrivere nulla.» |
-| `ping` | Manda una chiamata di presenza a una finestra (`--to`) o a tutte (`--all`); `--sweep` (solo il coordinatore) registra lo stand-by per una chiamata senza risposta, e il ritorno dopo un ACK nuovo. | «Controlla quali finestre ci sono ancora: manda a tutte una chiamata di presenza.» |
+| `census` | Trova le finestre Codex, Claude e Cursor del progetto senza scrivere nulla; prima di `init` serve `--project`. Va lanciato da una finestra Claude: dentro la sandbox di Codex non vede le altre finestre, e lo dice. | «Trova le finestre Codex, Claude e Cursor che lavorano a questo progetto, senza scrivere nulla.» |
+| `ping` | Manda una chiamata di presenza a una finestra (`--to`) o, solo il coordinatore, a tutte (`--all`); `--sweep` (solo il coordinatore) registra lo stand-by per una chiamata senza risposta che un trasporto ha consegnato, e il ritorno dopo un ACK nuovo. | Al coordinatore: «Controlla quali finestre ci sono ancora: manda a tutte una chiamata di presenza.» |
 | `standby` | Solo il coordinatore: mette una finestra in stand-by, o la fa tornare con `--resume`; lavoro, esecuzioni e riserve restano suoi. | Al coordinatore: «Metti in stand-by la finestra revisora finché non te lo dico.» |
 | `settings` | Solo il coordinatore: imposta le soglie di attesa in secondi: `ack`, `delivered`, `reviewed`, `heartbeat`, `alive`. | Al coordinatore: «Segnala come attesa un ACK che manca da più di 10 minuti, invece di 15.» |
 
@@ -732,7 +772,7 @@ Ogni comando, raggruppato per scopo: **50 sottocomandi**, più `--version`. Usa 
 | Comando | Cosa fa | Oppure chiedi |
 |---|---|---|
 | `send` | Scrive un messaggio a una finestra, eventualmente su un incarico o in risposta a un altro; `--info` indica un avviso che non chiede ACK (non con `--to-new`). | «Scrivi al costruttore che le vecchie chiavi devono restare leggibili per un mese.» |
-| `inbox` | Legge i messaggi di una finestra e le loro conferme. | «Leggi i tuoi messaggi e dimmi quali aspettano ancora una conferma.» |
+| `inbox` | Legge i messaggi che aspettano ancora il tuo ACK e gli ultimi 10 (`--all` li mostra tutti, `--message ID` ne apre uno per intero); `--follow [--since SEQ]` segue in sola lettura i nomi indicati con più `--agent` e riprende senza ripetere i messaggi precedenti; `--until-first` esce al primo messaggio, per un comando in background che risveglia la sua finestra. | «Leggi i tuoi messaggi; tieni d'occhio la posta di tutti i nomi di questa finestra, occupati dei nuovi messaggi e riavvia l'ascolto dall'ultimo cursore quando scade.» |
 | `ack` | Conferma un messaggio ricevuto davvero; può farlo solo il destinatario. | «Conferma i messaggi che hai letto davvero.» |
 | `transport` | Consegna un messaggio a mano o tramite la coda di Codex (per un posto registrato con `--session`), e ne registra l'esito. | «Il revisore non ha visto il mio messaggio: prepara la consegna manuale e registra che l'inoltro è ancora da fare.» |
 
@@ -777,7 +817,7 @@ Ogni comando, raggruppato per scopo: **50 sottocomandi**, più `--version`. Usa 
 | Comando | Cosa fa | Oppure chiedi |
 |---|---|---|
 | `run` | Avvia un turno non interattivo del client Codex o Claude registrato, per leggere o per costruire. | «Avvia un turno non interattivo di Codex che legga il candidato di T1.» |
-| `cancel` | Chiede di fermare un'esecuzione posseduta; con `--abandon`, `--reason` e `--evidence`, la finestra che ha avviato un'esecuzione la dichiara orfana, senza processo e senza risultati. | «Ferma l'esecuzione che hai avviato per T1.» |
+| `cancel` | Chiede di fermare un'esecuzione posseduta; con `--abandon`, `--reason` e `--evidence`, la finestra che ha avviato un'esecuzione la dichiara orfana, senza processo e senza risultati; con `--reconcile` chiude un'esecuzione orfana che ha lasciato una ricevuta o un output, dalla ricevuta oppure come interrotta con i suoi log. | «Ferma l'esecuzione che hai avviato per T1.» |
 
 ### Stato e storico
 

@@ -1,18 +1,34 @@
 #!/usr/bin/env python3
 """Squadra CLI: one durable record shared by Codex, Claude and human seats."""
-from __future__ import annotations
-
 import argparse
 import json
 import os
+import errno
 from pathlib import Path
+import shlex
+import sqlite3
 import sys
 import tempfile
 import uuid
 
+# The documented minimum, refused before any project module loads; install.py imports this module first.
+PYTHON = (3, 12)
+if sys.version_info[:2] < PYTHON:
+    sys.exit("Squadra: needs Python %d.%d or newer; this is Python %d.%d." % (PYTHON + tuple(sys.version_info[:2])))
+
 from registry import (Store, Error, VERSION, plain, BRIEF_BYTES, REFERENCE_KINDS, canonical, digest, require, snapshot, table, board, now,
-                      git, waits, requirement_matrix, presence, standby, latest_ping, return_ping,
-                      current_proofs, candidate_checks, gate_checks, read_at_gate)
+                      git, waits, requirement_matrix, presence, standby, latest_ping, return_ping, coordinator_ping,
+                      current_proofs, candidate_checks, gate_checks, read_at_gate, pending_ack_ids, wait_settings, active_pool,
+                      scrub_report, SCRUB_NOTE)
+
+
+class InputRefusal(Error):
+    """A missing ID supplied to the CLI, without a diagnostic event."""
+
+
+def known_id(values, key, kind):
+    if key not in values:
+        raise InputRefusal('Unknown ' + kind + ': ' + str(key))
 
 
 def resolve_follows(state, values):
@@ -37,6 +53,31 @@ def workspace_path(value=None):
         if (path / ".squadra/registry.sqlite3").is_file():
             return path / ".squadra"
     return Path.cwd() / ".squadra"
+
+
+def workspace_lang(value=None):
+    """The recorded language of an existing registry; Italian when there is none or it cannot be read."""
+    root = workspace_path(value)
+    if not (root / "registry.sqlite3").is_file():
+        return "it"
+    store = None
+    try:
+        store = Store(root, read_only=True)
+        return store.view()["workspace"].get("lang", "it")
+    except (Error, OSError, ValueError, KeyError, sqlite3.Error):
+        return "it"
+    finally:
+        if store:
+            store.close()
+
+
+def selftest_table(result, lang):
+    count = f"{result.get('tests', 0)}/{result['collected']}" if 'collected' in result else str(result.get('tests', 0))
+    if lang == "en":
+        return ("\n| Role | Proof | Result | Record | Next step |\n|---|---|---|---|---|\n"
+                f"| selftest | {count} synthetic tests | {result['status']} | {result['folder']}/RESULT.json | Read the report; no product acceptance |")
+    return ("\n| Ruolo | Prova | Esito | Registro | Prossimo passo |\n|---|---|---|---|---|\n"
+            f"| selftest | {count} test sintetici | {result['status']} | {result['folder']}/RESULT.json | Leggere il rapporto; nessuna accettazione di prodotto |")
 
 
 def bindings(store, task_id, require_review=True):
@@ -70,6 +111,69 @@ def fix_review_fields(task):
         return {}
     from fix_challenge import binding, disposition
     return {"fix_binding": binding(task), "fix_disposition": disposition(task)}
+
+
+QUEUE_HELP_SECONDS = 15
+QUEUE_SECONDS = 30
+OUTPUT_TAIL = 2000
+
+
+def run_group(argv, timeout):
+    """Run a command in its own session; on timeout kill its whole process group, then raise TimeoutExpired."""
+    import signal
+    import subprocess
+    proc = subprocess.Popen(argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, start_new_session=True)
+    try:
+        out, err = proc.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        try:
+            os.killpg(proc.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        proc.wait()
+        proc.stdout.close(); proc.stderr.close()
+        raise
+    return subprocess.CompletedProcess(argv, proc.returncode, out, err)
+
+
+def bounded(name, text):
+    """Keep the last OUTPUT_TAIL characters of a native output and its original length."""
+    text = text or ""
+    return {name: text[-OUTPUT_TAIL:], name + "_length": len(text)}
+
+
+def codex_queue(session, text):
+    """Hand a message to the Codex queue; every outcome is a result to record, never an exception."""
+    import subprocess
+    stage = "help"
+    try:
+        probe = run_group(["codex", "queue", "--help"], timeout=QUEUE_HELP_SECONDS)
+        if probe.returncode != 0 or "--thread" not in probe.stdout or "--message" not in probe.stdout:
+            return {"delivered": False, "stage": stage, "native_rc": probe.returncode, **bounded("stderr", probe.stderr),
+                    "reason": "queue_not_verified"}
+        stage = "queue"
+        proc = run_group(["codex", "queue", "--thread", session, "--message", text], timeout=QUEUE_SECONDS)
+    except subprocess.TimeoutExpired:
+        return {"delivered": None, "stage": stage, "native_rc": None, "reason": "timeout"}
+    except OSError as exc:
+        return {"delivered": False, "stage": stage, "native_rc": None,
+                "reason": "not_found" if isinstance(exc, FileNotFoundError) else "os_error"}
+    return {"delivered": proc.returncode == 0, "stage": stage, "native_rc": proc.returncode,
+            **bounded("receipt", proc.stdout), **bounded("stderr", proc.stderr)}
+
+
+def candidate_line(current, task_id):
+    """What the reader must read: the commit when the snapshot equals it, otherwise the working-tree snapshot."""
+    repo = current["repo"]
+    tracked = {os.fsdecode(p) for p in git(repo, "ls-files", "-z").split(b"\0") if p}
+    changed = sorted({os.fsdecode(p) for p in git(repo, "diff", "--relative", "--no-renames", "--name-only", "-z",
+                                                    current["head"]).split(b"\0") if p}
+                     | ({row["path"] for row in current["files"]} - tracked))
+    if not changed:
+        return "Read exact candidate " + current["head"] + " for " + task_id + "."
+    return ("Read exact candidate for " + task_id + ": the working tree of " + repo + " matching snapshot " +
+            current["sha256"] + ", NOT commit " + current["head"] + ", which lacks " + str(len(changed)) +
+            " uncommitted or untracked paths: " + ", ".join(changed[:10]) + (", ..." if len(changed) > 10 else "") + ".")
 
 
 def deliver(store, actor, task_id, reconcile=False):
@@ -120,11 +224,14 @@ def deliver(store, actor, task_id, reconcile=False):
         key = digest(canonical(packet).encode())
         message = "review-" + key
         artifact = store.artifact_bytes((canonical(packet) + "\n").encode(), message + ".json", "generated-handoff:" + message)
-        body = "Read exact candidate " + current["head"] + " for " + task_id + ".\nImmutable packet " + artifact["sha256"] + " in " + str(store.root / "artifacts") + ".\nActual recipient ACK required before independent review."
+        body = candidate_line(current, task_id) + "\nImmutable packet " + artifact["sha256"] + " in " + str(store.root / "artifacts") + ".\nActual recipient ACK required before independent review."
         if task.get("pool"):
-            handoffs = [message + "-" + member for member in task["pool"]]
+            # Members in stand-by get no handoff; the pool is refused only when every member is.
+            members = active_pool(state, task)
+            require(bool(members), "Reviewer is in stand-by; no new review handoff: " + ", ".join(task["pool"]))
+            handoffs = [message + "-" + member for member in members]
             data.update(packet=artifact, packet_data=packet, handoffs=handoffs)
-            for member, handoff in zip(task["pool"], handoffs):
+            for member, handoff in zip(members, handoffs):
                 operations.append(("message", task["coordinator"], {"id": handoff, "to": member, "related_task": task_id,
                                    "pool": handoffs, "body": body + "\nThe first ACK in the pool takes the read."}, handoff))
         else:
@@ -143,6 +250,9 @@ def deliver(store, actor, task_id, reconcile=False):
     store.batch(operations)
     if "handoffs" in data:
         result = {"handoffs": data["handoffs"], "packet": data["packet"], "snapshot": current["sha256"]}
+        skipped = [member for member in task["pool"] if member not in active_pool(state, task)]
+        if skipped:
+            result["skipped_standby"] = skipped
     else:
         result = {"handoff": data.get("handoff"), "packet": data.get("packet"), "snapshot": current["sha256"]}
     if checked:
@@ -213,7 +323,16 @@ def parser():
     recipient.add_argument("--to"); recipient.add_argument("--to-new")
     a.add_argument("--body-file", required=True); a.add_argument("--id"); a.add_argument("--reply-to"); a.add_argument("--task")
     a.add_argument("--info", action="store_true", help="Information only; no recipient ACK required")
-    a = sub.add_parser("inbox"); a.add_argument("--agent", required=True)
+    a = sub.add_parser("inbox"); a.add_argument("--agent", required=True, action="append")
+    shown = a.add_mutually_exclusive_group()
+    shown.add_argument("--all", action="store_true",
+                       help="Every message (default: those waiting for an ACK plus the latest " + str(INBOX_RECENT) + ")")
+    shown.add_argument("--message", help="One message to the named agents, in full")
+    a.add_argument("--follow", action="store_true", help="Watch read-only JSONL mail for all named agents")
+    a.add_argument("--timeout", type=float, help="Stop following after this many seconds (otherwise until interrupted)")
+    a.add_argument("--since", type=int, help="Resume following after this event number, including the re-arm gap")
+    a.add_argument("--until-first", action="store_true",
+                   help="Exit after the first batch that shows mail, for a background command that wakes its window")
     a = sub.add_parser("ack"); a.add_argument("--actor", required=True); a.add_argument("--message", required=True)
     a = sub.add_parser("transport"); a.add_argument("--actor", required=True); a.add_argument("--message", required=True)
     a.add_argument("--via", choices=["codex-queue", "manual"], required=True)
@@ -254,7 +373,10 @@ def parser():
             a.add_argument("--stage", choices=["plan", "code"], default="code")
             a.add_argument("--prompt-file", required=True); a.add_argument("--cli")
     a = sub.add_parser("cancel"); a.add_argument("--actor", required=True); a.add_argument("--run", required=True)
-    a.add_argument("--abandon", action="store_true", help="Starter declares an orphan with no process and no results")
+    form = a.add_mutually_exclusive_group()
+    form.add_argument("--abandon", action="store_true", help="Starter declares an orphan with no process and no results")
+    form.add_argument("--reconcile", action="store_true",
+                      help="Starter ends an orphan that left a receipt or output: from the receipt, else interrupted with its logs")
     a.add_argument("--reason"); a.add_argument("--evidence", help="Explicit squadra-run-abandon/1 observation JSON")
     a = sub.add_parser("resource"); a.add_argument("action", choices=["acquire", "release"])
     a.add_argument("--actor", required=True); a.add_argument("--name", required=True); a.add_argument("--reason", required=True)
@@ -269,6 +391,8 @@ def parser():
             a.add_argument("--follows", action="append", default=[], help="Earlier ask:<id> or decision:<id>")
             a.add_argument("--defer-read", help="Outstanding read-at-gate task deferred past --gate")
             a.add_argument("--gate", help="Open release gate the --defer-read task is deferred from")
+            a.add_argument("--scrub-artifact", metavar="SHA256",
+                           help="Registered artifact whose file may be absent from now on (a leaked secret); coordinator only")
     a = sub.add_parser("ask"); a.add_argument("--actor", required=True); a.add_argument("--id", required=True)
     a.add_argument("--question", required=True); a.add_argument("--options-file", required=True)
     a.add_argument("--recommended"); a.add_argument("--task"); a.add_argument("--waiting", action="append", default=[])
@@ -297,10 +421,15 @@ def parser():
     commands.add_parser("list")
     install = commands.add_parser("install"); install.add_argument("name")
     a = sub.add_parser("status"); a.add_argument("--all", action="store_true", help="Print every wait and the full detailed table")
-    sub.add_parser("doctor"); sub.add_parser("export")
+    a = sub.add_parser("doctor")
+    mode = a.add_mutually_exclusive_group()
+    mode.add_argument('--quick', action='store_true', help='Read-only anchor, suffix and demanded-cache checks; not a full audit')
+    mode.add_argument('--repair', action='store_true', help='Full audit and explicit derived-cache repair; refuses saved packages')
+    sub.add_parser("export")
     a = sub.add_parser("board"); a.add_argument("--lang", choices=["it", "en"], help="Override the workspace board language")
     a = sub.add_parser("dash"); a.add_argument("--port", type=int, default=0); a.add_argument("--open", action="store_true")
     a = sub.add_parser("selftest"); a.add_argument("--output", help="New directory for durable test receipts")
+    a.add_argument("--timeout", type=int, default=1800, help="Seconds for the whole parallel suite and each test module")
     for child in sub.choices.values():
         child.add_argument("--root", default=argparse.SUPPRESS, help="Shared persistent workspace")
     return p
@@ -342,17 +471,58 @@ def lesson(store, state, a):
     return {"lesson": name, "event": seq_of(store, event), "source_eligible": eligible}
 
 
+INBOX_RECENT = 10
+
+
+class Inbox(list):
+    """Message rows in their usual shape; total and pending say what a default read left out."""
+    total = pending = 0
+
+
+def inbox(state, agents, everything=False, message=None):
+    """Mail to the named agents, oldest first: the ACK waits plus the latest INBOX_RECENT, all of it, or one message."""
+    from registry_current import attached, message_ids
+    names = set(agents)
+    if message is not None:
+        found = state["messages"].get(message)
+        require(found is not None and found["to"] in names, "Unknown message for the named agents: " + message)
+        return Inbox([found])
+    index = attached(state)
+    if index is not None:
+        keys = sorted({key for agent in names for key in message_ids(index, recipient=agent)},
+                      key=lambda key: index["message_order"][key])
+    else:
+        keys = [key for key, m in state["messages"].items() if m["to"] in names]
+    pending, shown = [], set(keys)
+    if not everything:
+        # The attention ACK rows: the waits status, doctor and the follower's backlog count.
+        pending = [key for key in dict.fromkeys(pending_ack_ids(state)) if state["messages"][key]["to"] in names]
+        shown = set(pending).union(keys[-INBOX_RECENT:])
+    rows = Inbox(state["messages"][key] for key in keys if key in shown)
+    rows.total, rows.pending = len(keys), len(pending)
+    return rows
+
+
 def dispatch(a, store):
     command = a.command
-    state = store.view()
+    state = None if command == 'doctor' else store.view()
     actor = getattr(a, "actor", "system")
+    if isinstance(getattr(a, 'actor', None), str):
+        known_id(state['agents'], actor, 'agent')
+    task_id = getattr(a, 'task', None)
+    if isinstance(task_id, str) and command != 'supersede':
+        known_id(state['tasks'], task_id, 'task')
+    message_id = getattr(a, 'message', None)
+    if command in {'ack', 'transport'}:
+        known_id(state['messages'], message_id, 'message')
+    if command == 'cancel':
+        known_id(state['runs'], a.run, 'run')
+    if command == 'ping' and a.to:
+        known_id(state['agents'], a.to, 'agent')
     if command == "init":
         root = store.root
-        temporary_roots = [Path(tempfile.gettempdir()).resolve(), Path("/private/tmp")]
-        require(a.temporary or not any(t == root or t in root.parents for t in temporary_roots),
-                "Persistent workspace cannot live in tmp; --temporary is for explicit demos/tests")
+        validate_init(a, root)
         project = str(Path(a.project).resolve(strict=True))
-        require(a.plan_rounds > 0 and a.review_rounds > 0, "Positive round limits required")
         store.append("init", "system", {"name": a.name, "project": project, "version": VERSION,
                      "temporary": a.temporary, "limits": {"plan": a.plan_rounds, "code": a.review_rounds, "build": 3},
                      **({"lang": a.lang} if a.lang else {})})
@@ -416,10 +586,7 @@ def dispatch(a, store):
         store.append("message", actor, data)
         return data
     elif command == "inbox":
-        from registry_current import attached, message_ids
-        index = attached(state)
-        return ([state["messages"][key] for key in message_ids(index, recipient=a.agent)] if index is not None
-                else [m for m in state["messages"].values() if m["to"] == a.agent])
+        return inbox(state, a.agent, a.all, a.message)
     elif command == "ack":
         store.append("ack", actor, {"message": a.message}, "ack:" + a.message + ":" + actor)
     elif command == "standby":
@@ -430,8 +597,9 @@ def dispatch(a, store):
         if a.sweep:
             require(state["agents"][actor]["role"] == "coordinator", "Coordinator role required")
             changes, seen = [], set()
+            own = state["agents"][actor]["identity"]
             for row in presence(state, now()):
-                if row["identity"] in seen:
+                if row["identity"] in seen or row["identity"] == own:
                     continue
                 seen.add(row["identity"])
                 agent = row["agent"]
@@ -471,24 +639,25 @@ def dispatch(a, store):
         store.batch(operations)
         return {"messages": messages, "transport": "Use recorded transport; no client was invoked"}
     elif command == "transport":
-        import subprocess
         message = state["messages"][a.message]
-        require(message["from"] == actor, "Only sender can deliver")
+        relay = message["from"] != actor
+        require(not relay or coordinator_ping(state, message, actor) or
+                state["agents"].get(actor, {}).get("role") == "coordinator", "Only the sender or the coordinator can deliver")
         instruction = ("Information only; no ACK required." if message.get("info") is True
                        else f"ACK via squadra ack --actor {message['to']} --message {a.message} (with shared --root).")
         if a.via == "manual":
-            result = {"message": a.message, "via": "manual", "delivered": False,
-                      "instruction": f"Run squadra inbox --agent {message['to']} --root {store.root}. {instruction}"}
+            from inbox_follow import command as inbox_command
+            # A hand-off by hand is unconfirmed, not failed: only the recipient's ACK says it arrived.
+            result = {"message": a.message, "via": "manual", "delivered": None,
+                      "instruction": f"Follow incoming mail with {inbox_command(store.root, [message['to']], '--follow')}. {instruction}"}
         else:
             agent = state["agents"][message["to"]]
             require(agent["client"] == "codex" and agent["session"], "Registered Codex session required")
-            help_result = subprocess.run(["codex", "queue", "--help"], capture_output=True, text=True, timeout=15)
-            require(help_result.returncode == 0 and "--thread" in help_result.stdout and "--message" in help_result.stdout, "Compatible queue not verified")
             text = f"Squadra message {a.message}; workspace {store.root}.\n{message['body']}\n{instruction}"
-            proc = subprocess.run(["codex", "queue", "--thread", agent["session"], "--message", text], capture_output=True, text=True, timeout=30)
-            result = {"message": a.message, "via": a.via, "delivered": proc.returncode == 0,
-                      "native_rc": proc.returncode, "receipt": proc.stdout, "stderr": proc.stderr,
+            result = {"message": a.message, "via": a.via, **codex_queue(agent["session"], text),
                       "ack": "not required; information only" if message.get("info") is True else "still pending; native queue does not prove wakeup"}
+        if relay:
+            result["relayed_by"] = actor
         store.append("transport", actor, result)
         return result
     elif command == "plan":
@@ -570,6 +739,17 @@ def dispatch(a, store):
                 "starter": state["agents"][run["agent"]]["identity"], "reason": a.reason,
                 "observation": observation, "evidence": store.artifact(a.evidence),
                 "legacy": not run.get("lease_version")})
+        elif a.reconcile:
+            from registry import reconcile_end
+            require(not a.reason and not a.evidence, "--reason and --evidence require --abandon")
+            require(a.run in state["runs"], "Unknown run")
+            run = state["runs"][a.run]
+            require(actor == run["agent"], "Only the original run starter may reconcile its run")
+            require(run["status"] == "running", "Run already ended")
+            data = reconcile_end(store, run)
+            store.append("run.end", actor, data, "run-end:" + a.run)
+            return {"run": a.run, "status": data["status"], "native_rc": data["native_rc"],
+                    "source": data["reconciled"]["source"], "artifacts": [x["name"] for x in data["artifacts"]]}
         else:
             require(not a.reason and not a.evidence, "--reason and --evidence require --abandon")
             store.append("run.cancel", actor, {"id": a.run})
@@ -588,11 +768,23 @@ def dispatch(a, store):
             if a.defer_read:
                 data["defer_read"] = {"task": a.defer_read, "gate": a.gate}
                 a.task = list(dict.fromkeys(a.task + [a.defer_read, a.gate]))
+            if a.scrub_artifact is not None:
+                from registry import artifact_uses
+                sha = a.scrub_artifact.lower()
+                data["scrub"] = {"sha256": sha, "tasks": artifact_uses(store.events(), sha)["tasks"]}
+                a.task = list(dict.fromkeys(a.task + data["scrub"]["tasks"]))
             if a.task:
                 data["tasks"] = a.task
             if a.follows:
                 data["follows"] = resolve_follows(state, a.follows)
-        store.append(command, actor, data)
+        event = store.append(command, actor, data)
+        if "scrub" in data:
+            from registry import decision_id
+            path = store.root / "artifacts" / data["scrub"]["sha256"]
+            present = os.path.lexists(path)
+            return {"scrub": data["scrub"], "decision": decision_id(data, seq_of(store, event)),
+                    "file": "present" if present else "absent",
+                    **({"next": "Delete " + str(path) + " to complete the removal"} if present else {})}
     elif command == "brief":
         path = Path(a.file).resolve(strict=True)
         body = path.read_bytes()
@@ -617,17 +809,20 @@ def dispatch(a, store):
         store.append("legacy", actor, {"path": str(path), "files": files,
                      "notice": "Historical snapshot only; not a new assignment, ACK or independently verified acceptance"})
     elif command == "checkpoint":
-        return {"checkpoint": store.checkpoint(a.to), "canonical_events_and_artifacts": True,
-                "source_code": "Not included: preserve worktree and Git bundle separately"}
+        report = {}
+        return {"checkpoint": store.checkpoint(a.to, report=report), "canonical_events_and_artifacts": True,
+                "source_code": "Not included: preserve worktree and Git bundle separately",
+                **({"scrubbed": report["scrubbed"]} if report.get("scrubbed") else {})}
     elif command == "save":
         from recovery import save
         require(state["agents"][actor]["role"] == "coordinator", "Coordinator role required")
         result = save(store, a.to, a.repo, a.include, a.temporary, a.declared_offsite)
         store.append("save", actor, {"path": str(Path(a.to).resolve()), "manifest": store.artifact(Path(a.to) / "MANIFEST.json")})
         return {"saved": str(Path(a.to).resolve()), "repositories": len(result["repositories"]),
-                "scope": result["scope"], "destination": result["destination"], "offsite_verified": False}
+                "scope": result["scope"], "destination": result["destination"], "offsite_verified": False,
+                **({"scrubbed": result["scrubbed"]} if result.get("scrubbed") else {})}
     elif command == "settings":
-        store.append("settings", actor, {"wait_seconds": json.loads(Path(a.file).read_text())})
+        store.append("settings", actor, wait_settings(json.loads(Path(a.file).read_text())))
     elif command == "challenge":
         if a.task:
             from fix_challenge import register, execute
@@ -664,16 +859,40 @@ def dispatch(a, store):
         require(result["status"] in {"completed", "scored"}, "Benchmark failed; native receipt and logs preserved")
         return {"status":result["status"],"folder":str(folder.resolve()),"mode":result.get("mode"),"quality_claim":False}
     elif command == "doctor":
-        checked = store.audit()
-        events, state = checked['events'], checked['state']
-        compatibility = ({"compatibility": "This registry requires Squadra 3.10.1 or later."}
-                         if any(event.get('format') == 2 for event in events) else {})
-        return {**compatibility, "events": len(events), "integrity": "passed", "cache": checked["cache"], "unknown_running": [r["id"] for r in state["runs"].values() if r["status"] in {"running", "cleanup-unknown"}],
+        from registry import attention
+        if a.quick:
+            from registry_prepare import quick
+            store.db.execute('BEGIN')
+            checked = quick(store)
+            count, state = checked['events'], checked['state']
+        else:
+            checked = store.audit()
+            if checked['cache'] == 'mismatch':
+                require(a.repair, 'Cache mismatch; run squadra doctor --repair')
+                checked = store.repair_cache()
+            elif a.repair and checked['cache'] != 'matched':
+                checked = store.repair_cache()
+            count, state = len(checked['events']), checked['state']
+        columns = {row[1] for row in store.db.execute('PRAGMA table_info(events)')}
+        modern = ('hash_format' in columns and
+                  store.db.execute('SELECT 1 FROM events WHERE hash_format=2 LIMIT 1').fetchone() is not None)
+        compatibility = ({"compatibility": "This registry requires Squadra 3.10.1 or later."} if modern else {})
+        from registry import git_probe
+        tracked = git_probe('-C', str(store.root), '--literal-pathspecs', 'ls-files', '--error-unmatch', '--', 'registry.sqlite3')
+        git_warning = ({'git_warning': 'Registry is tracked by Git; remove it from the index with git rm --cached -r '
+                        + shlex.quote(str(store.root))} if tracked.returncode == 0 else {})
+        view = attention(state)
+        verification = ({'verification': 'quick', 'integrity': 'limited',
+                         'scope': ['anchor', 'suffix', 'demanded cache values'],
+                         'not_verified': ['earlier events', 'untouched leaves', 'all artifacts', 'replay-root equality']}
+                        if a.quick else {'verification': 'full', 'integrity': 'passed'})
+        return {**compatibility, **git_warning, **verification, "events": count, "cache": checked["cache"], "unknown_running": [r["id"] for r in state["runs"].values() if r["status"] in {"running", "cleanup-unknown"}],
                 "abandoned": [{"id": r["id"], "native_rc": None, "results": "none",
                                "legacy": r["abandonment"]["legacy"], "reason": r["abandonment"]["reason"]}
                               for r in state["runs"].values() if r["status"] == "abandoned"],
-                "pending_ack": [m["id"] for m in state["messages"].values() if m["ack"] is None and m.get("info") is not True],
-                "waits": waits(state, now()),
+                "pending_ack": pending_ack_ids(state, attention_value=view),
+                "waits": waits(state, now(), attention_value=view),
+                **({"scrubbed": checked["scrubbed"], "scrubbed_note": SCRUB_NOTE} if checked.get("scrubbed") else {}),
                 "warning": "Integrity verifies the record, not truth of agents' claims or external process liveness"}
     elif command == "dash":
         from dashboard import serve
@@ -681,10 +900,55 @@ def dispatch(a, store):
     return None
 
 
+def validate_init(a, root):
+    temporary_roots = [Path(tempfile.gettempdir()).resolve(), Path('/private/tmp')]
+    require(a.temporary or not any(t == root or t in root.parents for t in temporary_roots),
+            'Persistent workspace cannot live in tmp; --temporary is for explicit demos/tests')
+    project = Path(a.project).resolve(strict=True)
+    require(project.is_dir(), 'Project must be a directory: ' + str(project))
+    require(a.plan_rounds > 0 and a.review_rounds > 0, 'Positive round limits required')
+
+
+def refusal(exc, root):
+    if isinstance(exc, sqlite3.Error):
+        code = (getattr(exc, 'sqlite_errorcode', 0) or 0) & 255
+        if code in {sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED} or 'locked' in str(exc).lower():
+            return 'registry busy, retry'
+        if not any(word in str(exc).lower() for word in ('readonly', 'read-only', 'unable to open', 'permission')):
+            return 'Registry error in ' + str(root) + ': ' + getattr(exc, 'sqlite_errorname', 'sqlite_error')
+    if (isinstance(exc, sqlite3.Error) or isinstance(exc, PermissionError)
+            or isinstance(exc, OSError) and exc.errno in {errno.EACCES, errno.EPERM, errno.EROFS}):
+        return ('Cannot access registry folder ' + str(root) + '; a Codex window needs the registry folder among its '
+                'writable roots (codex --add-dir ' + shlex.quote(str(root)) + ')')
+    if isinstance(exc, (KeyError, TypeError)):
+        return 'internal error'
+    return ' '.join(str(exc).splitlines())
+
+
+def warning(text):
+    try:
+        print('Squadra: ' + ' '.join(text.splitlines()), file=sys.stderr, flush=True)
+    except Exception:
+        pass
+
+
 def main(argv=None):
     a = parser().parse_args(argv)
     store = None
+    result_rc = 0
+    root = Path(a.root or os.environ.get('SQUADRA_ROOT') or Path.cwd() / '.squadra')
     try:
+        root = workspace_path(a.root)
+        if a.command == "inbox":
+            import math
+            require(a.follow or (a.timeout is None and a.since is None and not a.until_first),
+                    '--timeout, --since and --until-first require --follow')
+            require(a.timeout is None or (math.isfinite(a.timeout) and a.timeout > 0), 'Positive finite --timeout required')
+            require(a.since is None or a.since >= 0, 'Nonnegative --since required')
+            require(not a.follow or not (a.all or a.message is not None), '--all and --message do not apply to --follow')
+            if a.follow:
+                from inbox_follow import follow
+                return follow(workspace_path(a.root), a.agent, a.timeout, a.since, until_first=a.until_first)
         if a.command == "usage":
             import time
             import usage
@@ -693,7 +957,7 @@ def main(argv=None):
             state = store.state(events, resolve=False)
             deadline = time.monotonic() + 30
             while True:
-                result = usage.collect(events, state)
+                result = usage.collect(events, state, budget_seconds=max(0.25, deadline - time.monotonic()))
                 if result['coverage']['status'] != 'collecting' or time.monotonic() >= deadline:
                     break
             if a.prices:
@@ -737,22 +1001,38 @@ def main(argv=None):
             print(json.dumps(example(a.to),indent=2));return 0
         if a.command == "restore-check":
             from recovery import restore_check
+            if a.actor:
+                # Resolve the registry as every command does; refuse a non-coordinator before restoring anything.
+                root = workspace_path(a.root)
+                check = Store(root, read_only=True)
+                try:
+                    agents = check.view()["agents"]
+                    require(a.actor in agents, "Unknown agent: " + a.actor)
+                    require(agents[a.actor]["role"] == "coordinator", "Coordinator role required")
+                finally:
+                    check.close()
             result = restore_check(a.package, a.to)
-            if a.root and a.actor:
-                store = Store(workspace_path(a.root))
+            if a.actor:
+                store = Store(root)
                 store.append("restore.check", a.actor, {"result": store.artifact(Path(a.to) / "RESTORE-RESULT.json")})
-                store.project()
                 result["recorded"] = True
             else:
                 result["recorded"] = False
-            print(json.dumps(result, ensure_ascii=False, indent=2))
+            try:
+                print(json.dumps(result, ensure_ascii=False, indent=2), flush=True)
+                if result['recorded']:
+                    store.project()
+            except Exception:
+                if store is None or type(store.commit_count) is not int or store.commit_count == 0:
+                    raise
+                warning('Command committed; summary unavailable; do not retry')
             return 0
         if a.command == "selftest":
             from selftest import run
-            result = run(a.output)
+            lang = workspace_lang(a.root)
+            result = run(a.output, a.timeout)
             print(json.dumps(result, ensure_ascii=False, indent=2))
-            print("\n| Ruolo | Prova | Esito | Registro | Prossimo passo |\n|---|---|---|---|---|\n"
-                  f"| selftest | {result.get('tests', 0)} test sintetici | {result['status']} | {result['folder']}/RESULT.json | Leggere il rapporto; nessuna accettazione di prodotto |")
+            print(selftest_table(result, lang))
             return 0 if result["status"] == "passed" else 1
         if a.command == "plugin":
             import plugin_store
@@ -761,46 +1041,88 @@ def main(argv=None):
                 result = (plugin_store.catalogue(Path.home()) if a.plugin_command == "list"
                           else plugin_store.install(Path.home(), a.name))
             except (plugins.Refused, OSError) as exc:
-                print("Squadra: " + (exc.code if isinstance(exc, plugins.Refused) else "io_error"), file=sys.stderr)
+                print("Squadra: " + (plugin_store.explain(exc) if isinstance(exc, plugins.Refused) else "io_error"), file=sys.stderr)
                 return 1
             print(json.dumps(result, ensure_ascii=False, indent=2))
             return 0
-        read_only = (a.command in {'status', 'inbox', 'check', 'doctor'} or
+        read_only = (a.command in {'status', 'inbox', 'check', 'doctor', 'dash'} or
                      (a.command == 'lesson' and a.list))
-        store = Store(workspace_path(a.root), create=a.command == "init", read_only=read_only)
+        if a.command == 'init':
+            validate_init(a, root)
+        store = Store(root, create=a.command == "init", read_only=read_only)
+        before = getattr(store, 'commit_count', None)
         result = dispatch(a, store)
+        if a.command == 'doctor':
+            print(json.dumps(plain(result), ensure_ascii=False, indent=2))
+            return 0
+        committed = type(before) is int and store.commit_count > before
+        if a.command == 'transport' and a.via == 'codex-queue' and result.get('delivered') is not True:
+            result_rc = 1
         if a.command != "dash":
-            if a.command == 'export':
-                state, events = store.project(with_events=True)
-            else:
-                if not read_only:
-                    store.publish()
-                state, events = store.view(), ()
-            if result is not None:
-                visible = dict(result) if isinstance(result, dict) else result
-                if isinstance(visible, dict):
-                    for key in ["after", "before", "snapshot"]:
-                        value = visible.get(key)
-                        if isinstance(value, dict) and "files" in value:
-                            visible[key] = {"head": value["head"], "sha256": value["sha256"], "files": len(value["files"])}
-                print(json.dumps(plain(visible), ensure_ascii=False, indent=2))
-            if a.command not in {"inbox", "doctor"}:
-                print(table(state, read_at=now(), events=events, compact=a.command != 'status' or not a.all))
-                if a.command == 'supersede':
-                    print('- ' + a.task + ' → ' + a.by)
-            forecast_task = a.id if a.command == 'task' else getattr(a, 'task', None)
-            if a.command in {'task', 'brief', 'start'} and forecast_task:
-                from forecast import calculate
-                import balance
-                if getattr(state, "current", None) is None:
-                    events = store.events()
-                predicted = calculate(state, events, forecast_task)
-                print(json.dumps({'forecast': predicted}, ensure_ascii=False, indent=2))
-                print(json.dumps({'balance': balance.calculate(state, events, forecast_task, forecast_result=predicted)},
-                                 ensure_ascii=False, indent=2))
-        return 0
-    except (Error, OSError, ValueError, KeyError, RuntimeError) as exc:
-        if store and not store.read_only and a.command not in {"census", "board", "forecast", "balance", "usage"}:
+            try:
+                if result is not None:
+                    visible = dict(result) if isinstance(result, dict) else result
+                    if isinstance(visible, dict):
+                        for key in ["after", "before", "snapshot"]:
+                            value = visible.get(key)
+                            if isinstance(value, dict) and "files" in value:
+                                visible[key] = {"head": value["head"], "sha256": value["sha256"], "files": len(value["files"])}
+                    print(json.dumps(plain(visible), ensure_ascii=False, indent=2), flush=True)
+                    if a.command == "inbox" and len(result) < result.total:
+                        print(f"Squadra: showing {len(result)} of {result.total} messages (the {result.pending} waiting for an ACK "
+                              f"and the latest {INBOX_RECENT}); --all shows every message, --message ID one in full.",
+                              file=sys.stderr)
+                if committed:
+                    print(json.dumps({'committed': True, **store.last_commit}), file=sys.stderr, flush=True)
+                if a.command == 'export':
+                    state, events = store.project(with_events=True)
+                    scrubbed = scrub_report(store.root, events)
+                    if scrubbed:
+                        print(json.dumps({"scrubbed": scrubbed, "scrubbed_note": SCRUB_NOTE}, ensure_ascii=False, indent=2))
+                else:
+                    if not read_only:
+                        store.publish()
+                    context = store.__dict__.get('_summary_context') if not read_only else None
+                    if context is not None:
+                        state, attention_value = context
+                    else:
+                        state, attention_value = store.view(), None
+                    events = ()
+                if a.command == 'export':
+                    context = store.__dict__.get('_summary_context')
+                    if context is not None:
+                        state, attention_value = context
+                    else:
+                        attention_value = None
+                if a.command not in {"inbox", "doctor"}:
+                    from registry import current_index
+                    if current_index(state) is None and not events:
+                        events = store.events()
+                    print(table(state, read_at=now(), events=events, compact=a.command != 'status' or not a.all,
+                                attention_value=attention_value))
+                    if a.command == 'supersede':
+                        print('- ' + a.task + ' → ' + a.by)
+                forecast_task = a.id if a.command == 'task' else getattr(a, 'task', None)
+                if a.command in {'task', 'brief', 'start'} and forecast_task:
+                    from forecast import calculate
+                    import balance
+                    if getattr(state, "current", None) is None and not events:
+                        events = store.events()
+                    predicted = calculate(state, events, forecast_task)
+                    print(json.dumps({'forecast': predicted}, ensure_ascii=False, indent=2))
+                    ranked = balance.calculate(state, events, forecast_task, forecast_result=predicted)
+                    print(json.dumps({'balance': balance.compact(ranked, state['workspace'].get('lang', 'it'))},
+                                     ensure_ascii=False, indent=2))
+            except Exception:
+                if not committed:
+                    raise
+                warning('Transport attempt recorded; delivery failed; summary unavailable' if result_rc
+                        else 'Command committed; summary unavailable; do not retry')
+        return result_rc
+    except (Error, OSError, sqlite3.Error, ValueError, KeyError, RuntimeError, TypeError) as exc:
+        expected = (isinstance(exc, (InputRefusal, sqlite3.Error, PermissionError)) or
+                    isinstance(exc, OSError) and exc.errno in {errno.EACCES, errno.EPERM, errno.EROFS})
+        if store and not store.read_only and not expected:
             try:
                 diagnostic = {"command": a.command, "error": str(exc), "utc": now()}
                 if isinstance(getattr(a, "task", None), str):
@@ -809,11 +1131,14 @@ def main(argv=None):
                 store.publish()
             except Exception:
                 pass
-        print("Squadra: " + ("usage_unavailable" if a.command == 'usage' else str(exc)), file=sys.stderr)
+        warning("usage_unavailable" if a.command == 'usage' else refusal(exc, root))
         return 1
     finally:
         if store:
-            store.close()
+            try:
+                store.close()
+            except (OSError, sqlite3.Error):
+                warning('Registry close failed in ' + str(root))
 
 
 if __name__ == "__main__":

@@ -620,6 +620,12 @@ def build_dashboard_state(base):
        "# Servizio delle chiavi\nPerché: i clienti ruotano le chiavi senza fermare il servizio JEV.\nFinito quando: prova verde e lettura accettata sulla stessa versione.\n"))
     ok("brief", "--actor", "coord", "--task", "W", "--file", write("w.md", "Vista web per i clienti\nPer chi: il proprietario.\n"))
     ok("brief", "--actor", "coord", "--task", "NEW", "--file", write("new.md", "Nuovo import dei clienti\n"))
+    # The coordinator queued NEW's assignment to its Codex owner: an ACK wait, not a message to forward.
+    store = Store(root)
+    try:
+        store.append("transport", "coord", {"message": "assign-NEW", "via": "codex-queue", "delivered": True})
+    finally:
+        store.close()
     ok("brief", "--actor", "coord", "--task", "DONE", "--file", write("done.md",
        "<script>alert(1)</script> Pezzo chiuso\n<img src=x onerror=alert(2)>\n"))
     report = write("read.md", "Independent read\n")

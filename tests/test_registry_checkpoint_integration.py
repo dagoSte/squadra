@@ -161,15 +161,17 @@ class CheckpointIntegration(unittest.TestCase):
                 audited_after_checkpoint.append(store.root)
             return original_audit(store)
 
-        def checkpoint(store, destination):
+        def checkpoint(store, destination, **kwargs):
             nonlocal checkpoint_complete
-            result = original_checkpoint(store, destination)
+            result = original_checkpoint(store, destination, **kwargs)
             checkpoint_complete = True
             return result
 
         with patch.object(Store, "audit", track), patch.object(Store, "checkpoint", checkpoint):
             save(self.store, package, temporary=True)
-        self.assertIn(package / "registry", audited_after_checkpoint)
+        # D-SAVE-ONE-AUDIT: the single audit of a save is the destination audit inside checkpoint.
+        self.assertEqual(audited, [package / "registry"])
+        self.assertEqual(audited_after_checkpoint, [])
         self.assertEqual(verify_package(package)["schema"], 1)
         for path in (self.root / "artifacts").iterdir():
             path.unlink()
@@ -194,7 +196,7 @@ class CheckpointIntegration(unittest.TestCase):
 
     def test_old_schema_one_package_without_leases_still_restores(self):
         # Historical packages contain a complete SQLite copy and artifacts only.
-        def legacy_checkpoint(store, destination):
+        def legacy_checkpoint(store, destination, **kwargs):
             destination = Path(destination)
             destination.mkdir(mode=0o700)
             target = sqlite3.connect(destination / "registry.sqlite3")

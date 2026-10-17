@@ -185,6 +185,7 @@ button:focus-visible,select:focus-visible,summary:focus-visible,input:focus-visi
 .sq-closed{margin:20px 0}
 .sq-closed>summary{margin-bottom:12px;font-size:16px;font-weight:600;cursor:pointer}
 .sq-waits{margin:20px 0}
+.sq-waits .rowtop h3,.ov-waits li{min-width:0;overflow-wrap:anywhere}
 .sq-waits>summary{margin-bottom:12px;font-size:16px;font-weight:600;cursor:pointer}
 .sq-waits>.panel{margin-bottom:12px}
 #charts{margin:12px 0 20px;min-width:0}
@@ -314,11 +315,16 @@ dialog.sq-story{inset:0;margin:auto;width:min(820px,calc(100vw - 48px));height:a
 @keyframes sq-spin{to{transform:rotate(360deg)}}@keyframes sq-pulse{50%{opacity:.3}}
 @media(prefers-reduced-motion:reduce){.sq-spinner,.status.loading .dot{animation:none}}
 </style>
+<style id="squadra-search-style">
+.sq-search{position:relative}.sq-search-popup{position:absolute;right:0;top:calc(100% + 8px);width:600px;max-width:calc(100vw - 32px);max-height:calc(100vh - 160px);display:flex;flex-direction:column;z-index:80;background:var(--sq-panel,var(--panel));color:var(--sq-text);border:1px solid var(--sq-border);border-radius:12px;box-shadow:0 16px 48px #0003;overflow:hidden;text-align:left;font-family:var(--sq-font)}
+.sq-search-popup[hidden]{display:none}#search-results{overflow-y:auto;min-height:0;max-height:55vh}.sq-search-option{display:block;width:100%;text-align:left;padding:12px 16px;border:0;border-bottom:1px solid var(--sq-border);border-radius:0;background:transparent;color:inherit;cursor:pointer;overflow-wrap:anywhere}.sq-search-option[aria-selected="true"],.sq-search-option:hover{background:var(--sq-accent-subtle)}.sq-search-option strong{display:block;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.sq-search-meta{display:block;font-size:11px;color:var(--sq-muted);margin-top:5px}.sq-search-popup p{margin:0;padding:12px 16px;font-size:12px;overflow-wrap:anywhere}.sq-search-popup #search-agent{border-top:1px solid var(--sq-border);padding:12px 16px;overflow:auto;flex-shrink:0;max-height:32vh}.sq-search-popup #search-agent p{padding:0 0 8px}.sq-search-prompt{white-space:pre-wrap;overflow-wrap:anywhere;color:var(--sq-muted)}#search-agent button,#search-actions button{font:inherit;font-size:12px;margin:0}#search-actions{padding:0 16px}#search-actions:empty{padding:0}#search-actions button{margin:10px 0}#search-actions p{padding:8px 0}
+@media(max-width:699.98px){.sq-search-popup{position:fixed;left:16px;right:16px;top:var(--sq-topbar-h);width:auto;max-width:none}}
+</style>
 </head><body>
 <button id="skip" type="button" class="sq-skip">Vai al contenuto</button>
 <div class="sq-app" id="app"><div class="sq-sidebar" id="sidebar"><div class="sq-brand"><span class="sq-logo" id="logo" aria-hidden="true"></span><span class="wordmark" id="wordmark">squadra</span><button id="sidebar-close" type="button" class="sq-icon-btn" aria-label="Chiudi il menù"></button></div><div id="connected-project" class="sq-project-card"></div><nav id="tabs" aria-label="Viste della dashboard"></nav><section class="sq-plugin-nav" id="usage-nav"><div id="usage-links"></div></section><section class="sq-plugin-nav" id="balance-nav"><div id="balance-links"></div></section><section class="sq-plugin-nav" id="skills-nav"><div id="skills-links"></div></section><section id="plugin-nav" class="sq-plugin-nav" aria-labelledby="plugin-label"><h2 id="plugin-label"></h2><div id="plugin-links"></div><div id="plugin-notices"></div></section><div class="sq-sidebar-foot"><button id="sidebar-toggle" type="button" aria-pressed="false"></button></div></div>
 <div class="sq-scrim" id="scrim" hidden></div>
-<div class="sq-page" id="page"><header class="sq-topbar" id="topbar"><button id="menu" type="button" class="sq-icon-btn" aria-controls="sidebar" aria-expanded="false" aria-label="Apri il menù"></button><div class="sq-heading"><h1 id="name">Sala di controllo</h1></div><div class="sq-search"><input id="search" type="search" placeholder="Cerca incarico, finestra, messaggio o skill" aria-label="Cerca nel registro"></div><div class="header-side"><div id="lang" class="lang"></div><div id="theme" class="sq-seg"></div><div id="notify-controls" class="sq-notify-controls"></div><div class="status" id="live"><span class="dot"></span><span>In attesa</span></div></div></header>
+<div class="sq-page" id="page"><header class="sq-topbar" id="topbar"><button id="menu" type="button" class="sq-icon-btn" aria-controls="sidebar" aria-expanded="false" aria-label="Apri il menù"></button><div class="sq-heading"><h1 id="name">Sala di controllo</h1></div><div class="sq-search"><input id="search" type="search" placeholder="Cerca incarico, finestra, messaggio o skill" aria-label="Cerca nel registro"><div id="search-popup" class="sq-search-popup" hidden><div id="search-results" role="listbox"></div><div id="search-actions"></div><div id="search-agent"></div></div></div><div class="header-side"><div id="lang" class="lang"></div><div id="theme" class="sq-seg"></div><div id="notify-controls" class="sq-notify-controls"></div><div class="status" id="live"><span class="dot"></span><span>In attesa</span></div></div></header>
 <main id="main" tabindex="-1"><section id="loading" class="sq-loading" role="status" aria-live="polite"><span class="sq-spinner" aria-hidden="true"></span><h2 id="loading-title">Caricamento del progetto…</h2><p id="loading-help">Sto leggendo attività, messaggi e prove.</p><button id="loading-retry" type="button" hidden>Riprova</button></section><section id="connected-hero" class="sq-hero"></section><section id="connected-context" class="sq-context" hidden></section><div id="notice"></div><p id="registry-audit" class="notice" role="status" aria-live="polite" hidden></p><p id="status" class="sq-status"></p><div id="kpis" class="sq-kpis"></div><div id="content"></div><div id="charts" class="sq-charts"></div><div class="sq-legacy" id="legacy" hidden><button id="legacy-toggle" type="button" class="link" aria-expanded="false" aria-controls="legacy-body"></button><div id="legacy-body" class="sq-legacy-body"><div id="metrics" class="metrics"></div><div id="overview"></div></div></div><details class="sq-registry-details" id="registry-details" hidden><summary id="connected-registry-label">Dettagli del registro</summary><div id="project" class="sub mono">Connessione al registro…</div></details><div class="footer" id="footer">Una consegna non è un ACK. Un test passato non è una review. Una review non autorizza un rilascio.<br>Vista locale in sola lettura, salvo le impostazioni dei plugin e le selezioni salvate · nessuna azione sui client.</div></main></div></div>
 <div id="chart-tip" class="sq-tip" aria-hidden="true" hidden></div>
 <dialog id="story" class="sq-story" aria-labelledby="story-title"></dialog>
@@ -450,6 +456,7 @@ const CORE={
  "next.done":{it:"Nessun passo pendente",en:"No pending step"},
  "wait.ack":{it:"Presa in carico da confermare",en:"Receipt to be confirmed"},"wait.dependencies":{it:"Dipendenze ancora aperte",en:"Dependencies still open"},
  "wait.plan":{it:"Piano in attesa di lettura non autore",en:"Plan waiting for a non-author read"},
+ "wait.to-forward":{it:"Da inoltrare",en:"To forward"},
  "wait.running":{it:"Esito dell'esecuzione non ancora registrato",en:"Run result not recorded yet"},
  "wait.cleanup-unknown":{it:"Stop da verificare; ricevuta presente",en:"Stop to verify; receipt present"},
  "wait.heartbeat":{it:"Heartbeat vecchio; presenza del processo non dedotta",en:"Old heartbeat; process presence not inferred"},
@@ -579,6 +586,7 @@ const CORE={
  "ov.forOwner":{it:"Serve a te: {text}",en:"Needs you: {text}"},
  "ov.someone":{it:"una finestra non indicata",en:"an unnamed window"},"ov.aMessage":{it:"un messaggio",en:"a message"},
  "ov.wait.ack":{it:"{who} deve confermare di aver ricevuto {topic} · {date}",en:"{who} has to confirm receipt of {topic} · {date}"},
+ "ov.wait.to-forward":{it:"Da inoltrare a {to} · inoltra: {who}",en:"To forward to {to} · forwarder: {who}"},
  "ov.wait.topic":{it:"il messaggio su «{task}»",en:"the message about “{task}”"},
  "ov.wait.ready":{it:"{who} deve avviare «{task}»",en:"{who} has to start “{task}”"},
  "ov.wait.delivered":{it:"«{task}» è consegnato e aspetta la lettura di {who}",en:"“{task}” is delivered and waits for a read by {who}"},
@@ -644,7 +652,7 @@ const CORE={
  "dec.unordered":{it:"Collegamenti non ordinabili",en:"Links that cannot be ordered"},
  "dec.unorderedIntro":{it:"Questi elementi hanno collegamenti circolari, possibili solo in un registro alterato: sono elencati qui invece di essere nascosti.",en:"These items have circular links, possible only in an altered registry: they are listed here instead of being hidden."},
  "dec.unresolved":{it:"Collegamenti registrati che non trovano il loro elemento: {count}",en:"Recorded links whose item cannot be found: {count}"},
- "dec.graphLabel":{it:"Grafo delle decisioni",en:"Decision graph"},"dec.legendSolid":{it:"collegamento registrato",en:"recorded link"},"dec.list":{it:"Elenco in ordine di tempo",en:"List in time order"},
+ "dec.graphLabel":{it:"Grafo delle decisioni",en:"Decision graph"},"dec.legendSolid":{it:"collegamento registrato",en:"recorded link"},"dec.list":{it:"Elenco · più recenti in alto",en:"List · newest first"},
  "dec.details":{it:"Dettagli",en:"Details"},
  "dec.select":{it:"Seleziona un riquadro per vedere chi, quando, le parole e i documenti collegati.",en:"Select a box to see who, when, the words and the linked documents."},
  "dec.who":{it:"Chi",en:"Who"},"dec.when":{it:"Quando",en:"When"},"dec.words":{it:"Parole del proprietario",en:"Owner's words"},
@@ -798,7 +806,7 @@ const CORE={
  "charts.intro":{it:"Gli stessi dati in grafici: ognuno ha una frase e la tabella con i numeri.",en:"The same records as charts: each has a sentence and a table with the numbers."},
  "story.title":{it:"Storia dell'incarico",en:"Task story"},"story.close":{it:"Chiudi la storia",en:"Close the story"},
  "story.timeline":{it:"Che cosa è successo",en:"What happened"},
- "story.intro":{it:"Tutto quello che il registro sa di questo lavoro, dal più vecchio al più recente.",en:"Everything the registry knows about this task, oldest first."},
+ "story.intro":{it:"Tutto quello che il registro sa di questo lavoro, dal più recente al più vecchio.",en:"Everything the registry knows about this task, newest first."},
  "story.created":{it:"{who} ha creato l'incarico",en:"{who} created the task"},"story.brief":{it:"{who} ha scritto il briefing",en:"{who} wrote the brief"},
  "story.assigned":{it:"{who} ha assegnato il lavoro a {to}",en:"{who} assigned the work to {to}"},
  "story.acked":{it:"{who} ha confermato la presa in carico",en:"{who} confirmed receipt"},
@@ -1031,7 +1039,7 @@ function presenceWindowLabel(id){
  if(!agent)return tr('presence.window.unknown');
  const role=tr('presence.role.'+(['coordinator','builder','reviewer','executor'].includes(agent.role)?agent.role:'other'));
  const client={codex:'Codex',claude:'Claude',cursor:'Cursor'}[agent.client]||tr(agent.client==='manual'?'presence.client.manual':'presence.client.unknown');
- const tasks=Object.values(state.tasks).filter(t=>!t.superseded_by&&t.status!=='done'&&(t.owner===id||t.reviewer===id));
+ const tasks=newestTasks(Object.values(state.tasks).filter(t=>!t.superseded_by&&t.status!=='done'&&(t.owner===id||t.reviewer===id)));
  const names=tasks.map(t=>{
   const brief=typeof t.brief==='string'?t.brief:t.brief?.text;
   const first=typeof brief==='string'?brief.split('\n').map(s=>s.trim()).find(Boolean):'';
@@ -1085,21 +1093,70 @@ const uiLocale=()=>UI_LANG==='en'?'en-GB':'it-IT';
 const date=value=>value?new Date(value).toLocaleString(uiLocale()):'—';
 const roleWord=role=>I18N['role.'+role]?tr('role.'+role):role;
 const waitText=w=>I18N['wait.'+w.kind]?tr('wait.'+w.kind):I18N['next.'+w.kind]?tr('next.'+w.kind):w.text;
+function pendingAckIds(){return new Set((state.attention?.waiting||[]).filter(w=>w.kind==='ack').flatMap(w=>w.handoffs||[w.id]))}
+function compactWaits(rows,forwarded=rows){
+ const ids=new Set(forwarded.filter(w=>w.kind==='to-forward').map(w=>w.id));
+ return rows.filter(w=>!(w.kind==='ack'&&(ids.has(w.id)||(w.handoffs||[]).some(id=>ids.has(id))))).sort((a,b)=>Number(a.kind!=='to-forward')-Number(b.kind!=='to-forward'));
+}
 const stepText=s=>s.phase==='gate-read'?tr('ov.state.closed-unread'):I18N['next.'+s.status]?tr('next.'+s.status):s.text;
 // Use the brief's first line as the task name, falling back to its recorded title.
 function briefText(brief){return typeof brief?.text==='string'?brief.text:''}
 function taskTitle(id){const t=state?.tasks?.[id];if(!t)return String(id??'');const first=briefText(t.brief).split(/\r?\n/).map(s=>s.replace(/^#+\s*/,'').trim()).find(Boolean);return first||t.title||id}
 function taskBody(id){const lines=briefText(state?.tasks?.[id]?.brief).split(/\r?\n/);const at=lines.findIndex(s=>s.replace(/^#+\s*/,'').trim());return at<0?'':lines.slice(at+1).join('\n').trim()}
+// A task's most recent recorded activity as ISO text: the lifecycle times on its record and its latest plan.
+function taskRecency(t){if(!t)return '';let last=typeof t.status_utc==='string'?t.status_utc:'';for(const at of [t.delivered_utc,t.superseded_utc,t.brief?.utc,t.reviews?.at(-1)?.utc,t.fix_history?.at(-1)?.utc,t.route_history?.at(-1)?.utc,state?.progress?.[t.id]?.steps?.find(s=>s.id==='plan')?.utc])if(typeof at==='string'&&at>last)last=at;return last||(typeof taskCreated==='function'&&taskCreated(t.id))||''}
+// Every temporal list shows the newest item first; equal keys keep the later item first.
+function newestFirst(list,key){return list.map((item,i)=>[key(item),i,item]).sort((a,b)=>a[0]<b[0]?1:a[0]>b[0]?-1:b[1]-a[1]).map(x=>x[2])}
+function newestTasks(list,record=t=>t){return newestFirst(list,item=>taskRecency(record(item)))}
 const titled=(text,scope)=>typeof glossedOrText==='function'?glossedOrText(text,scope):text;
 const headingKey=(e,key)=>{if(typeof focusKey==='function'){e.setAttribute('tabindex','-1');focusKey(e,key)}return e};
-let state=null,tab='Quadro',filter='';
+let state=null,tab='Quadro',filter='',transferLanding=null;
+const SEARCH_FIELDS={"tasks": "id title brief.text owner reviewer authors.* depends.* requirements.*.text scope.name plan.name brief.artifact.name", "runs": "task agent", "messages": "id from to task related_task body", "outputs": "task agent text next artifacts.*.name", "decisions": "id name actor reason owner_words answers withdraws choice tasks.*", "asks": "id actor task question options.*.label options.*.say evidence.*.name", "reviews": "task reviewer notes findings.*.title report.name"};
+
+function searchFields(kind,record){
+ const leaves=(value,path)=>{
+  if(!path.length)return typeof value==='string'?[value]:[];
+  const [key,...tail]=path;
+  if(key==='*')return Array.isArray(value)?value.flatMap(item=>leaves(item,tail)):[];
+  return value&&typeof value==='object'?leaves(value[key],tail):[];
+ };
+ return (SEARCH_FIELDS[kind]||'').split(' ').filter(Boolean).flatMap(path=>leaves(record,path.split('.')));
+}
+function searchNormalize(text){return text.normalize('NFD').replace(/\p{M}/gu,'').toLowerCase()}
+function searchMatch(fields,query){
+ const text=fields.map(s=>searchNormalize(s).replace(/(^|[^\p{L}\p{N}_])[a-f0-9]{32,}(?=$|[^\p{L}\p{N}_])/gu,'$1 ')).join('\n');
+ return searchNormalize(query).split(/\s+/u).filter(Boolean).every(word=>new RegExp('(^|[^\\p{L}\\p{N}_])'+word.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'u').test(text));
+}
+function searchRecord(value){
+ if(!value||typeof value!=='object')return null;
+ for(const kind of ['tasks','runs','messages'])if(state?.[kind]?.[value.id]===value)return {kind,record:value,id:value.id};
+ if(value.event&&typeof value.text==='string')return {kind:'outputs',record:value,id:value.event};
+ if(value.kind&&value.data){
+  const kinds={task:'tasks',message:'messages',output:'outputs',ask:'asks',decision:'decisions',review:'reviews','run.start':'runs'};
+  const kind=kinds[value.kind],actor=value.actor;
+  return kind?{kind,record:{...value.data,actor,agent:actor,reviewer:actor,from:actor},id:value.data.id||(kind==='decisions'?'dec-e'+value.seq:value.id)}:
+   {fields:[actor,value.data.task].filter(x=>typeof x==='string')};
+ }
+ if(state?.agents?.[value.id]===value)return {fields:[value.id]};
+ if(typeof value.agent==='string'&&'availability' in value)return {fields:[value.agent]};
+ if('from_lane' in value){
+  if(['message','ping'].includes(value.kind)&&state?.messages?.[value.message])return {kind:'messages',record:state.messages[value.message],id:value.message};
+  return {fields:[value.from,value.to,value.task].filter(x=>typeof x==='string')};
+ }
+ if(value.kind==='ask')return {kind:'asks',record:{...value,id:value.ask}};
+ if(value.kind==='decision')return {kind:'decisions',record:{...value,id:value.decision}};
+ if(value.kind==='review')return {kind:'reviews',record:{...value,reviewer:value.reader||value.actor}};
+ if(typeof value.question==='string')return {kind:'asks',record:value,id:value.id};
+ if(typeof value.reason==='string'&&value.actor)return {kind:'decisions',record:value,id:value.id};
+ if(value.reviewer&&value.verdict)return {kind:'reviews',record:value};
+ if(value.trust==='reported-unverified')return {fields:[value.notice||'',(value.path||'').split(/[\\/]/).pop()]};
+ return null;
+}
 const matches=value=>{
  if(!filter)return true;
- if(state?.search?.query===filter)for(const kind of ['tasks','runs','messages'])if(state[kind]?.[value?.id]===value){
-  if(state.search[kind]?.includes(value.id))return true;
- }
- if(state?.search?.query===filter&&value.event&&state.search.outputs?.includes(value.event))return true;
- return JSON.stringify(value).toLocaleLowerCase().includes(filter);
+ const item=searchRecord(value);if(!item)return false;
+ if(item.id&&state?.search?.query===filter&&Array.isArray(state.search[item.kind]))return state.search[item.kind].includes(item.id);
+ return searchMatch(item.fields||searchFields(item.kind,item.record),filter);
 };
 async function api(path,headers={}){
  if(loadUI.integrity)throw Error(tr('audit.failed'));
@@ -1113,7 +1170,7 @@ async function api(path,headers={}){
  const consume=async fn=>{try{const result=await wait(fn());if(loadUI.integrity)throw Error(tr('audit.failed'));return result}catch(e){throw expired?Error(tr('load.timeout')):e}finally{done()}};
  try{
   const r=await wait(fetch(path,{headers:{'X-Squadra-Token':token,...headers},cache:'no-store',...(controller?{signal:controller.signal}:{})}));
-  if(!r.ok){const error=Error(r.status+' · '+await consume(()=>r.text()));error.status=r.status;throw error;}
+  if(!r.ok){const text=await consume(()=>r.text()),error=Error(r.status+' · '+text);error.status=r.status;try{error.code=JSON.parse(text).error}catch(_){}throw error;}
   return {json:()=>consume(()=>r.json()),text:()=>consume(()=>r.text())};
  }catch(e){done();throw expired?Error(tr('load.timeout')):e}
 }
@@ -1147,12 +1204,12 @@ function proofLink(artifact){const b=node('button',artifact.name+' · '+artifact
 function panel(title){const p=node('section',undefined,'panel');p.append(node('h2',title));return p}
 function row(title,body,status){const r=node('div',undefined,'row');const top=node('div',undefined,'rowtop');const heading=node('h3',typeof title==='string'?title:undefined);if(typeof title!=='string')heading.append(title);top.append(heading);if(status)top.append(badge(status));r.append(top);if(body)r.append(node('div',body,'sub bodytext'));return r}
 function addEmpty(p,count){if(!count)p.append(node('div',tr('page.empty'),'empty'))}
-function tasks(scope){const all=Object.values(state.tasks),next=t=>{const step=(state.attention?.next_steps||[]).find(s=>s.task===t.id);return step?stepText(step):''};return sqTable({name:scope||'tasks',kind:'tasks',legacyKey:'tasks',title:tr('page.tasks.title'),all,items:all.filter(item=>matches(item)&&connectedMatches('tasks',item)),id:t=>t.id,titleLabel:tr('table.tasks.title'),titleSort:t=>taskTitle(t.id),titleCell:t=>titled(taskTitle(t.id),'tasks|task:'+t.id+'|title'),defaultOrder:'table.sortRegistry',filter:{options:[['',tr('table.tasks.all')],['open',tr('table.tasks.open')],['to-fix',tr('table.tasks.tofix')],['delivered',tr('table.tasks.delivered')],['done',tr('table.tasks.done')],['superseded',tr('table.tasks.superseded')]],test:(t,v)=>v==='superseded'?Boolean(t.superseded_by):!t.superseded_by&&(v==='open'?t.status!=='done':v==='to-fix'?t.status==='changes-required':t.status===v)},columns:[{key:'time',label:tr('time.total'),sort:t=>taskTime(t)??-1,cell:t=>taskTime(t)===null?'—':timeWords(taskTime(t))},{key:'status',label:tr('table.tasks.status'),sort:t=>PANEL_STATES.indexOf(panelStateOf(t)),cell:t=>t.superseded_by?node('span',tr('ov.status.superseded'),'badge warn'):state.progress?.[t.id]?.state?.id==='closed-unread'?node('span',tr('ov.state.closed-unread'),'badge warn'):badge(t.status)},{key:'owner',label:tr('table.tasks.owner'),sort:t=>t.owner?panelWho(t.owner):'',cell:t=>t.owner?panelWho(t.owner):''},{key:'reviewer',label:tr('table.tasks.reviewer'),sort:t=>t.reviewer?panelWho(t.reviewer):'',cell:t=>t.reviewer?panelWho(t.reviewer):''},{key:'proof',label:tr('table.tasks.proof'),sort:t=>t.proofs.at(-1)?.utc||'',cell:t=>{const last=t.proofs.at(-1);return last?badge(last.status):tr('table.tasks.noProof')}},{key:'next',label:tr('table.tasks.next'),sort:next,cell:next},{key:'updated',label:tr('table.tasks.updated'),sort:t=>t.status_utc||'',cell:t=>t.status_utc?date(t.status_utc):''}],details:(t,d,link)=>{const timing=taskTimeDetails(t);if(timing)d.append(timing);const about=taskBody(t.id),body=node('div',undefined,'sub bodytext'+(t.brief?'':' ov-missing'));body.append(t.brief?(typeof glossed==='function'?glossed(about,undefined,'tasks|task:'+t.id+'|body'):node('span',about)):node('span',tr('ov.noBrief')));if(about||!t.brief)d.append(body);if(t.superseded_by)d.append(node('div',tr('page.work.superseded',{by:taskTitle(t.superseded_by)}),'sub warn'));d.append(node('div',tr('page.tasks.depends',{list:t.depends.map(taskTitle).join(', ')||tr('page.none')}),'sub'));d.append(node('div',tr('page.tasks.technical',{id:t.id,title:t.title,owner:t.owner,base:String(t.base||'').slice(0,12)}),'sub mono'));const seats=panelRolesTech(t);if(seats)d.append(node('div',seats,'sub mono'));if(t.candidate)d.append(node('div',tr('page.tasks.candidate',{head:t.candidate.head,sha:t.candidate.sha256.slice(0,16)}),'sub mono'));const fix=fixChallengeLine(t);if(fix)d.append(fix);const last=t.proofs.at(-1);if(last)d.append(node('div',tr('page.tasks.lastProof',{status:descriptions[last.status]||last.status,rc:last.native_rc,seconds:last.seconds}),'sub'));for(const rev of t.reviews){const v=row((I18N['stage.'+rev.stage]?tr('stage.'+rev.stage):rev.stage)+' · '+rev.reviewer,date(rev.utc),rev.verdict);v.append(link('review',rev.report));d.append(v)}for(const q of state.requirements?.[t.id]||[])d.append(row(q.id+' · '+q.text,tr('page.tasks.proofs',{list:q.proofs.map(p=>p.id+' / exit '+p.native_rc).join(', ')||tr('page.missing')}),q.reviewed?tr('page.readCovered'):tr('page.readPending')));if(t.delivery?.packet)d.append(link('packet',t.delivery.packet));d.append(link('scope',t.scope));if(t.plan)d.append(link('plan',t.plan));d.append(recordLink('task',t))}})}
-function mail(scope){const all=Object.values(state.messages).reverse(),about=m=>m.task||m.related_task,how=m=>m.transport?(m.transport.delivered?tr('page.mail.delivered'):tr('page.mail.unconfirmed')):tr('page.mail.shared');return sqTable({name:scope||'mail',kind:'mail',title:tr('page.mail.title'),all,items:all.filter(item=>matches(item)&&connectedMatches('mail',item)),id:m=>m.id,titleLabel:tr('table.mail.message'),titleSort:m=>panelSeat(m.from),titleCell:m=>tr('table.mail.route',{from:panelSeat(m.from),to:panelSeat(m.to)}),defaultOrder:'table.sortNewest',filter:{options:[['',tr('table.mail.all')],['waiting',tr('table.mail.waiting')],['acked',tr('table.mail.acked')],['info',tr('page.mail.info')]],test:(m,v)=>v==='info'?m.info===true:v==='acked'?Boolean(m.ack):m.info!==true&&!m.ack},columns:[{key:'task',label:tr('table.mail.task'),sort:m=>about(m)?taskTitle(about(m)):'',cell:m=>about(m)?taskTitle(about(m)):''},{key:'text',label:tr('table.mail.text'),sort:m=>firstLine(m.body),cell:m=>m.body},{key:'ack',label:tr('table.mail.ack'),sort:m=>m.ack?1:0,cell:m=>node('span',m.info===true?tr('page.mail.info'):m.ack?tr('page.ackReceived'):tr('page.ackPending'),'badge '+(m.info===true?'':m.ack?'good':'warn'))},{key:'sent',label:tr('table.mail.sent'),sort:m=>m.utc||'',cell:m=>date(m.utc)},{key:'transport',label:tr('table.mail.transport'),sort:how,cell:how}],details:(m,d)=>{d.append(node('div',m.body,'sub bodytext'));d.append(node('div',date(m.utc)+' · '+tr('page.mail.transport',{how:how(m)})+' · '+(m.info===true?tr('page.mail.info')+' · ':'')+(m.ack?tr('page.mail.ackAt',{date:date(m.ack.utc)}):tr('page.mail.noWake')),'sub'));d.append(node('div',tr('table.mail.tech',{id:m.id,from:m.from,to:m.to}),'sub mono'))}})}
-function team(){const all=Object.values(state.agents),owned=a=>Object.values(state.tasks).filter(t=>t.owner===a.id||t.coordinator===a.id||t.reviews.some(r=>r.reviewer===a.id)||state.outputs.some(o=>o.agent===a.id&&o.task===t.id)||Object.values(state.messages).some(m=>m.to===a.id&&m.related_task===t.id)),last=a=>state.outputs.filter(x=>x.agent===a.id).at(-1),work=a=>owned(a).map(t=>taskTitle(t.id)+': '+(descriptions[t.status]||t.status)+(taskTimeLine(t)?' · '+taskTimeLine(t):'')).join('\n');const table=sqTable({name:'windows',kind:'windows',title:tr('page.team.title'),all,items:all.filter(item=>matches(item)&&connectedMatches('windows',item)),id:a=>a.id,titleLabel:tr('table.windows.title'),titleSort:a=>panelSeat(a.id),titleCell:a=>panelSeat(a.id),defaultOrder:'table.sortRegistry',filter:{options:[['',tr('table.windows.all')],...['coordinator','builder','executor','reviewer'].map(r=>[r,roleWord(r)])],test:(a,v)=>a.role===v},columns:[{key:'role',label:tr('table.windows.role'),sort:a=>roleWord(a.role),cell:a=>tr('table.windows.roleClient',{role:roleWord(a.role),client:wordOr('client.',a.client)})},{key:'tasks',label:tr('table.windows.tasks'),sort:work,cell:a=>{const text=work(a);return text?node('span',text,'bodytext'):''}},{key:'output',label:tr('table.windows.output'),sort:a=>last(a)?.utc||'',cell:a=>{const o=last(a);return o?date(o.utc):tr('page.team.noOutput')}},{key:'skills',label:tr('table.windows.skills'),sort:a=>(a.skills||[]).length,cell:a=>(a.skills||[]).map(s=>s.name).join(', ')||tr('page.team.noSkills')},{key:'next',label:tr('table.windows.next'),sort:a=>last(a)?.next||'',cell:a=>{const o=last(a);return o?o.next:tr('page.team.toRecord')}}],details:(a,d)=>{const o=last(a);for(const value of [a.id+'\n'+tr('page.team.identity',{identity:a.identity})+'\n'+tr('page.team.session',{client:a.client,session:a.session||tr('page.team.undeclared')}),roleWord(a.role)+'\n'+(a.model||tr('page.team.model')),work(a)+'\n'+(o?date(o.utc):tr('page.team.noOutput')),(a.skills||[]).map(s=>s.name+' @ '+s.sha256.slice(0,12)).join('\n')||tr('page.team.noSkills'),o?o.next:tr('page.team.toRecord')])d.append(node('div',value,'sub mono bodytext'))}});if(!state.presence?.length)return table;const stack=node('div',undefined,'sq-stack');stack.append(table,presencePanel());return stack}
+function tasks(scope){const all=newestTasks(Object.values(state.tasks)),next=t=>{const step=(state.attention?.next_steps||[]).find(s=>s.task===t.id);return step?stepText(step):''};return sqTable({name:scope||'tasks',kind:'tasks',legacyKey:'tasks',title:tr('page.tasks.title'),all,items:all.filter(item=>matches(item)&&connectedMatches('tasks',item)),id:t=>t.id,titleLabel:tr('table.tasks.title'),titleSort:t=>taskTitle(t.id),titleCell:t=>titled(taskTitle(t.id),'tasks|task:'+t.id+'|title'),defaultOrder:'table.sortNewest',filter:{options:[['',tr('table.tasks.all')],['open',tr('table.tasks.open')],['to-fix',tr('table.tasks.tofix')],['delivered',tr('table.tasks.delivered')],['done',tr('table.tasks.done')],['superseded',tr('table.tasks.superseded')]],test:(t,v)=>v==='superseded'?Boolean(t.superseded_by):!t.superseded_by&&(v==='open'?t.status!=='done':v==='to-fix'?t.status==='changes-required':t.status===v)},columns:[{key:'time',label:tr('time.total'),sort:t=>taskTime(t)??-1,cell:t=>taskTime(t)===null?'—':timeWords(taskTime(t))},{key:'status',label:tr('table.tasks.status'),sort:t=>PANEL_STATES.indexOf(panelStateOf(t)),cell:t=>t.superseded_by?node('span',tr('ov.status.superseded'),'badge warn'):state.progress?.[t.id]?.state?.id==='closed-unread'?node('span',tr('ov.state.closed-unread'),'badge warn'):badge(t.status)},{key:'owner',label:tr('table.tasks.owner'),sort:t=>t.owner?panelWho(t.owner):'',cell:t=>t.owner?panelWho(t.owner):''},{key:'reviewer',label:tr('table.tasks.reviewer'),sort:t=>t.reviewer?panelWho(t.reviewer):'',cell:t=>t.reviewer?panelWho(t.reviewer):''},{key:'proof',label:tr('table.tasks.proof'),sort:t=>t.proofs.at(-1)?.utc||'',cell:t=>{const last=t.proofs.at(-1);return last?badge(last.status):tr('table.tasks.noProof')}},{key:'next',label:tr('table.tasks.next'),sort:next,cell:next},{key:'updated',label:tr('table.tasks.updated'),sort:t=>t.status_utc||'',cell:t=>t.status_utc?date(t.status_utc):''}],details:(t,d,link)=>{const timing=taskTimeDetails(t);if(timing)d.append(timing);const about=taskBody(t.id),body=node('div',undefined,'sub bodytext'+(t.brief?'':' ov-missing'));body.append(t.brief?(typeof glossed==='function'?glossed(about,undefined,'tasks|task:'+t.id+'|body'):node('span',about)):node('span',tr('ov.noBrief')));if(about||!t.brief)d.append(body);if(t.superseded_by)d.append(node('div',tr('page.work.superseded',{by:taskTitle(t.superseded_by)}),'sub warn'));d.append(node('div',tr('page.tasks.depends',{list:t.depends.map(taskTitle).join(', ')||tr('page.none')}),'sub'));d.append(node('div',tr('page.tasks.technical',{id:t.id,title:t.title,owner:t.owner,base:String(t.base||'').slice(0,12)}),'sub mono'));const seats=panelRolesTech(t);if(seats)d.append(node('div',seats,'sub mono'));if(t.candidate)d.append(node('div',tr('page.tasks.candidate',{head:t.candidate.head,sha:t.candidate.sha256.slice(0,16)}),'sub mono'));const fix=fixChallengeLine(t);if(fix)d.append(fix);const last=t.proofs.at(-1);if(last)d.append(node('div',tr('page.tasks.lastProof',{status:descriptions[last.status]||last.status,rc:last.native_rc,seconds:last.seconds}),'sub'));for(const rev of t.reviews.slice().reverse()){const v=row((I18N['stage.'+rev.stage]?tr('stage.'+rev.stage):rev.stage)+' · '+rev.reviewer,date(rev.utc),rev.verdict);v.append(link('review',rev.report));d.append(v)}for(const q of state.requirements?.[t.id]||[])d.append(row(q.id+' · '+q.text,tr('page.tasks.proofs',{list:q.proofs.map(p=>p.id+' / exit '+p.native_rc).join(', ')||tr('page.missing')}),q.reviewed?tr('page.readCovered'):tr('page.readPending')));if(t.delivery?.packet)d.append(link('packet',t.delivery.packet));d.append(link('scope',t.scope));if(t.plan)d.append(link('plan',t.plan));d.append(recordLink('task',t))}})}
+function mail(scope){const all=Object.values(state.messages).reverse(),about=m=>m.task||m.related_task,how=m=>m.transport?(m.transport.delivered?tr('page.mail.delivered'):tr('page.mail.unconfirmed')):tr('page.mail.shared');return sqTable({name:scope||'mail',kind:'mail',title:tr('page.mail.title'),all,items:all.filter(item=>matches(item)&&connectedMatches('mail',item)),id:m=>m.id,titleLabel:tr('table.mail.message'),titleSort:m=>panelSeat(m.from),titleCell:m=>tr('table.mail.route',{from:panelSeat(m.from),to:panelSeat(m.to)}),defaultOrder:'table.sortNewest',filter:{options:[['',tr('table.mail.all')],['waiting',tr('table.mail.waiting')],['acked',tr('table.mail.acked')],['info',tr('page.mail.info')]],test:(m,v)=>v==='info'?m.info===true:v==='acked'?Boolean(m.ack):pendingAckIds().has(m.id)},columns:[{key:'task',label:tr('table.mail.task'),sort:m=>about(m)?taskTitle(about(m)):'',cell:m=>about(m)?taskTitle(about(m)):''},{key:'text',label:tr('table.mail.text'),sort:m=>firstLine(m.body),cell:m=>m.body},{key:'ack',label:tr('table.mail.ack'),sort:m=>m.ack?1:0,cell:m=>node('span',m.info===true?tr('page.mail.info'):m.ack?tr('page.ackReceived'):tr('page.ackPending'),'badge '+(m.info===true?'':m.ack?'good':'warn'))},{key:'sent',label:tr('table.mail.sent'),sort:m=>m.utc||'',cell:m=>date(m.utc)},{key:'transport',label:tr('table.mail.transport'),sort:how,cell:how}],details:(m,d)=>{d.append(node('div',m.body,'sub bodytext'));d.append(node('div',date(m.utc)+' · '+tr('page.mail.transport',{how:how(m)})+' · '+(m.info===true?tr('page.mail.info')+' · ':'')+(m.ack?tr('page.mail.ackAt',{date:date(m.ack.utc)}):tr('page.mail.noWake')),'sub'));d.append(node('div',tr('table.mail.tech',{id:m.id,from:m.from,to:m.to}),'sub mono'))}})}
+function team(){const all=Object.values(state.agents),recent=newestTasks(Object.values(state.tasks)),owned=a=>recent.filter(t=>t.owner===a.id||t.coordinator===a.id||t.reviews.some(r=>r.reviewer===a.id)||state.outputs.some(o=>o.agent===a.id&&o.task===t.id)||Object.values(state.messages).some(m=>m.to===a.id&&m.related_task===t.id)),last=a=>state.outputs.filter(x=>x.agent===a.id).at(-1),work=a=>owned(a).map(t=>taskTitle(t.id)+': '+(descriptions[t.status]||t.status)+(taskTimeLine(t)?' · '+taskTimeLine(t):'')).join('\n');const table=sqTable({name:'windows',kind:'windows',title:tr('page.team.title'),all,items:all.filter(item=>matches(item)&&connectedMatches('windows',item)),id:a=>a.id,titleLabel:tr('table.windows.title'),titleSort:a=>panelSeat(a.id),titleCell:a=>panelSeat(a.id),defaultOrder:'table.sortRegistry',filter:{options:[['',tr('table.windows.all')],...['coordinator','builder','executor','reviewer'].map(r=>[r,roleWord(r)])],test:(a,v)=>a.role===v},columns:[{key:'role',label:tr('table.windows.role'),sort:a=>roleWord(a.role),cell:a=>tr('table.windows.roleClient',{role:roleWord(a.role),client:wordOr('client.',a.client)})},{key:'tasks',label:tr('table.windows.tasks'),sort:work,cell:a=>{const text=work(a);return text?node('span',text,'bodytext'):''}},{key:'output',label:tr('table.windows.output'),sort:a=>last(a)?.utc||'',cell:a=>{const o=last(a);return o?date(o.utc):tr('page.team.noOutput')}},{key:'skills',label:tr('table.windows.skills'),sort:a=>(a.skills||[]).length,cell:a=>(a.skills||[]).map(s=>s.name).join(', ')||tr('page.team.noSkills')},{key:'next',label:tr('table.windows.next'),sort:a=>last(a)?.next||'',cell:a=>{const o=last(a);return o?o.next:tr('page.team.toRecord')}}],details:(a,d)=>{const o=last(a);for(const value of [a.id+'\n'+tr('page.team.identity',{identity:a.identity})+'\n'+tr('page.team.session',{client:a.client,session:a.session||tr('page.team.undeclared')}),roleWord(a.role)+'\n'+(a.model||tr('page.team.model')),work(a)+'\n'+(o?date(o.utc):tr('page.team.noOutput')),(a.skills||[]).map(s=>s.name+' @ '+s.sha256.slice(0,12)).join('\n')||tr('page.team.noSkills'),o?o.next:tr('page.team.toRecord')])d.append(node('div',value,'sub mono bodytext'))}});if(!state.presence?.length)return table;const stack=node('div',undefined,'sq-stack');stack.append(table,presencePanel());return stack}
 function evidence(){const all=Object.values(state.runs).reverse(),kind=s=>s==='passed'?'passed':['failed','timeout','interrupted'].includes(s)?'failed':['running','cleanup-unknown'].includes(s)?'running':'other';const table=sqTable({name:'runs',kind:'runs',title:tr('page.runs.title'),all,items:all.filter(item=>matches(item)&&connectedMatches('runs',item)),id:r=>r.id,titleLabel:tr('table.runs.task'),titleSort:r=>taskTitle(r.task),titleCell:r=>taskTitle(r.task),defaultOrder:'table.sortNewest',filter:{options:[['',tr('table.runs.all')],['passed',tr('table.runs.passed')],['failed',tr('table.runs.failed')],['running',tr('table.runs.running')]],test:(r,v)=>kind(r.status)===v},columns:[{key:'who',label:tr('table.runs.who'),sort:r=>panelSeat(r.agent),cell:r=>panelSeat(r.agent)},{key:'mode',label:tr('table.runs.mode'),sort:r=>r.mode||'',cell:r=>wordOr('table.mode.',r.mode)},{key:'status',label:tr('table.runs.status'),sort:r=>r.status||'',cell:r=>badge(r.status)},{key:'seconds',label:tr('table.runs.seconds'),sort:r=>Number.isFinite(r.seconds)?r.seconds:-1,cell:r=>r.seconds!=null?tr('table.seconds',{n:r.seconds}):''},{key:'started',label:tr('table.runs.started'),sort:r=>r.utc||'',cell:r=>date(r.utc)}],details:(r,d,link)=>{const fix=fixChallengeLine(state.tasks[r.task]);if(fix)d.append(fix);d.append(node('div',(r.argv||[]).join(' '),'sub bodytext'));d.append(node('div',tr('table.runs.tech',{agent:r.agent,mode:r.mode}),'sub mono'));d.append(node('div',tr('page.runs.line',{id:r.id,rc:r.native_rc??tr('page.pending'),seconds:r.seconds??'—'}),'sub mono'));if(r.actual_session)d.append(node('div',tr('page.runs.session',{session:r.actual_session,cli:r.cli_version||tr('page.runs.unverified'),requested:r.requested_model||tr('page.runs.default'),observed:(r.observed_models||[]).join(', ')||tr('page.runs.notExposed')}),'sub mono'));if(r.mode==='read'&&r.response)d.append(node('div',tr('page.runs.verdict',{verdict:r.response.verdict}),'sub warn'));if(r.abandonment){d.append(node('div',tr('page.runs.abandoned'),'sub warn'));if(r.abandonment.legacy)d.append(node('div',tr('page.runs.abandonedLegacy'),'sub warn'));d.append(node('div',r.abandonment.reason,'bodytext'),link('artifact',r.abandonment.evidence))}else if(r.cancel_requested)d.append(node('div',tr('page.runs.cancel'),'sub warn'));if(r.error)d.append(node('div',r.error,'bodytext bad'));for(const a of r.artifacts||[])d.append(link('artifact',a));d.append(recordLink('run',r))}});const task=connectedUI.context?.task;if(!task||!state.tasks[task])return table;const stack=node('div',undefined,'sq-stack');stack.append(table,connectedReviews(state.tasks[task]));return stack}
 function timeline(){const p=panel(tr('page.timeline.title'));for(const e of state.events.filter(matches).reverse()){const r=row('#'+e.seq+' · '+e.kind+' · '+e.actor,date(e.utc));r.append(node('div',JSON.stringify(e.data,null,2),'sub mono bodytext'));p.append(r)}return p}
-function legacyView(){const p=panel(tr('page.legacy.title'));let count=0;for(const l of Object.values(state.legacy).filter(matches)){count++;const r=row(l.path,l.notice,'reported-unverified');r.append(node('div',tr('page.legacy.imported',{date:date(l.utc)}),'sub'));for(const f of l.files)r.append(proofLink(f));p.append(r)}addEmpty(p,count);return p}
+function legacyView(){const p=panel(tr('page.legacy.title'));let count=0;for(const l of newestFirst(Object.values(state.legacy).filter(matches),l=>l.utc||'')){count++;const r=row(l.path,l.notice,'reported-unverified');r.append(node('div',tr('page.legacy.imported',{date:date(l.utc)}),'sub'));for(const f of l.files)r.append(proofLink(f));p.append(r)}addEmpty(p,count);return p}
 // Add communication labels to the shared language dictionary.
 Object.assign(I18N,{
  'comms.role.coordinator.subject':{it:'il coordinatore',en:'the coordinator'},'comms.role.coordinator.to':{it:'al coordinatore',en:'to the coordinator'},'comms.role.coordinator.of':{it:'del coordinatore',en:'of the coordinator'},'comms.role.coordinator.sender':{it:'del coordinatore',en:'from the coordinator'},'comms.role.coordinator.bare':{it:'coordinatore',en:'coordinator'},
@@ -1235,7 +1292,7 @@ Object.assign(I18N,{
  'comms.filters.active':{it:'Filtri attivi: {filters}',en:'Active filters: {filters}'},'comms.filter.pair':{it:'Coppia',en:'Pair'},
  'comms.pairs.help':{it:'Seleziona una coppia per vedere i suoi messaggi nella cronologia. I conteggi riassumono tutto il registro, indipendentemente dai filtri.',en:'Select a pair to see its messages in the timeline. Counts cover the whole registry, independently of the filters.'},
  'comms.pairs.who':{it:'Finestre',en:'Windows'},'comms.pairs.messages':{it:'Messaggi',en:'Messages'},
- 'comms.pairs.acked':{it:'Confermati',en:'Confirmed'},'comms.pairs.waiting':{it:'In attesa',en:'Waiting'},
+ 'comms.pairs.acked':{it:'Confermati',en:'Confirmed'},'comms.pairs.info':{it:'Solo informazione',en:'Information only'},'comms.pairs.waiting':{it:'In attesa',en:'Waiting'},
  'comms.pairs.overdue':{it:'Oltre l’attesa normale',en:'Past normal wait'},'comms.pairs.oldest':{it:'Attesa più lunga',en:'Oldest wait'},
  'comms.filter.period':{it:'Periodo',en:'Period'},'comms.filter.count':{it:'Quanti',en:'How many'},'comms.filter.task':{it:'Incarico',en:'Task'},'comms.filter.lane':{it:'Finestra',en:'Window'},
  'comms.period.all':{it:'tutto il caricato',en:'everything loaded'},'comms.period.15m':{it:'ultimi 15 minuti',en:'last 15 minutes'},'comms.period.1h':{it:'ultima ora',en:'last hour'},'comms.period.6h':{it:'ultime 6 ore',en:'last 6 hours'},'comms.period.24h':{it:'ultime 24 ore',en:'last 24 hours'},
@@ -1266,13 +1323,13 @@ function commsTitle(title,n){return title?tr('comms.quote',{text:commsShort(titl
 function commsWork(lane,role){const work=(lane?.work||[]).filter(w=>role?w.as===role:w.as!=='coordinator');return work.filter(w=>w.status!=='done').at(-1)||work.at(-1)}
 function commsLane(identity){return (state.comms?.lanes||[]).find(l=>l.identity===identity)}
 function commsPeers(agent){return [...new Set(Object.values(state.agents).filter(a=>a.role===agent.role&&a.client===agent.client).map(a=>a.identity||a.id))]}
-function commsClient(client){return I18N['comms.client.'+client]?tr('comms.client.'+client):client}
-function commsName(seat,form){
+function commsClient(client,searchOnly=false){return I18N['comms.client.'+client]?tr('comms.client.'+client):searchOnly?'':client}
+function commsName(seat,form,searchOnly=false){
  const agent=state.agents[seat];
  if(!agent)return tr('comms.role.'+(seat==='system'?'system':'unregistered')+'.'+form);
- let name=tr('comms.name',{role:tr('comms.role.'+(I18N['comms.role.'+agent.role+'.'+form]?agent.role:'window')+'.'+form),client:commsClient(agent.client)});
+ let name=tr('comms.name',{role:tr('comms.role.'+(I18N['comms.role.'+agent.role+'.'+form]?agent.role:'window')+'.'+form),client:commsClient(agent.client,searchOnly)});
  const peers=commsPeers(agent);
- if(peers.length>1){const work=commsWork(commsLane(agent.identity||agent.id),agent.role==='executor'?null:agent.role);name=work?tr('comms.name.work',{name,title:commsTitle(work.title,40)}):tr('comms.name.number',{name,n:peers.indexOf(agent.identity||agent.id)+1})}
+ if(peers.length>1){const work=commsWork(commsLane(agent.identity||agent.id),agent.role==='executor'?null:agent.role);name=work?tr('comms.name.work',{name,title:commsTitle(searchOnly?taskTitle(work.task):work.title,40)}):tr('comms.name.number',{name,n:peers.indexOf(agent.identity||agent.id)+1})}
  return name;
 }
 function commsLaneLabel(lane,article){
@@ -1284,20 +1341,20 @@ function commsLaneLabel(lane,article){
  if(same.length>1){const work=commsWork(lane);label=work?tr('comms.name.work',{name:label,title:commsTitle(work.title,40)}):tr('comms.name.number',{name:label,n:same.indexOf(lane)+1})}
  return article?label:capital(label);
 }
-function commsResult(e){
- const call=e.kind==='ping',delay=e.reply_seconds!=null?tr('comms.s.delay',{d:commsDuration(e.reply_seconds)}):'';
- let r=e.state==='info'?tr('comms.info')+(e.ack_utc?' · '+tr('comms.r.acked',{time:commsTime(e.ack_utc)}):''):e.state==='acked'?tr(call?'comms.r.answered':'comms.r.acked',{time:commsTime(e.ack_utc)})+delay:
-  e.state==='overdue'?tr(call?'comms.r.overdue.ping':'comms.r.overdue',{d:commsDuration(e.wait_seconds),n:commsDuration(e.wait_threshold)}):
+function commsResult(e,searchOnly=false){
+ const call=e.kind==='ping',delay=!searchOnly&&e.reply_seconds!=null?tr('comms.s.delay',{d:commsDuration(e.reply_seconds)}):'';
+ let r=e.state==='info'?tr('comms.info')+(e.ack_utc?' · '+tr('comms.r.acked',{time:searchOnly?'':commsTime(e.ack_utc)}):''):e.state==='acked'?tr(call?'comms.r.answered':'comms.r.acked',{time:searchOnly?'':commsTime(e.ack_utc)})+delay:
+  e.state==='overdue'?tr(call?'comms.r.overdue.ping':'comms.r.overdue',{d:searchOnly?'':commsDuration(e.wait_seconds),n:searchOnly?'':commsDuration(e.wait_threshold)}):
   e.state==='queued'?tr('comms.r.queued'):tr(call?'comms.r.sent.ping':'comms.r.sent');
  if(e.flags.includes('recipient-stand-by'))r+=tr('comms.r.standby');
  if(e.flags.includes('unregistered-recipient'))r+=tr('comms.r.unregistered');
  return r;
 }
-function commsSentence(e){
- const v={from:e.from?commsName(e.from,'subject'):tr('comms.s.someone'),to:e.to?commsName(e.to,'to'):'',of:e.to?commsName(e.to,'of'):'',sender:e.to?commsName(e.to,'sender'):'',obj:e.to?commsName(e.to,'subject'):'',
-  title:commsTitle(e.task_title,Infinity),time:commsTime(e.ping_utc||e.utc),delay:e.reply_seconds!=null?tr('comms.s.delay',{d:commsDuration(e.reply_seconds)}):''};
+function commsSentence(e,searchOnly=false){
+ const v={from:e.from?commsName(e.from,'subject',searchOnly):tr('comms.s.someone'),to:e.to?commsName(e.to,'to',searchOnly):'',of:e.to?commsName(e.to,'of',searchOnly):'',sender:e.to?commsName(e.to,'sender',searchOnly):'',obj:e.to?commsName(e.to,'subject',searchOnly):'',
+  title:commsTitle(searchOnly?taskTitle(e.task):e.task_title,Infinity),time:searchOnly?'':commsTime(e.ping_utc||e.utc),delay:!searchOnly&&e.reply_seconds!=null?tr('comms.s.delay',{d:commsDuration(e.reply_seconds)}):''};
  let s;
- if(e.kind==='message'||e.kind==='ping')s=tr(e.kind==='ping'?'comms.s.ping':e.assignment?'comms.s.assigned':e.task?'comms.s.wrote':'comms.s.wrote.none',{...v,result:commsResult(e)});
+ if(e.kind==='message'||e.kind==='ping')s=tr(e.kind==='ping'?'comms.s.ping':e.assignment?'comms.s.assigned':e.task?'comms.s.wrote':'comms.s.wrote.none',{...v,result:commsResult(e,searchOnly)});
  else if(e.kind==='ack'||e.kind==='answer')s=tr(e.kind==='answer'?'comms.s.answer':'comms.s.ack',v);
  else if(e.kind==='transport')s=tr(e.state==='queued'?'comms.s.queued':e.state==='manual'?'comms.s.manual':'comms.s.unconfirmed',v);
  else if(e.kind==='availability')s=tr(e.state==='stand-by'?(e.ping_utc?'comms.s.standby.ping':'comms.s.standby'):e.state==='active'?(e.ping_utc?'comms.s.return.ping':'comms.s.return'):'comms.s.availability',v)+(e.flags.includes('unrecognised-kind')?tr('comms.s.unrecognised'):'');
@@ -1316,9 +1373,10 @@ function commsFacts(e){
 }
 function commsTech(e){return tr('comms.tech',{seq:e.seq,kind:e.kind,from:e.from||'—',to:e.to||'—',fromLane:e.from_lane||'—',toLane:e.to_lane||'—'})+(e.raw_kind?tr('comms.tech.raw',{raw:e.raw_kind}):'')+(e.message?tr('comms.tech.message',{id:e.message}):'')+(e.task?tr('comms.tech.task',{id:e.task}):'')+(e.via?tr('comms.tech.transport',{via:e.via,rc:e.native_rc}):'')+(e.ping?tr('comms.tech.ping',{id:e.ping}):'')}
 function commsPairKey(e){return [e.from_lane,e.to_lane].sort().join('\u0000')}
+function commsWaitingCount(p){return p.pending==null?p.sent+p.queued:Math.max(0,p.pending-p.overdue)}
 function commsPairLine(p){
  const order=state.comms.lanes.map(l=>l.identity),[x,y]=[...p.lanes].sort((m,n)=>order.indexOf(m)-order.indexOf(n)),a=commsLaneLabel(commsLane(x),true),b=commsLaneLabel(commsLane(y),true);
- const parts=[tr(p.acked===1?'comms.p.acked':'comms.p.acked.many',{n:p.acked})],waiting=p.sent+p.queued;
+ const parts=[tr(p.acked===1?'comms.p.acked':'comms.p.acked.many',{n:p.acked})],waiting=commsWaitingCount(p);
  if(p.info)parts.push(tr('comms.p.info',{n:p.info}));
  if(p.overdue)parts.push(tr('comms.p.overdue',{n:p.overdue}));
  if(waiting)parts.push(tr('comms.p.waiting',{n:waiting})+(p.oldest_pending_seconds!=null?tr('comms.p.oldest',{d:commsDuration(p.oldest_pending_seconds)}):''));
@@ -1331,7 +1389,7 @@ function commsPairRow(p){
  b.pairKey=key;b.setAttribute('type','button');b.setAttribute('aria-pressed',String(commsUI.filters.pair===key));b.setAttribute('aria-label',commsPairLine(p));
  b.onclick=()=>{commsUI.filters.pair=commsUI.filters.pair===key?'':key;render()};
  row.onclick=e=>{if(!b.contains(e.target))b.onclick()};row.className=commsUI.filters.pair===key?'active':'';cell.append(b);row.append(cell);
- for(const value of [p.messages,p.acked,p.sent+p.queued,p.overdue,p.oldest_pending_seconds==null?'—':commsDuration(p.oldest_pending_seconds)])row.append(node('td',String(value)));
+ for(const value of [p.messages,p.acked,commsWaitingCount(p),p.overdue,p.oldest_pending_seconds==null?'—':commsDuration(p.oldest_pending_seconds),p.info||0])row.append(node('td',String(value)));
  return row;
 }
 function commsFilterState(){
@@ -1361,7 +1419,7 @@ function commsBuild(){
  guide.append(terms,label('p','comms.honest','sub'));
  const pairs=node('section',undefined,'panel'),pairTable=node('table',undefined,'comms-pairs'),pairHead=node('tr'),pairList=node('tbody'),pairScroll=node('div',undefined,'comms-pair-scroll');
  const head=node('thead');head.append(pairHead);
- for(const key of ['who','messages','acked','waiting','overdue','oldest']){const th=label('th','comms.pairs.'+key);th.setAttribute('scope','col');pairHead.append(th)}
+ for(const key of ['who','messages','acked','waiting','overdue','oldest','info']){const th=label('th','comms.pairs.'+key);th.setAttribute('scope','col');pairHead.append(th)}
  pairTable.append(head,pairList);pairScroll.setAttribute('tabindex','0');pairScroll.setAttribute('role','region');pairScroll.setAttribute('aria-labelledby','comms-pair-title');pairScroll.append(pairTable);
  const pairTitle=label('h2','comms.pairs');pairTitle.id='comms-pair-title';pairs.append(pairTitle,label('p','comms.pairs.help','sub'),pairScroll);
  const filters=node('section',undefined,'comms-filters'),selects={},filterTitle=label('h2','comms.filters');filterTitle.id='comms-filter-title';filters.setAttribute('aria-labelledby',filterTitle.id);filters.append(filterTitle);
@@ -1386,7 +1444,7 @@ function commsBuild(){
 function commsOptions(select,options,value){const key=JSON.stringify(options);if(select.optionsKey!==key){select.replaceChildren(...options.map(([v,t])=>{const o=node('option',t);o.value=String(v);return o}));select.optionsKey=key}select.value=String(value)}
 function commsVisible(data){
  const f=commsUI.filters;
- return data.edges.filter(e=>(!f.period||(e.age_seconds!=null&&e.age_seconds<=f.period))&&(!f.task||(f.task==='-'?!e.task:e.task===f.task))&&(!f.lane||e.from_lane===f.lane||e.to_lane===f.lane)&&(!f.pair||commsPairKey(e)===f.pair)&&(!filter||(JSON.stringify(e)+' '+commsSentence(e)).toLocaleLowerCase().includes(filter))).slice(-f.count).reverse();
+ return data.edges.filter(e=>(!f.period||(e.age_seconds!=null&&e.age_seconds<=f.period))&&(!f.task||(f.task==='-'?!e.task:e.task===f.task))&&(!f.lane||e.from_lane===f.lane||e.to_lane===f.lane)&&(!f.pair||commsPairKey(e)===f.pair)&&(matches(e)||searchMatch([commsSentence(e,true)],filter))).slice(-f.count).reverse();
 }
 function commsToggle(row){
  const e=row.edge;
@@ -1444,10 +1502,10 @@ function comms(content){
  const pairKey=JSON.stringify([UI_LANG,data.pairs,commsUI.laneKey,commsUI.filters.pair]);
  if(pairKey!==commsUI.pairKey){
   commsUI.pairKey=pairKey;const focused=document.activeElement?.pairKey;
-  if(data.pairs.length)parts.pairList.replaceChildren(...data.pairs.map(commsPairRow));else{const row=node('tr'),cell=node('td',tr('comms.pairs.none'),'empty');cell.setAttribute('colspan','6');row.append(cell);parts.pairList.replaceChildren(row)}
+  if(data.pairs.length)parts.pairList.replaceChildren(...data.pairs.map(commsPairRow));else{const row=node('tr'),cell=node('td',tr('comms.pairs.none'),'empty');cell.setAttribute('colspan','7');row.append(cell);parts.pairList.replaceChildren(row)}
   for(const row of [...parts.pairList.children]){const b=row.children[0]?.children[0];if(focused&&b&&b.pairKey===focused)b.focus()}
  }
- const f=commsUI.filters,tasks=[...new Map(data.edges.filter(e=>e.task).map(e=>[e.task,e.task_title])).entries()];
+ const f=commsUI.filters,tasks=newestTasks([...new Map(data.edges.filter(e=>e.task).map(e=>[e.task,e.task_title])).entries()],([id])=>state.tasks[id]||{id});
  commsOptions(parts.selects.period,[[0,tr('comms.period.all')],[900,tr('comms.period.15m')],[3600,tr('comms.period.1h')],[21600,tr('comms.period.6h')],[86400,tr('comms.period.24h')]],f.period);
  commsOptions(parts.selects.count,[50,100,200,500].map(n=>[n,tr('comms.count',{n})]),f.count);
  commsOptions(parts.selects.task,[['',tr('comms.task.all')],['-',tr('comms.task.none')],...tasks.map(([id,title])=>[id,commsShort(title,50)||tr('comms.untitled')])],f.task);
@@ -1473,33 +1531,51 @@ function ownerAttention(){
  const view=state.attention||{for_owner:[],decided:[],waiting:[],next_steps:[]};
  const p=panel(tr('page.owner.title'));p.className='panel sq-owner'+(view.for_owner.length?'':' is-empty');
  if(!view.for_owner.length)p.append(node('div',tr('page.owner.empty'),'empty'));
- for(const ask of view.for_owner){
+ for(const ask of newestFirst(view.for_owner,a=>a.utc||'')){
   const r=row(ask.kind==='ask'||!I18N['page.owner.'+ask.kind]?ask.question:tr('page.owner.'+ask.kind),ask.task?tr('page.owner.task',{task:taskTitle(ask.task)}):'',ask.kind==='ask'?tr('page.owner.decision'):ask.kind);
   if(ask.waiting?.length)r.append(node('div',tr('page.owner.waiting',{who:ask.waiting.join(', '),date:date(ask.utc)}),'sub'));
   for(const o of ask.options||[]){const choice=row(o.id+' · '+o.label,o.say,o.id===ask.recommended?tr('page.owner.recommended'):undefined);if(o.buys||o.costs)choice.append(node('div',tr('page.owner.buys',{buys:o.buys||'—',costs:o.costs||'—'}),'sub'));if(o.example)choice.append(node('div',o.example,'bodytext'));r.append(choice)}
   for(const a of ask.evidence||[])r.append(proofLink(a));p.append(r);
  }
  const decided=node('details');decided.append(node('summary',tr('page.owner.decided',{count:view.decided.length})));
- for(const d of view.decided){const r=row(d.ask?.question||d.reason,d.reason);r.append(node('div',(d.legacy?tr('page.owner.unlinked'):(d.channel==='relayed'?tr('page.owner.relayed',{actor:d.actor}):d.channel==='typed-here'?tr('page.owner.typedHere'):tr('page.owner.withdrawn')))+' · '+(d.choice||'')+' · '+date(d.utc),'sub'));if(d.owner_words)r.append(node('div',d.owner_words,'bodytext'));decided.append(r)}
+ for(const d of view.decided.slice().reverse()){const r=row(d.ask?.question||d.reason,d.reason);r.append(node('div',(d.legacy?tr('page.owner.unlinked'):(d.channel==='relayed'?tr('page.owner.relayed',{actor:d.actor}):d.channel==='typed-here'?tr('page.owner.typedHere'):tr('page.owner.withdrawn')))+' · '+(d.choice||'')+' · '+date(d.utc),'sub'));if(d.owner_words)r.append(node('div',d.owner_words,'bodytext'));decided.append(r)}
  p.append(decided);return p;
 }
 function recordedWaiting(){
  const view=state.attention||{waiting:[],next_steps:[]};const p=panel(tr('page.wait.title'));
- for(const w of view.waiting){const r=row(waitText(w),(w.task?taskTitle(w.task):w.id||'')+' · '+(w.who||[]).join(', ')+' · '+date(w.utc),w.kind);if(w.rounds&&w.limits)r.append(node('div',tr('page.wait.rounds',{plan:w.rounds.plan,planLimit:w.limits.plan,code:w.rounds.code,codeLimit:w.limits.code}),'sub'));if(w.depends?.length)r.append(node('div',tr('page.wait.depends',{list:w.depends.map(taskTitle).join(', ')}),'sub'));p.append(r)}
- for(const w of state.waits||[])p.append(row(tr('page.wait.over',{kind:descriptions[w.kind]||w.kind}),(w.task?taskTitle(w.task):w.id)+' · '+w.seconds+'s / '+w.threshold+'s · '+waitText(w),tr('page.wait.check')));addEmpty(p,view.waiting.length);for(const step of view.next_steps)p.append(row(taskTitle(step.task),stepText(step),step.status));return p;
+ for(const w of compactWaits(newestFirst(view.waiting,w=>w.utc||''))){const r=row(w.kind==='to-forward'?waitSentence(w):waitText(w),(w.task?taskTitle(w.task):w.id||'')+' · '+(w.who||[]).join(', ')+' · '+date(w.utc),w.kind);if(w.rounds&&w.limits)r.append(node('div',tr('page.wait.rounds',{plan:w.rounds.plan,planLimit:w.limits.plan,code:w.rounds.code,codeLimit:w.limits.code}),'sub'));if(w.depends?.length)r.append(node('div',tr('page.wait.depends',{list:w.depends.map(taskTitle).join(', ')}),'sub'));p.append(r)}
+ const forwarded=new Set(view.waiting.filter(w=>w.kind==='to-forward').map(w=>w.id));
+ for(const w of compactWaits(newestFirst(state.waits||[],w=>-(w.seconds||0)),view.waiting).filter(w=>w.kind!=='to-forward'||!forwarded.has(w.id)))p.append(row(tr('page.wait.over',{kind:descriptions[w.kind]||w.kind}),(w.task?taskTitle(w.task):w.id)+' · '+w.seconds+'s / '+w.threshold+'s · '+waitText(w),tr('page.wait.check')));addEmpty(p,view.waiting.length);for(const step of newestTasks(view.next_steps,s=>state.tasks[s.task]||{id:s.task}))p.append(row(taskTitle(step.task),stepText(step),step.status));return p;
 }
-function workOverview(){const p=panel(tr('connected.workNow'));headingKey(p.children[0],'work');p.className='panel sq-work';p.append(node('p',tr('connected.workIntro'),'sq-lede'));const all=Object.values(state.tasks).filter(matches),closed=all.filter(t=>!panelOpen(t));for(const t of all.filter(panelOpen))p.append(panelTaskCard(t));if(closed.length){const group=node('details',undefined,'sq-closed');group.open=panelUI.closedOpen;group.ontoggle=()=>{panelUI.closedOpen=group.open;if(group.open)panelClampSoon()};const summary=node('summary',tr('work.closed',{n:closed.length}));focusKey(summary,'work:closed');summary.setAttribute('data-focus-fallback','work');group.append(summary);for(const t of closed)group.append(panelTaskCard(t));p.append(group)}if(!all.length)p.append(node('p',tr('page.empty'),'empty'));const waits=node('details',undefined,'sq-waits');waits.open=panelUI.waitsOpen;waits.ontoggle=()=>{panelUI.waitsOpen=waits.open};const summary=node('summary',tr('work.waits'));focusKey(summary,'work:waits');summary.setAttribute('data-focus-fallback','work');waits.append(summary,recordedWaiting());if(state.presence?.some(a=>a.ping||a.availability==='stand-by'))waits.append(presencePanel());p.append(waits);return p}
-function render(){if(!state)return;const anchor=commsAnchor();if(typeof renderHeaderExtras==='function')renderHeaderExtras();$('name').textContent=state.workspace.name;$('project').textContent=tr('page.project',{project:state.workspace.project,count:state.event_count});$('project').setAttribute('title',$('project').textContent);const tasksList=Object.values(state.tasks),messages=Object.values(state.messages),runs=Object.values(state.runs);const done=tasksList.filter(t=>t.status==='done').length,unread=Object.values(state.progress||{}).filter(p=>p.state?.id==='closed-unread').length;$('metrics').replaceChildren();for(const [label,value,detail,glyph] of [[tr('page.metric.closed'),done+'/'+tasksList.length,unread?tr('page.metric.closedUnread',{count:unread}):tr('page.metric.closedSub'),'check2-all'],[tr('page.metric.identities'),new Set(Object.values(state.agents).map(a=>a.identity)).size,tr('page.metric.identitiesSub',{count:Object.keys(state.agents).length}),'people'],[tr('page.metric.acks'),messages.filter(m=>m.info!==true&&!m.ack).length,tr('page.metric.acksSub'),'envelope-exclamation'],[tr('page.metric.runs'),runs.filter(r=>['running','cleanup-unknown'].includes(r.status)).length,runs.some(r=>r.status==='cleanup-unknown')?tr('page.metric.runsUnknown'):tr('page.metric.runsPending'),'hourglass-split']]){const c=node('div',undefined,'metric');c.append(node('div',label,'label'),node('strong',value),node('div',detail,'sub'));if(typeof icon==='function')c.append(icon(glyph,'metric-icon'));$('metrics').append(c)}$('notice').replaceChildren();if(state.paused)$('notice').append(node('div',tr('page.paused'),'notice'));const tabs=['Quadro','Finestre','Incarichi','Posta','Comunicazioni','Decisioni','Letture','Prove','Output','Cronologia','Storico'];$('tabs').replaceChildren();tabs.forEach(t=>{const b=node('button',tr('tab.'+t),t===tab?'active':'');if(typeof panelTab==='function')panelTab(b,t);b.onclick=()=>{if(typeof connectedReset==='function')connectedReset();tab=t;if(typeof panelNavigate==='function')panelNavigate();render()};$('tabs').append(b)});if(typeof skillsNav==='function')skillsNav();if(typeof usageNav==='function')usageNav();if(typeof balanceNav==='function')balanceNav();const content=$('content');content.className=tab==='Quadro'?'sq-home':'';if(!transferPageReady(content)){commsRestore(anchor);return}if(tab==='Comunicazioni')comms(content);else{if(tab==='Usage'){usageRender(content)}else if(tab==='SystemSkills'){skillsRender(content)}else if(tab==='Bilanciamento'){balanceRender(content)}else if(tab==='Store'){storeRender(content)}else if(tab==='Letture'){readsRender(content)}else if(typeof pluginSelected==='function'&&pluginSelected()){pluginRender(content)}else{content.replaceChildren();if(tab==='Quadro'){content.append(ownerAttention(),workOverview(),connectedRail());content.append(transferOverviewDetail())}else content.append(({Finestre:team,Incarichi:tasks,Posta:mail,Prove:evidence,Output:outputs,Cronologia:timeline,Storico:legacyView,Decisioni:decisionsView})[tab]())}}commsRestore(anchor)}
+function workOverview(){const p=panel(tr('connected.workNow'));headingKey(p.children[0],'work');p.className='panel sq-work';p.append(node('p',tr('connected.workIntro'),'sq-lede'));const all=newestTasks(Object.values(state.tasks).filter(matches)),closed=all.filter(t=>!panelOpen(t));for(const t of all.filter(panelOpen))p.append(panelTaskCard(t));if(closed.length){const group=node('details',undefined,'sq-closed');group.open=panelUI.closedOpen;group.ontoggle=()=>{panelUI.closedOpen=group.open;if(group.open)panelClampSoon()};const summary=node('summary',tr('work.closed',{n:closed.length}));focusKey(summary,'work:closed');summary.setAttribute('data-focus-fallback','work');group.append(summary);for(const t of closed)group.append(panelTaskCard(t));p.append(group)}if(!all.length)p.append(node('p',tr('page.empty'),'empty'));const waits=node('details',undefined,'sq-waits');waits.open=panelUI.waitsOpen;waits.ontoggle=()=>{panelUI.waitsOpen=waits.open};const summary=node('summary',tr('work.waits'));focusKey(summary,'work:waits');summary.setAttribute('data-focus-fallback','work');waits.append(summary,recordedWaiting());if(state.presence?.some(a=>a.ping||a.availability==='stand-by'))waits.append(presencePanel());p.append(waits);return p}
+function render(){if(!state)return;const anchor=commsAnchor();if(typeof renderHeaderExtras==='function')renderHeaderExtras();$('name').textContent=state.workspace.name;$('project').textContent=tr('page.project',{project:state.workspace.project,count:state.event_count});$('project').setAttribute('title',$('project').textContent);const tasksList=Object.values(state.tasks),messages=Object.values(state.messages),runs=Object.values(state.runs);const done=tasksList.filter(t=>t.status==='done').length,unread=Object.values(state.progress||{}).filter(p=>p.state?.id==='closed-unread').length;$('metrics').replaceChildren();for(const [label,value,detail,glyph] of [[tr('page.metric.closed'),done+'/'+tasksList.length,unread?tr('page.metric.closedUnread',{count:unread}):tr('page.metric.closedSub'),'check2-all'],[tr('page.metric.identities'),new Set(Object.values(state.agents).map(a=>a.identity)).size,tr('page.metric.identitiesSub',{count:Object.keys(state.agents).length}),'people'],[tr('page.metric.acks'),pendingAckIds().size,tr('page.metric.acksSub'),'envelope-exclamation'],[tr('page.metric.runs'),runs.filter(r=>['running','cleanup-unknown'].includes(r.status)).length,runs.some(r=>r.status==='cleanup-unknown')?tr('page.metric.runsUnknown'):tr('page.metric.runsPending'),'hourglass-split']]){const c=node('div',undefined,'metric');c.append(node('div',label,'label'),node('strong',value),node('div',detail,'sub'));if(typeof icon==='function')c.append(icon(glyph,'metric-icon'));$('metrics').append(c)}$('notice').replaceChildren();if(state.paused)$('notice').append(node('div',tr('page.paused'),'notice'));const tabs=['Quadro','Finestre','Incarichi','Posta','Comunicazioni','Decisioni','Letture','Prove','Output','Cronologia','Storico'];$('tabs').replaceChildren();tabs.forEach(t=>{const b=node('button',tr('tab.'+t),t===tab?'active':'');if(typeof panelTab==='function')panelTab(b,t);b.onclick=()=>{if(typeof connectedReset==='function')connectedReset();tab=t;if(typeof panelNavigate==='function')panelNavigate();render()};$('tabs').append(b)});if(typeof skillsNav==='function')skillsNav();if(typeof usageNav==='function')usageNav();if(typeof balanceNav==='function')balanceNav();const content=$('content');content.className=tab==='Quadro'?'sq-home':'';if(!transferPageReady(content)){commsRestore(anchor);return}if(tab==='Comunicazioni')comms(content);else{if(tab==='Usage'){usageRender(content)}else if(tab==='SystemSkills'){skillsRender(content)}else if(tab==='Bilanciamento'){balanceRender(content)}else if(tab==='Store'){storeRender(content)}else if(tab==='Letture'){readsRender(content)}else if(typeof pluginSelected==='function'&&pluginSelected()){pluginRender(content)}else{content.replaceChildren();if(tab==='Quadro'){content.append(ownerAttention(),workOverview(),connectedRail());content.append(transferOverviewDetail())}else content.append(({Finestre:team,Incarichi:tasks,Posta:mail,Prove:evidence,Output:outputs,Cronologia:timeline,Storico:legacyView,Decisioni:decisionsView})[tab]())}}commsRestore(anchor)}
 const loadUI={running:false,timer:null,error:null,query:'',searchAgain:false,integrity:false};
 let transferUI={head:null,sections:new Map(),pending:new Map(),errors:new Map(),overview:false},transferOffset=0;
 const transferNow=()=>Date.now()+transferOffset;
+// Any record id is an own key, `__proto__` included, as JSON.parse makes it.
+const transferOwn=(map,id,value)=>Object.defineProperty(map,id,{value,enumerable:true,writable:true,configurable:true});
 function transferMerge(patch){
  for(const [key,value] of Object.entries(patch)){
-  if(['tasks','runs','messages'].includes(key))Object.assign(state[key],value);
+  if(['tasks','runs','messages'].includes(key))for(const [id,record] of Object.entries(value))transferOwn(state[key],id,record);
   else if(key==='outputs'){const by=new Map(value.map(o=>[o.event,o]));state.outputs=state.outputs.map(o=>by.get(o.event)||o)}
   else if(key==='graph'){const by=new Map(value.nodes.map(n=>[n.id,n]));state.graph={...state.graph,...value,nodes:state.graph.nodes.map(n=>by.get(n.id)||n)}}
   else state[key]=value;
  }
+}
+// A delta reply rebuilds the server's landing from the last one received, never from the merged view.
+function transferApply(old,delta){
+ const next={...old};
+ for(const key of delta.remove||[])delete next[key];
+ for(const [key,value] of Object.entries(delta.set||{}))next[key]=value;
+ for(const [key,change] of Object.entries(delta.maps||{})){const before=old[key]||{},map={};for(const id of change.order)transferOwn(map,id,Object.hasOwn(change.set,id)?change.set[id]:Object.hasOwn(before,id)?before[id]:undefined);next[key]=map}
+ for(const [key,change] of Object.entries(delta.lists||{})){const before=new Map((old[key]||[]).map(item=>[String(item[change.by]),item]));next[key]=change.order.map(id=>Object.hasOwn(change.set,String(id))?change.set[String(id)]:before.get(String(id)))}
+ return next;
+}
+// The view's maps and clock-advanced rows are copies, so merges and transferClock never touch the landing.
+function transferView(landing){
+ const rows=list=>Array.isArray(list)?list.map(row=>({...row})):list;
+ const comms=landing.comms?{...landing.comms,edges:rows(landing.comms.edges),pairs:rows(landing.comms.pairs)}:landing.comms;
+ return {...landing,tasks:{...landing.tasks},runs:{...landing.runs},messages:{...landing.messages},waits:rows(landing.waits),presence:rows(landing.presence),comms};
 }
 function transferSync(){
  const head=state.registry_head?.hash;
@@ -1567,8 +1643,8 @@ function transferOverviewDetail(){
  const grid=node('div',undefined,'grid'),left=node('div'),right=node('div');
  left.append(recordedWaiting(),tasks('quadro-tasks'),outputs());
  const reserve=panel(tr('page.reserve.title'));
- for(const r of Object.values(state.resources))reserve.append(row(r.name,r.owner+' · '+r.reason,tr('page.reserved')));
- for(const d of state.decisions.slice(-5))reserve.append(row(d.actor,d.reason));
+ for(const r of newestFirst(Object.values(state.resources),r=>r.utc||''))reserve.append(row(r.name,r.owner+' · '+r.reason,tr('page.reserved')));
+ for(const d of state.decisions.slice(-5).reverse())reserve.append(row(d.actor,d.reason));
  addEmpty(reserve,Object.keys(state.resources).length+state.decisions.length);
  right.append(reserve,mail('quadro-mail'));grid.append(left,right);detail.append(grid);return detail;
 }
@@ -1582,7 +1658,9 @@ function registryAuditLabels(){
  banner.textContent=banner.hidden?'':tr('audit.running');
 }
 function registryIntegrityFailure(){
- loadUI.integrity=true;state=null;
+ loadUI.integrity=true;state=null;transferLanding=null;searchUI.open=false;renderSearch();
+ searchUI.rows=[];searchUI.options=[];searchUI.signature=null;
+ for(const id of ['search-results','search-actions','search-agent'])$(id).replaceChildren();
  transferUI={head:null,sections:new Map(),pending:new Map(),errors:new Map(),overview:false};
  for(const id of ['connected-project','connected-hero','connected-context','status','kpis','content','charts','metrics','overview','project','plugin-links','plugin-notices','name','notice','chart-tip'])$(id).replaceChildren();
  for(const id of ['story','artifact','read-dialog']){const dialog=$(id);if(dialog.open)dialog.close();}
@@ -1609,17 +1687,28 @@ function scheduleRefresh(delay=2000){
  loadUI.timer=null;
  if(document.hidden!==true&&!loadUI.integrity)loadUI.timer=setTimeout(refresh,delay);
 }
-async function refresh(){
+async function refresh(quiet=false){
  if(loadUI.running||loadUI.integrity||document.hidden===true)return;
+ let complete;loadUI.request=new Promise(resolve=>{complete=resolve});
  if(loadUI.timer!==null&&typeof clearTimeout==='function')clearTimeout(loadUI.timer);
  loadUI.timer=null;loadUI.running=true;loadUI.error=null;loadUI.searchAgain=false;
  const query=loadUI.query,actionClock=typeof pluginActionClock==='number'?pluginActionClock:0;
  if(!state)applyStaticLabels();else loadingLabels();
  try{
-  const next=await(await api('/api/state',{'X-Squadra-View':'compact','X-Squadra-State-Token':state?.change_token||'','X-Squadra-Search':encodeURIComponent(query)})).json();
+  const held=transferLanding,ask=token=>api('/api/state',{'X-Squadra-View':'compact','X-Squadra-State-Token':token,'X-Squadra-Delta':'1','X-Squadra-Search':encodeURIComponent(query)});
+  let next=await(await ask(held?.change_token||'')).json(),landing=null;
+  if(next.delta){
+   try{
+    if(!held||next.base_token!==held.change_token)throw Error();
+    landing={...transferApply(held,next.delta),change_token:next.change_token};
+    if(landing.registry_head?.hash!==next.registry_head?.hash)throw Error();
+   }catch(_){next=await(await ask('')).json();landing=null}
+  }
+  if(!landing&&!next.not_modified)landing=next;
+  if(landing)transferLanding=landing;
   if(query!==loadUI.query){loadUI.searchAgain=true;return}
   if(!next.not_modified){
-   state=next;filter=query;transferSync();
+   state=transferView(landing);filter=query;transferSync();
    if(typeof pluginActionReads!=='undefined')pluginActionReads.set(state,actionClock);
    if(typeof notifyPoll==='function')notifyPoll(state);
   }
@@ -1629,19 +1718,20 @@ async function refresh(){
   $('live').className='status';$('live').setAttribute('aria-label',tr('page.live.connected',{time:new Date().toLocaleTimeString(uiLocale())}));
   $('live').replaceChildren(node('span',undefined,'dot'),node('span',tr('page.live.connected',{time:new Date().toLocaleTimeString(uiLocale())})));
  }catch(e){
-  if(e.status===409)registryIntegrityFailure();
-  loadUI.error=loadUI.integrity?tr('audit.failed'):e.message;$('live').className='status bad';$('live').setAttribute('aria-label',tr('page.live.offline'));
+  if(e.status===409&&e.code==='registry_invalid')registryIntegrityFailure();
+  loadUI.error=loadUI.integrity?tr('audit.failed'):quiet?tr('search.missing'):e.message;$('live').className='status bad';$('live').setAttribute('aria-label',tr('page.live.offline'));
   $('live').replaceChildren(node('span',undefined,'dot'),node('span',tr('page.live.offline')));
-  const anchor=commsAnchor(),notice=node('div',state?tr('page.live.kept',{error:e.message}):loadUI.error,'notice');
+  const anchor=commsAnchor(),notice=node('div',state?tr('page.live.kept',{error:quiet?tr('search.missing'):e.message}):loadUI.error,'notice');
   if(state){const retry=node('button',tr('load.retry'));retry.onclick=()=>refresh();notice.append(retry)}
   $('notice').replaceChildren(notice);commsRestore(anchor);
  }finally{
-  loadUI.running=false;loadingLabels();scheduleRefresh(loadUI.searchAgain?0:2000);
+  loadUI.running=false;loadUI.request=null;complete();loadingLabels();renderSearch();scheduleRefresh(loadUI.searchAgain?0:2000);
  }
 }
 $('loading-retry').onclick=()=>refresh();
 $('search').oninput=e=>{
- loadUI.query=e.target.value.toLocaleLowerCase();
+ loadUI.query=e.target.value.toLowerCase().trim();
+ searchUI.open=!!loadUI.query.trim();searchUI.expanded=false;searchUI.active=-1;renderSearch();
  if(!state?.search){filter=loadUI.query;render();return}
  if(loadUI.running)loadUI.searchAgain=true;else scheduleRefresh(180);
 };
@@ -1758,7 +1848,7 @@ function ovWindows(){
  const grid=node('div',undefined,'ov-cards');const all=Object.values(state.tasks||{});
  for(const a of agents){
   const card=node('article',undefined,'ov-card');card.setAttribute('data-seat',a.id);card.append(node('h4',seatName(a.id)));
-  const own=openTasks(a.id),reading=all.filter(t=>t.reviewer===a.id&&t.status!=='done'&&!t.superseded_by);
+  const own=newestTasks(openTasks(a.id)),reading=newestTasks(all.filter(t=>t.reviewer===a.id&&t.status!=='done'&&!t.superseded_by));
   const assigned=own.length?own.map(t=>taskTitle(t.id)).join(' · '):reading.length?reading.map(t=>tr('ov.card.reads',{task:taskTitle(t.id)})).join(' · '):a.role==='coordinator'?tr('ov.card.coordinates',{count:all.filter(t=>t.status!=='done'&&!t.superseded_by).length}):tr('ov.card.noTask');
   cardLine(card,'ov.card.assigned',assigned,assignmentTime(own.length?own:reading,a.id,!own.length),a.id);
   const out=(state.outputs||[]).filter(o=>o.agent===a.id).at(-1);
@@ -1798,7 +1888,7 @@ function ovProgress(){
  if(!items.length){s.append(node('p',tr('ov.progressEmpty'),'empty'));return s}
  const rank=p=>({open:0,'to-fix':0,closed:1,superseded:2})[p.state?.id]??0;
  const list=node('div',undefined,'ov-tasks');
- for(const p of items.slice().sort((a,b)=>rank(a)-rank(b))){
+ for(const p of newestTasks(items,p=>state.tasks[p.task]||{id:p.task}).sort((a,b)=>rank(a)-rank(b))){
   const card=node('article',undefined,'ov-task');card.setAttribute('data-task',p.task);
   const head=node('div',undefined,'ov-task-head');const title=node('h4');title.append(glossed(taskTitle(p.task),undefined,'ov.q3|task:'+p.task+'|title'));head.append(title,situationBadge(p));card.append(head);
   const body=taskBody(p.task);card.append(body?glossed(body,'ov-desc','ov.q3|task:'+p.task+'|body'):node('div',state.tasks[p.task]?.brief?'':tr('ov.noBrief'),'ov-desc ov-missing'));
@@ -1817,14 +1907,15 @@ function ovProgress(){
 }
 function waitSentence(w){
  const who=(w.who||[]).filter(Boolean).map(seatName).join(', ')||tr('ov.someone');const task=w.task?taskTitle(w.task):'';
+ if(w.kind==='to-forward')return tr('ov.wait.to-forward',{who,to:seatName(w.to)})+(w.ack_command?' · '+w.ack_command:'');
  if(w.kind==='ack'){const m=state.messages?.[w.id];const about=m?.task||m?.related_task;return tr('ov.wait.ack',{who,topic:about?tr('ov.wait.topic',{task:taskTitle(about)}):tr('ov.aMessage'),date:when(w.utc)})}
  if(I18N['ov.wait.'+w.kind])return tr('ov.wait.'+w.kind,{who,task,list:(w.depends||[]).map(taskTitle).join(', ')});
  return waitText(w);
 }
 function ovWaiting(){
  const s=ovSection('ov.q4');const view=state.attention||{};const list=node('ul',undefined,'ov-waits');let count=0;
- for(const item of view.for_owner||[]){count++;const li=node('li');li.append(glossed(tr('ov.forOwner',{text:item.kind==='ask'||!I18N['page.owner.'+item.kind]?item.question:tr('page.owner.'+item.kind)}),undefined,'ov.q4|ask:'+(item.id||item.kind)+'|text'));list.append(li)}
- for(const w of view.waiting||[]){
+ for(const item of newestFirst(view.for_owner||[],a=>a.utc||'')){count++;const li=node('li');li.append(glossed(tr('ov.forOwner',{text:item.kind==='ask'||!I18N['page.owner.'+item.kind]?item.question:tr('page.owner.'+item.kind)}),undefined,'ov.q4|ask:'+(item.id||item.kind)+'|text'));list.append(li)}
+ for(const w of compactWaits(newestFirst(view.waiting||[],w=>w.utc||''))){
   count++;const li=node('li');li.append(glossed(waitSentence(w),undefined,'ov.q4|wait:'+w.kind+':'+(w.task||w.id)+'|text'));
   const late=(state.waits||[]).find(x=>x.kind===w.kind&&(x.task||x.id)===(w.task||w.id));
   if(late)li.append(node('span',' · '+tr('ov.wait.over',{minutes:Math.floor(late.seconds/60)}),'bad'));
@@ -1924,7 +2015,7 @@ function decSvg(nodes,layout){
 }
 function decList(nodes,graph){
  const box=node('div',undefined,'dec-list-box');box.append(node('h3',tr('dec.list')));const list=node('ol',undefined,'dec-list');
- for(const n of nodes.slice().sort((a,b)=>(a.seq||0)-(b.seq||0))){
+ for(const n of nodes.slice().sort((a,b)=>(b.seq||0)-(a.seq||0))){
   const li=node('li');li.setAttribute('data-node-id',n.id);
   const b=focusKey(node('button',undefined,n.id===decView.selected?'active':''),'dec-list:'+n.id);b.setAttribute('data-focus-fallback','dec:details');b.setAttribute('aria-pressed',String(n.id===decView.selected));
   b.append(node('strong',nodeKindLine(n)),node('span',' · '+clip(nodeMain(n),140)+' · '+date(n.utc)));b.onclick=()=>decSelect(n.id);li.append(b);
@@ -1971,7 +2062,7 @@ function decisionsView(){
  if(decView.selected&&!known.has(decView.selected)){decView.notices.push({key:'dec.missingSelection',vars:{id:decView.selected}});decView.selected=null}
  const bar=node('div',undefined,'dec-toolbar');const label=node('label');label.append(node('span',tr('dec.filter')));
  const select=focusKey(node('select'),'dec:filter');const all=node('option',tr('dec.allTasks'));all.value='';select.append(all);
- for(const id of Object.keys(state.tasks||{})){const o=node('option',clip(taskTitle(id),80));o.value=id;if(id===decView.filter)o.selected=true;select.append(o)}
+ for(const {id} of newestTasks(Object.values(state.tasks||{}))){const o=node('option',clip(taskTitle(id),80));o.value=id;if(id===decView.filter)o.selected=true;select.append(o)}
  select.value=decView.filter;select.onchange=e=>{decView.filter=e.target.value;decView.notices=[];render()};label.append(select);bar.append(label);
  for(const [text,key,factor] of [['−','dec.zoomOut',0.8],[Math.round(decView.zoom*100)+'%','dec.zoomReset',0],['+','dec.zoomIn',1.25]]){const b=focusKey(node('button',text),'dec:zoom:'+key);b.setAttribute('aria-label',tr(key));b.onclick=()=>{decView.zoom=factor?Math.min(2.5,Math.max(0.3,decView.zoom*factor)):1;render()};bar.append(b)}
  const legend=node('div',undefined,'dec-legend');legend.append(node('span',tr('dec.legendSolid')),node('span',tr('edge.cronologia'),'dashed'));bar.append(legend);p.append(bar);
@@ -1986,7 +2077,7 @@ function decisionsView(){
  scroller.onscroll=()=>{decView.scrollLeft=scroller.scrollLeft;decView.scrollTop=scroller.scrollTop};
  scroller.append(decSvg(visible,layout));decScroller=scroller;
  if(decView.reveal){decView.reveal=false;decView.revealAt=layout.position.get(decView.selected)||null}left.append(scroller,decList(visible.filter(n=>layout.position.has(n.id)),graph));
- const stuck=[...new Set([...layout.stuck.map(n=>n.id),...(graph.cycles||[]).filter(id=>visible.some(n=>n.id===id))])].map(id=>graph.nodes.find(n=>n.id===id)).filter(Boolean);
+ const stuck=[...new Set([...layout.stuck.map(n=>n.id),...(graph.cycles||[]).filter(id=>visible.some(n=>n.id===id))])].map(id=>graph.nodes.find(n=>n.id===id)).filter(Boolean).sort((a,b)=>(b.seq||0)-(a.seq||0));
  if(stuck.length){const box=node('section',undefined,'dec-unordered');box.append(node('h3',tr('dec.unordered')),node('p',tr('dec.unorderedIntro'),'sub'));const ul=node('ul');for(const n of stuck){const li=node('li');li.setAttribute('data-node-id',n.id);const b=focusKey(node('button',nodeKindLine(n)+': '+clip(nodeMain(n),100),'link'),'dec-stuck:'+n.id);b.onclick=()=>decSelect(n.id);li.append(b);ul.append(li)}box.append(ul);left.append(box)}
  if(graph.unresolved?.length)left.append(node('p',tr('dec.unresolved',{count:graph.unresolved.length}),'sub warn'));
  body.append(left,decDetails(graph,visible));p.append(body);
@@ -2244,7 +2335,7 @@ const panelData={
  },
  steps(){
   const rank=p=>({open:0,'to-fix':0,closed:1,superseded:2})[p.state?.id]??0;
-  return Object.values(state.progress||{}).slice().sort((a,b)=>rank(a)-rank(b)).map(p=>{
+  return newestTasks(Object.values(state.progress||{}),p=>state.tasks[p.task]||{id:p.task}).sort((a,b)=>rank(a)-rank(b)).map(p=>{
    const steps=(p.steps||[]).map(s=>({id:s.id,reached:Boolean(s.reached),utc:s.utc,fix:Boolean(s.reached)&&(s.notes||[]).some(n=>n.tone==='bad')}));
    return {task:p.task,title:taskTitle(p.task),state:p.state?.id||'open',steps,done:steps.filter(s=>s.reached).length,now:steps.find(s=>!s.reached)||null};
   });
@@ -2254,11 +2345,11 @@ const panelData={
   for(const r of Object.values(state.runs||{}).filter(r=>r.mode==='proof').sort((a,b)=>String(a.utc).localeCompare(String(b.utc))))
    (byTask.get(r.task)||byTask.set(r.task,[]).get(r.task)).push(r);
   const kind=s=>s==='passed'?'passed':['failed','timeout'].includes(s)?'failed':s==='running'?'running':'other';
-  return [...byTask].map(([task,runs])=>{const counts={passed:0,failed:0,other:0,running:0};for(const r of runs)counts[kind(r.status)]++;
+  return newestTasks([...byTask],([task])=>state.tasks[task]||{id:task}).map(([task,runs])=>{const counts={passed:0,failed:0,other:0,running:0};for(const r of runs)counts[kind(r.status)]++;
    return {task,title:taskTitle(task),runs:runs.map(r=>({id:r.id,status:r.status,kind:kind(r.status),utc:r.utc})),counts}});
  },
  reads(){
-  return Object.values(state.tasks||{}).filter(t=>!t.superseded_by).map(t=>{
+  return newestTasks(Object.values(state.tasks||{}).filter(t=>!t.superseded_by)).map(t=>{
    const stages={};for(const stage of ['plan','code']){const reads=(t.reviews||[]).filter(r=>r.stage===stage).map(r=>({verdict:r.verdict,utc:r.utc,reviewer:r.reviewer}));
     stages[stage]={reads,limit:Math.max(panelLimit(stage),reads.length)}}
    return {task:t.id,title:taskTitle(t.id),stages};
@@ -2584,7 +2675,7 @@ function panelTaskCard(t){
  if(panelOpen(t)&&step){const words=tr('work.nextProtocol',{text:stepText(step)});card.append(clamp(node('p',words,'sq-line sq-next')))}
  if(declared&&!declared.disposed){const words=tr('work.declared',{who:panelWho(declared.output.agent),when:when(declared.output.utc),text:declared.output.next});
   card.append(clamp(node('p',words,'sq-line sq-declared')))}
- for(const w of (state.waits||[]).filter(w=>w.task===t.id)){const words=waitText(w)+' · '+tr('ov.wait.over',{minutes:Math.floor(w.seconds/60)});
+ for(const w of newestFirst((state.waits||[]).filter(w=>w.task===t.id),w=>-(w.seconds||0))){const words=waitText(w)+' · '+tr('ov.wait.over',{minutes:Math.floor(w.seconds/60)});
   card.append(clamp(node('p',words,'sq-line bad')))}
  const facts=[panelRolesTech(t)];
  if(declared&&!declared.disposed)facts.push(tr('work.declaredTech',{actor:declared.output.agent,event:declared.output.event||'—'}));
@@ -2668,7 +2759,7 @@ function panelStoryRender(){
   const steps=panelSteps(t);if(steps)body.push(steps);
   body.push(node('h3',tr('story.timeline')),node('p',tr('story.intro'),'sub'));
   const list=node('ol',undefined,'sq-story-list');
-  for(const item of items){
+  for(const item of items.slice().reverse()){
    const li=node('li',undefined,'sq-event'+(item.tone?' '+item.tone:''));li.setAttribute('data-story-key',item.key);
    li.append(node('div',when(item.utc),'sub'),node('p',item.text,'sq-event-text'));
    // Keep file names, sizes and full hashes in the document action's technical details.
@@ -2912,6 +3003,7 @@ Object.assign(I18N,{
  "usage.missing_tokens":{"it":"Contatori incompleti","en":"Incomplete counters"},
  "usage.unknown_model":{"it":"Modello sconosciuto","en":"Unknown model"},
  "usage.reason":{"it":"Dati non disponibili o incompleti","en":"Data unavailable or incomplete"},
+ "usage.noSession":{"it":"Finestra senza sessione: registrala con agent --session per misurarla","en":"Window without a session: register it with agent --session to measure it"},
  "usage.partialTime":{"it":"Intervallo temporale incompleto","en":"Incomplete time interval"},
  "usage.details":{"it":"Dettagli della copertura","en":"Coverage details"},
  "usage.privacy":{"it":"Solo contatori e metadati tecnici: nessun testo delle conversazioni viene conservato o mostrato.","en":"Only counters and technical metadata: no conversation text is retained or displayed."},
@@ -3061,7 +3153,7 @@ function connectedTaskLinks(task,scope){
  return links;
 }
 function connectedRowLinks(kind,item,details,fallback){
- const tasks=kind==='windows'?Object.values(state.tasks).filter(t=>t.owner===item.id||t.reviewer===item.id||t.coordinator===item.id).map(t=>t.id):[connectedTaskOf(kind,item)];
+ const tasks=kind==='windows'?newestTasks(Object.values(state.tasks).filter(t=>t.owner===item.id||t.reviewer===item.id||t.coordinator===item.id)).map(t=>t.id):[connectedTaskOf(kind,item)];
  for(const task of tasks.filter(id=>id&&state.tasks[id])){
   const key='connected:row:'+kind+':'+(item.id??item.seq??state.outputs.indexOf(item))+':'+task;
   const b=connectedButton(tr('connected.related')+': '+taskTitle(task),key,()=>panelOpenStory(task,key,fallback));
@@ -3070,7 +3162,7 @@ function connectedRowLinks(kind,item,details,fallback){
 }
 function connectedReviews(task){
  const box=panel(tr('connected.reviews'));
- for(const [i,review] of (task.reviews||[]).entries()){
+ for(const [i,review] of [...(task.reviews||[]).entries()].reverse()){
   const item=row(tr('stage.'+review.stage)+' · '+panelSeat(review.reviewer),date(review.utc),review.verdict);
   if(review.report){const link=proofLink(review.report);link.textContent=tr('connected.reviewReport');
    focusKey(link,'connected:review:'+task.id+':'+i+':'+review.report.sha256);link.setAttribute('data-focus-fallback','connected:context');item.append(link)}
@@ -3113,7 +3205,7 @@ function connectedRail(){
   const face=node('span',agent.client==='codex'?'>_':agent.client==='claude'?'✳':'·','sq-agent-glyph');
   const words=node('span',undefined,'sq-agent-words');words.append(node('strong',panelWho(agent.id)));
   const roles=[...new Set(group.map(a=>roleWord(a.role)))].join(' · ');words.append(node('small',roles));
-  const work=Object.values(state.tasks).filter(t=>panelOpen(t)&&group.some(a=>t.owner===a.id||t.reviewer===a.id));
+  const work=newestTasks(Object.values(state.tasks).filter(t=>panelOpen(t)&&group.some(a=>t.owner===a.id||t.reviewer===a.id)));
   if(work.length)words.append(node('small',work.map(t=>taskTitle(t.id)).join(' · '),'sq-agent-work'));
   const held=group.some(a=>(state.presence||[]).some(p=>p.agent===a.id&&p.availability==='stand-by'));
   words.append(node('small',tr(held?'connected.standby':'connected.registered'),'sq-presence-label'));
@@ -3961,7 +4053,8 @@ function readsRender(content){
    const select=(field,label,options)=>{const wrap=node('label',tr(label)),el=control(node('select'),'reads:'+field);el.setAttribute('aria-label',tr(label));
     for(const [value,text] of options){const o=node('option',text);o.value=value;el.append(o)}el.value=readsView[field];el.onchange=()=>{readsView[field]=el.value;render()};wrap.append(el);bar.append(wrap)};
    select('stage','rv.stage',[['',tr('rv.allStages')],['plan',tr('rv.plan')],['code',tr('rv.code')]]);
-   select('task','rv.task',[['',tr('rv.allTasks')],...data.tasks.map(t=>[t.id,taskTitle(t.id)||t.title])]);
+   const readTasks=newestTasks(data.tasks,t=>state.tasks[t.id]||t);
+   select('task','rv.task',[['',tr('rv.allTasks')],...readTasks.map(t=>[t.id,taskTitle(t.id)||t.title])]);
    const reset=control(node('button',tr('rv.reset')),'reads:reset');reset.onclick=()=>{readsView.stage=readsView.task='';render()};bar.append(reset);box.append(bar,node('p',tr('rv.filtered'),'sub'));
    const matches=r=>(!readsView.stage||r.stage===readsView.stage)&&(!readsView.task||r.task===readsView.task);
    const rows=data.reads.filter(matches),revisions=data.revisions.filter(matches),n=readsNumbers(rows,revisions),cards=node('div',undefined,'sq-reads-cards');
@@ -3977,7 +4070,7 @@ function readsRender(content){
    const wrap=control(node('div',undefined,'sq-table-wrap'),'reads:table'),table=node('table',undefined,'sq-reads-table'),head=node('tr',undefined,'sq-reads-columns');wrap.setAttribute('role','region');wrap.setAttribute('aria-label',tr('rv.perTask'));wrap.setAttribute('tabindex','0');readsView.table=wrap;wrap.onscroll=()=>{readsView.tableScroll=wrap.scrollLeft};
    const keys=['reads','accepted','changes-required','blocked','codeRevisions','planRevisions','findings'];
    for(const title of ['rv.task',...keys.map(k=>'rv.'+k)]){const th=node('th',tr(title));th.setAttribute('scope','col');head.append(th)}table.append(head);
-   for(const t of data.tasks.filter(t=>!readsView.task||t.id===readsView.task)){
+   for(const t of readTasks.filter(t=>!readsView.task||t.id===readsView.task)){
     const trr=node('tr',undefined,'sq-reads-task'),cell=node('th');cell.setAttribute('scope','row');const b=control(node('button',taskTitle(t.id)||t.title,'link'),'reads:task:'+t.id);b.onclick=()=>{readsView.task=t.id;render()};cell.append(b);trr.append(cell);
     const count=readsNumbers(rows.filter(r=>r.task===t.id),revisions.filter(r=>r.task===t.id));for(const k of keys){const td=node('td',count[k]===null?tr('rv.unknown'):String(count[k]));td.setAttribute('data-label',tr('rv.'+k));trr.append(td)}table.append(trr);
    }wrap.append(table);box.append(wrap,node('h3',tr('rv.details')));
@@ -4302,9 +4395,10 @@ function balanceRankSentence(r,slot){
  if(typeof r.history_count==='number')parts.push(tr((slot==='build'?'balance.rank.built':'balance.rank.read')+(r.history_count===1?'1':''),{n:r.history_count}));
  return parts.join(', ')+'.';
 }
+function balanceOpenTasks(){return newestTasks(Object.values(state.tasks||{}).filter(t=>t.status!=='done'&&!t.superseded_by))}
 function balanceTask(data){
  const box=node('section');box.append(node('h3',tr('balance.perTask')));
- const open=Object.values(state.tasks||{}).filter(t=>t.status!=='done'&&!t.superseded_by);
+ const open=balanceOpenTasks();
  if(!open.length){box.append(node('p',tr('balance.noOpen')));return box}
  const label=node('label',tr('balance.pickTask')),select=node('select');select.append(node('option',tr('balance.choose')));select.children[0].value='';
  for(const t of open){const o=node('option',taskTitle(t.id));o.value=t.id;if(t.id===balanceUI.task)o.selected=true;select.append(o)}
@@ -4314,7 +4408,7 @@ function balanceTask(data){
  return box;
 }
 function balanceRender(content){
- const signature=JSON.stringify([balanceUI.data,balanceUI.task,balanceUI.status,balanceUI.lastOk,balanceUI.lastDone,balanceUI.refError,UI_LANG,Object.keys(state.tasks||{}).length]);
+ const signature=JSON.stringify([balanceUI.data,balanceUI.task,balanceUI.status,balanceUI.lastOk,balanceUI.lastDone,balanceUI.refError,UI_LANG,Object.keys(state.tasks||{}).length,balanceOpenTasks().map(t=>t.id)]);
  if(signature!==balanceUI.signature){balanceUI.signature=signature;balanceUI.controls=[];const box=node('section',undefined,'sq-balance');box.setAttribute('data-balance','page');balanceUI.element=box;
   box.append(node('h2',tr('tab.Bilanciamento')),node('p',tr('balance.intro'),'sq-balance-intro'));
   if(balanceUI.status==='error')box.append(node('p',tr('balance.error')),balanceButton(tr('balance.retry'),'balance:retry',balanceAgain));
@@ -4508,7 +4602,7 @@ function usageRender(content){
    const tasks=data.tasks.map(t=>({...t,label:t.task?taskTitle(t.task):tr('usage.unassigned'),value:t.totals?.total})).sort(byValue);grid.append(usageChart('byTask',tasks,{note:'usage.taskNote'}));
    const quotas=data.quota_history.map(q=>({...q,label:usageIdentityLabel(q.identity),value:['measured','stale','expired'].includes(q.status)&&usageNumber(q.used_percent)&&q.used_percent<=100?q.used_percent:null}));
    grid.append(usageChart('quota',quotas,{note:'usage.quotaNote',plot:quotas.length?usageQuotaPlot(quotas):null,headers:[tr('usage.window'),tr('usage.time'),tr('usage.slot'),tr('usage.percent'),tr('usage.windowMinutes'),tr('usage.reset'),tr('usage.status')],tableRows:quotas.map(q=>[q.label,date(q.observed_at),tr(['primary','secondary'].includes(q.limit)?'usage.'+q.limit:'usage.slot'),usageCount(q.value),usageCount(q.window_minutes),date(q.resets_at),usageStatus(q)])}));box.append(grid,usageAdvisory(data),usageCostView(data),usagePriceForm(data));
-   const details=node('div');for(const w of data.windows){const line=node('p',usageWindowLabel(w)+' · '+usageStatus(w));if(w.reasons?.length)line.append(node('span',' · '+tr('usage.reason')));details.append(line);if(w.reasons?.length){const technical=node('details');technical.append(node('summary',tr('ov.technical')),node('code',w.reasons.filter(r=>typeof r==='string'&&/^[a-z][a-z0-9_]{0,60}$/.test(r)).join(', ')));details.append(technical)}}box.append(usageDetail('coverage',tr('usage.details'),details));
+   const details=node('div');for(const w of data.windows){const line=node('p',usageWindowLabel(w)+' · '+usageStatus(w));if(w.reasons?.length)line.append(node('span',' · '+tr(w.reasons.includes('session_not_registered')?'usage.noSession':'usage.reason')));details.append(line);if(w.reasons?.length){const technical=node('details');technical.append(node('summary',tr('ov.technical')),node('code',w.reasons.filter(r=>typeof r==='string'&&/^[a-z][a-z0-9_]{0,60}$/.test(r)).join(', ')));details.append(technical)}}box.append(usageDetail('coverage',tr('usage.details'),details));
   }
   box.append(node('p',tr('usage.privacy'),'sq-usage-muted'));
  }
@@ -4659,5 +4753,119 @@ function sqVizStrip(chart,key,label,bins,{text=b=>'',summary=''}={}){
  sqMotion.end(chart);return frame;
 }
 </script>
+
+<script id="squadra-search">
+'use strict';
+Object.assign(window.I18N,{
+ 'search.empty':{it:'Nessun risultato.',en:'No results.'},'search.more':{it:'Mostra tutti ({n})',en:'Show all ({n})'},
+ 'search.narrow':{it:'Mostro i 100 più recenti su {n}: aggiungi una parola per restringere la ricerca.',en:'Showing the 100 most recent of {n}: add a word to narrow it.'},
+ 'search.agent':{it:'Oppure chiedi all’agente di cercarlo per te',en:'Or ask your agent to search for you'},
+ 'search.prompt':{it:'Cerca nel registro di Squadra: {query}. Dimmi cosa è stato fatto, quando, da quale finestra e con quale esito.',en:'Search the Squadra registry for {query}. Tell me what was done, when, by which window and with what outcome.'},
+ 'search.copy':{it:'Copia il prompt',en:'Copy the prompt'},'search.copied':{it:'Prompt copiato.',en:'Prompt copied.'},
+ 'search.copyFailed':{it:'Copia non riuscita. Seleziona e copia il prompt qui sopra.',en:'Copy failed. Select and copy the prompt above.'},
+ 'search.missing':{it:'Il record non è più disponibile. Aggiorna la ricerca.',en:'This record is no longer available. Refresh the search.'},
+ 'search.open':{it:'Aperta',en:'Open'},'search.answered':{it:'Risposta registrata',en:'Answered'},'search.withdrawn':{it:'Ritirata',en:'Withdrawn'},
+ 'search.tasks':{it:'Incarico',en:'Task'},'search.runs':{it:'Esecuzione',en:'Run'},'search.messages':{it:'Messaggio',en:'Message'},
+ 'search.outputs':{it:'Risultato',en:'Output'},'search.decisions':{it:'Decisione',en:'Decision'},'search.asks':{it:'Domanda',en:'Question'},'search.reviews':{it:'Lettura',en:'Read'}
+});
+const searchUI={open:false,expanded:false,active:-1,signature:null,rows:[],options:[],opening:0};
+function searchClose(){searchUI.open=false;$('search-popup').hidden=true;$('search').setAttribute('aria-expanded','false');$('search').setAttribute('aria-activedescendant','')}
+function searchSelect(index){
+ searchUI.active=index;
+ searchUI.options.forEach((el,i)=>el.setAttribute('aria-selected',String(i===index)));
+ $('search').setAttribute('aria-activedescendant',index<0?'':searchUI.options[index]?.id||'');
+ searchUI.options[index]?.scrollIntoView?.({block:'nearest'});
+}
+function renderSearch(){
+ const input=$('search'),popup=$('search-popup');
+ input.setAttribute('role','combobox');input.setAttribute('aria-autocomplete','list');input.setAttribute('aria-controls','search-results');input.setAttribute('autocomplete','off');
+ if(!searchUI.open||!loadUI.query.trim()||loadUI.integrity){searchClose();return}
+ popup.hidden=false;input.setAttribute('aria-expanded','true');
+ const data=state?.search?.query===loadUI.query?state.search:null;
+ const pending=!data,rows=(data?.results||[]).slice(0,searchUI.expanded?100:10);
+ const signature=JSON.stringify([loadUI.query,data,searchUI.expanded,UI_LANG]);
+ if(signature===searchUI.signature)return;
+ searchUI.signature=signature;searchUI.rows=rows;searchUI.options=[];searchUI.active=-1;
+ const list=$('search-results'),actions=$('search-actions'),agent=$('search-agent');list.replaceChildren();actions.replaceChildren();agent.replaceChildren();
+ list.setAttribute('aria-label',tr('static.searchLabel'));list.setAttribute('aria-busy',String(pending));
+ if(!rows.length){const label=node('p',tr(pending?'load.search':'search.empty'));label.setAttribute('role','status');list.append(label)}
+ rows.forEach((row,i)=>{
+  const el=node('div',undefined,'sq-search-option');el.id='search-result-'+i;el.setAttribute('id',el.id);el.setAttribute('role','option');el.setAttribute('aria-selected','false');
+  el.append(node('strong',row.kind==='tasks'&&state?.tasks?.[row.id]?taskTitle(row.id):row.text),node('span',[date(row.utc),tr('search.'+row.kind),row.actor,row.outcome?(I18N['search.'+row.outcome]?tr('search.'+row.outcome):I18N['status.'+row.outcome]?tr('status.'+row.outcome):I18N['rv.'+row.outcome]?tr('rv.'+row.outcome):row.outcome):''].filter(Boolean).join(' · '),'sq-search-meta'));
+  el.onmousedown=e=>e.preventDefault();el.onclick=()=>searchOpen(row);list.append(el);searchUI.options.push(el);
+ });
+ if(!searchUI.expanded&&(data?.total||0)>10){const more=node('button',tr('search.more',{n:data.total}));more.onclick=()=>{searchUI.expanded=true;renderSearch();input.focus()};actions.append(more)}
+ if(searchUI.expanded&&(data?.total||0)>100)actions.append(node('p',tr('search.narrow',{n:data.total})));
+ agent.append(node('p',tr('search.agent')));
+ const prompt=tr('search.prompt',{query:JSON.stringify(input.value)}),prose=node('p',prompt,'sq-search-prompt'),copy=node('button',tr('search.copy')),feedback=node('p');
+ feedback.setAttribute('role','status');feedback.setAttribute('aria-live','polite');
+ copy.onclick=async()=>{try{await navigator.clipboard.writeText(prompt);feedback.textContent=tr('search.copied')}catch(e){feedback.textContent=tr('search.copyFailed')}};
+ agent.append(prose,copy,feedback);input.setAttribute('aria-activedescendant','');
+}
+async function searchOpen(row){
+ searchClose();const request=++searchUI.opening,sourceTab=tab,query=loadUI.query;
+ const current=()=>request===searchUI.opening&&sourceTab===tab&&query===loadUI.query&&!loadUI.integrity;
+ let head=state?.registry_head?.hash;
+ try{
+  if(row.kind==='tasks'){
+   if(!state?.tasks?.[row.id])throw Error();
+   panelOpenStory(row.id);return;
+  }
+  const section={messages:'mail',outputs:'outputs',decisions:'graph',asks:'graph'}[row.kind];
+  let data;
+  for(let attempt=0;attempt<2;attempt++){
+   try{
+    const path=row.kind==='runs'?'/api/detail/run':row.kind==='reviews'?'/api/reads':'/api/detail/view';
+    const headers=row.kind==='runs'?{'X-Squadra-Record':encodeURIComponent(row.id)}:section?{'X-Squadra-State-Head':head,'X-Squadra-Section':section}:{};
+    data=await(await api(path,headers)).json();
+    if(!current())return;
+    const receivedHead=row.kind==='runs'?head:row.kind==='reviews'?data.head?.hash:data.head;
+    if(head!==state?.registry_head?.hash||receivedHead!==head){const stale=Error();stale.status=409;throw stale}
+    break;
+   }catch(e){
+    if(!current())return;
+    if(attempt||e.status!==409)throw e;
+    if(loadUI.request)await loadUI.request;
+    if(!current())return;
+    await refresh(true);
+    if(!current())return;
+    if(loadUI.error||!state)throw Error();
+    head=state.registry_head?.hash;
+   }
+  }
+  if(row.kind==='runs'){
+   $('artifact-title').textContent=tr('load.details');$('artifact-body').textContent=JSON.stringify(data,null,2);$('artifact').showModal();return;
+  }
+  if(row.kind==='reviews'){
+   const record=data.reads?.find(r=>r.id===row.id);if(!record)throw Error();
+   readsView.data=data;readsView.attempt=readsHead();readsView.task=record.task;readsView.stage='';readsView.open.add(record.id);tab='Letture';render();return;
+  }
+  const patch=data.patch;
+  if(row.kind==='decisions'||row.kind==='asks'){
+   const id=(row.kind==='decisions'?'decision:':'ask:')+row.id;
+   if(!patch.graph?.nodes?.some(n=>n.id===id))throw Error();
+   state.graph=patch.graph;transferUI.sections.set(transferKey('graph'),patch);decFollow(id);return;
+  }
+  const record=row.kind==='messages'?patch.messages?.[row.id]:patch.outputs?.find(o=>o.event===row.id);
+  if(!record)throw Error();
+  $('artifact-title').textContent=tr('search.'+row.kind)+' · '+(record.task||row.id);
+  const body=$('artifact-body');body.replaceChildren(node('p',record.body||record.text||''));
+  for(const artifact of record.artifacts||[])body.append(proofLink(artifact));
+  $('artifact').showModal();
+ }catch(e){if(current())$('notice').replaceChildren(node('p',tr('search.missing')))}
+}
+$('search').onfocus=()=>{if(loadUI.query.trim()){searchUI.open=true;renderSearch()}};
+$('search').onkeydown=e=>{
+ if(e.key==='Escape'){searchClose();e.preventDefault();return}
+ if(e.key==='ArrowDown'||e.key==='ArrowUp'){
+  searchUI.open=!!loadUI.query.trim();renderSearch();
+  if(searchUI.rows.length)searchSelect(searchUI.active<0?(e.key==='ArrowDown'?0:searchUI.rows.length-1):(searchUI.active+(e.key==='ArrowDown'?1:-1)+searchUI.rows.length)%searchUI.rows.length);
+  e.preventDefault();
+ }else if(e.key==='Enter'&&searchUI.open&&searchUI.active>=0){e.preventDefault();searchOpen(searchUI.rows[searchUI.active])}
+};
+if(typeof document.addEventListener==='function')document.addEventListener('pointerdown',e=>{if(e.target!==$('search')&&!$('search-popup').contains?.(e.target))searchClose()});
+const renderBeforeSearch=render;render=function(){renderBeforeSearch();renderSearch()};
+</script>
+
 </body></html>
 

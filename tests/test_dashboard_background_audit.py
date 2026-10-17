@@ -7,9 +7,9 @@ import time
 import unittest
 from unittest.mock import patch
 
+import test_dashboard_performance as support
 import dashboard
 from registry import Error, Store
-import test_dashboard_performance as support
 
 
 class BackgroundAudit(unittest.TestCase):

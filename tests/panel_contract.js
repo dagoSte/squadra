@@ -311,7 +311,7 @@ const scenarios={
   assert.ok(hasClass(content.children[0],'is-empty'),'the owner panel is not shown when nothing is recorded');
   const work=content.children[1];assert.equal(work.children[0].textContent,'Il lavoro, adesso.');
   const cards=work.children.filter(c=>hasClass(c,'sq-task'));
-  assert.deepEqual(cards.map(c=>c.getAttribute('data-task')),open.map(t=>t.id),'one card per open task');
+  assert.deepEqual(cards.map(c=>c.getAttribute('data-task')).sort(),open.map(t=>t.id).sort(),'one card per open task');
   for(const card of cards){const id=card.getAttribute('data-task'),seen=visibleText(card);
    assert.ok(card.children.some(c=>hasClass(c,'sq-stepline')),'steps inline: '+id);
    assert.match(seen,/Costruisce: /);assert.match(seen,/Ultimo evento: .+ · /);
@@ -568,6 +568,7 @@ const scenarios={
  async connected_edges(){
   const fixture=clone(base),task='TASK-KQ1';
   fixture.messages['ORIGIN-ROW']={id:'ORIGIN-ROW',from:'coord-zx',to:'build-qv',related_task:task,body:'New pending message',utc:'2026-10-11T00:00:00Z',ack:null};
+  fixture.attention.waiting.push({kind:'ack',id:'ORIGIN-ROW',who:['build-qv'],utc:'2026-10-11T00:00:00Z'});
   const app=await boot({fixture}),context=()=>app.doc.getElementById('connected-context');
   // The selector placeholder is a filter choice, not a task ID.
   app.run("connectedUI.context={task:'TASK-KQ1',originTask:'TASK-KQ1'};tab='Comunicazioni';commsUI.filters.task='-';connectedContext()");
@@ -585,6 +586,7 @@ const scenarios={
   app.find(origin).onclick();await settle();await app.refresh();dialog.close();dialog.onclose();await settle();
   assert.equal(key(app.doc.activeElement),origin,'unchanged origin is the exact focus return');
   app.find(origin).onclick();await settle();const changed=clone(app.fixture);changed.messages['ORIGIN-ROW'].ack={actor:'build-qv',utc:'2026-10-11T00:01:00Z'};
+  changed.attention.waiting=changed.attention.waiting.filter(w=>w.id!=='ORIGIN-ROW');
   await app.refresh(changed);assert.equal(app.find(origin),null,'ACK hides the origin in the pending-only table');
   app.run("window.returnHeadingTop=-600;window.scrollBy=(x,y)=>{window.returnHeadingTop-=y};pageFocusables.get('table:mail:title').getBoundingClientRect=()=>({top:window.returnHeadingTop,bottom:window.returnHeadingTop+24})");
   dialog.close();dialog.onclose();await settle();assert.equal(key(app.doc.activeElement),'table:mail:title','missing origin returns to its actual table heading');

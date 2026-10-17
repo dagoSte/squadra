@@ -22,6 +22,7 @@ MAX_RECORD = 16 * 1024 * 1024
 SLICE_BYTES = 8 * 1024 * 1024
 MAX_RECORDS = 100000
 MAX_FILES = 1000
+SAVE_SECONDS = 5
 MODEL = re.compile(r'(?:claude-(?:opus|sonnet|haiku)[-a-z0-9.]{0,60}|gpt-[0-9][-a-z0-9.]{0,60}|o[134](?:[-a-z0-9.]{0,60})|codex[-a-z0-9.]{0,60})\Z')
 SESSION = re.compile(r'[a-zA-Z0-9][a-zA-Z0-9_-]{5,79}\Z')
 
@@ -478,59 +479,35 @@ class Collector:
         self.http_until = 0
         self.http_revision = None
         self.directories = {}
+        self.walk = None
+        self.turn = 0
+        self.saved_at = None
 
     def discover(self, windows, deadline):
+        """Find each registered window's session files; an unfinished walk resumes on the next call."""
         signature = tuple((w['identity'], w['client'], tuple(sorted(w['sessions']))) for w in windows)
         if (self.inventory is not None and self.inventory[0] == signature
                 and time.monotonic() - self.discovered < 30 and self.directory_stamp() == self.directories):
             return self.inventory[1]
-        found, errors, directories = {}, {}, {}
-        for root in self.roots.values():
-            try:
-                directories[str(root)] = stamp(root.lstat())
-            except OSError:
-                directories[str(root)] = None
-        for client in ('claude', 'codex'):
-            root = self.roots.get(client)
-            if root is None:
-                errors[client] = 'source_unavailable'
-                continue
-            try:
-                trusted(root, root, directory=True)
-                matches = []
-                seen = 0
-                for folder, dirs, names in os.walk(root, followlinks=False):
-                    directories[folder] = stamp(Path(folder).lstat())
-                    if time.monotonic() >= deadline or seen > 100000:
-                        errors[client] = 'discovery_limited'
-                        break
-                    dirs[:] = sorted(d for d in dirs if not (Path(folder) / d).is_symlink())
-                    for name in sorted(names):
-                        seen += 1
-                        if not name.endswith('.jsonl'):
-                            continue
-                        path = Path(folder) / name
-                        if client == 'codex':
-                            match = re.search(r'([0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12})\.jsonl\Z', name)
-                            session = match.group(1) if match else None
-                        else:
-                            session = path.stem if SESSION.fullmatch(path.stem) else None
-                            if 'subagents' in path.parts:
-                                session = path.parent.parent.name
-                                child = path.stem.removeprefix('agent-')
-                                if SESSION.fullmatch(child):
-                                    matches.append((child, path))
-                        if session:
-                            matches.append((session, path))
-                found[client] = matches
-            except Invalid as exc:
-                errors[client] = str(exc)
+        if self.walk is None or self.walk['signature'] != signature:
+            self.walk = self.start_walk(windows, signature)
+        walk = self.walk
+        for client, state in walk['clients'].items():
+            self.advance(client, state, walk['directories'], deadline)
+        unfinished = {client for client, state in walk['clients'].items() if state['walk'] is not None}
+        found = {client: state['matches'] for client, state in walk['clients'].items()}
+        errors = {client: state['error'] for client, state in walk['clients'].items() if state['error']}
+        errors.update({client: 'collecting' for client in unfinished})
         result = {}
         for w in windows:
             identity, client = w['identity'], w['client']
             reasons, selected = set(), []
             if client not in ('claude', 'codex'):
                 reasons.add('client_unsupported')
+            elif not w['sessions']:
+                reasons.add('session_not_registered')
+            elif client in unfinished:
+                reasons.add('collecting')
             else:
                 candidates = found.get(client, [])
                 full = set()
@@ -570,10 +547,69 @@ class Collector:
                     selected[:] = [(s, p) for s, p in selected if p != path]
                     if chosen is None:
                         reasons.add('identity_ambiguous')
-        if 'discovery_limited' not in errors.values():
-            self.inventory, self.discovered = (signature, result), time.monotonic()
-            self.directories = directories
+        if not unfinished:
+            self.walk = None
+            if 'discovery_limited' not in errors.values():
+                self.inventory, self.discovered = (signature, result), time.monotonic()
+                self.directories = walk['directories']
         return result
+
+    def start_walk(self, windows, signature):
+        """Walk only the roots of clients that have a window with a registered session."""
+        wanted = sorted({w['client'] for w in windows if w['sessions']} & {'claude', 'codex'})
+        directories, clients = {}, {}
+        for client in wanted:
+            state = {'walk': None, 'matches': [], 'seen': 0, 'error': None}
+            root = self.roots.get(client)
+            if root is None:
+                state['error'] = 'source_unavailable'
+            else:
+                try:
+                    directories[str(root)] = stamp(root.lstat())
+                except OSError:
+                    directories[str(root)] = None
+                try:
+                    trusted(root, root, directory=True)
+                    state['walk'] = os.walk(root, followlinks=False)
+                except Invalid as exc:
+                    state['error'] = str(exc)
+            clients[client] = state
+        return {'signature': signature, 'clients': clients, 'directories': directories}
+
+    def advance(self, client, state, directories, deadline):
+        """Read folders of one client's walk until the deadline, always at least one, so a walk never stalls."""
+        steps = 0
+        while state['walk'] is not None and (steps == 0 or time.monotonic() < deadline):
+            try:
+                folder, dirs, names = next(state['walk'])
+            except StopIteration:
+                state['walk'] = None
+                break
+            steps += 1
+            try:
+                directories[folder] = stamp(Path(folder).lstat())
+            except OSError:
+                directories[folder] = None
+            dirs[:] = sorted(d for d in dirs if not (Path(folder) / d).is_symlink())
+            for name in sorted(names):
+                state['seen'] += 1
+                if not name.endswith('.jsonl'):
+                    continue
+                path = Path(folder) / name
+                if client == 'codex':
+                    match = re.search(r'([0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12})\.jsonl\Z', name)
+                    session = match.group(1) if match else None
+                else:
+                    session = path.stem if SESSION.fullmatch(path.stem) else None
+                    if 'subagents' in path.parts:
+                        session = path.parent.parent.name
+                        child = path.stem.removeprefix('agent-')
+                        if SESSION.fullmatch(child):
+                            state['matches'].append((child, path))
+                if session:
+                    state['matches'].append((session, path))
+            if state['seen'] > 100000:
+                state['walk'], state['error'] = None, 'discovery_limited'
 
     def directory_stamp(self):
         result = {}
@@ -588,8 +624,10 @@ class Collector:
     def source_key(key):
         return hashlib.sha256(json.dumps(key, separators=(',', ':')).encode()).hexdigest()
 
-    def persist(self):
+    def persist(self, collecting=False):
         if self.cache is None:
+            return
+        if collecting and self.saved_at is not None and time.monotonic() - self.saved_at < SAVE_SECONDS:
             return
         mark = tuple((k, v.stamp, v.cursor, v.append_cursor, len(v.records),
                       tuple(sorted(v.reasons)), v.pending) for k, v in sorted(self.sources.items()))
@@ -598,7 +636,7 @@ class Collector:
         values = {self.source_key(k): v.dump() for k, v in self.sources.items()
                   if v.stamp is not None and v.fingerprint is not None}
         if self.cache.save(values):
-            self.cache_mark = mark
+            self.cache_mark, self.saved_at = mark, time.monotonic()
 
     @staticmethod
     def busy(now):
@@ -614,10 +652,40 @@ class Collector:
         finally:
             self.lock.release()
 
+    def read_sources(self, keys, deadline, now):
+        """Give each selected source an equal share of what is left of the slice, from a rotating start."""
+        if keys:
+            self.turn = (self.turn + 1) % len(keys)
+            keys = keys[self.turn:] + keys[:self.turn]
+        for i, key in enumerate(keys):
+            source = self.sources[key]
+            available = MAX_RECORDS - sum(len(s.records) for s in self.sources.values() if s is not source)
+            if available <= 0 and (source.cursor or not source.checked):
+                source.reasons.add('sample_limit'); source.cursor = 0; source.checked = True; source._normal = None
+                continue
+            left = deadline - time.monotonic()
+            if left <= 0:
+                break
+            source.read(time.monotonic() + left / (len(keys) - i), now, available)
+
     def _collect(self, events, state, now, budget_seconds):
         deadline = time.monotonic() + max(0, min(budget_seconds, 30))
         windows = seats(state)
         discovery = self.discover(windows, deadline)
+        planned = []
+        for w in windows:
+            for session, path in discovery[w['identity']][0]:
+                key = (w['client'], str(path))
+                if key not in self.sources:
+                    source_session = path.parent.parent.name if w['client'] == 'claude' and 'subagents' in path.parts else session
+                    source = Source(path, self.roots[w['client']], w['client'], source_session)
+                    saved = self.restored_sources.pop(self.source_key(key), None)
+                    if saved is not None:
+                        source.restore(saved)
+                    self.sources[key] = source
+                if key not in planned:
+                    planned.append(key)
+        self.read_sources(planned, deadline, now)
         used, result, all_samples, all_quotas = set(), [], [], []
         measured_sources = 0
         spans = task_spans(events, state, now)
@@ -629,19 +697,7 @@ class Collector:
             for session, path in selected:
                 key = (w['client'], str(path))
                 used.add(key)
-                source_session = path.parent.parent.name if w['client'] == 'claude' and 'subagents' in path.parts else session
-                if key not in self.sources:
-                    source = Source(path, self.roots[w['client']], w['client'], source_session)
-                    saved = self.restored_sources.pop(self.source_key(key), None)
-                    if saved is not None:
-                        source.restore(saved)
-                    self.sources[key] = source
                 source = self.sources[key]
-                available = MAX_RECORDS - sum(len(s.records) for s in self.sources.values() if s is not source)
-                if available <= 0 and (source.cursor or not source.checked):
-                    source.reasons.add('sample_limit'); source.cursor = 0; source.checked = True; source._normal = None
-                elif time.monotonic() < deadline:
-                    source.read(deadline, now, available)
                 src_samples, src_quota, src_reasons = source.normalized()
                 measured_sources += bool(src_samples)
                 reasons.update(src_reasons)
@@ -692,13 +748,13 @@ class Collector:
                          'estimated': any(s['estimated'] for s in group)})
         tasks = attribute(all_samples, spans, complete)
         data = {'schema': 1, 'observed_at': utc(now), 'status': 'measured' if complete else 'partial' if all_samples else 'not_measured',
-                'coverage': {'status': 'collecting' if any(s.restored or s.cursor or (s.append_cursor < s.end and not s.pending) or not s.checked for s in self.sources.values()) else 'ready' if complete else 'limited',
+                'coverage': {'status': 'collecting' if self.walk is not None or any(s.restored or s.cursor or (s.append_cursor < s.end and not s.pending) or not s.checked for s in self.sources.values()) else 'ready' if complete else 'limited',
                              'sources': len(self.sources), 'measured': measured_sources,
                              'reasons': sorted({r for w in result for r in w['reasons']})},
                 'windows': result, 'models': models, 'tasks': tasks, 'days': days,
                 'quota_history': [quota_status(q, now) for q in all_quotas],
                 'suggestions': advice(models, result, now), 'cost': None}
-        self.persist()
+        self.persist(data['coverage']['status'] == 'collecting')
         if self.cache is not None and self.cache.notice:
             data['coverage']['notices'] = [self.cache.notice]
         return data
@@ -1014,6 +1070,9 @@ def text_report(data):
         lines.append(f"Model {m['model'] or 'unknown'}: {count(m)} tokens ({m['status']})")
     for t in data['tasks']:
         lines.append(f"Task {t['task'] or 'unassigned'}: {count(t)} tokens" + (' (estimated attribution)' if t['estimated'] else ''))
+    if any('session_not_registered' in w['reasons'] for w in data['windows']):
+        lines.append('A window without a session is not measured: register it with '
+                     '`squadra agent --id <id> --identity <identity> --session <session-id> …`.')
     if data['cost']:
         lines.append('Estimated cost: ' + json.dumps(data['cost'], ensure_ascii=False))
     lines.append(json.dumps({k: data[k] for k in ('days', 'quota_history', 'suggestions')}, ensure_ascii=False))

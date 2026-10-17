@@ -19,7 +19,7 @@ SCRIPTS = Path(__file__).resolve().parents[1] / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 from registry import Store, Error, digest, snapshot
 from runtime import cli_command, execute, validate_reply
-from squadra import main, bindings
+from squadra import main, bindings, deliver
 from dashboard_test_support import make_server
 
 
@@ -153,6 +153,25 @@ class Workflow(unittest.TestCase):
         self.assertEqual(self.cli("review", "--actor", "R", "--task", "T", "--verdict", "accepted", "--report", str(self.report)), 0)
         self.assertEqual(self.cli("close", "--actor", "C", "--task", "T"), 0)
         self.assertEqual(self.store.state()["tasks"]["T"]["status"], "done")
+
+    def handoff_body(self, name):
+        data = {"id": name, "title": "Synthetic change", "owner": "A", "reviewer": "R", "repo": str(self.repo),
+                "base": snapshot(self.repo)["head"], "scope": self.store.artifact(self.scope),
+                "proof": None, "expected": None, "depends": [], "full_gate": False}
+        self.store.batch([("task", "C", data, None), ("message", "C", {"id": "assign-" + name,
+                          "to": "A", "task": name, "body": "Scoped work"}, None)])
+        self.ack(name); self.assertEqual(self.proof(task=name)["status"], "passed")
+        handoff = deliver(self.store, "A", name)["handoff"]
+        return self.store.state()["messages"][handoff]["body"]
+
+    def test_handoff_names_the_working_tree_when_its_commit_lacks_the_change(self):
+        head = snapshot(self.repo)["head"]
+        self.assertTrue(self.handoff_body("V").startswith("Read exact candidate " + head + " for V.\nImmutable packet "))
+        (self.repo / "code.py").write_text("VALUE = 2\n"); (self.repo / "new.py").write_text("NEW = 1\n")
+        current = snapshot(self.repo, self.root); body = self.handoff_body("W")
+        self.assertIn("the working tree of " + str(self.repo) + " matching snapshot " + current["sha256"] +
+                      ", NOT commit " + head + ", which lacks 2 uncommitted or untracked paths: code.py, new.py.\n", body)
+        self.assertNotIn("Read exact candidate " + head, body)
 
     def test_changed_code_invalidates_proof_and_review(self):
         self.delivered()

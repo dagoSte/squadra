@@ -92,12 +92,15 @@ const technical=/seat|window-|\bm-|ping-|evt|SQ-|MS-|#\d|\b[0-9a-f]{7,}\b/;
   for(const line of firstLines())assert.doesNotMatch(line,technical,'no id, event number or hash in a first line: '+line);
   assert.equal(rowOf('m-queued').li.className,'comms-row state-queued');
   assert.match(rowOf('m-late').strip.children.at(-1).attributes['marker-end'],/comms-head-red/);
-  // Bodies only on demand; the search never sees them.
+  // D-SEARCH-COMMS: body matches use IDs; the displayed text still stays on demand.
   assert.doesNotMatch(root.textContent,/zebraword/,'no body before it is asked for');
   get('search').oninput({target:{value:'zebraword'}});
-  assert.equal(parts.list.children.length,0,'a word present only in a body filters nothing in');
+  assert.equal(parts.list.children.length,1,'a body-only word finds exactly its message');assert.equal(parts.list.children[0],rowOf('m-xss').li);
+  assert.doesNotMatch(parts.list.textContent,/zebraword/,'matching a body does not display it in the result');
   get('search').oninput({target:{value:'chiamata di presenza'}});
   assert.equal(parts.list.children.length,1,'search reads the sentence');assert.equal(parts.list.children[0],rowOf('ping-1','ping').li);
+  get('search').oninput({target:{value:'ping-1'}});
+  assert.equal(parts.list.children.length,1,'recorded ping ID remains searchable');assert.equal(parts.list.children[0],rowOf('ping-1','ping').li);
   get('search').oninput({target:{value:''}});
   const xss=rowOf('m-xss');xss.button.onclick();
   assert.equal(xss.button.getAttribute('aria-expanded'),'true');assert.equal(xss.detail.hidden,false);

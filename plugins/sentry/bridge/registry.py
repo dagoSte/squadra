@@ -3,12 +3,14 @@ from __future__ import annotations
 
 import datetime as dt
 from collections.abc import Mapping
+from collections import ChainMap
 from contextlib import contextmanager, ExitStack
 import hashlib
 import json
 import os
 from pathlib import Path
 import re
+import shlex
 import shutil
 import sqlite3
 import subprocess
@@ -17,13 +19,20 @@ import uuid
 import unicodedata
 
 
-VERSION = "3.10.1"
-WAIT_SECONDS = {"ack": 900, "delivered": 3600, "reviewed": 1800, "heartbeat": 1800, "alive": 300}
+VERSION = "3.10.2"
+WAIT_SECONDS = {"ack": 900, "delivered": 3600, "reviewed": 1800, "heartbeat": 1800, "alive": 300,
+                "to-forward": 120, "plan": 3600}
+MESSAGE_WAIT_KEYS = {"to-forward", "plan"}
 CHANNELS = ("typed-here", "relayed")
 REFERENCE_KINDS = ("ask", "decision")
 # Decisions recorded without --id are named dec-e<event sequence>; explicit IDs cannot take that form.
 GENERATED_DECISION_ID = re.compile(r"^dec-e[0-9]+$")
 BRIEF_BYTES = 8192
+# A decision's optional "scrub" field names one artifact digest whose file may be absent.
+ARTIFACT_DIGEST = re.compile(r"[0-9a-f]{64}")
+SCRUB_NOTE = ("Scrubbed artifacts were removed on purpose by a coordinator decision; the record keeps their digests. "
+              "A file still present may now be deleted. Published Squadra 3.10.1 fails its full audit on this "
+              "registry until it updates.")
 
 TASK_STATUSES = ("waiting-ack", "ready", "working", "delivered", "changes-required", "reviewed", "done")
 NEXT_STEPS = {
@@ -34,6 +43,32 @@ NEXT_STEPS = {
     "changes-required": "Correzione dell'esecutore",
     "reviewed": "Check e chiusura del coordinatore",
     "done": "Nessun passo pendente",
+}
+# English text views for an English workspace. Italian sentences stay the recorded values; these
+# maps are keyed by step phase, wait kind and owner item kind, never by the Italian text.
+STEP_TEXT_EN = {
+    "waiting-ack": "Executor ACK",
+    "ready": "Executor start",
+    "working": "Executor proof and delivery",
+    "delivered": "Non-author read",
+    "changes-required": "Executor correction",
+    "reviewed": "Coordinator check and close",
+    "done": "No pending step",
+    "gate-read": "Closed without a read: to be read at the gate",
+    "plan-read": "Plan waiting for a non-author read",
+    "plan-fix": "Plan correction",
+    "plan-blocked": "Plan read blocked",
+}
+WAIT_TEXT_EN = {
+    "ack": "Receipt to be confirmed",
+    "pool": "Pool read: the first ACK takes it",
+    "cleanup-unknown": "Stop to verify; receipt present",
+    "heartbeat": "Old heartbeat; process presence not inferred",
+    "alive": "Ping without a reply; stand-by needs a coordinator sweep",
+}
+OWNER_TEXT_EN = {
+    "budget": "Budget used up: decide whether to extend the scope or stop",
+    "paused": "Area paused: resume only at the owner's request",
 }
 
 
@@ -110,11 +145,22 @@ def atomic(path, data):
         temporary.unlink(missing_ok=True)
 
 
-def git(repo, *args):
-    p = subprocess.run(["git", *args], cwd=repo, capture_output=True, timeout=30)
+def git(repo, *args, timeout=30):
+    try:
+        p = subprocess.run(["git", *args], cwd=repo, capture_output=True, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        raise Error("git " + str(args[0]) + " timed out after " + str(timeout) + " s") from None
     if p.returncode:
         raise Error(p.stderr.decode(errors="replace").strip())
     return p.stdout
+
+
+def git_probe(*args, timeout=30):
+    """Run git for its exit status; a hung git becomes a plain refusal."""
+    try:
+        return subprocess.run(["git", *args], capture_output=True, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        raise Error("git timed out after " + str(timeout) + " s") from None
 
 
 def snapshot(repo, exclude=None):
@@ -155,6 +201,63 @@ def initial():
             "paused": False, "event_count": 0, "refs": {"ask": {}, "decision": {}}}
 
 
+def wait_facts(events):
+    """Transient facts: keep the shared reducer and its schema-5 cache unchanged."""
+    facts = {"messages": {}, "tasks": {}, "settings": {}}
+    for event in events:
+        data = event["data"]
+        if event["kind"] == "transport":
+            message = facts["messages"].setdefault(data["message"], {})
+            message.setdefault("transport_first_utc", event["utc"])
+            message["transport_all_failed"] = message.get("transport_all_failed", True) and data.get("delivered") is not True
+        elif event["kind"] == "plan":
+            facts["tasks"][data["task"]] = {"plan_utc": event["utc"]}
+        elif event["kind"] == "settings":
+            facts["settings"] = data.get("message_wait_seconds", {})
+    return facts
+
+
+class ReadEntities(Mapping):
+    def __init__(self, values, resolver):
+        self.values_source, self.resolver, self.memo = values, resolver, {}
+
+    def __getitem__(self, key):
+        if key not in self.memo:
+            self.memo[key] = self.resolver(key, self.values_source[key])
+        return self.memo[key]
+
+    def __iter__(self):
+        return iter(self.values_source)
+
+    def __len__(self):
+        return len(self.values_source)
+
+
+class ReadState(dict):
+    """Canonical fields with transient read context that is never serialized."""
+
+
+def wait_view(source, facts):
+    class View(dict):
+        pass
+    result = View(source.items())
+    result.current = current_index(source)
+    for kind in ("messages", "tasks"):
+        additions = facts[kind]
+        result[kind] = ReadEntities(source[kind], lambda name, row, additions=additions:
+                                   ChainMap(dict(additions.get(name, {})), row))
+    if facts["settings"]:
+        result["workspace"] = {**source["workspace"], "message_wait_seconds": facts["settings"]}
+    return result
+
+
+def wait_settings(value):
+    """Older writers/readers understand only the original wait_seconds keys."""
+    require(isinstance(value, dict) and set(value) <= set(WAIT_SECONDS), "Unknown wait threshold")
+    return {"wait_seconds": {k: v for k, v in value.items() if k not in MESSAGE_WAIT_KEYS},
+            "message_wait_seconds": {k: v for k, v in value.items() if k in MESSAGE_WAIT_KEYS}}
+
+
 def decision_id(data, seq):
     """Use the supplied decision ID or a stable name from its event number."""
     return data.get("id") or (None if seq is None else "dec-e" + str(seq))
@@ -181,6 +284,24 @@ def pool_claim(state, task):
         if message and message["ack"]:
             return {"agent": message["ack"]["agent"], "handoff": handoff, "utc": message["ack"]["utc"]}
     return None
+
+
+def active_pool(state, task):
+    """Pool members not in stand-by, in pool order: the members a new delivery hands the read to."""
+    return [member for member in task["pool"] if not standby(state, member)]
+
+
+def pool_readers(task):
+    """Pool members that hold a handoff of the current delivery, in pool order.
+
+    A member in stand-by when the packet was delivered has no handoff, so it is not a reader of it.
+    """
+    handoffs = task.get("delivery", {}).get("handoffs") or []
+    size = len("review-") + 64 + 1
+    if not handoffs or any(not h.startswith("review-") or len(h) <= size for h in handoffs):
+        return list(task["pool"])
+    prefix = handoffs[0][:size]
+    return [member for member in task["pool"] if prefix + member in handoffs]
 
 
 def last_code_read(task):
@@ -250,7 +371,8 @@ def apply(state, event):
     elif kind == "message":
         state["messages"][d["id"]] = {**d, "from": event["actor"], "utc": event["utc"], "ack": None}
     elif kind == "transport":
-        state["messages"][d["message"]]["transport"] = d
+        message = state["messages"][d["message"]]
+        message["transport"] = d
     elif kind == "plan":
         state["tasks"][d["task"]]["plan"] = d["artifact"]
     elif kind == "start":
@@ -417,8 +539,18 @@ def latest_ping(state, agent):
                  if m.get("ping") and state["agents"][m["to"]]["identity"] == identity), None)
 
 
+def transport_delivered(state, message):
+    """True once any recorded transport of the message reported delivered:true; read-time facts only."""
+    facts = getattr(state, 'wait_context', {}).get('messages', {})
+    return facts.get(message["id"], message).get("transport_all_failed") is False
+
+
 def presence(state, at, settings=None):
-    """Read-time observations; neither missing replies nor elapsed time change availability."""
+    """Read-time observations; neither missing replies nor elapsed time change availability.
+
+    A ping is due only once a transport reported delivered:true: a window cannot answer a
+    challenge that never reached it, so an undelivered ping never qualifies a sweep.
+    """
     clock = dt.datetime.fromisoformat(at) if isinstance(at, str) else at
     require(clock.tzinfo is not None, "Timezone-aware clock required")
     threshold = (WAIT_SECONDS | state["workspace"].get("wait_seconds", {}) | (settings or {}))["alive"]
@@ -440,11 +572,18 @@ def presence(state, at, settings=None):
         if ping:
             seconds = max(0, int((clock - dt.datetime.fromisoformat(ping["utc"])).total_seconds()))
             current = agent.get("availability", {})
-            row.update(ping=ping["id"], seconds=seconds, answer=ping["ack"],
-                       due=not ping["ack"] and seconds >= threshold and
+            delivered = transport_delivered(state, ping)
+            row.update(ping=ping["id"], seconds=seconds, answer=ping["ack"], delivered=delivered,
+                       due=delivered and not ping["ack"] and seconds >= threshold and
                        (standby(state, agent["id"]) or ping.get("availability_event") == current.get("event")))
         result.append(row)
     return result
+
+
+def coordinator_ping(state, message, actor):
+    """Any registered seat may record a handoff of a ping to a coordinator; its fixed body is only relayed."""
+    return (message.get("ping") is True and actor in state["agents"] and
+            state["agents"][message["to"]]["role"] == "coordinator")
 
 
 def return_ping(state, agent):
@@ -467,7 +606,7 @@ def next_step(task):
     role = "coordinator" if status == "reviewed" else "reviewer" if status == "delivered" else "builder"
     who = task.get("coordinator") if status == "reviewed" else task.get("reviewer") if status == "delivered" else task["owner"]
     if status == "delivered" and task.get("pool"):
-        who = [task["claim"]["agent"]] if task.get("claim") else list(task["pool"])
+        who = [task["claim"]["agent"]] if task.get("claim") else pool_readers(task)
     if status == "done":
         who = None
         if gate_pending(task):
@@ -493,15 +632,37 @@ def attention(state):
     open_asks = [a for a in state.get("asks", {}).values() if a["status"] == "open"]
     owners = [{"kind": "ask", **a} for a in open_asks]
     waiting, steps = [], []
-    # A superseded task loses only its own advancement items: its assignment ACK wait, its
-    # status/plan/dependency/budget items and its next step. Other message waits, run alerts
-    # and every open ask stay visible; dependents of it stay blocked.
     superseded = {t["id"]: t for t in state["tasks"].values() if t.get("superseded_by")}
+    inactive = set(superseded) | {t["id"] for t in state["tasks"].values() if t["status"] == "done"}
+    coordinators = [a["id"] for a in state["agents"].values() if a["role"] == "coordinator"]
+    facts = getattr(state, 'wait_context', {})
     for message in pending_messages(state):
+        linked = message.get("task") or message.get("related_task")
+        if linked in inactive:
+            continue
+        task = state["tasks"].get(linked, {})
+        if message.get("pool") and (task.get("claim") or message["id"] not in task.get("delivery", {}).get("handoffs", [])):
+            continue
         # Pool handoffs wait once per delivery, below; a claimed pool's siblings stay unacknowledged.
-        if not message["ack"] and message.get("info") is not True and message.get("task") not in superseded and not message.get("pool"):
+        if not message.get("pool"):
             waiting.append({"kind": "ack", "id": message["id"], "who": [message["to"]],
                             "utc": message["utc"], "text": "Presa in carico da confermare"})
+        metadata = facts.get('messages', {}).get(message['id'], message)
+        # A Codex window has no follower of its own: until a transport reports delivered:true, with
+        # failed, unconfirmed or no attempts at all, its mail waits on the coordinator. Every other
+        # window follows its own mail, so a transport cannot end or advance its wait.
+        recipient = state["agents"].get(message["to"], {})
+        if recipient.get("client") == "codex" and metadata.get("transport_all_failed") is not False:
+            item = {"kind": "to-forward", "id": message["id"], "to": message["to"], "who": coordinators,
+                    "utc": metadata.get("transport_first_utc") or message["utc"],
+                    "text": "Da inoltrare a " + message["to"] + " · inoltra: " + ", ".join(coordinators),
+                    "text_en": "To forward to " + message["to"] + " · forwarder: " + ", ".join(coordinators)}
+            if linked:
+                item["task"] = linked
+            if state.get("root"):
+                item["ack_command"] = shlex.join(["squadra", "ack", "--actor", message["to"],
+                                                 "--message", message["id"], "--root", state["root"]])
+            waiting.append(item)
     for task in state["tasks"].values():
         if task["id"] in superseded:
             continue
@@ -516,11 +677,11 @@ def attention(state):
                    if a["role"] in {"reviewer", "coordinator"} and a["identity"] not in author_ids
                    and not standby(state, a["id"])]
         if task.get("pool"):
-            readers = [task["claim"]["agent"]] if task.get("claim") else list(task["pool"])
+            readers = [task["claim"]["agent"]] if task.get("claim") else pool_readers(task)
         handoffs = task.get("delivery", {}).get("handoffs")
         if handoffs and not task.get("claim"):
             waiting.append({**common, "kind": "ack", "id": handoffs[0], "handoffs": list(handoffs),
-                            "who": list(task["pool"]), "utc": task.get("delivered_utc"),
+                            "who": pool_readers(task), "utc": task.get("delivered_utc"),
                             "text": "Lettura in pool: il primo ACK la prende"})
         if status in {"ready", "delivered", "changes-required", "reviewed"}:
             waiting.append({**common, "kind": status, "text": NEXT_STEPS[status],
@@ -533,7 +694,9 @@ def attention(state):
                             "text": "Dipendenze ancora aperte"})
         plan_review = current_plan_review(task)
         if task.get("plan") and not (plan_review and plan_review["verdict"] == "accepted"):
-            waiting.append({**common, "kind": "plan", "who": readers, "text": "Piano in attesa di lettura non autore"})
+            metadata = facts.get('tasks', {}).get(task['id'], task)
+            waiting.append({**common, "kind": "plan", "who": readers, "utc": metadata.get("plan_utc"),
+                            "text": "Piano in attesa di lettura non autore", "text_en": "Plan waiting for a non-author read"})
         exhausted = []
         for stage in ("plan", "code"):
             reads = [r for r in task["reviews"] if r["stage"] == stage]
@@ -564,19 +727,24 @@ def attention(state):
                           "legacy": not bool(target) and not decision.get("channel")})
     replaced = [{"task": t["id"], "by": t["superseded_by"], "utc": t.get("superseded_utc"), "status": t["status"]}
                 for t in superseded.values()]
+    waiting.sort(key=lambda w: w["kind"] != "to-forward")
     return {"for_owner": owners, "decided": decisions, "waiting": waiting, "next_steps": steps,
             "superseded": replaced}
 
 
-def waits(state, at, settings=None):
+def waits(state, at, settings=None, *, attention_value=None):
     """Calculate ages on a caller-supplied UTC clock; alerts never perform actions."""
-    thresholds = WAIT_SECONDS | state["workspace"].get("wait_seconds", {}) | (settings or {})
-    require(set(thresholds) == set(WAIT_SECONDS) and all(type(v) is int and v >= 0 for v in thresholds.values()),
+    supplied = (state["workspace"].get("wait_seconds", {}) | state["workspace"].get("message_wait_seconds", {})
+                | getattr(state, 'wait_context', {}).get('settings', {}) | (settings or {}))
+    thresholds = WAIT_SECONDS | {k: v for k, v in supplied.items() if k in WAIT_SECONDS}
+    require(all(type(v) is int and v >= 0 for v in thresholds.values()),
             "Nonnegative wait thresholds required")
     clock = dt.datetime.fromisoformat(at) if isinstance(at, str) else at
     require(clock.tzinfo is not None, "Timezone-aware clock required")
     result = []
-    items = [w for w in attention(state)["waiting"] if w["kind"] in {"ack", "delivered", "reviewed", "cleanup-unknown"}]
+    view = attention(state) if attention_value is None else attention_value
+    items = [w for w in view["waiting"] if w["kind"] in {"ack", "delivered", "reviewed", "cleanup-unknown", "to-forward"}
+             or w["kind"] == "plan" and current_plan_review(state["tasks"][w["task"]]) is None]
     items += [{"kind": "heartbeat", "id": r["id"], "task": r["task"], "who": [r["agent"]],
                "utc": r.get("heartbeat", r["utc"]), "text": "Heartbeat vecchio; presenza del processo non dedotta"}
               for r in live_runs(state, "running")]
@@ -594,7 +762,30 @@ def waits(state, at, settings=None):
             result.append({"kind": "alive", "id": row["ping"], "who": [row["agent"]],
                            "seconds": row["seconds"], "threshold": thresholds["alive"],
                            "as_of": clock.isoformat(), "text": "Ping senza risposta; stand-by richiede sweep del coordinatore"})
-    return result
+    return sorted(result, key=lambda w: w["kind"] != "to-forward")
+
+
+def pending_ack_ids(state, *, attention_value=None):
+    """The attention ACK rows are the operational definition in every consumer."""
+    view = attention(state) if attention_value is None else attention_value
+    return [name for row in view["waiting"] if row["kind"] == "ack"
+            for name in row.get("handoffs", [row["id"]])]
+
+
+def fold_forward_waits(rows):
+    """Compact presentation: an ACK row folds into its original message's forwarding row."""
+    forwarded = {w['id'] for w in rows if w['kind'] == 'to-forward'}
+    return [w for w in rows if not (w['kind'] == 'ack' and
+            (w['id'] in forwarded or forwarded.intersection(w.get('handoffs', []))))]
+
+
+def forwarding_lines(waiting, lang='it'):
+    rows = [w for w in waiting if w['kind'] == 'to-forward']
+    if not rows:
+        return []
+    return ['', 'To forward:' if lang == 'en' else 'Da inoltrare:'] + [
+        '- ' + w['id'] + ' · ' + w['utc'] + ' · ' + w.get('text_en' if lang == 'en' else 'text', w['text'])
+        + (' · ' + w['ack_command'] if w.get('ack_command') else '') for w in rows]
 
 
 def fix_binding(task):
@@ -847,6 +1038,78 @@ def artifact_refs(value, found=None):
         for v in value:
             artifact_refs(v, found)
     return list(found.values())
+
+
+def _names_manifest(value, sha):
+    """Whether nested data uses the digest as a source-file manifest reference."""
+    if isinstance(value, dict):
+        manifest = value.get("manifest")
+        if isinstance(manifest, dict) and manifest.get("sha256") == sha:
+            return True
+        return any(_names_manifest(v, sha) for v in value.values())
+    if isinstance(value, list):
+        return any(_names_manifest(v, sha) for v in value)
+    return False
+
+
+def artifact_uses(events, sha):
+    """Whether recorded events register the digest, use it as a source manifest, and which tasks reference it."""
+    registered = manifest = False
+    tasks, known, runs = [], set(), {}
+    for event in events:
+        kind, d = event["kind"], event.get("data") or {}
+        if kind == "task" and isinstance(d.get("id"), str):
+            known.add(d["id"])
+        if kind == "run.start" and isinstance(d.get("id"), str):
+            runs[d["id"]] = d.get("task")
+        if not any(ref["sha256"] == sha for ref in artifact_refs(d)):
+            continue
+        registered = True
+        manifest = manifest or _names_manifest(d, sha)
+        task = d.get("id") if kind == "task" else runs.get(d.get("id")) if kind.startswith("run.") else d.get("task")
+        if isinstance(task, str) and task in known and task not in tasks:
+            tasks.append(task)
+    return {"registered": registered, "manifest": manifest, "tasks": tasks}
+
+
+def validate_scrub_artifact(events, scrub):
+    """A scrub names a registered artifact other than a source manifest, with exactly the tasks that reference it."""
+    uses = artifact_uses(events, scrub["sha256"])
+    require(uses["registered"], "Scrub needs a registered artifact: no recorded event references " + scrub["sha256"])
+    require(not uses["manifest"], "A source manifest cannot be scrubbed: the registry resolves recorded snapshots from it")
+    require(scrub["tasks"] == uses["tasks"],
+            "Scrub tasks must be the tasks that reference the artifact: " + (", ".join(uses["tasks"]) or "none"))
+
+
+def scrub_index(events):
+    """Artifact digests named by a recorded coordinator scrub decision, each with the first decision naming it."""
+    roles, found = {}, {}
+    for event in events:
+        d = event.get("data") or {}
+        if event["kind"] == "agent" and isinstance(d.get("id"), str):
+            roles.setdefault(d["id"], d.get("role"))
+        elif event["kind"] == "decision" and roles.get(event["actor"]) == "coordinator":
+            scrub = d.get("scrub")
+            if (isinstance(scrub, dict) and isinstance(scrub.get("sha256"), str)
+                    and ARTIFACT_DIGEST.fullmatch(scrub["sha256"])):
+                found.setdefault(scrub["sha256"], {
+                    "decision": decision_id(d, event.get("seq")), "seq": event.get("seq"),
+                    "tasks": [t for t in scrub.get("tasks") or [] if isinstance(t, str)]})
+    return found
+
+
+def scrub_report(root, events, index=None):
+    """Each scrubbed artifact with its decision, recorded names and tasks, and whether its file is still present."""
+    index = scrub_index(events) if index is None else index
+    names = {}
+    if index:
+        for event in events:
+            for ref in artifact_refs(event.get("data")):
+                if ref["sha256"] in index and ref["name"] not in names.setdefault(ref["sha256"], []):
+                    names[ref["sha256"]].append(ref["name"])
+    folder = Path(root) / "artifacts"
+    return [{"sha256": sha, "names": names.get(sha, []), "decision": entry["decision"], "tasks": entry["tasks"],
+             "file": "present" if os.path.lexists(folder / sha) else "absent"} for sha, entry in index.items()]
 
 
 DECISION_NODE_KINDS = ("owner-answer", "withdrawal", "owner-instruction", "coordinator-decision")
@@ -1155,14 +1418,19 @@ def validate(state, kind, actor, d, stored_packet=None):
             ping = latest_ping(state, d["agent"])
             require(ping and ping["id"] == d["ping"], "Sweep challenge changed; read again")
             if d["status"] == "stand-by":
+                require(state["agents"][d["agent"]]["identity"] != state["agents"].get(actor, {}).get("identity"),
+                        "A sweep never stands its own coordinator by")
                 observed = next(r for r in presence(state, now()) if r["agent"] == d["agent"])
                 require(observed["due"], "Ping no longer overdue; read current answer and alive threshold")
             else:
                 require(return_ping(state, d["agent"]), "Return needs ACK of a post-stand-by ping")
     if kind == "settings":
         thresholds = d.get("wait_seconds")
-        require(isinstance(thresholds, dict) and set(thresholds) <= set(WAIT_SECONDS), "Unknown wait threshold")
+        require(isinstance(thresholds, dict) and set(thresholds) <= set(WAIT_SECONDS) - MESSAGE_WAIT_KEYS, "Unknown wait threshold")
         require(all(type(v) is int and v >= 0 for v in thresholds.values()), "Nonnegative integer seconds required")
+        extra = d.get("message_wait_seconds", {})
+        require(isinstance(extra, dict) and set(extra) <= MESSAGE_WAIT_KEYS, "Unknown message wait threshold")
+        require(all(type(v) is int and v >= 0 for v in extra.values()), "Nonnegative integer seconds required")
     if kind == "ask":
         require(isinstance(d.get("id"), str) and d["id"].strip() and d["id"] not in state["asks"], "Unique nonempty ask ID required")
         require(isinstance(d.get("question"), str) and d["question"].strip(), "Nonempty question required")
@@ -1198,6 +1466,16 @@ def validate(state, kind, actor, d, stored_packet=None):
         require(d.get("owner_words") is None or isinstance(d["owner_words"], str), "Owner words must be text")
         if "defer_read" in d:
             check_deferral(state, d)
+        if "scrub" in d:
+            scrub = d["scrub"]
+            require(isinstance(scrub, dict) and set(scrub) == {"sha256", "tasks"} and isinstance(scrub["sha256"], str)
+                    and ARTIFACT_DIGEST.fullmatch(scrub["sha256"]) is not None,
+                    "Scrub needs one artifact SHA-256 digest (64 lowercase hex characters)")
+            tasks = scrub["tasks"]
+            require(isinstance(tasks, list) and len(set(map(str, tasks))) == len(tasks)
+                    and all(isinstance(t, str) and t in state["tasks"] for t in tasks), "Scrub tasks must be recorded task IDs")
+            require(not any(isinstance(x.get("scrub"), Mapping) and x["scrub"].get("sha256") == scrub["sha256"]
+                            for x in state["decisions"]), "Artifact already scrubbed by an earlier decision")
         validate_decision_links(state, d)
     if kind in {"start", "deliver", "run.start", "resource.acquire", "review"}:
         require(not state["paused"], "Workspace paused; explicit coordinator resume required")
@@ -1260,8 +1538,9 @@ def validate(state, kind, actor, d, stored_packet=None):
                     "Information cannot be a review handoff")
             require(not task.get("reviewer") or not standby(state, task["reviewer"]),
                     "Reviewer is in stand-by; no new review handoff")
-            for member in task.get("pool") or []:
-                require(not standby(state, member), "Reviewer is in stand-by; no new review handoff: " + member)
+            if task.get("pool"):
+                held = [member for member in task["pool"] if standby(state, member)]
+                require(len(held) < len(task["pool"]), "Reviewer is in stand-by; no new review handoff: " + ", ".join(held))
             require(any(p["status"] == "passed" and p["after"]["sha256"] == d["snapshot"]["sha256"]
                         and contract_matches(task, p) and (not task.get("full_gate") or p.get("gate"))
                         for p in task["proofs"]), "No passing proof on this exact source")
@@ -1275,10 +1554,10 @@ def validate(state, kind, actor, d, stored_packet=None):
                         packet.get("pool") == task.get("pool"),
                         "Handoff packet changed during delivery")
                 if task.get("pool"):
-                    # One handoff per member, each named after this exact packet.
+                    # One handoff per active member, each named after this exact packet; stand-by members get none.
                     key = "review-" + digest(canonical(stored_packet if stored_packet is not None else packet).encode()) + "-"
-                    require(d.get("handoffs") == [key + member for member in task["pool"]],
-                            "Pool handoffs must name every member for this exact packet")
+                    require(d.get("handoffs") == [key + member for member in active_pool(state, task)],
+                            "Pool handoffs must name every active member for this exact packet")
                 require(packet.get("proofs") == [p for p in task["proofs"] if p["status"] == "passed" and
                         p["after"] == d["snapshot"] and contract_matches(task, p)], "Handoff proofs changed during delivery")
         if kind == "run.start":
@@ -1387,13 +1666,22 @@ def validate(state, kind, actor, d, stored_packet=None):
                     "Reuse the outstanding ping; sending again cannot postpone its deadline")
     if kind == "transport":
         require(d["message"] in state["messages"], "Unknown message")
-        require(state["messages"][d["message"]]["from"] == actor, "Sender required")
+        message = state["messages"][d["message"]]
+        sender = message["from"] == actor
+        require(sender or coordinator_ping(state, message, actor) or
+                state["agents"].get(actor, {}).get("role") == "coordinator", "Sender or coordinator required")
+        require(d.get("relayed_by") == (None if sender else actor), "relayed_by names the relaying actor, and only a relay")
     if kind in {"run.end", "run.cancel", "run.progress", "run.abandon"}:
         require(d["id"] in state["runs"], "Unknown run")
         run = state["runs"][d["id"]]
         require(actor == run["agent"] or coordinator, "Run owner/coordinator required")
         require(run["status"] == "running", "Run already ended")
         task = state["tasks"][run["task"]]
+        if kind == "run.end" and d.get("reconciled") is not None:
+            require(actor == run["agent"], "Only the original run starter may reconcile its run")
+            require(bool(run.get("lease_version")), "Only a leased run has a receipt or logs to reconcile from")
+            require(isinstance(d["reconciled"], dict) and d["reconciled"].get("source") in {"receipt", "logs"},
+                    "Reconciliation names its source: the terminal receipt or the logs")
         if kind == "run.abandon":
             require(actor == run["agent"], "Only the original run starter may declare abandonment")
             require(set(d) == {"id", "starter", "reason", "evidence", "observation", "legacy"} and
@@ -1423,6 +1711,8 @@ def validate(state, kind, actor, d, stored_packet=None):
 
 
 ABANDON_FORM = "squadra-run-abandon/1"
+RUN_OUTPUTS = ("stdout.log", "stderr.log", "reply.txt")
+RECONCILE_FILES = RUN_OUTPUTS + ("schema.json", "input.txt")
 
 
 def abandonment_observation(value, run_id):
@@ -1499,12 +1789,29 @@ def validate_abandonment_files(store, run, data):
             "Abandonment evidence artifact changed")
     require(abandonment_observation(json.loads(body), run["id"]) == data.get("observation"),
             "Abandonment declaration differs from evidence")
-    _, _, metadata, terminal = run_lease_paths(store.root, run["id"])
+    _, _, _, terminal = run_lease_paths(store.root, run["id"])
     require(not os.path.lexists(terminal), "A terminal result receipt exists; abandonment cannot erase it")
+    _owned_process_gone(store, run, "abandonment")
+    folder = store.root / "runs" / run["id"]
+    require(folder.parent == store.root / "runs", "Unsafe run folder")
+    if os.path.lexists(folder):
+        import stat
+        require(stat.S_ISDIR(folder.lstat().st_mode), "Unsafe run folder")
+        for name in RUN_OUTPUTS:
+            path = folder / name
+            if os.path.lexists(path):
+                st = path.lstat()
+                require(stat.S_ISREG(st.st_mode) and st.st_size == 0,
+                        "Run output exists; abandonment cannot declare no results")
+
+
+def _owned_process_gone(store, run, action):
+    """The launch phase is settled and no process group the run recorded is still live."""
+    _, _, metadata, _ = run_lease_paths(store.root, run["id"])
     if os.path.lexists(metadata):
         owned = json.loads(_private_run_file(metadata))
         require(owned.get("run") == run["id"] and owned.get("phase") in {"not-started", "spawned", "disposed"},
-                "Process launch is uncertain; abandonment refused")
+                "Process launch is uncertain; " + action + " refused")
         pgid = owned.get("pgid")
         if pgid is not None:
             require(type(pgid) is int and pgid > 0, "Invalid owned process group")
@@ -1518,17 +1825,117 @@ def validate_abandonment_files(store, run, data):
                 raise Error("A recorded process group is still live")
     else:
         require(not run.get("lease_version"), "New runtime lease observation is missing")
+
+
+def _run_files(store, run):
+    """Regular files a run left in its folder, by name, among RECONCILE_FILES."""
+    import stat
     folder = store.root / "runs" / run["id"]
     require(folder.parent == store.root / "runs", "Unsafe run folder")
-    if os.path.lexists(folder):
-        import stat
-        require(stat.S_ISDIR(folder.lstat().st_mode), "Unsafe run folder")
-        for name in ("stdout.log", "stderr.log", "reply.txt"):
-            path = folder / name
-            if os.path.lexists(path):
-                st = path.lstat()
-                require(stat.S_ISREG(st.st_mode) and st.st_size == 0,
-                        "Run output exists; abandonment cannot declare no results")
+    if not os.path.lexists(folder):
+        return {}
+    require(stat.S_ISDIR(folder.lstat().st_mode), "Unsafe run folder")
+    found = {}
+    for name in RECONCILE_FILES:
+        path = folder / name
+        if os.path.lexists(path):
+            require(stat.S_ISREG(path.lstat().st_mode), "Unsafe run file: " + name)
+            found[name] = path
+    return found
+
+
+def _terminal_receipt(store, run):
+    """The run's private terminal result receipt, or None when the run wrote none."""
+    terminal = run_lease_paths(store.root, run["id"])[3]
+    if not os.path.lexists(terminal):
+        return None, terminal
+    body = _private_run_file(terminal)
+    value = json.loads(body)
+    require(isinstance(value, dict) and value.get("run") == run["id"] and isinstance(value.get("status"), str),
+            "Terminal result receipt does not name this run")
+    return value, terminal
+
+
+def reconciled_status(run, receipt_status):
+    """A precheck keeps its receipt's status; a passed proof, probe or model run is not rebuilt without its evidence."""
+    if run["mode"] != "precheck" and receipt_status in {"passed", "matched"}:
+        return "interrupted"
+    return receipt_status
+
+
+def reconcile_end(store, run):
+    """The run.end the starter records for an orphaned run: from its terminal receipt, else interrupted with its logs."""
+    receipt, terminal = _terminal_receipt(store, run)
+    files = _run_files(store, run)
+    artifacts = [store.artifact(files[name]) for name in RECONCILE_FILES if name in files]
+    if receipt is None:
+        require(any(files[name].stat().st_size for name in RUN_OUTPUTS if name in files),
+                "Nothing to reconcile: no terminal receipt and no output; declare the run abandoned instead")
+        return {"id": run["id"], "status": "interrupted", "native_rc": None, "ended": now(),
+                "error": "Reconciled by the starter: the run's process ended without a recorded result",
+                "artifacts": artifacts, "reconciled": {"source": "logs"}}
+    status = reconciled_status(run, receipt["status"])
+    data = {"id": run["id"], "status": status, "native_rc": receipt.get("native_rc"), "ended": receipt.get("ended"),
+            "artifacts": artifacts,
+            "reconciled": {"source": "receipt", "receipt_status": receipt["status"], "receipt": store.artifact(terminal)}}
+    if status != receipt["status"]:
+        data["error"] = "Reconciled from a receipt without its recorded evidence; a passed result is not rebuilt"
+    return data
+
+
+def validate_reconcile_files(store, run, data):
+    """Under the run lease: the record repeats the receipt, or the settled process and its logs, exactly."""
+    reconciled = data["reconciled"]
+    receipt, terminal = _terminal_receipt(store, run)
+    files = _run_files(store, run)
+    listed = [(a.get("name"), a.get("sha256")) for a in data.get("artifacts") or [] if isinstance(a, dict)]
+    require(len(listed) == len(data.get("artifacts") or []) and
+            listed == [(name, digest(files[name].read_bytes())) for name in RECONCILE_FILES if name in files],
+            "Reconciliation must list every file the run left, with its current bytes")
+    if receipt is None:
+        require(reconciled.get("source") == "logs", "No terminal result receipt exists for this run")
+        _owned_process_gone(store, run, "reconciliation")
+        require(any(files[name].stat().st_size for name in RUN_OUTPUTS if name in files),
+                "Nothing to reconcile: no terminal receipt and no output; declare the run abandoned instead")
+        require(data.get("status") == "interrupted" and data.get("native_rc") is None,
+                "A run without a receipt is reconciled as interrupted, with no native result")
+        return
+    body = _private_run_file(terminal)
+    kept = reconciled.get("receipt")
+    require(reconciled.get("source") == "receipt" and reconciled.get("receipt_status") == receipt["status"] and
+            isinstance(kept, dict) and kept.get("sha256") == digest(body) and kept.get("bytes") == len(body),
+            "A terminal result receipt exists; reconcile from it")
+    require(data.get("status") == reconciled_status(run, receipt["status"]) and
+            data.get("native_rc") == receipt.get("native_rc") and data.get("ended") == receipt.get("ended"),
+            "Reconciliation differs from the terminal result receipt")
+
+
+def registry_git_root(root):
+    """Refuse tracked registry contents before creating the private ignore rule."""
+    ancestor = root
+    while not ancestor.is_dir() and ancestor != ancestor.parent:
+        ancestor = ancestor.parent
+    probe = git_probe('-C', str(ancestor), 'rev-parse', '--show-toplevel')
+    if probe.returncode:
+        return None
+    repo = Path(os.fsdecode(probe.stdout).removesuffix('\n')).resolve()
+    require(root != repo, 'Registry root must be a separate folder, not the Git worktree root')
+    tracked = git(repo, '--literal-pathspecs', 'ls-files', '-z', '--', str(root.relative_to(repo)))
+    require(not tracked, 'Registry folder contains tracked files; remove them from the Git index before init: ' + str(root))
+    return repo
+
+
+def protect_registry_root(root):
+    repo = registry_git_root(root)
+    ignore = root / '.gitignore'
+    require(not ignore.is_symlink(), 'Registry .gitignore symlink refused')
+    body = ignore.read_bytes() if ignore.exists() else b''
+    root.mkdir(parents=True, mode=0o700, exist_ok=True)
+    if not body or body.splitlines()[-1:] != [b'*']:
+        atomic(ignore, body + (b'\n' if body and not body.endswith(b'\n') else b'') + b'*\n')
+    if repo is not None:
+        ignored = git_probe('-C', str(repo), 'check-ignore', '--quiet', '--', str(root / 'registry.sqlite3'))
+        require(ignored.returncode == 0, 'Registry folder is not ignored by Git: ' + str(root))
 
 
 class Store:
@@ -1537,13 +1944,28 @@ class Store:
         self.read_only = read_only
         self._views = []
         self._integrity_failed = False
+        self._cache_mismatch = False
+        self._summary_context = None
+        self._wait_memo = None
+        self.commit_count = 0
+        self.last_commit = None
         if create:
-            self.root.mkdir(parents=True, mode=0o700, exist_ok=True)
+            protect_registry_root(self.root)
         require(self.root.is_dir(), "Unknown workspace: " + str(self.root))
         self.path = self.root / "registry.sqlite3"
         require(not self.path.is_symlink(), "Registry symlink refused")
         if not create:
             require(self.path.is_file(), "Workspace not initialized")
+        if not create and not read_only:
+            try:
+                fd = os.open(self.root / '.gitignore', os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+            except FileExistsError:
+                pass
+            else:
+                with os.fdopen(fd, 'wb') as handle:
+                    handle.write(b'*\n')
+                    handle.flush()
+                    os.fsync(handle.fileno())
         self.db = sqlite3.connect(self.path.as_uri() + "?mode=ro" if read_only else self.path,
                                   uri=read_only, timeout=30, isolation_level=None)
         self.db.row_factory = sqlite3.Row
@@ -1572,6 +1994,7 @@ class Store:
 
     def close(self):
         self.release_views()
+        self._summary_context = self._wait_memo = None
         self.db.close()
 
     def decode_event(self, row):
@@ -1619,32 +2042,22 @@ class Store:
                                 self.root / "artifacts")
 
     def resolved(self, state=None):
-        from collections.abc import Mapping
         from source_manifests import materialize_task, transform_run
         source = self.view() if state is None else state
         store = self
-        class Entities(Mapping):
-            def __init__(self, values, resolver):
-                self.values_source, self.resolver, self.memo = values, resolver, {}
-            def __getitem__(self, key):
-                if key not in self.memo:
-                    self.memo[key] = self.resolver(plain(self.values_source[key]))
-                return self.memo[key]
-            def __iter__(self):
-                return iter(self.values_source)
-            def __len__(self):
-                return len(self.values_source)
         class Resolved(dict):
             pass
         result = Resolved(source.items())
         result.current = current_index(source)
-        result['tasks'] = Entities(source['tasks'], lambda task: materialize_task(task, store.root / 'artifacts'))
-        result['runs'] = Entities(source['runs'], lambda run: transform_run(run, store.resolve_snapshot))
+        if hasattr(source, 'wait_context'):
+            result.wait_context = source.wait_context
+        result['tasks'] = ReadEntities(source['tasks'], lambda _, task: materialize_task(plain(task), store.root / 'artifacts'))
+        result['runs'] = ReadEntities(source['runs'], lambda _, run: transform_run(plain(run), store.resolve_snapshot))
         return result
 
     def normalized_state(self, events, writer=None):
         from source_manifests import compact, transform_task, transform_run, transform_event
-        state = self.state(events, resolve=False)
+        state = self.state(events, resolve=False, with_waits=False)
         def reference(body, name, original):
             return {"sha256": digest(body), "name": name, "original": original, "bytes": len(body)}
         convert = lambda value: compact(value, writer or reference)
@@ -1674,32 +2087,48 @@ class Store:
             events = self.events()
             state = self.state(checked(events))
             check_cancelled()
-            self.verify_artifacts(state)
+            scrubbed = scrub_index(events)
+            self.verify_artifacts(state, scrubbed=scrubbed)
             check_cancelled()
             memory = sqlite3.connect(':memory:', isolation_level=None)
             memory.row_factory = sqlite3.Row
             if cancelled is not None:
                 memory.set_progress_handler(lambda: int(cancelled()), 1000)
             try:
-                expected = Tree.build(memory, self.normalized_state(checked(events))).flush()
+                normalized = self.normalized_state(checked(events))
+                expected = Tree.build(memory, normalized).flush()
                 check_cancelled()
                 import registry_current
                 current_state = registry_current.build(checked(events), apply, initial)
                 expected_current = Tree.build(memory, current_state, domain='current').flush()
                 check_cancelled()
+                prefix_agrees = False
                 try:
                     cached, meta = load(self)
                     agrees = meta['state'] == expected and meta['current'] == expected_current and meta['seq'] == len(events)
                     if agrees:
                         # Traversal checks committed leaves as well as the independently computed root.
-                        agrees = (plain(cached.root) == self.normalized_state(events) and
+                        agrees = (plain(cached.root) == normalized and
                                   plain(cached.current_tree.root) == current_state)
-                except (IntegrityError, sqlite3.DatabaseError, ValueError, KeyError, TypeError):
+                    elif 0 <= meta['seq'] < len(events):
+                        prefix = events[:meta['seq']]
+                        prefix_agrees = (plain(cached.root) == self.normalized_state(checked(prefix)) and
+                                         plain(cached.current_tree.root) == registry_current.build(checked(prefix), apply, initial))
+                except sqlite3.DatabaseError as exc:
+                    check_cancelled()
+                    if 'no such table' not in str(exc):
+                        raise
+                    agrees = False
+                except (IntegrityError, ValueError, KeyError, TypeError):
                     check_cancelled()
                     agrees = False
             finally:
                 memory.close()
-            return {'events': events, 'state': state, 'cache': 'matched' if agrees else 'rebuilt-in-memory'}
+            from registry_prepare import cache_presence
+            status = 'matched' if agrees else 'unavailable' if prefix_agrees else cache_presence(self)
+            self._cache_mismatch = status == 'mismatch'
+            return {'events': events, 'state': state, 'cache': status,
+                    'scrubbed': scrub_report(self.root, events, scrubbed)}
         except BaseException:
             self._integrity_failed = True
             raise
@@ -1741,11 +2170,16 @@ class Store:
             if suffix:
                 meta = save(self, tree, suffix[-1]['seq'], suffix[-1]['hash'])
             return tree, meta
-        except (IntegrityError, sqlite3.DatabaseError, ValueError, KeyError, TypeError):
-            return self._rebuild_cache()
+        except sqlite3.DatabaseError as exc:
+            if 'no such table' not in str(exc):
+                raise
+            raise IntegrityError('Derived cache preparation required') from exc
+        except (IntegrityError, ValueError, KeyError, TypeError) as exc:
+            raise IntegrityError('Derived cache preparation required') from exc
 
     def view(self):
         """A demanded-value view on one read transaction; no derived writes."""
+        require(not self._cache_mismatch, 'Cache mismatch; run squadra doctor --repair')
         from registry_cache import load
         from registry_radix import IntegrityError
         reader = Store(self.root, read_only=True)
@@ -1756,27 +2190,54 @@ class Store:
             if tail and (tail['seq'], tail['hash']) != (meta['seq'], meta['head']):
                 # An old writer does not maintain the derived tables.
                 result = reader.state()
+                result = wait_view(result, result.wait_context)
                 reader.close()
                 return result
             tree.recover_callback = lambda: reader.normalized_state(reader.events())
             import registry_current
             tree.current_tree.recover_callback = lambda: registry_current.build(reader.events(), apply, initial)
             self._views.extend([reader, tree, tree.current_tree])
-            return tree.root
+            return wait_view(tree.root, self._wait_context(reader, meta))
         except (IntegrityError, sqlite3.DatabaseError, ValueError, KeyError, TypeError):
             try:
-                return reader.state()
+                result = reader.state()
+                return wait_view(result, result.wait_context)
             finally:
                 reader.close()
         except BaseException:
             reader.close()
             raise
 
-    def state(self, events=None, *, resolve=True):
+    def _wait_context(self, reader, meta):
+        """One bounded memo; file/WAL changes invalidate even an unchanged journal head."""
+        def marker():
+            stamps = []
+            for path in (self.path, Path(str(self.path) + '-wal')):
+                try:
+                    value = path.stat()
+                    stamps.append((value.st_dev, value.st_ino, value.st_size, value.st_mtime_ns, value.st_ctime_ns))
+                except FileNotFoundError:
+                    stamps.append(None)
+            return (self.db.execute('PRAGMA data_version').fetchone()[0], *stamps,
+                    meta['seq'], meta['head'])
+        key = marker()
+        if self._wait_memo is not None and self._wait_memo[0] == key:
+            return self._wait_memo[1]
+        rows = reader.db.execute("SELECT * FROM events WHERE kind IN ('transport','plan','settings') AND seq<=? ORDER BY seq",
+                                 (meta['seq'],))
+        facts = wait_facts(reader.decode_event(row) for row in rows)
+        if marker() == key:
+            self._wait_memo = key, facts
+        return facts
+
+    def state(self, events=None, *, resolve=True, with_waits=True):
         state = initial()
         referenced = False
+        relevant = []
         for event in self.events() if events is None else events:
             apply(state, event)
+            if with_waits and event['kind'] in {'transport', 'plan', 'settings'}:
+                relevant.append(event)
             if resolve and not referenced:
                 keys = (('before', 'after') if event['kind'] in {'run.start', 'run.end'} else
                         ('snapshot',) if event['kind'] == 'deliver' else
@@ -1787,6 +2248,9 @@ class Store:
         if resolve and referenced:
             from source_manifests import materialize_known
             state = materialize_known(state, self.root / 'artifacts')
+        if with_waits:
+            state = ReadState(state)
+            state.wait_context = wait_facts(relevant)
         return state
 
     def append(self, kind, actor, data, event_id=None):
@@ -1796,19 +2260,74 @@ class Store:
         require(not self._integrity_failed, "Full verification failed; no further writes on this connection")
         operations = list(operations)
         with ExitStack() as leases:
-            for run_id in sorted({data["id"] for kind, _, data, _ in operations if kind == "run.abandon"}):
+            for run_id in sorted({data["id"] for kind, _, data, _ in operations if kind == "run.abandon" or
+                                  (kind == "run.end" and data.get("reconciled") is not None)}):
                 leases.enter_context(run_lease(self.root, run_id))
             return self._batch_owned(operations)
 
     def _batch_owned(self, operations, recovering=False):
+        from registry_prepare import PreparedCache, StalePreparation, identity, position
         from registry_radix import IntegrityError
-        self.db.execute("BEGIN IMMEDIATE")
+        require(not self._cache_mismatch, 'Cache mismatch; run squadra doctor --repair')
+        prepared = None
         try:
-            tree, meta = self._cached()
+            for attempt in range(3):
+                declarations = {data['id']: data for kind, _, data, _ in operations if kind == 'task'}
+                closing = [data['task'] for kind, _, data, _ in operations if kind == 'close']
+                gate = bool(closing) and any(declarations.get(name, self.view()['tasks'].get(name, {})).get('release_gate')
+                                             for name in closing)
+                audited = None
+                if gate:
+                    marker = identity(self), self.db.execute('PRAGMA data_version').fetchone()[0]
+                    result = self.audit()
+                    require(result['cache'] != 'mismatch', 'Cache mismatch; run squadra doctor --repair')
+                    for _, _, data, _ in operations:
+                        self.verify_artifacts(data)
+                    events = result['events']
+                    audited = (marker, (events[-1]['seq'], events[-1]['hash']) if events else (0, '0' * 64))
+                try:
+                    return self._commit_batch(operations, prepared, audited)
+                except (IntegrityError, StalePreparation) as exc:
+                    if attempt == 2:
+                        raise sqlite3.OperationalError('registry busy, retry: database is locked')
+                    if prepared is not None:
+                        prepared.close()
+                    prepared = None
+                    if isinstance(exc, IntegrityError):
+                        prepared = PreparedCache(self)
+                        prepared.force_replacement = getattr(exc, 'force_replacement', False)
+            raise sqlite3.OperationalError('registry busy, retry: database is locked')
+        finally:
+            if prepared is not None:
+                prepared.close()
+
+    def _commit_batch(self, operations, prepared, audited):
+        from registry_prepare import StalePreparation, identity, position
+        from registry_radix import IntegrityError
+        if prepared is not None:
+            prepared.attach(self)
+        self.db.execute("BEGIN IMMEDIATE")
+        loaded = False
+        try:
+            if audited is not None:
+                marker = identity(self), self.db.execute('PRAGMA data_version').fetchone()[0]
+                if marker != audited[0] or position(self) != audited[1]:
+                    raise StalePreparation('Registry changed after release-gate audit')
+            if prepared is not None and getattr(prepared, 'force_replacement', False):
+                prepared.install(self)
+            try:
+                tree, meta = self._cached()
+            except IntegrityError:
+                if prepared is None:
+                    raise
+                prepared.install(self)
+                tree, meta = self._cached()
+            loaded = True
             state = tree.root
             previous = meta['head']
             last_seq = meta['seq']
             saved = []
+            appended = []
             for kind, actor, data, event_id in operations:
                 event_id = event_id or uuid.uuid4().hex
                 from source_manifests import transform_event, transform_packet
@@ -1824,19 +2343,32 @@ class Store:
                 checked_data = transform_event(kind, data, self.resolve_snapshot)
                 if kind == 'deliver' and 'packet_data' in checked_data:
                     checked_data = {**checked_data, 'packet_data': transform_packet(checked_data['packet_data'], self.resolve_snapshot)}
-                if kind == 'close' and state['tasks'].get(data.get('task'), {}).get('release_gate') is True:
-                    self.audit()
-                validate(self.resolved(state) if kind in {'run.start', 'run.end', 'deliver', 'review', 'close', 'challenge'} else state,
-                         kind, actor, checked_data, stored_packet=data.get("packet_data") if kind == "deliver" else None)
+                if kind in {'run.start', 'run.end', 'deliver', 'review', 'close', 'challenge'}:
+                    target = self.resolved(state)
+                elif kind == 'availability' and data.get('ping'):
+                    # A sweep re-checks that its ping is due, and only a delivered ping can be due.
+                    rows = self.db.execute("SELECT * FROM events WHERE kind='transport' ORDER BY seq")
+                    target = wait_view(state, wait_facts(self.decode_event(row) for row in rows))
+                else:
+                    target = state
+                validate(target, kind, actor, checked_data, stored_packet=data.get("packet_data") if kind == "deliver" else None)
                 if kind == "run.abandon":
                     validate_abandonment_files(self, state["runs"][data["id"]], data)
+                if kind == "run.end" and data.get("reconciled") is not None:
+                    validate_reconcile_files(self, state["runs"][data["id"]], data)
+                if kind == "decision" and "scrub" in checked_data:
+                    validate_scrub_artifact(self.events(), checked_data["scrub"])
                 from source_manifests import transform_event
                 data = json.loads(canonical(transform_event(kind, data, self.compact_snapshot)))
                 event = {"id": event_id, "utc": now(), "kind": kind, "actor": actor,
                          "data": data, "previous": previous, "format": 2}
+                # A restore of a package with no new-format event keeps the envelope the saving version can read.
+                if kind == "restore.freeze" and self.db.execute(
+                        "SELECT 1 FROM events WHERE hash_format=2 LIMIT 1").fetchone() is None:
+                    del event["format"]
                 h = digest(canonical(event).encode())
                 cursor = self.db.execute("INSERT INTO events(id,utc,kind,actor,data,previous,hash,hash_format) VALUES(?,?,?,?,?,?,?,?)",
-                                         (event_id, event["utc"], kind, actor, canonical(data), previous, h, 2))
+                                         (event_id, event["utc"], kind, actor, canonical(data), previous, h, event.get("format")))
                 recorded = {**event, "seq": cursor.lastrowid}
                 apply(state, recorded)
                 import registry_current
@@ -1844,25 +2376,52 @@ class Store:
                 last_seq = cursor.lastrowid
                 previous = h
                 saved.append(event_id)
+                appended.append({'event': event_id, 'seq': last_seq})
             from registry_cache import save
             save(self, tree, last_seq, previous)
             self.db.execute("COMMIT")
+            if appended:
+                self.commit_count += len(appended)
+                self.last_commit = appended[-1]
             return saved
-        except IntegrityError:
-            self.db.execute("ROLLBACK")
-            if recovering:
-                raise
-            self.db.execute("BEGIN IMMEDIATE")
-            try:
-                self._rebuild_cache()
-                self.db.execute("COMMIT")
-            except BaseException:
-                self.db.execute("ROLLBACK")
-                raise
-            return self._batch_owned(operations, recovering=True)
+        except IntegrityError as exc:
+            self.db.execute('ROLLBACK')
+            exc.force_replacement = loaded
+            raise
         except BaseException:
             self.db.execute("ROLLBACK")
             raise
+
+    def repair_cache(self):
+        """Explicitly rebuild derived tables; a saved package is not a writable workspace."""
+        from registry_prepare import PreparedCache, StalePreparation, saved_registry
+        require(not saved_registry(self.root),
+                'Cache repair refused inside a saved package or checkpoint')
+        writer = Store(self.root)
+        try:
+            for attempt in range(3):
+                prepared = PreparedCache(writer)
+                try:
+                    prepared.attach(writer)
+                    writer.db.execute('BEGIN IMMEDIATE')
+                    try:
+                        prepared.install(writer)
+                        writer._cached()
+                        writer.db.execute('COMMIT')
+                    except BaseException:
+                        writer.db.execute('ROLLBACK')
+                        raise
+                    checked = writer.audit()
+                    require(checked['cache'] == 'matched', 'Cache repair did not match the journal')
+                    self._cache_mismatch = False
+                    return checked
+                except StalePreparation:
+                    pass
+                finally:
+                    prepared.close()
+            raise sqlite3.OperationalError('registry busy, retry: database is locked')
+        finally:
+            writer.close()
 
     def artifact(self, path):
         path = Path(path).resolve(strict=True)
@@ -1881,13 +2440,20 @@ class Store:
             atomic(destination, body)
         return {"sha256": sha, "name": name, "original": original, "bytes": len(body)}
 
-    def verify_artifacts(self, value=None):
+    def verify_artifacts(self, value=None, scrubbed=None):
+        """Every referenced artifact is present and unchanged; a recorded scrub decision excuses only an absent file."""
         state = self.state() if value is None else value
+        def excused(sha):
+            nonlocal scrubbed
+            if scrubbed is None:
+                scrubbed = scrub_index(self.events())
+            return sha in scrubbed
         def walk(value):
             if isinstance(value, dict):
                 if {"sha256", "name", "bytes", "original"} <= value.keys():
                     path = self.root / "artifacts" / value["sha256"]
-                    require(path.is_file() and digest(path.read_bytes()) == value["sha256"], "Missing/changed artifact " + value["name"])
+                    if os.path.lexists(path) or not excused(value["sha256"]):
+                        require(path.is_file() and digest(path.read_bytes()) == value["sha256"], "Missing/changed artifact " + value["name"])
                 for v in value.values():
                     walk(v)
             elif isinstance(value, list):
@@ -1899,13 +2465,21 @@ class Store:
     def publish(self):
         from registry_projections import publish
         require(not self.read_only, "Read-only store cannot publish projections")
+        self._summary_context = None
         def summary():
             state = self.view()
+            view = attention(state)
+            self._summary_context = state, view
             index = current_index(state)
-            lines = ["# Squadra · current summary / riepilogo corrente", "",
-                     "Registry / Registro #" + str(state['event_count']),
-                     "Full state/mail: use squadra export / Stato e posta completi: squadra export", "",
-                     "| Window / Finestra | Next step / Prossimo passo |", "|---|---|"]
+            en_summary = state["workspace"].get("lang", "it") == "en"
+            if en_summary:
+                lines = ["# Squadra · current summary", "", "Registry #" + str(state['event_count']),
+                         "Full state/mail: use squadra export"]
+            else:
+                lines = ["# Squadra · riepilogo corrente", "", "Registro #" + str(state['event_count']),
+                         "Stato e posta completi: squadra export"]
+            lines += forwarding_lines(view['waiting'], state['workspace'].get('lang', 'it'))
+            lines += ["", "| Window | Next step |" if en_summary else "| Finestra | Prossimo passo |", "|---|---|"]
             for actor in state['agents']:
                 if index is not None:
                     from registry_current import latest_output
@@ -1916,9 +2490,11 @@ class Store:
             atomic(self.root / 'stato.md', ('\n'.join(lines) + '\n').encode())
         return publish(self, summary=summary)
 
-    def project(self, with_events=False):
+    def project(self, with_events=False, audited=False):
         require(not self.read_only, "Read-only store cannot export projections")
-        self.audit()
+        require(not self._cache_mismatch, 'Cache mismatch; run squadra doctor --repair')
+        if not audited:
+            require(self.audit()['cache'] != 'mismatch', 'Cache mismatch; run squadra doctor --repair')
         # The export lock covers fresh reads and all derived files; concurrent exporters cannot regress state.
         lock = self.root / "projection.lock"
         with lock.open("a+b") as f:
@@ -1953,7 +2529,11 @@ class Store:
                 folder = self.root / "posta"; folder.mkdir(mode=0o700, exist_ok=True)
                 for day, parts in daily.items():
                     atomic(folder / ("exchange-" + day + ".md"), "".join(parts).encode())
-                atomic(self.root / "stato.md", (table(state, events=events) + "\n").encode())
+                summary_state = wait_view({**state, 'root': str(self.root)}, wait_facts(events))
+                summary_attention = attention(summary_state)
+                self._summary_context = summary_state, summary_attention
+                atomic(self.root / "stato.md", (table(summary_state, events=events,
+                       attention_value=summary_attention) + "\n").encode())
                 from registry_projections import mark_full_export
                 mark_full_export(self, events[-1]['seq'] if events else 0,
                                  events[-1]['hash'] if events else '0' * 64, locked=True)
@@ -1962,9 +2542,11 @@ class Store:
                 if os.name == "nt":
                     f.seek(0); msvcrt.locking(f.fileno(), msvcrt.LK_UNLCK, 1)
 
-    def checkpoint(self, destination):
+    def checkpoint(self, destination, *, audit_source=True, report=None):
         from registry_checkpoint import CheckpointError, copy_immutable_tree, verify_tree
-        self.audit()
+        require(not self._cache_mismatch, 'Cache mismatch; run squadra doctor --repair')
+        if audit_source:
+            require(self.audit()['cache'] != 'mismatch', 'Cache mismatch; run squadra doctor --repair')
         destination = Path(destination).resolve()
         require(not destination.exists(), "Checkpoint destination must be new")
         destination.mkdir(parents=True, mode=0o700)
@@ -1984,8 +2566,14 @@ class Store:
             raise Error("Checkpoint file copy refused: " + str(exc)) from exc
         check = Store(destination)
         try:
-            check.audit()
-            check.project()
+            checked = check.audit()
+            require(checked['cache'] != 'mismatch', 'Cache mismatch; run squadra doctor --repair')
+            events = checked["events"]
+            if report is not None:
+                report.update(event_count=len(events), event_head=events[-1]["hash"] if events else "0" * 64)
+                if checked["scrubbed"]:
+                    report["scrubbed"] = checked["scrubbed"]
+            check.project(audited=True)
         finally:
             check.close()
         try:
@@ -2094,26 +2682,54 @@ def board(state, lang=None, read_at=None, events=(), *, live=True):
     return "\n".join(lines)
 
 
-def table(state, read_at=None, events=(), *, compact=False):
+def step_text(step, en):
+    """A next step in the workspace language; a recorded deferral reason stays as written."""
+    if not en:
+        return step["text"]
+    _, deferred, tail = step["text"].partition(" · rinviato da ")
+    return STEP_TEXT_EN.get(step["phase"], step["text"]) + (" · deferred by " + tail if deferred else "")
+
+
+def wait_text(wait, en):
+    """A wait in the workspace language; the Italian sentence is the recorded one."""
+    if not en:
+        return wait["text"]
+    kind = "pool" if wait["kind"] == "ack" and wait.get("handoffs") else wait["kind"]
+    return WAIT_TEXT_EN.get(kind) or STEP_TEXT_EN.get(kind) or wait["text"]
+
+
+def table(state, read_at=None, events=(), *, compact=False, lang=None, attention_value=None):
+    """Print the board and the owner, wait and next-step blocks in the workspace language."""
+    lang = lang or state["workspace"].get("lang", "it")
+    require(lang in {"it", "en"}, "Board language must be it or en")
+    en = lang == "en"
     tasks = list(state["tasks"].values())
-    view = attention(state)
-    lines = [board(state, read_at=read_at, events=events, live=read_at is not None), "", "Serve a te:"]
+    view = attention(state) if attention_value is None else attention_value
+    lines = [board(state, lang, read_at=read_at, events=events, live=read_at is not None), "",
+             "Needs you:" if en else "Serve a te:"]
     information = information_count(state)
     if information:
-        lines.insert(1, "Informazioni senza conferma richiesta: " + str(information))
+        lines.insert(1, ("Information messages with no confirmation required: " if en
+                         else "Informazioni senza conferma richiesta: ") + str(information))
     for item in view["for_owner"]:
-        lines.append("- " + item["question"] + (" · " + item["task"] if item.get("task") else ""))
+        question = OWNER_TEXT_EN.get(item["kind"], item["question"]) if en else item["question"]
+        lines.append("- " + question + (" · " + item["task"] if item.get("task") else ""))
         for option in item.get("options", []):
-            lines.append("  " + option["id"] + ": " + option["label"] + " · Frase: " + option["say"])
+            lines.append("  " + option["id"] + ": " + option["label"] + (" · Say: " if en else " · Frase: ") + option["say"])
     if not view["for_owner"]:
-        lines.append("Nessuna richiesta registrata — una domanda fatta solo in chat non compare qui.")
+        lines.append("No request recorded — a question asked only in chat does not appear here." if en
+                     else "Nessuna richiesta registrata — una domanda fatta solo in chat non compare qui.")
+    lang = state['workspace'].get('lang', 'it')
+    if read_at is None:
+        lines += forwarding_lines(view['waiting'], lang)
     if read_at is not None:
-        lines += ["", "Attese calcolate al " + str(read_at) + ":"]
-        waiting = waits(state, read_at)
+        lines += ["", ("Waits computed at " if en else "Attese calcolate al ") + str(read_at) + ":"]
+        waiting = waits(state, read_at, attention_value=view)
         if compact:
             counts = {kind: sum(w['kind'] == kind for w in waiting)
                       for kind in sorted({w['kind'] for w in waiting})}
-            lines.append(str(len(waiting)) + " totali · " + ", ".join(k + ": " + str(v) for k, v in counts.items()))
+            lines.append(str(len(waiting)) + (" in total · " if en else " totali · ")
+                         + ", ".join(k + ": " + str(v) for k, v in counts.items()))
             active = {state['agents'][actor]['identity'] for step in view['next_steps']
                       if state['tasks'][step['task']]['status'] != 'done'
                       for actor in step['who'] if actor in state['agents']}
@@ -2126,7 +2742,7 @@ def table(state, read_at=None, events=(), *, compact=False):
                     return True
                 message = state['messages'].get(wait['id'], {})
                 task = state['tasks'].get(wait.get('task') or message.get('task') or message.get('related_task'), {})
-                if not task or task.get('superseded_by') or task['status'] == 'done':
+                if not task:
                     return False
                 if message.get('task') and task['status'] == 'waiting-ack':
                     return True
@@ -2135,43 +2751,50 @@ def table(state, read_at=None, events=(), *, compact=False):
                     or wait['id'] in delivery.get('handoffs', []))
 
             grouped = {}
-            for wait in waiting:
+            for wait in fold_forward_waits(waiting):
                 if not blocking(wait):
                     continue
                 message = state['messages'].get(wait.get('id'), {})
                 task = wait.get('task') or message.get('task') or message.get('related_task')
-                key = (wait['kind'], task or wait.get('id', ''))
+                key = (wait['kind'], wait['id'] if wait['kind'] == 'to-forward' else task or wait.get('id', ''))
                 previous = grouped.get(key)
                 oldest = wait if previous is None or wait['seconds'] > previous['seconds'] else previous
                 grouped[key] = {**oldest, 'count': 1 + (previous['count'] if previous else 0)}
-            priority = {'ack': 0, 'delivered': 0, 'reviewed': 0, 'alive': 1, 'cleanup-unknown': 2, 'heartbeat': 3}
+            priority = {'to-forward': -1, 'ack': 0, 'plan': 0, 'delivered': 0, 'reviewed': 0, 'alive': 1, 'cleanup-unknown': 2, 'heartbeat': 3}
             waiting = sorted(grouped.values(), key=lambda w: (priority.get(w['kind'], 2),
                              -w['seconds'], w['kind'], str(w.get('task', w.get('id', '')))))[:5]
-        lines += ["- " + w["kind"] + " · " + str(w.get("task", w.get("id", ""))) + " · " + str(w["seconds"]) + "s"
-                  + (" (" + str(w['count']) + " attese, la più vecchia)" if w.get('count', 1) > 1 else "")
-                  + " · " + w["text"] for w in waiting]
+        lines += ["- " + w["kind"] + " · " + str(w['id'] if w['kind'] == 'to-forward' else w.get("task", w.get("id", ""))) + " · " + str(w["seconds"]) + "s"
+                  + ((" (" + str(w['count']) + (" waits, the oldest)" if en else " attese, la più vecchia)"))
+                     if w.get('count', 1) > 1 else "")
+                  + " · " + (w['text_en'] if en and w.get('text_en') else wait_text(w, en))
+                  + (' · ' + w['ack_command'] if w.get('ack_command') else '') for w in waiting]
         if compact:
-            lines.append("Tutte le attese e i dettagli: squadra status --all.")
+            lines.append("All waits and details: squadra status --all." if en
+                         else "Tutte le attese e i dettagli: squadra status --all.")
     if compact:
         steps = [item for item in view['next_steps'] if item['status'] != 'done']
-        lines += ["", "Prossimo passo per incarico:",
-                  "| Incarico | Finestra / ruolo | Prossimo passo |", "|---|---|---|"]
+        lines += ["", "Next step per task:" if en else "Prossimo passo per incarico:",
+                  "| Task | Window / role | Next step |" if en else "| Incarico | Finestra / ruolo | Prossimo passo |",
+                  "|---|---|---|"]
         for item in steps[:5]:
-            who = ', '.join(item['who']) or 'Da assegnare'
+            who = ', '.join(item['who']) or ('To assign' if en else 'Da assegnare')
             lines.append('| ' + ' | '.join(cell(value) for value in
-                         (item['task'], who + ' / ' + item['role'], item['text'])) + ' |')
+                         (item['task'], who + ' / ' + item['role'], step_text(item, en))) + ' |')
         if not steps:
-            lines.append('| — | — | Nessun passo pendente |')
+            lines.append('| — | — | No pending step |' if en else '| — | — | Nessun passo pendente |')
         if len(steps) > 5:
-            lines.append('Altri ' + str(len(steps) - 5) + ' passi: squadra status --all.')
+            lines.append((str(len(steps) - 5) + ' more steps: squadra status --all.') if en
+                         else ('Altri ' + str(len(steps) - 5) + ' passi: squadra status --all.'))
         return "\n".join(lines)
-    lines += ["", "Prossimo passo per incarico:"]
-    lines += ["- " + item["task"] + ": " + item["text"] for item in view["next_steps"]]
+    lines += ["", "Next step per task:" if en else "Prossimo passo per incarico:"]
+    lines += ["- " + item["task"] + ": " + step_text(item, en) for item in view["next_steps"]]
     if view["superseded"]:
-        lines += ["", "Sostituiti (storia conservata, fuori dai prossimi passi e dalle attese):"]
+        lines += ["", "Replaced (history kept, outside next steps and waits):" if en
+                  else "Sostituiti (storia conservata, fuori dai prossimi passi e dalle attese):"]
         lines += ["- " + item["task"] + " → " + item["by"] for item in view["superseded"]]
     lines += ["",
-             "| Finestra / ruolo | Incarico / candidato | Stato / prova | Skill | Prossimo passo |",
+             "| Window / role | Task / candidate | State / proof | Skill | Next step |" if en
+             else "| Finestra / ruolo | Incarico / candidato | Stato / prova | Skill | Prossimo passo |",
              "|---|---|---|---|---|"]
     for a in state["agents"].values():
         owned = [t for t in tasks if t["owner"] == a["id"]]
@@ -2187,26 +2810,40 @@ def table(state, read_at=None, events=(), *, compact=False):
         mentioned = [t for t in tasks if t["id"] == output.get("task") or t.get("coordinator") == a["id"] or
                      linked(t["id"])]
         relevant = owned or read or mentioned
-        work = ", ".join(t["id"] + (" @ " + t["candidate"]["head"][:10] if t.get("candidate") else "") for t in relevant) or "Nessun incarico assegnato"
-        status = ", ".join(t["status"] for t in owned) or "Registrato"
+        work = ", ".join(t["id"] + (" @ " + t["candidate"]["head"][:10] if t.get("candidate") else "") for t in relevant) or (
+            "No task assigned" if en else "Nessun incarico assegnato")
+        status = ", ".join(t["status"] for t in owned) or ("Recorded" if en else "Registrato")
         if relevant:
-            status = ", ".join(t["status"] + (" / ultima prova " + t["proofs"][-1]["status"] + " rc=" + str(t["proofs"][-1]["native_rc"]) + " @" + t["proofs"][-1].get("after", {}).get("sha256", "ignota")[:8] if t["proofs"] else " / prova pendente") for t in relevant)
+            status = ", ".join(t["status"] + ((" / latest proof " if en else " / ultima prova ") + t["proofs"][-1]["status"]
+                                              + " rc=" + str(t["proofs"][-1]["native_rc"]) + " @"
+                                              + t["proofs"][-1].get("after", {}).get("sha256", "unknown" if en else "ignota")[:8]
+                                              if t["proofs"] else (" / proof pending" if en else " / prova pendente"))
+                               for t in relevant)
         if standby(state, a["id"]):
             status = "STAND-BY · " + status
+        declared = ("Declared by the window · output " if en else "Dichiarato dalla finestra · output ")
         values = [a["id"] + " / " + a["role"] + " / " + a["client"], work, status,
-                  ", ".join(s["name"] + "@" + s["sha256"][:8] for s in a.get("skills", [])) or "Non dichiarate",
-                  ("Dichiarato dalla finestra · output " + output["event"][:8] + ": " if output else "") + output.get("next", "Da registrare")]
+                  ", ".join(s["name"] + "@" + s["sha256"][:8] for s in a.get("skills", [])) or ("Not declared" if en else "Non dichiarate"),
+                  (declared + output["event"][:8] + ": " if output else "") + output.get("next", "Not recorded yet" if en else "Da registrare")]
         lines.append("| " + " | ".join(cell(v) for v in values) + " |")
     held = [a["id"] for a in state["agents"].values() if standby(state, a["id"])]
     if held:
-        lines += ["", "Finestre in stand-by: " + ", ".join(held) + ". Nessun nuovo incarico; lavoro e riserve conservati."]
+        lines += ["", ("Windows on stand-by: " + ", ".join(held) + ". No new tasks; work and reservations kept.") if en
+                  else ("Finestre in stand-by: " + ", ".join(held) + ". Nessun nuovo incarico; lavoro e riserve conservati.")]
     if read_at is not None and (bool(current_index(state)["recipient_ping"]) if current_index(state) is not None else any(m.get("ping") for m in state["messages"].values())):
-        lines += ["", "Presenza dichiarata e risposte (non prova di processo vivo):"]
+        lines += ["", "Declared presence and replies (not proof of a live process):" if en
+                  else "Presenza dichiarata e risposte (non prova di processo vivo):"]
         for row in presence(state, read_at):
-            lines.append("- " + row["agent"] + " · " + row["availability"] + " · ultima risposta " + str(row["last_answer"])
+            lines.append("- " + row["agent"] + " · " + row["availability"] + (" · last reply " if en else " · ultima risposta ")
+                         + str(row["last_answer"])
                          + (" · ping " + row["ping"] + " · " + str(row["seconds"]) + "s / " + str(row["threshold"])
-                            + "s · " + ("ACK ricevuto" if row["answer"] else "risposta pendente") if row["ping"] else ""))
-    pending = len(current_index(state)["pending_messages"]) if current_index(state) is not None else sum(1 for _ in pending_messages(state))
-    lines += ["", f"Messaggi senza ACK: {pending}. Riserve attive: {len(state['resources'])}.",
-              "Registrazione e heartbeat non dimostrano esecuzione, accettazione o risveglio del client."]
+                            + "s · " + ((("ACK received" if en else "ACK ricevuto") if row["answer"]
+                                         else ("reply pending" if en else "risposta pendente"))) if row["ping"] else ""))
+    pending = len(pending_ack_ids(state, attention_value=view))
+    if en:
+        lines += ["", f"Messages without ACK: {pending}. Active reservations: {len(state['resources'])}.",
+                  "Registration and heartbeat do not prove that the client ran, accepted or woke up."]
+    else:
+        lines += ["", f"Messaggi senza ACK: {pending}. Riserve attive: {len(state['resources'])}.",
+                  "Registrazione e heartbeat non dimostrano esecuzione, accettazione o risveglio del client."]
     return "\n".join(lines)

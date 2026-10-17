@@ -334,6 +334,15 @@ class UsageCache(unittest.TestCase):
         self.assertEqual(unknown.read_bytes(), b'keep me')
         self.assertEqual(self.cache.load(), fixture())
 
+    def test_a_foreign_file_with_another_mode_is_counted_and_does_not_block_saves(self):
+        self.assertTrue(self.cache.save(fixture()))
+        stray = self.cache.folder / 'notes.txt'
+        stray.write_bytes(b'not a cache entry')
+        stray.chmod(0o644)
+        self.assertTrue(self.cache.save(fixture('codex')))
+        self.assertEqual(self.cache.load(), fixture('codex'))
+        self.assertEqual(stray.read_bytes(), b'not a cache entry')
+
     def test_invalid_keys_never_become_paths(self):
         for key in ('../outside', CANARY, 'a' * 63, 'A' * 64):
             with self.subTest(key=key):

@@ -269,7 +269,8 @@ class Cache:
         total, candidates = 0, []
         for entry in os.listdir(parent):
             info = os.stat(entry, dir_fd=parent, follow_symlinks=False)
-            regular(info)
+            if ENTRY.fullmatch(entry) or TEMP.fullmatch(entry) or entry == '.lock':
+                regular(info)
             if TEMP.fullmatch(entry):
                 os.unlink(entry, dir_fd=parent)
                 continue

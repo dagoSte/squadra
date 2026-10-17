@@ -574,7 +574,7 @@ class Cli(unittest.TestCase):
         self.assertEqual(self.run_main('balance', '--root', str(missing))[0], 1)
         self.assertFalse(missing.exists())
 
-    def test_task_brief_and_start_print_balance_without_collecting_or_recording(self):
+    def test_task_brief_and_start_print_a_short_balance_without_collecting_or_recording(self):
         self.store.append('ack', 'A', {'message': 'assign-T'})
         FakeUsage.calls = 0
         for args in [('start', '--actor', 'A', '--task', 'T'),
@@ -584,8 +584,11 @@ class Cli(unittest.TestCase):
             code, out, _ = self.run_main('--root', str(self.root), *args)
             self.assertEqual(code, 0)
             printed = json.loads(out[out.index('{\n  "balance"'):])['balance']
-            self.assertEqual(printed['usage']['status'], 'not_collected')
-            self.assertEqual(printed['task']['status'], 'ranked')
+            self.assertEqual(set(printed), {'notice', 'task', 'status', 'build', 'read', 'suggestions', 'full'})
+            self.assertEqual(printed['status'], 'ranked')
+            self.assertEqual(printed['full'], 'squadra balance --task ' + printed['task'])
+            for slot in ('build', 'read'):
+                self.assertIn('quota', printed[slot]['reason'], 'tokens and quota are not collected here')
         self.assertEqual(FakeUsage.calls, 0, 'the automatic print never calls the collector')
         self.assertFalse(any(e['kind'].startswith(('balance', 'forecast')) for e in self.store.events()))
 

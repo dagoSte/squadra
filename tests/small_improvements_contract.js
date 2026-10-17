@@ -20,7 +20,7 @@ const checks=String.raw`
   const at='2026-10-15T11:00:00Z';
   const message=(id,info,ack=null)=>({id,from:'C',to:'A',body:id,utc:at,ack,...(info?{info:true}:{})});
   const mail={normal:message('normal',false),information:message('information',true),read:message('read',true,{agent:'A',utc:at})};
-  app.run('state.messages='+JSON.stringify(mail)+';render()');
+  app.run('state.messages='+JSON.stringify(mail)+';state.attention.waiting=[{kind:"ack",id:"normal",who:["A"],utc:'+JSON.stringify(at)+'}];render()');
   const metrics=app.doc.getElementById('metrics');
   assert.equal(metrics.children[2].children[1].textContent,1,'one required ACK, not three');
   const table=app.run('mail()');

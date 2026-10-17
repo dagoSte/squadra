@@ -37,7 +37,7 @@ context.ResizeObserver=class{constructor(fn){this.fn=fn;observers.push(this)}obs
   assert.equal(parts.pairReset.textContent,'Reset filters');parts.pairReset.onclick();assert.match(parts.activeFilters.textContent,/All conversations/);
  }else if(scenario==='pairs'){
   assert.equal(parts.pairList.tag,'tbody');const table=parts.pairList.parentNode;
-  assert.equal(table.tag,'table');assert.deepEqual(table.children[0].children[0].children.map(e=>[e.tag,e.getAttribute('scope')]),Array(6).fill(['th','col']));
+  assert.equal(table.tag,'table');assert.deepEqual(table.children[0].children[0].children.map(e=>[e.tag,e.getAttribute('scope')]),Array(7).fill(['th','col']));
   assert.deepEqual(table.children[0].textContent.match(/Finestre|Messaggi|Confermati|In attesa|Oltre l’attesa normale|Attesa più lunga/g),['Finestre','Messaggi','Confermati','In attesa','Oltre l’attesa normale','Attesa più lunga']);
   const counts=snapshots.first.comms.pairs[0],r=parts.pairList.children[0];
   assert.deepEqual(r.children.slice(1,5).map(c=>c.textContent),[counts.messages,counts.acked,counts.sent+counts.queued,counts.overdue].map(String));
@@ -52,7 +52,7 @@ context.ResizeObserver=class{constructor(fn){this.fn=fn;observers.push(this)}obs
   selected.children[0].children[0].onclick();assert.equal(ui().filters.pair,'');assert.equal(parts.list.children.length,68);
   vm.runInContext("setLanguage('en')",context);assert.match(table.children[0].textContent,/WindowsMessagesConfirmedWaitingPast normal waitOldest wait/);
   assert.match(root.textContent,/Counts cover the whole registry/);
-  current=JSON.parse(JSON.stringify(snapshots.second));current.comms.pairs=[];await refresh();assert.equal(parts.pairList.children[0].children[0].getAttribute('colspan'),'6');assert.match(parts.pairList.textContent,/No message recorded/);
+  current=JSON.parse(JSON.stringify(snapshots.second));current.comms.pairs=[];await refresh();assert.equal(parts.pairList.children[0].children[0].getAttribute('colspan'),'7');assert.match(parts.pairList.textContent,/No message recorded/);
  }else throw Error('unknown scenario');
  console.log('comms controls passed: '+scenario);
 })().catch(e=>{console.error(e);process.exitCode=1});

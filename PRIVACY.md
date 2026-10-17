@@ -1,6 +1,6 @@
 # Squadra privacy notice
 
-Updated 15 October 2026. [Italiano](PRIVACY.it.md).
+Updated 16 October 2026. [Italiano](PRIVACY.it.md).
 
 Squadra is software you run on your computer. Its author, Stefano D'Agostino,
 does not operate a service that collects data from Squadra. The coordination
@@ -48,6 +48,14 @@ The cache is outside the registry and project and is excluded from ordinary
 from the original session files without removing those files or registry data.
 Prices you enter on the page stay in your browser's local storage and are not
 written to the registry.
+
+The Balance page and `squadra balance` combine the registry with the Usage
+figures described above, collected the same way from the same session files.
+They add no other source and write nothing to the registry. The Claude reference
+you may declare on the page (tokens per 5 hours and per week) stays in your
+browser's local storage and goes only to the local dashboard;
+`squadra balance --reference` reads it from a file you name. Neither is written
+to the registry.
 
 ## The dashboard and external services
 

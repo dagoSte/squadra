@@ -403,11 +403,30 @@ def calculate(state, events, task_id=None, usage=None, reference=None, read_at=N
     return result
 
 
+def compact(result, lang='it'):
+    """The short print after task, brief and start: the top window per slot and its reason.
+
+    `squadra balance --task TASK` prints the whole ranking, the omitted dimensions and the numbers.
+    """
+    task = result.get('task') or {}
+    short = {'notice': NOTICE, 'task': task.get('id'), 'status': task.get('status')}
+    if task.get('status') == 'ranked':
+        for slot in ('build', 'read'):
+            rows = task[slot]['rows']
+            short[slot] = ({'window': rows[0]['identity'], 'seats': rows[0]['seats'], 'reason': rows[0]['sentence'][lang],
+                            'candidates': len(rows)} if rows else
+                           {'window': None, 'reason': 'No eligible window.' if lang == 'en' else 'Nessuna finestra idonea.',
+                            'candidates': 0})
+    short['suggestions'] = [{k: s[k] for k in ('id', 'window', 'to', 'task') if k in s} for s in result.get('suggestions', [])]
+    short['full'] = 'squadra balance' + (' --task ' + task['id'] if task.get('id') else '')
+    return short
+
+
 def collect_usage(events, state, seconds=CLI_SECONDS):
     """Loop the SQ-TOKENS collector's bounded slices until ready or the deadline."""
     import usage
     end = time.monotonic() + seconds
     while True:
-        result = usage.collect(events, state)
+        result = usage.collect(events, state, budget_seconds=max(0.25, end - time.monotonic()))
         if (result.get('coverage') or {}).get('status') != 'collecting' or time.monotonic() >= end:
             return result

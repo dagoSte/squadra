@@ -5,12 +5,31 @@ import os
 from pathlib import Path
 import shlex
 import shutil
+import stat
 import sys
 
+import squadra  # noqa: F401  Imported first: it refuses a Python older than squadra.PYTHON.
 from registry import Error, atomic, digest, git, now, require
 
 
+def drop_shared_write(tree):
+    """Remove group/other write across a frozen tree; the plugin Store refuses such folders whatever umask wrote them."""
+    for folder, _, names in os.walk(tree):
+        for path in [folder, *(os.path.join(folder, name) for name in names)]:
+            mode = os.lstat(path).st_mode
+            if mode & 0o022 and not stat.S_ISLNK(mode):
+                os.chmod(path, stat.S_IMODE(mode) & ~0o022)
+
+
 def install(source, home, backup):
+    umask = os.umask(0o022)  # Nothing written here inherits a group-writable umask.
+    try:
+        return _install(source, home, backup)
+    finally:
+        os.umask(umask)
+
+
+def _install(source, home, backup):
     source, home, backup = Path(source).resolve(), Path(home).resolve(), Path(backup).resolve()
     require(not git(source, "status", "--porcelain").strip(), "Commit the exact clean candidate before installation")
     sha = git(source, "rev-parse", "HEAD").decode().strip()
@@ -27,6 +46,7 @@ def install(source, home, backup):
             dest = version / p; dest.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(source / p, dest)
         atomic(version / "SOURCE_COMMIT", (sha + "\n").encode())
+    drop_shared_write(version)
     backup.mkdir(parents=True, mode=0o700, exist_ok=False)
     targets = [(home / ".codex/skills/squadra", "codex-squadra"),
                (home / ".claude/skills/squadra", "claude-squadra"),

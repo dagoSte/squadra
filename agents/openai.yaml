@@ -1,4 +1,4 @@
 interface:
   display_name: "Squadra 3+"
   short_description: "Coordinate agent windows, proofs and outputs with a local dashboard"
-  default_prompt: "Use $squadra to coordinate the work, record every output and show the status in the dashboard."
+  default_prompt: "Use $squadra to coordinate the work, record every output and show the status table."

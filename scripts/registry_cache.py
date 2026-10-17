@@ -414,9 +414,11 @@ def load(store, writable=False):
     return tree, meta
 
 
-def save(store, tree, seq, head):
-    first = store.db.execute('SELECT hash FROM events ORDER BY seq LIMIT 1').fetchone()
-    record = {'schema': SCHEMA, 'registry': str(store.root), 'first': first['hash'] if first else None,
+def save(store, tree, seq, head, *, first=MISSING):
+    if first is MISSING:
+        row = store.db.execute('SELECT hash FROM events ORDER BY seq LIMIT 1').fetchone()
+        first = row['hash'] if row else None
+    record = {'schema': SCHEMA, 'registry': str(store.root), 'first': first,
               'seq': seq, 'head': head, 'state': tree.flush(), 'current': tree.current_tree.flush()}
     store.db.execute('INSERT OR REPLACE INTO derived_state_meta(id,body,digest) VALUES(1,?,?)',
                      (canonical(record), metadata_digest(record)))

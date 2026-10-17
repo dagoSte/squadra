@@ -110,15 +110,20 @@ class DashboardManifests(unittest.TestCase):
         self.assertEqual(latest['tasks'][self.task_id]['metadata']['files'], ['ordinary metadata'])
         self.assertNotIn('files', latest['tasks'][self.task_id]['candidate'])
         self.assertNotIn('files', latest['runs'][self.run_id]['before'])
-        self.assertEqual(latest['search'], {'query': '', 'tasks': [], 'runs': []})
+        self.assertEqual(latest['search'], {'query': '', **{kind: [] for kind in ('tasks', 'runs', 'messages', 'outputs', 'decisions', 'asks', 'reviews')}, 'results': [], 'total': 0})
 
     def test_compact_search_resolves_hidden_paths_and_digests_only_when_requested(self):
         self.compact()
         self.append()
         for query in (self.source_path.upper(), self.source_hash.upper()):
             with self.subTest(query=query):
-                result = self.compact(query)
-                self.assertEqual(result['search'], {'query': query.lower(), 'tasks': [self.task_id], 'runs': [self.run_id]})
+                # D-SEARCH-WITHDRAW: a search reads no source manifest.
+                with patch.object(source_manifests, '_read', side_effect=AssertionError('search hydrated inventory')):
+                    result = self.compact(query)
+                self.assertEqual(result['search']['query'], query.lower())
+                self.assertEqual(result['search']['tasks'], [])
+                self.assertEqual(result['search']['runs'], [])
+                self.assertEqual(result['search']['total'], 0)
                 self.assertNotIn('files', result['tasks'][self.task_id]['candidate'])
 
     def test_detail_materializes_only_the_selected_record(self):
@@ -144,9 +149,13 @@ class DashboardManifests(unittest.TestCase):
         path = self.root / 'artifacts' / digest(canonical(self.fingerprint['files']).encode())
         original = path.read_bytes()
         path.write_bytes(b'[]')
+        # D-SEARCH-WITHDRAW keeps FULL/DETAIL refusals; search reads no manifest.
+        with patch.object(source_manifests, '_read', side_effect=AssertionError('search hydrated inventory')):
+            status, _, body = self.get('/api/state', {'X-Squadra-View': 'compact', 'X-Squadra-Search': 'missing-source-needle'})
+        self.assertEqual(status, 200, body)
+        self.assertEqual(json.loads(body)['search']['total'], 0)
         for route, headers in (('/api/state', {}),
-                               ('/api/detail/task', {'X-Squadra-Record': quote(self.task_id, safe='')}),
-                               ('/api/state', {'X-Squadra-View': 'compact', 'X-Squadra-Search': 'missing-source-needle'})):
+                               ('/api/detail/task', {'X-Squadra-Record': quote(self.task_id, safe='')})):
             with self.subTest(route=route):
                 status, _, body = self.get(route, headers)
                 self.assertEqual(status, 409, body)

@@ -94,6 +94,17 @@ class Projection(unittest.TestCase):
         self.assertEqual(self.edge(view, "ping", "ping-2")["state"], "acked")
         self.assertEqual(self.edge(view, "answer", "ping-2")["to"], "C")
 
+    def test_forwarding_age_does_not_become_the_recipients_ack_deadline(self):
+        self.send('forward')
+        forward = {'kind': 'to-forward', 'id': 'forward', 'seconds': 120, 'threshold': 120}
+        row = self.edge(self.view(wait_list=[forward]), 'message', 'forward')
+        self.assertEqual(row['state'], 'sent')
+        self.assertNotIn('wait_threshold', row)
+        ack = {'kind': 'ack', 'id': 'forward', 'seconds': 1000, 'threshold': 900}
+        for rows in ([forward, ack], [ack, forward]):
+            row = self.edge(self.view(wait_list=rows), 'message', 'forward')
+            self.assertEqual((row['state'], row['wait_threshold']), ('overdue', 900))
+
     def test_lanes_group_aliases_and_flag_unregistered_recipients(self):
         self.send("alias", sender="A", to="A2")
         with contextlib.redirect_stdout(io.StringIO()):

@@ -26,9 +26,14 @@ class Presence(unittest.TestCase):
     cli = support.Workflow.cli
     proof = support.Workflow.proof
 
-    def ping(self, agent='A', actor='C'):
+    def ping(self, agent='A', actor='C', delivered=True):
+        """Record a ping; by default its sender also records the queue's delivered:true receipt."""
         self.assertEqual(self.cli('ping', '--actor', actor, '--to', agent), 0)
-        return latest_ping(self.store.state(), agent)
+        ping = latest_ping(self.store.state(), agent)
+        if delivered and ping['from'] == actor and not any(
+                e['kind'] == 'transport' and e['data']['message'] == ping['id'] for e in self.store.events()):
+            self.store.append('transport', actor, {'message': ping['id'], 'via': 'codex-queue', 'delivered': True})
+        return ping
 
     def clock(self, ping, seconds):
         return (dt.datetime.fromisoformat(ping['utc']) + dt.timedelta(seconds=seconds)).isoformat()

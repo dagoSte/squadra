@@ -27,7 +27,9 @@ demand**, because no historical activation counter is recorded for forecasts.
 
 `squadra balance [--task TASK] [--reference FILE] --root REGISTRY` reads the registry
 and the Usage collector's numbers without writing anything. Task creation, briefing and
-start also print the ranking, without tokens or quota (marked «not collected»). Follow
+start also print a short balance: the first window for building and for reading, each
+with its reason and the number of candidates, without tokens or quota, and the
+`squadra balance --task` command that prints the whole ranking. Follow
 [the bilanciamento guide](skills/bilanciamento.md) for the order, the missing-data rule,
 the quota slots and the Claude estimate. The coordinator follows the suggestion or records
 a reason; the advice cannot change an owner, reviewer, route, budget or permission.
@@ -182,6 +184,14 @@ confirmation and cannot use this flag. A voluntary ACK of information is a real
 sign of life, never a substitute for a required assignment, review or ping ACK.
 Existing messages keep their original receipt contract; old readers may still
 show an unnecessary wait for new information messages until they are upgraded.
+
+`inbox` prints a JSON list of the messages addressed to the named `--agent`
+names, oldest first, each with its full body, sender, task, receipts and ACK. By
+default it keeps it short: every message still waiting for an ACK (the same
+waits that `status` and the follower count) plus the latest ten messages. When
+older messages are left out, one line on standard error says how many and how
+to see them. `--message ID` prints only that message, refused unless it is
+addressed to one of the names; `--all` prints the whole history.
 
 After assignment, explain the task in plain words: the first line becomes its
 dashboard title, followed by why it exists, who it is for and when it will be
@@ -350,12 +360,105 @@ The reviewer also uses the ID of the task read for its output.
 Mail: `send --actor coord --to builder --body-file /evidence/message.md --id M1`
 saves a message. `ack --actor builder --message M1` is a separate recipient action.
 `transport --via manual` provides the exact handoff without pretending delivery
-or wakeup. `--via codex-queue` requires a known session ID and checks the local CLI;
-native 0 means queued, not read. The dashboard's Communications tab shows the same
+or wakeup, and records `delivered: null`: unconfirmed, not failed. `--via codex-queue`
+requires a known session ID and checks the local CLI; native 0 means queued, not read.
+**To forward.** A Codex window has no follower of its own, so mail to a Codex seat
+waits on the coordinator until a transport reports `delivered: true` or the recipient
+ACKs: with failed or unconfirmed attempts, or with none at all (a review handoff that
+`deliver` records as sent by the coordinator, an assignment, a ping). After 120 seconds
+from the first attempt, or from the message when there was none, it is listed first
+as «To forward», naming the coordinators; the coordinator relays it with
+`transport --via codex-queue`. Mail to Claude, Cursor or manual windows is never «to
+forward»: they follow their own mail, so a transport could not end the wait, and it
+stays an ordinary ACK wait. The dashboard's Communications tab shows the same
 events in words (who wrote to whom, about which task, sent, queued, acknowledged
 or late against the `ack` threshold); a message's text opens only on request,
 and no read is inferred from text. Do not send email/Slack or use external channels
 without the owner's authorization. Shared mail is enough across mixed clients.
+
+## Following mail without a native queue
+
+Every Claude window and every other window without a native queue, including
+the coordinator, starts a read-only follower when joining or resuming. Name all
+of that window's roles with repeated `--agent`; the coordinator includes `coord`.
+Re-arm when it expires, with `--since` equal to the highest event number on a
+complete JSON line already consumed. An empty resumed watch prints nothing.
+
+In Claude Code, arm **Monitor** with these fields (the monitor's limit must be
+longer than the command's timeout):
+
+```json
+{"command":"squadra --root /shared/registry inbox --agent claude-build --agent claude-review --follow --timeout 1740","description":"mail for claude-build, claude-review","timeout_ms":1800000}
+```
+
+Each new stdout line is mail to read and act on in that window. When the monitor
+ends, re-arm the same command with `--since 123` if 123 is the highest complete
+event consumed. The coordinator uses its own names, for example `--agent coord
+--agent coord-build`. A shorter `--timeout 600` needs `timeout_ms: 660000`; Monitor's
+default 300000 would end that follower early. These are timeout pairs, not a claim
+that Monitor is available in every client.
+
+In Claude Code the same follower also runs as a background command, which has no
+30-minute limit: run it with the Bash tool's `run_in_background` and `--until-first`.
+The command exits 0 after the first batch that shows mail, ending with its `cursor`
+line, and Claude Code wakes the window when it exits. Read the mail, then start it
+again with `--since` set to that cursor:
+
+```sh
+squadra --root /shared/registry inbox --agent claude-build --agent claude-review --follow --until-first --since 123
+```
+
+Without `--since` the first run prints the waiting backlog, so it ends at once while
+mail waits for your ACK; with `--since` it waits for new mail only. Add `--timeout`
+only if the window should also wake after that many seconds without mail.
+
+**A follower that is not running looks like an empty inbox, and status cannot tell
+them apart.** The follower writes nothing by design, so the registry holds no trace
+that it runs. Recording one would take a periodic event in the hash chain: a new
+kind of event, which this release line does not add so that 3.10.1 windows keep
+sharing the registry, and a history that grows every few seconds. A lock file
+outside the chain would be seen only on the same machine and would end the
+follower's no-write guarantee. So the window itself keeps watch: Monitor tells it
+when it ends, a background command wakes it when it exits, and after a restart,
+`/clear` or compaction the window arms its follower again at once, with `--since`.
+
+Without Monitor, start a background process and keep an active watcher on its
+output; redirection alone does not wake an agent:
+
+```sh
+squadra --root /shared/registry inbox --agent builder --agent reader --follow --timeout 1740 > /evidence/mail.jsonl 2> /evidence/mail.err &
+squadra_mail_pid=$!
+tail -f /evidence/mail.jsonl
+# After stopping the output watcher, stop only this follower if still running:
+kill -INT "$squadra_mail_pid"
+wait "$squadra_mail_pid"
+```
+
+Without `--since`, startup prints the shared ACK-wait count, at most ten oldest
+messages, and an ordinary inbox command for any remainder. With `--since`, it
+first prints every matching message above that event, including mail sent in
+the gap before re-arming, then follows live mail. It does not replay older mail.
+Each message line has `kind: "message"`, its creation `event`, sender, recipient,
+task, message ID, `info`, `ack_needed`, a first-line preview capped at 160 characters,
+and the exact root-bound `ack_command` (null if no ACK is needed). The other kinds
+are `pending`, `more` and `cursor`; a cursor advances only after a complete batch.
+There are no periodic output ticks. Read the full message with
+`inbox --agent NAME --message ID` when needed, then explicitly ACK it if
+required. Never treat a preview, a cursor, manual transport or a running
+follower as an ACK or a delivery confirmation.
+
+The command reads only, checks for changes every two seconds and releases its
+views before sleeping. Idle polls read the last sequence/hash; they do not audit
+unchanged history. Startup reads one verified view. After it, a changed head
+decodes only the events after the last verified head, checking their hash chain
+from that head, and opens a verified view only when they carry mail for the
+named agents, so a poll costs the new events, not the mailbox history. A
+timeout or SIGINT/SIGTERM exits 0; a registry error exits nonzero without
+writing a diagnostic event. Omit `--timeout` to follow until interrupted.
+In-progress verification/IO can outlast a short timeout. `--since` must be
+nonnegative and no higher than this registry's head; `--since` and `--timeout`
+require `--follow`, and `--all` and `--message` do not apply to it. No files,
+ACKs or transport receipts are saved by the follower.
 
 <a id="da-ricordare-at-close"></a>
 <a id="da-ricordare-alla-chiusura--worth-remembering-at-close"></a>
@@ -411,6 +514,8 @@ produce drafts; the user's explicit selection is a separate request.
 differs from the authors'. `deliver` saves the candidate, content-addressed packet
 with scope/plan/proofs and `review-...` message in one transaction. The command
 returns that ID. The recipient ACKs it before the code review or `read` turn.
+The message names the commit only when the working tree equals it; otherwise it names
+the working-tree snapshot and the uncommitted or untracked paths the commit lacks.
 A new fingerprint requires a new handoff and ACK. Repeating the same packet does
 not duplicate events. New proofs change the packet and require a new message/ACK,
 even when returning to an earlier candidate. Without `--reviewer`, the manual
@@ -449,9 +554,12 @@ review or read run on the same packet is refused with `review_claimed` and chang
 nothing; only the claimant's verdict counts toward check and close. Repeating the same
 packet (`deliver` or `advance`) keeps its ACKs and claim; a new packet (new bytes or
 new proofs) starts unclaimed, and an ACK on an earlier packet claims nothing. Budgets
-and history are kept. Delivery refuses while any member is in stand-by: changing the
-pool's availability stays a coordinator action. Until the claim, waits show one
-entry listing every member; nothing is reassigned, retried or released by the wait.
+and history are kept. Delivery skips a member in stand-by: it gets no handoff of that
+packet, the result names it in `skipped_standby`, and the others can claim the read.
+Only a pool whose members are all in stand-by is refused. Changing availability stays a
+coordinator action, and a member back from stand-by reads from the next packet. Until
+the claim, waits show one entry listing the members holding a handoff; nothing is
+reassigned, retried or released by the wait.
 Plan reads are not tied to a handoff and work as before.
 
 ```sh
@@ -477,8 +585,13 @@ squadra settings --actor coord --file /evidence/thresholds.json
 `--to-new` creates an expected recipient without assigning it an identity. It
 refuses an already registered name; after registration, only the recipient may
 ACK. `thresholds.json` is an object containing only the selected keys from `ack`,
-`delivered`, `reviewed`, `heartbeat`, `alive`; values are nonnegative integers in
-**seconds**, 0 for an immediate warning. Defaults: 900, 3600, 1800, 1800, 300.
+`delivered`, `reviewed`, `heartbeat`, `alive`, `to-forward`, `plan`; values are
+nonnegative integers in **seconds**, 0 for an immediate warning. The first five
+defaults are 900, 3600, 1800, 1800, 300; `to-forward` defaults to 120 and `plan`
+to 3600. The latest settings event replaces custom values. A settings write by
+a window on the published 3.10.1 restores both additional thresholds to their
+defaults, because that writer records neither optional value. This is intentional
+compatibility behavior.
 `cleanup-unknown` is always flagged. CLI, doctor and API calculate age at read
 time; projections do not retain an age that appears current. A warning is not
 proof of liveness and performs no actions.
@@ -502,13 +615,21 @@ with the current Store view before treating a file as complete. Use the current
 Ordinary commands verify the anchor event and its hash, the newer event hashes and
 links, and authenticated proofs for the cache values/indexes they read. They do not
 reverify pre-anchor events, untouched leaves, or the cached root against complete
-reducer replay. Full verification runs in `doctor`, `checkpoint`, `save`,
+reducer replay. At startup/resume use read-only `doctor --quick` for explicitly
+limited anchor, suffix and demanded-cache checks. Full verification runs in
+`doctor` without `--quick`, `export`, `checkpoint`, `save`,
 `restore-check` and release-gate `close`. Dashboard startup performs the same full
 audit in the background: ordinary verified data is marked pending until completion,
 and an audit failure stops data responses and removes the displayed view. A missing, foreign or
 invalid cache also falls back to verified reconstruction. See the exact
 [verification table](recovery.md#registry-verification). Read-only commands do not
-write the registry or projections. Coordinate every writer's upgrade before new
+write the registry or projections. A full audit reports cache/journal disagreement
+as a mismatch, not a successful fallback. Default doctor refuses it; explicit
+`doctor --repair` rebuilds derived tables and re-audits, but refuses saved packages
+and checkpoint folders. The dashboard never repairs: its audit fails closed.
+Cold-cache computation and release-gate auditing happen before the short write
+transaction; concurrent changes may produce a plain retryable refusal.
+Coordinate every writer's upgrade before new
 source-manifest references are used; unsupported older tools must refuse them.
 
 <a id="keep-alive-e-stand-by"></a>
@@ -527,8 +648,13 @@ squadra standby --actor coord --agent builder --reason "Window unavailable"
 squadra standby --actor coord --agent builder --resume --reason "Availability confirmed"
 ```
 
-`ping --all` calls each other active identity once; it excludes those in stand-by.
-A pending ping is reused without moving its deadline. To recall a window in
+`ping --all`, coordinator only, calls each other active identity once; it excludes those in stand-by.
+A pending ping is reused without moving its deadline. **The sweep acts only on a
+ping with a recorded delivery** (a transport that reported `delivered: true`, which
+today only the Codex queue gives): a window cannot answer a call that never reached
+it. A ping to a Codex window that is not delivered is listed «to forward» instead; a
+window that receives mail only through its follower or by hand is never put in
+stand-by by the sweep, so record that with `standby --reason` when you know it. To recall a window in
 stand-by, use `--to`: it creates a fresh call linked to that stand-by. The ACK of
 that call allows a return at the coordinator's next `ping --sweep`. An old ACK,
 an alias or a repeated `agent` command does not reactivate the window. The CLI
@@ -638,8 +764,8 @@ needs a reader for that exception: promote it to the full route for its own read
 (`read_at_gate_fix_exception_needs_read`). It cannot have its own read
 (`read_at_gate_no_own_read`); a full-route task, or a light task after promotion,
 always has its own read (`read_at_gate_requires_light`). Until a gate reads it, status,
-board, `stato.md` and the dashboard show it as **closed — read at the gate**, never as
-read, with its own count.
+board, the dashboard and the complete `stato.md` written by `squadra export` show it as
+**closed — read at the gate**, never as read, with its own count.
 
 A release gate is an ordinary task the coordinator registers with `--release-gate`,
 usually the integration of the batch. Its `check` and `close` refuse, naming each task,
@@ -845,7 +971,7 @@ A project brief starts with its goal; `## Steps` and `## Glossary` (or `## Passi
 - **`review`** records `accepted`, `changes-required` or `blocked`. `probe` records independent tests and negative controls (`--expected-rc 1`; a matched negative is not a product pass); mutants go in isolated copies. `--covers` records coverage, not test adequacy, which the reader judges.
 - **`check`** binds candidate, plan, proof, artifacts and coverage again before `close`. A source change voids the old proof and review. `advance` reconciles a delivered handoff without building, approving or waking clients; without `--reviewer` the manual review protocol applies.
 
-`--reply-to` answers; `--to-new waiting-reader` creates an expected recipient, not an identity: register the real seat before its ACK. `transport --via manual` returns a pending handoff instruction, and success with `--via codex-queue` means queued, not read or awake. The protocol authorizes no external messaging. Save **one substantive output per completed step**: a result, decision, blocker or handoff that adds information (omit `--task` for area-wide coordination). Its declared next step is not evidence that anything happened. Routine progress comes from the registry, so no manual "ready" messages and no retelling of an existing proof; real ACKs, decisions, pauses and receipts stay required.
+`--reply-to` answers; `--to-new waiting-reader` creates an expected recipient, not an identity: register the real seat before its ACK. `transport --via manual` returns a pending handoff instruction and records `delivered: null` (unconfirmed), and success with `--via codex-queue` means queued, not read or awake. Every codex-queue attempt is recorded: one that did not deliver keeps `delivered: false` (or `null` after a timeout) with its `stage`, and the command exits 1. The coordinator relays any message a sandboxed window could not deliver (`transport --actor <coordinator> --message <ID> --via codex-queue`, or `--via manual`), recorded with `relayed_by`; only the recipient's ACK ends it. A Codex window keeps the registry folder among its writable roots (`codex --add-dir <registry>`). The protocol authorizes no external messaging. Save **one substantive output per completed step**: a result, decision, blocker or handoff that adds information (omit `--task` for area-wide coordination). Its declared next step is not evidence that anything happened. Routine progress comes from the registry, so no manual "ready" messages and no retelling of an existing proof; real ACKs, decisions, pauses and receipts stay required.
 
 Attach an artifact named exactly `da-ricordare.json` (`form: "da-ricordare/1"`, task ID, `answer: "yes"` or `"no"`, `items`) to the closing agent's usual `squadra output --artifact ...`; see [the schema and examples](work.md#da-ricordare-at-close). Nothing is proposed or approved by itself. **If a memory service is in use, declare at close and do not propose the same item through another channel.** **Never** put secrets, personal data or private paths in it: registered artifacts are immutable, so an accidental secret cannot be removed. Plugin consumers may turn declarations into drafts; the action API only saves the user's selection and never sends it or runs a plugin ([action contract](plugins.md#action-requests)).
 
@@ -866,7 +992,7 @@ squadra standby --actor coord --agent builder --resume --reason "Availability co
 ```
 
 - **Resources:** reserve gates, ports and databases before use, and respect other windows' reservations. A stale heartbeat or a timeout does not prove a process stopped, nor does it free its resources.
-- **Presence:** `ping --all` calls each other active identity once, skipping stand-by; a pending ping is reused and never extended. `--to` can call a window in stand-by, whose real ACK lets it return at the next sweep; old ACKs, aliases and new registrations never do.
+- **Presence:** `ping --all` calls each other active identity once, skipping stand-by; a pending ping is reused and never extended. The sweep counts only a ping a transport reported `delivered: true`. `--to` can call a window in stand-by, whose real ACK lets it return at the next sweep; old ACKs, aliases and new registrations never do.
 - **Only the coordinator changes availability**, with `ping --sweep` (re-checked inside the transaction) or `standby`. All aliases of a window share its stand-by, during which new assignments and review handoffs to it are refused.
 - **Stand-by stops nothing:** it **does not cancel processes, release resources, transfer roles or reassign work**; return restarts nothing; no timer or page view changes the state; an unanswered ping proves no absence.
 

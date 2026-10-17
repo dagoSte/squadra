@@ -262,7 +262,7 @@ class DashboardPerformance(unittest.TestCase):
         for record in (task['proofs'][0], expected['runs'][self.run_id]):
             del record['before']['files']
             del record['after']['files']
-        expected['search'] = {'query': '', 'tasks': [], 'runs': []}
+        expected['search'] = {'query': '', **{kind: [] for kind in ('tasks', 'runs', 'messages', 'outputs', 'decisions', 'asks', 'reviews')}, 'results': [], 'total': 0}
         self.assertEqual(compact, expected)
         self.assertIn('files', compact['tasks'][self.task_id]['metadata'])
         self.assertIn('files', compact['runs'][self.run_id]['metadata'])
@@ -273,13 +273,21 @@ class DashboardPerformance(unittest.TestCase):
         self.assertEqual(self.state(), full)
 
     def test_compact_search_matches_hidden_unicode_paths_and_hashes_in_full_records(self):
-        for query in (self.source_path.upper(), self.source_hash.upper(), self.task_id.upper()):
+        # D-SEARCH-WITHDRAW: inventory paths/digests are no longer human search fields.
+        for query in (self.source_path.upper(), self.source_hash.upper()):
             with self.subTest(query=query):
                 result = self.compact(query)
-                self.assertEqual(result['search'], {'query': query.lower(), 'tasks': [self.task_id], 'runs': [self.run_id]})
+                self.assertEqual(result['search']['query'], query.lower())
+                self.assertEqual(result['search']['tasks'], [])
+                self.assertEqual(result['search']['runs'], [])
+                self.assertEqual(result['search']['total'], 0)
                 self.assertNotIn('files', result['tasks'][self.task_id]['candidate'])
-        self.assertEqual(self.compact('absent-needle')['search'], {'query': 'absent-needle', 'tasks': [], 'runs': []})
-        self.assertEqual(self.compact()['search'], {'query': '', 'tasks': [], 'runs': []})
+        result = self.compact(self.task_id.upper())
+        self.assertEqual(result['search']['tasks'], [self.task_id])
+        self.assertEqual(result['search']['runs'], [self.run_id])
+        self.assertNotIn('files', result['tasks'][self.task_id]['candidate'])
+        self.assertEqual(self.compact('absent-needle')['search']['total'], 0)
+        self.assertEqual(self.compact()['search'], {'query': '', **{kind: [] for kind in ('tasks', 'runs', 'messages', 'outputs', 'decisions', 'asks', 'reviews')}, 'results': [], 'total': 0})
         self.assertNotIn('search', self.state(**{'X-Squadra-Search': quote(self.source_path, safe='')}))
 
     def test_details_return_exact_full_record_after_compact_hit_with_no_path_access(self):
@@ -311,7 +319,7 @@ class DashboardPerformance(unittest.TestCase):
                     status, headers, _ = self.get(route, {'X-Squadra-View': 'compact'}, authenticated=False)
                     self.assertEqual(status, 401)
                     self.assertEqual(headers['Content-Security-Policy'], baseline_headers['Content-Security-Policy'])
-                    status, _, _ = self.get(route, {'Host': 'localhost:' + str(self.server.server_port)})
+                    status, _, _ = self.get(route, {'Host': 'evil.example:' + str(self.server.server_port)})
                     self.assertEqual(status, 403)
                     status, _, _ = self.get(route, {'X-Squadra-Token': 'wrong'})
                     self.assertEqual(status, 401)
@@ -338,6 +346,7 @@ class DashboardPerformance(unittest.TestCase):
         self.store.append('settings', 'C', {'wait_seconds': {'alive': 300, 'ack': 300}})
         self.store.append('message', 'C', {'id': 'PING', 'to': 'A', 'body': 'Are you available?', 'ping': True,
                           'availability_event': None})
+        self.store.append('transport', 'C', {'message': 'PING', 'via': 'codex-queue', 'delivered': True})
         original = Store.events
         clock = dt.datetime.fromisoformat(self.stamp)
         with patch.object(Store, 'events', autospec=True, side_effect=original) as events:

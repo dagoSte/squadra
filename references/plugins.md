@@ -631,7 +631,11 @@ with plugin and release transitions `from`/`to`. Numeric decreases are labelled
 Refusals include `bad_name`, `not_found`, `invalid_bundle`, `unsafe_permissions`,
 `symlink`, `unmanaged_installation`, `modified_installation`, `busy` and
 `install_incomplete`, plus existing strict reader codes. Errors contain codes,
-not private file contents. There is no remote update or automatic execution.
+not private file contents. On the command line a refused folder or link is also
+named. An unsafe folder you own comes with the exact `chmod` that repairs it; a
+folder that belongs to another user is named as such, with no command. HOME
+itself may be a symbolic link; links below it are refused. There is no remote
+update or automatic execution.
 
 ## Building and distributing a plugin
 

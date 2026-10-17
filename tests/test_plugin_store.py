@@ -262,10 +262,10 @@ class Installation(Fixture):
         (self.home/'.squadra').symlink_to(other,target_is_directory=True)
         self.refuse('symlink'); self.assertEqual(list(other.iterdir()),[])
 
-    def test_home_symlink_and_final_plugin_symlink_refused(self):
+    def test_home_symlink_followed_and_final_plugin_symlink_refused(self):
         alias=self.base/'alias'; alias.symlink_to(self.home,target_is_directory=True)
-        self.refuse('symlink',lambda:store.install(alias,'example',self.release))
-        self.target.parent.mkdir(parents=True)
+        self.assertEqual(store.install(alias,'example',self.release)['state'],'complete')
+        shutil.rmtree(self.target)
         self.target.symlink_to(self.base/'elsewhere',target_is_directory=True)
         self.refuse('symlink'); self.assertFalse((self.base/'elsewhere').exists())
 

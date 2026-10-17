@@ -1,7 +1,10 @@
 """Check Git work recovery and refusal of invalid saved data before opening it."""
+import contextlib
+import io
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import unittest
@@ -10,6 +13,7 @@ from unittest.mock import patch
 import test_squadra as support
 from recovery import save, restore_check, verify_package
 from registry import Error, Store, snapshot
+from squadra import main
 
 
 class Recovery(unittest.TestCase):
@@ -66,6 +70,50 @@ class Recovery(unittest.TestCase):
         with self.assertRaisesRegex(Error,'Tracked secret'):
             save(self.store,self.base/'refused',temporary=True)
         self.assertEqual(json.loads((self.base/'refused/FAILED.json').read_text())['status'],'incomplete')
+
+    def test_tracked_templates_are_saved_and_judged_by_content(self):
+        for name in ('.env.example','.env.sample','credentials.json.template','server.key.dist'):
+            (self.repo/name).write_text('API_KEY=changeme\n')
+        self.git('add','.');self.git('commit','-qm','Templates')
+        (self.repo/'.env').write_text('SECRET-MARKER\n');(self.repo/'.env.local.example').write_text('UNTRACKED=1\n')
+        path,result=self.pack();self.assertEqual(sorted(result['repositories'][0]['excluded']),['.env','.env.local.example'])
+        root=Path(restore_check(path,self.base/'restored')['repositories'][0]['restored'])
+        self.assertEqual((root/'credentials.json.template').read_text(),'API_KEY=changeme\n')
+        self.assertFalse((root/'.env').exists() or (root/'.env.local.example').exists())
+
+    def test_tracked_template_with_a_key_and_other_secret_names_stay_refused(self):
+        key='-----BEGIN OPENSSH PRIVATE KEY-----\nfake\n'
+        for n,(name,body) in enumerate([('id_rsa.example',key),('.envrc','export TOKEN=x\n'),
+                                         ('credentials.py','TOKEN = "x"\n'),('.env.local','A=1\n')]):
+            (self.repo/name).write_text(body);self.git('add',name)
+            with self.assertRaisesRegex(Error,'Tracked secret candidate refused: '+re.escape(name)):
+                save(self.store,self.base/('refused-'+str(n)),temporary=True)
+            self.git('rm','-q','--cached',name);(self.repo/name).unlink()
+        (self.repo/'deploy.pem.sample').write_text(key);self.git('add','.');self.git('commit','-qm','Key at HEAD')
+        (self.repo/'deploy.pem.sample').write_text('placeholder\n')
+        with self.assertRaisesRegex(Error,'Tracked secret candidate refused: deploy.pem.sample'):
+            save(self.store,self.base/'refused-head',temporary=True)
+
+    def quiet(self,*args):
+        out=io.StringIO()
+        with contextlib.redirect_stdout(out),contextlib.redirect_stderr(io.StringIO()):
+            return main(list(args)),out.getvalue()
+
+    def test_restore_check_receipt_uses_squadra_root_like_every_command(self):
+        path,_=self.pack();before=len(self.store.events())
+        with patch.dict(os.environ,{'SQUADRA_ROOT':str(self.root)}):
+            rc,out=self.quiet('restore-check','--actor','C','--from',str(path),'--to',str(self.base/'restored'))
+        self.assertEqual((rc,json.loads(out)['recorded']),(0,True))
+        events=self.store.events();self.assertEqual((len(events),events[-1]['kind']),(before+1,'restore.check'))
+
+    def test_non_coordinator_is_refused_before_anything_is_restored(self):
+        path,_=self.pack();before=len(self.store.events())
+        for actor in ('A','nobody'):
+            rc,_=self.quiet('--root',str(self.root),'restore-check','--actor',actor,'--from',str(path),'--to',str(self.base/actor))
+            self.assertEqual(rc,1);self.assertFalse((self.base/actor).exists())
+        self.assertEqual(len(self.store.events()),before)
+        rc,out=self.quiet('--root',str(self.root),'restore-check','--from',str(path),'--to',str(self.base/'unrecorded'))
+        self.assertEqual((rc,json.loads(out)['recorded']),(0,False));self.assertEqual(len(self.store.events()),before)
 
     def test_private_key_header_detected_in_ordinary_untracked_filename(self):
         (self.repo/'notes.txt').write_text('-----BEGIN PRIVATE KEY-----\nfake\n')

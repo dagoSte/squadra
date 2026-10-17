@@ -194,7 +194,7 @@ class RegistryAuditTests(unittest.TestCase):
                                               (cache.canonical(data),namespace,digest))
                     result=self.store.audit()
                     self.assertEqual(result['state']['messages']['old-message']['body'],'Original retained content')
-                    self.assertEqual(result['cache'],'rebuilt-in-memory'); self.assertEqual(self.rows(),before)
+                    self.assertEqual(result['cache'],'mismatch'); self.assertEqual(self.rows(),before)
                 finally:
                     self.store.db.execute('INSERT OR REPLACE INTO derived_radix_nodes(namespace,digest,data) VALUES(?,?,?)',
                                           (namespace,digest,original))
@@ -207,7 +207,7 @@ class RegistryAuditTests(unittest.TestCase):
         meta=json.loads(row['body']); meta['current']=tree.flush()
         self.store.db.execute('UPDATE derived_state_meta SET body=?,digest=? WHERE id=1',
                               (cache.canonical(meta),cache.metadata_digest(meta)))
-        result=self.store.audit(); self.assertEqual(result['cache'],'rebuilt-in-memory')
+        result=self.store.audit(); self.assertEqual(result['cache'],'mismatch')
         self.assertIsNone(result['state']['messages']['old-message']['ack'])
 
 

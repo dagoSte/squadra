@@ -106,7 +106,7 @@ class Served(unittest.TestCase):
             self.assertEqual((headers["X-Content-Type-Options"], headers["Cache-Control"]), ("nosniff", "no-store"))
             self.assertEqual(headers["Content-Security-Policy"], POLICY)
             self.assertEqual(hashlib.sha256(body).hexdigest(), sha)
-            status, _, _ = self.get("/fonts/" + name, {"Host": "localhost:%d" % self.server.server_port})
+            status, _, _ = self.get("/fonts/" + name, {"Host": "evil.example:%d" % self.server.server_port})
             self.assertEqual(status, 403, "the Host check comes first")
 
     def test_no_other_file_is_reachable_through_the_font_route(self):

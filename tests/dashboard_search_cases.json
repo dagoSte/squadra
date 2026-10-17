@@ -1,0 +1,1633 @@
+{
+  "positive": [
+    {
+      "kind": "tasks",
+      "path": "id",
+      "record": {
+        "id": "Canary"
+      }
+    },
+    {
+      "kind": "tasks",
+      "path": "title",
+      "record": {
+        "title": "Canary"
+      }
+    },
+    {
+      "kind": "tasks",
+      "path": "brief.text",
+      "record": {
+        "brief": {
+          "text": "Canary"
+        }
+      }
+    },
+    {
+      "kind": "tasks",
+      "path": "owner",
+      "record": {
+        "owner": "Canary"
+      }
+    },
+    {
+      "kind": "tasks",
+      "path": "reviewer",
+      "record": {
+        "reviewer": "Canary"
+      }
+    },
+    {
+      "kind": "tasks",
+      "path": "authors.0",
+      "record": {
+        "authors": [
+          "Canary"
+        ]
+      }
+    },
+    {
+      "kind": "tasks",
+      "path": "depends.0",
+      "record": {
+        "depends": [
+          "Canary"
+        ]
+      }
+    },
+    {
+      "kind": "tasks",
+      "path": "requirements.0.text",
+      "record": {
+        "requirements": [
+          {
+            "text": "Canary"
+          }
+        ]
+      }
+    },
+    {
+      "kind": "tasks",
+      "path": "scope.name",
+      "record": {
+        "scope": {
+          "name": "Canary"
+        }
+      }
+    },
+    {
+      "kind": "tasks",
+      "path": "plan.name",
+      "record": {
+        "plan": {
+          "name": "Canary"
+        }
+      }
+    },
+    {
+      "kind": "tasks",
+      "path": "brief.artifact.name",
+      "record": {
+        "brief": {
+          "artifact": {
+            "name": "Canary"
+          }
+        }
+      }
+    },
+    {
+      "kind": "runs",
+      "path": "task",
+      "record": {
+        "task": "Canary"
+      }
+    },
+    {
+      "kind": "runs",
+      "path": "agent",
+      "record": {
+        "agent": "Canary"
+      }
+    },
+    {
+      "kind": "messages",
+      "path": "id",
+      "record": {
+        "id": "Canary"
+      }
+    },
+    {
+      "kind": "messages",
+      "path": "from",
+      "record": {
+        "from": "Canary"
+      }
+    },
+    {
+      "kind": "messages",
+      "path": "to",
+      "record": {
+        "to": "Canary"
+      }
+    },
+    {
+      "kind": "messages",
+      "path": "task",
+      "record": {
+        "task": "Canary"
+      }
+    },
+    {
+      "kind": "messages",
+      "path": "related_task",
+      "record": {
+        "related_task": "Canary"
+      }
+    },
+    {
+      "kind": "messages",
+      "path": "body",
+      "record": {
+        "body": "Canary"
+      }
+    },
+    {
+      "kind": "outputs",
+      "path": "task",
+      "record": {
+        "task": "Canary"
+      }
+    },
+    {
+      "kind": "outputs",
+      "path": "agent",
+      "record": {
+        "agent": "Canary"
+      }
+    },
+    {
+      "kind": "outputs",
+      "path": "text",
+      "record": {
+        "text": "Canary"
+      }
+    },
+    {
+      "kind": "outputs",
+      "path": "next",
+      "record": {
+        "next": "Canary"
+      }
+    },
+    {
+      "kind": "outputs",
+      "path": "artifacts.0.name",
+      "record": {
+        "artifacts": [
+          {
+            "name": "Canary"
+          }
+        ]
+      }
+    },
+    {
+      "kind": "decisions",
+      "path": "id",
+      "record": {
+        "id": "Canary"
+      }
+    },
+    {
+      "kind": "decisions",
+      "path": "name",
+      "record": {
+        "name": "Canary"
+      }
+    },
+    {
+      "kind": "decisions",
+      "path": "actor",
+      "record": {
+        "actor": "Canary"
+      }
+    },
+    {
+      "kind": "decisions",
+      "path": "reason",
+      "record": {
+        "reason": "Canary"
+      }
+    },
+    {
+      "kind": "decisions",
+      "path": "owner_words",
+      "record": {
+        "owner_words": "Canary"
+      }
+    },
+    {
+      "kind": "decisions",
+      "path": "answers",
+      "record": {
+        "answers": "Canary"
+      }
+    },
+    {
+      "kind": "decisions",
+      "path": "withdraws",
+      "record": {
+        "withdraws": "Canary"
+      }
+    },
+    {
+      "kind": "decisions",
+      "path": "choice",
+      "record": {
+        "choice": "Canary"
+      }
+    },
+    {
+      "kind": "decisions",
+      "path": "tasks.0",
+      "record": {
+        "tasks": [
+          "Canary"
+        ]
+      }
+    },
+    {
+      "kind": "asks",
+      "path": "id",
+      "record": {
+        "id": "Canary"
+      }
+    },
+    {
+      "kind": "asks",
+      "path": "actor",
+      "record": {
+        "actor": "Canary"
+      }
+    },
+    {
+      "kind": "asks",
+      "path": "task",
+      "record": {
+        "task": "Canary"
+      }
+    },
+    {
+      "kind": "asks",
+      "path": "question",
+      "record": {
+        "question": "Canary"
+      }
+    },
+    {
+      "kind": "asks",
+      "path": "options.0.label",
+      "record": {
+        "options": [
+          {
+            "label": "Canary"
+          }
+        ]
+      }
+    },
+    {
+      "kind": "asks",
+      "path": "options.0.say",
+      "record": {
+        "options": [
+          {
+            "say": "Canary"
+          }
+        ]
+      }
+    },
+    {
+      "kind": "asks",
+      "path": "evidence.0.name",
+      "record": {
+        "evidence": [
+          {
+            "name": "Canary"
+          }
+        ]
+      }
+    },
+    {
+      "kind": "reviews",
+      "path": "task",
+      "record": {
+        "task": "Canary"
+      }
+    },
+    {
+      "kind": "reviews",
+      "path": "reviewer",
+      "record": {
+        "reviewer": "Canary"
+      }
+    },
+    {
+      "kind": "reviews",
+      "path": "notes",
+      "record": {
+        "notes": "Canary"
+      }
+    },
+    {
+      "kind": "reviews",
+      "path": "findings.0.title",
+      "record": {
+        "findings": [
+          {
+            "title": "Canary"
+          }
+        ]
+      }
+    },
+    {
+      "kind": "reviews",
+      "path": "report.name",
+      "record": {
+        "report": {
+          "name": "Canary"
+        }
+      }
+    }
+  ],
+  "negative": [
+    {
+      "kind": "tasks",
+      "path": "repo",
+      "record": {
+        "repo": "Canary"
+      }
+    },
+    {
+      "kind": "tasks",
+      "path": "utc",
+      "record": {
+        "utc": "Canary"
+      }
+    },
+    {
+      "kind": "tasks",
+      "path": "status",
+      "record": {
+        "status": "Canary"
+      }
+    },
+    {
+      "kind": "tasks",
+      "path": "verdict",
+      "record": {
+        "verdict": "Canary"
+      }
+    },
+    {
+      "kind": "tasks",
+      "path": "mode",
+      "record": {
+        "mode": "Canary"
+      }
+    },
+    {
+      "kind": "tasks",
+      "path": "stage",
+      "record": {
+        "stage": "Canary"
+      }
+    },
+    {
+      "kind": "tasks",
+      "path": "argv.0",
+      "record": {
+        "argv": [
+          "Canary"
+        ]
+      }
+    },
+    {
+      "kind": "tasks",
+      "path": "metadata.note",
+      "record": {
+        "metadata": {
+          "note": "Canary"
+        }
+      }
+    },
+    {
+      "kind": "tasks",
+      "path": "future.text",
+      "record": {
+        "future": {
+          "text": "Canary"
+        }
+      }
+    },
+    {
+      "kind": "tasks",
+      "path": "candidate.files.0.path",
+      "record": {
+        "candidate": {
+          "files": [
+            {
+              "path": "Canary"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "kind": "tasks",
+      "path": "delivery.packet_data.text",
+      "record": {
+        "delivery": {
+          "packet_data": {
+            "text": "Canary"
+          }
+        }
+      }
+    },
+    {
+      "kind": "tasks",
+      "path": "scope.original",
+      "record": {
+        "scope": {
+          "original": "Canary"
+        }
+      }
+    },
+    {
+      "kind": "tasks",
+      "path": "scope.sha256",
+      "record": {
+        "scope": {
+          "sha256": "Canary"
+        }
+      }
+    },
+    {
+      "kind": "tasks",
+      "path": "brief.artifact.original",
+      "record": {
+        "brief": {
+          "artifact": {
+            "original": "Canary"
+          }
+        }
+      }
+    },
+    {
+      "kind": "tasks",
+      "path": "report.original",
+      "record": {
+        "report": {
+          "original": "Canary"
+        }
+      }
+    },
+    {
+      "kind": "tasks",
+      "path": "artifacts.0.original",
+      "record": {
+        "artifacts": [
+          {
+            "original": "Canary"
+          }
+        ]
+      }
+    },
+    {
+      "kind": "tasks",
+      "path": "before.files.0.path",
+      "record": {
+        "before": {
+          "files": [
+            {
+              "path": "Canary"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "kind": "runs",
+      "path": "repo",
+      "record": {
+        "repo": "Canary"
+      }
+    },
+    {
+      "kind": "runs",
+      "path": "utc",
+      "record": {
+        "utc": "Canary"
+      }
+    },
+    {
+      "kind": "runs",
+      "path": "status",
+      "record": {
+        "status": "Canary"
+      }
+    },
+    {
+      "kind": "runs",
+      "path": "verdict",
+      "record": {
+        "verdict": "Canary"
+      }
+    },
+    {
+      "kind": "runs",
+      "path": "mode",
+      "record": {
+        "mode": "Canary"
+      }
+    },
+    {
+      "kind": "runs",
+      "path": "stage",
+      "record": {
+        "stage": "Canary"
+      }
+    },
+    {
+      "kind": "runs",
+      "path": "argv.0",
+      "record": {
+        "argv": [
+          "Canary"
+        ]
+      }
+    },
+    {
+      "kind": "runs",
+      "path": "metadata.note",
+      "record": {
+        "metadata": {
+          "note": "Canary"
+        }
+      }
+    },
+    {
+      "kind": "runs",
+      "path": "future.text",
+      "record": {
+        "future": {
+          "text": "Canary"
+        }
+      }
+    },
+    {
+      "kind": "runs",
+      "path": "candidate.files.0.path",
+      "record": {
+        "candidate": {
+          "files": [
+            {
+              "path": "Canary"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "kind": "runs",
+      "path": "delivery.packet_data.text",
+      "record": {
+        "delivery": {
+          "packet_data": {
+            "text": "Canary"
+          }
+        }
+      }
+    },
+    {
+      "kind": "runs",
+      "path": "scope.original",
+      "record": {
+        "scope": {
+          "original": "Canary"
+        }
+      }
+    },
+    {
+      "kind": "runs",
+      "path": "scope.sha256",
+      "record": {
+        "scope": {
+          "sha256": "Canary"
+        }
+      }
+    },
+    {
+      "kind": "runs",
+      "path": "brief.artifact.original",
+      "record": {
+        "brief": {
+          "artifact": {
+            "original": "Canary"
+          }
+        }
+      }
+    },
+    {
+      "kind": "runs",
+      "path": "report.original",
+      "record": {
+        "report": {
+          "original": "Canary"
+        }
+      }
+    },
+    {
+      "kind": "runs",
+      "path": "artifacts.0.original",
+      "record": {
+        "artifacts": [
+          {
+            "original": "Canary"
+          }
+        ]
+      }
+    },
+    {
+      "kind": "runs",
+      "path": "before.files.0.path",
+      "record": {
+        "before": {
+          "files": [
+            {
+              "path": "Canary"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "kind": "messages",
+      "path": "repo",
+      "record": {
+        "repo": "Canary"
+      }
+    },
+    {
+      "kind": "messages",
+      "path": "utc",
+      "record": {
+        "utc": "Canary"
+      }
+    },
+    {
+      "kind": "messages",
+      "path": "status",
+      "record": {
+        "status": "Canary"
+      }
+    },
+    {
+      "kind": "messages",
+      "path": "verdict",
+      "record": {
+        "verdict": "Canary"
+      }
+    },
+    {
+      "kind": "messages",
+      "path": "mode",
+      "record": {
+        "mode": "Canary"
+      }
+    },
+    {
+      "kind": "messages",
+      "path": "stage",
+      "record": {
+        "stage": "Canary"
+      }
+    },
+    {
+      "kind": "messages",
+      "path": "argv.0",
+      "record": {
+        "argv": [
+          "Canary"
+        ]
+      }
+    },
+    {
+      "kind": "messages",
+      "path": "metadata.note",
+      "record": {
+        "metadata": {
+          "note": "Canary"
+        }
+      }
+    },
+    {
+      "kind": "messages",
+      "path": "future.text",
+      "record": {
+        "future": {
+          "text": "Canary"
+        }
+      }
+    },
+    {
+      "kind": "messages",
+      "path": "candidate.files.0.path",
+      "record": {
+        "candidate": {
+          "files": [
+            {
+              "path": "Canary"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "kind": "messages",
+      "path": "delivery.packet_data.text",
+      "record": {
+        "delivery": {
+          "packet_data": {
+            "text": "Canary"
+          }
+        }
+      }
+    },
+    {
+      "kind": "messages",
+      "path": "scope.original",
+      "record": {
+        "scope": {
+          "original": "Canary"
+        }
+      }
+    },
+    {
+      "kind": "messages",
+      "path": "scope.sha256",
+      "record": {
+        "scope": {
+          "sha256": "Canary"
+        }
+      }
+    },
+    {
+      "kind": "messages",
+      "path": "brief.artifact.original",
+      "record": {
+        "brief": {
+          "artifact": {
+            "original": "Canary"
+          }
+        }
+      }
+    },
+    {
+      "kind": "messages",
+      "path": "report.original",
+      "record": {
+        "report": {
+          "original": "Canary"
+        }
+      }
+    },
+    {
+      "kind": "messages",
+      "path": "artifacts.0.original",
+      "record": {
+        "artifacts": [
+          {
+            "original": "Canary"
+          }
+        ]
+      }
+    },
+    {
+      "kind": "messages",
+      "path": "before.files.0.path",
+      "record": {
+        "before": {
+          "files": [
+            {
+              "path": "Canary"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "kind": "outputs",
+      "path": "repo",
+      "record": {
+        "repo": "Canary"
+      }
+    },
+    {
+      "kind": "outputs",
+      "path": "utc",
+      "record": {
+        "utc": "Canary"
+      }
+    },
+    {
+      "kind": "outputs",
+      "path": "status",
+      "record": {
+        "status": "Canary"
+      }
+    },
+    {
+      "kind": "outputs",
+      "path": "verdict",
+      "record": {
+        "verdict": "Canary"
+      }
+    },
+    {
+      "kind": "outputs",
+      "path": "mode",
+      "record": {
+        "mode": "Canary"
+      }
+    },
+    {
+      "kind": "outputs",
+      "path": "stage",
+      "record": {
+        "stage": "Canary"
+      }
+    },
+    {
+      "kind": "outputs",
+      "path": "argv.0",
+      "record": {
+        "argv": [
+          "Canary"
+        ]
+      }
+    },
+    {
+      "kind": "outputs",
+      "path": "metadata.note",
+      "record": {
+        "metadata": {
+          "note": "Canary"
+        }
+      }
+    },
+    {
+      "kind": "outputs",
+      "path": "future.text",
+      "record": {
+        "future": {
+          "text": "Canary"
+        }
+      }
+    },
+    {
+      "kind": "outputs",
+      "path": "candidate.files.0.path",
+      "record": {
+        "candidate": {
+          "files": [
+            {
+              "path": "Canary"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "kind": "outputs",
+      "path": "delivery.packet_data.text",
+      "record": {
+        "delivery": {
+          "packet_data": {
+            "text": "Canary"
+          }
+        }
+      }
+    },
+    {
+      "kind": "outputs",
+      "path": "scope.original",
+      "record": {
+        "scope": {
+          "original": "Canary"
+        }
+      }
+    },
+    {
+      "kind": "outputs",
+      "path": "scope.sha256",
+      "record": {
+        "scope": {
+          "sha256": "Canary"
+        }
+      }
+    },
+    {
+      "kind": "outputs",
+      "path": "brief.artifact.original",
+      "record": {
+        "brief": {
+          "artifact": {
+            "original": "Canary"
+          }
+        }
+      }
+    },
+    {
+      "kind": "outputs",
+      "path": "report.original",
+      "record": {
+        "report": {
+          "original": "Canary"
+        }
+      }
+    },
+    {
+      "kind": "outputs",
+      "path": "artifacts.0.original",
+      "record": {
+        "artifacts": [
+          {
+            "original": "Canary"
+          }
+        ]
+      }
+    },
+    {
+      "kind": "outputs",
+      "path": "before.files.0.path",
+      "record": {
+        "before": {
+          "files": [
+            {
+              "path": "Canary"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "kind": "decisions",
+      "path": "repo",
+      "record": {
+        "repo": "Canary"
+      }
+    },
+    {
+      "kind": "decisions",
+      "path": "utc",
+      "record": {
+        "utc": "Canary"
+      }
+    },
+    {
+      "kind": "decisions",
+      "path": "status",
+      "record": {
+        "status": "Canary"
+      }
+    },
+    {
+      "kind": "decisions",
+      "path": "verdict",
+      "record": {
+        "verdict": "Canary"
+      }
+    },
+    {
+      "kind": "decisions",
+      "path": "mode",
+      "record": {
+        "mode": "Canary"
+      }
+    },
+    {
+      "kind": "decisions",
+      "path": "stage",
+      "record": {
+        "stage": "Canary"
+      }
+    },
+    {
+      "kind": "decisions",
+      "path": "argv.0",
+      "record": {
+        "argv": [
+          "Canary"
+        ]
+      }
+    },
+    {
+      "kind": "decisions",
+      "path": "metadata.note",
+      "record": {
+        "metadata": {
+          "note": "Canary"
+        }
+      }
+    },
+    {
+      "kind": "decisions",
+      "path": "future.text",
+      "record": {
+        "future": {
+          "text": "Canary"
+        }
+      }
+    },
+    {
+      "kind": "decisions",
+      "path": "candidate.files.0.path",
+      "record": {
+        "candidate": {
+          "files": [
+            {
+              "path": "Canary"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "kind": "decisions",
+      "path": "delivery.packet_data.text",
+      "record": {
+        "delivery": {
+          "packet_data": {
+            "text": "Canary"
+          }
+        }
+      }
+    },
+    {
+      "kind": "decisions",
+      "path": "scope.original",
+      "record": {
+        "scope": {
+          "original": "Canary"
+        }
+      }
+    },
+    {
+      "kind": "decisions",
+      "path": "scope.sha256",
+      "record": {
+        "scope": {
+          "sha256": "Canary"
+        }
+      }
+    },
+    {
+      "kind": "decisions",
+      "path": "brief.artifact.original",
+      "record": {
+        "brief": {
+          "artifact": {
+            "original": "Canary"
+          }
+        }
+      }
+    },
+    {
+      "kind": "decisions",
+      "path": "report.original",
+      "record": {
+        "report": {
+          "original": "Canary"
+        }
+      }
+    },
+    {
+      "kind": "decisions",
+      "path": "artifacts.0.original",
+      "record": {
+        "artifacts": [
+          {
+            "original": "Canary"
+          }
+        ]
+      }
+    },
+    {
+      "kind": "decisions",
+      "path": "before.files.0.path",
+      "record": {
+        "before": {
+          "files": [
+            {
+              "path": "Canary"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "kind": "asks",
+      "path": "repo",
+      "record": {
+        "repo": "Canary"
+      }
+    },
+    {
+      "kind": "asks",
+      "path": "utc",
+      "record": {
+        "utc": "Canary"
+      }
+    },
+    {
+      "kind": "asks",
+      "path": "status",
+      "record": {
+        "status": "Canary"
+      }
+    },
+    {
+      "kind": "asks",
+      "path": "verdict",
+      "record": {
+        "verdict": "Canary"
+      }
+    },
+    {
+      "kind": "asks",
+      "path": "mode",
+      "record": {
+        "mode": "Canary"
+      }
+    },
+    {
+      "kind": "asks",
+      "path": "stage",
+      "record": {
+        "stage": "Canary"
+      }
+    },
+    {
+      "kind": "asks",
+      "path": "argv.0",
+      "record": {
+        "argv": [
+          "Canary"
+        ]
+      }
+    },
+    {
+      "kind": "asks",
+      "path": "metadata.note",
+      "record": {
+        "metadata": {
+          "note": "Canary"
+        }
+      }
+    },
+    {
+      "kind": "asks",
+      "path": "future.text",
+      "record": {
+        "future": {
+          "text": "Canary"
+        }
+      }
+    },
+    {
+      "kind": "asks",
+      "path": "candidate.files.0.path",
+      "record": {
+        "candidate": {
+          "files": [
+            {
+              "path": "Canary"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "kind": "asks",
+      "path": "delivery.packet_data.text",
+      "record": {
+        "delivery": {
+          "packet_data": {
+            "text": "Canary"
+          }
+        }
+      }
+    },
+    {
+      "kind": "asks",
+      "path": "scope.original",
+      "record": {
+        "scope": {
+          "original": "Canary"
+        }
+      }
+    },
+    {
+      "kind": "asks",
+      "path": "scope.sha256",
+      "record": {
+        "scope": {
+          "sha256": "Canary"
+        }
+      }
+    },
+    {
+      "kind": "asks",
+      "path": "brief.artifact.original",
+      "record": {
+        "brief": {
+          "artifact": {
+            "original": "Canary"
+          }
+        }
+      }
+    },
+    {
+      "kind": "asks",
+      "path": "report.original",
+      "record": {
+        "report": {
+          "original": "Canary"
+        }
+      }
+    },
+    {
+      "kind": "asks",
+      "path": "artifacts.0.original",
+      "record": {
+        "artifacts": [
+          {
+            "original": "Canary"
+          }
+        ]
+      }
+    },
+    {
+      "kind": "asks",
+      "path": "before.files.0.path",
+      "record": {
+        "before": {
+          "files": [
+            {
+              "path": "Canary"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "kind": "reviews",
+      "path": "repo",
+      "record": {
+        "repo": "Canary"
+      }
+    },
+    {
+      "kind": "reviews",
+      "path": "utc",
+      "record": {
+        "utc": "Canary"
+      }
+    },
+    {
+      "kind": "reviews",
+      "path": "status",
+      "record": {
+        "status": "Canary"
+      }
+    },
+    {
+      "kind": "reviews",
+      "path": "verdict",
+      "record": {
+        "verdict": "Canary"
+      }
+    },
+    {
+      "kind": "reviews",
+      "path": "mode",
+      "record": {
+        "mode": "Canary"
+      }
+    },
+    {
+      "kind": "reviews",
+      "path": "stage",
+      "record": {
+        "stage": "Canary"
+      }
+    },
+    {
+      "kind": "reviews",
+      "path": "argv.0",
+      "record": {
+        "argv": [
+          "Canary"
+        ]
+      }
+    },
+    {
+      "kind": "reviews",
+      "path": "metadata.note",
+      "record": {
+        "metadata": {
+          "note": "Canary"
+        }
+      }
+    },
+    {
+      "kind": "reviews",
+      "path": "future.text",
+      "record": {
+        "future": {
+          "text": "Canary"
+        }
+      }
+    },
+    {
+      "kind": "reviews",
+      "path": "candidate.files.0.path",
+      "record": {
+        "candidate": {
+          "files": [
+            {
+              "path": "Canary"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "kind": "reviews",
+      "path": "delivery.packet_data.text",
+      "record": {
+        "delivery": {
+          "packet_data": {
+            "text": "Canary"
+          }
+        }
+      }
+    },
+    {
+      "kind": "reviews",
+      "path": "scope.original",
+      "record": {
+        "scope": {
+          "original": "Canary"
+        }
+      }
+    },
+    {
+      "kind": "reviews",
+      "path": "scope.sha256",
+      "record": {
+        "scope": {
+          "sha256": "Canary"
+        }
+      }
+    },
+    {
+      "kind": "reviews",
+      "path": "brief.artifact.original",
+      "record": {
+        "brief": {
+          "artifact": {
+            "original": "Canary"
+          }
+        }
+      }
+    },
+    {
+      "kind": "reviews",
+      "path": "report.original",
+      "record": {
+        "report": {
+          "original": "Canary"
+        }
+      }
+    },
+    {
+      "kind": "reviews",
+      "path": "artifacts.0.original",
+      "record": {
+        "artifacts": [
+          {
+            "original": "Canary"
+          }
+        ]
+      }
+    },
+    {
+      "kind": "reviews",
+      "path": "before.files.0.path",
+      "record": {
+        "before": {
+          "files": [
+            {
+              "path": "Canary"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "parity": [
+    {
+      "fields": [
+        "stage"
+      ],
+      "query": "tag",
+      "match": false
+    },
+    {
+      "fields": [
+        "tag tools"
+      ],
+      "query": "tag",
+      "match": true
+    },
+    {
+      "fields": [
+        "Dashboard"
+      ],
+      "query": "board",
+      "match": false
+    },
+    {
+      "fields": [
+        "scripts/dashboard.py"
+      ],
+      "query": "dashboard.py",
+      "match": true
+    },
+    {
+      "fields": [
+        "scripts/dashboard.py"
+      ],
+      "query": "scripts/dash",
+      "match": true
+    },
+    {
+      "fields": [
+        "l’inoltro"
+      ],
+      "query": "inoltro",
+      "match": true
+    },
+    {
+      "fields": [
+        "menu"
+      ],
+      "query": "menù",
+      "match": true
+    },
+    {
+      "fields": [
+        "menù"
+      ],
+      "query": "MENU",
+      "match": true
+    },
+    {
+      "fields": [
+        "alpha",
+        "beta"
+      ],
+      "query": "beta alpha",
+      "match": true
+    },
+    {
+      "fields": [
+        "alpha"
+      ],
+      "query": "beta alpha",
+      "match": false
+    },
+    {
+      "fields": [
+        "I"
+      ],
+      "query": "i",
+      "match": true
+    },
+    {
+      "fields": [
+        "İ"
+      ],
+      "query": "i",
+      "match": true
+    },
+    {
+      "fields": [
+        "हिंदी"
+      ],
+      "query": "हद",
+      "match": true
+    },
+    {
+      "fields": [
+        "हिंदी"
+      ],
+      "query": "द",
+      "match": false
+    },
+    {
+      "fields": [
+        "a_b"
+      ],
+      "query": "b",
+      "match": false
+    },
+    {
+      "fields": [
+        "工具 最新"
+      ],
+      "query": "工具",
+      "match": true
+    },
+    {
+      "fields": [
+        "PAUSE-20261011-claude-45-review"
+      ],
+      "query": "20261011",
+      "match": true
+    },
+    {
+      "fields": [
+        "revision c990d84"
+      ],
+      "query": "c990d84",
+      "match": true
+    },
+    {
+      "fields": [
+        "sha256 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      ],
+      "query": "sha256",
+      "match": true
+    },
+    {
+      "fields": [
+        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      ],
+      "query": "aaaa",
+      "match": false
+    },
+    {
+      "fields": [
+        "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      ],
+      "query": "bbbb",
+      "match": false
+    },
+    {
+      "fields": [
+        "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      ],
+      "query": "cccc",
+      "match": false
+    },
+    {
+      "fields": [
+        "xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      ],
+      "query": "xaaa",
+      "match": true
+    },
+    {
+      "fields": [
+        "a+b[1]"
+      ],
+      "query": "a+b[",
+      "match": true
+    },
+    {
+      "fields": [
+        "a+b[1]"
+      ],
+      "query": "b[1]",
+      "match": true
+    },
+    {
+      "fields": [
+        "x"
+      ],
+      "query": "",
+      "match": true
+    }
+  ]
+}

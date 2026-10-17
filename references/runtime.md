@@ -58,6 +58,18 @@ only the process group it started and saves the native result. A forcibly killed
 process may leave a run `running`: `doctor` reports it without inventing an outcome.
 Reconcile the process actually owned before releasing resources.
 
+When the killed command was a precheck, a proof or a model run that left a terminal
+receipt or output (for example `deliver` stopped with SIGTERM during its second
+precheck), the window that started the run ends it with
+`squadra cancel --actor <starter> --run RUN-ID --reconcile`. Under the run's lease it
+records `run.end` from the private receipt, or, without a receipt, `interrupted` with no
+native result once the recorded process group is gone; every log the run left is
+registered as an artifact. A passed proof, probe or model run is recorded as
+`interrupted`, because its evidence (final fingerprint, counts, structured reply) was
+never recorded; a precheck keeps its receipt's status. A run with neither a receipt nor
+output is declared with `cancel --abandon` instead. Once the run is ended, supersession,
+promotion to the full route and `doctor` see it as finished.
+
 Synthetic tests cover both clients' formats and argv. Compatibility of a specific version
 with a real turn and the value of its results require separate, authorized verification:
 fake clients do not demonstrate them.

@@ -30,7 +30,7 @@ const tests={
    let late;app.http=()=>new Promise(r=>{late=r});
    const detail=app.run("api('/api/detail/task').then(r=>r.json())");
    const rejected=assert.rejects(detail,/integrità|integrity/);await settle();
-   app.http=()=>Promise.resolve({ok:false,status:409,text:async()=> 'integrity_failure'});await app.refresh();
+   app.http=()=>Promise.resolve({ok:false,status:409,text:async()=> '{"error":"registry_invalid"}'});await app.refresh();
    assert.equal(app.run('state'),null);assert.equal(app.run('loadUI.integrity'),true);
    for(const id of ['content','charts','metrics','connected-hero','plugin-links','artifact-body'])assert.equal(text(app.doc.getElementById(id)),'',id+' must not retain old data');
    assert.equal(app.doc.getElementById('artifact').open,false);assert.equal(banner.hidden,true);
@@ -131,7 +131,7 @@ const tests={
   assert.equal(text(app.doc.getElementById('live')),'Ricerca in corso…');
   const response=clone(fixture);response.search={query,tasks:['TASK-KQ1'],runs:[]};
   release(reply(response));await update;
-  assert.equal(app.run('matches(state.tasks["TASK-KQ1"])'),true,'hidden inventory match survives compact projection');
+  assert.equal(app.run('matches(state.tasks["TASK-KQ1"])'),true,'server match survives compact projection');
   assert.equal(app.run('matches(state.tasks["TASK-KQ3"])'),false);
   input.value='older-query';input.oninput({target:input});const old=app.refresh();await settle();
   input.value='latest-query';input.oninput({target:input});release(reply(response));await old;

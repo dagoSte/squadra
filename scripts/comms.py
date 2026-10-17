@@ -52,6 +52,8 @@ def communications(state, events, waits, at, limit=LIMIT):
     agents = state.get("agents", {})
     messages = state.get("messages", {})
     tasks = state.get("tasks", {})
+    from registry import pending_ack_ids
+    pending = set(pending_ack_ids(state))
 
     lanes, lane_index = [], {}
 
@@ -86,8 +88,10 @@ def communications(state, events, waits, at, limit=LIMIT):
 
     overdue = {}
     for wait in waits or []:
+        if wait.get('kind') not in {'ack', 'alive'}:
+            continue
         key = wait.get("id")
-        if key in messages and (key not in overdue or wait.get("threshold", 0) < overdue[key].get("threshold", 0)):
+        if key in pending and (key not in overdue or wait.get("threshold", 0) < overdue[key].get("threshold", 0)):
             overdue[key] = wait
 
     def task_fields(message):
@@ -162,7 +166,8 @@ def communications(state, events, waits, at, limit=LIMIT):
                     status = "queued"
                 else:
                     status = "sent"
-                edge.update(message=data["id"], state=status, flags=flags, **task_fields(data))
+                edge.update(message=data["id"], state=status, flags=flags,
+                            needs_ack=data["id"] in pending, **task_fields(data))
             elif kind == "ack":
                 message = messages[data["message"]]
                 edge = base(event, "answer" if message.get("ping") else "ack", event["actor"], message["from"])
@@ -198,17 +203,19 @@ def communications(state, events, waits, at, limit=LIMIT):
         key = tuple(sorted([edge["from_lane"], edge["to_lane"]]))
         pair = pairs.setdefault(key, {"lanes": list(key), "same_window": key[0] == key[1], "messages": 0,
                                       "acked": 0, "sent": 0, "queued": 0, "info": 0, "overdue": 0, "last_utc": None,
-                                      "oldest_pending_seconds": None, "tasks": []})
+                                      "pending": 0, "oldest_pending_seconds": None, "tasks": []})
         pair["messages"] += 1
         pair[edge["state"]] += 1
         pair["last_utc"] = edge["utc"]
-        if edge["state"] not in {"acked", "info"} and edge["age_seconds"] is not None:
+        if edge.get("needs_ack"):
+            pair["pending"] += 1
+        if edge.get("needs_ack") and edge["age_seconds"] is not None:
             pair["oldest_pending_seconds"] = max(pair["oldest_pending_seconds"] or 0, edge["age_seconds"])
         if edge["task"] and edge["task"] not in [t["task"] for t in pair["tasks"]]:
             pair["tasks"].append({"task": edge["task"], "title": edge["task_title"]})
     # Prioritize overdue and unconfirmed pairs, then their latest message.
     ordered = sorted(pairs.values(), key=lambda p: p["last_utc"] or "", reverse=True)
-    ordered.sort(key=lambda p: (p["overdue"] == 0, p["sent"] + p["queued"] == 0))
+    ordered.sort(key=lambda p: (p["overdue"] == 0, p["pending"] == 0))
     return {"as_of": clock.isoformat(), "lanes": lanes, "edges": edges[-limit:] if limit else [],
             "total": len(edges), "shown": min(len(edges), limit), "limit": limit,
             "unknown_kinds": unknown_kinds, "malformed": malformed, "pairs": ordered}

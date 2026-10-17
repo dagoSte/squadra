@@ -17,6 +17,10 @@ and unknown formats show **Not measured**, with a reason. A registered Claude
 subagent takes precedence over counting its file under its parent. Symlinks,
 nonregular files and files or opened directories owned by another user are refused.
 Remote sessions and Cursor usage are not measured by this collector.
+A window is matched through the session it was registered with (`agent --session <id>`,
+or an identity named `claude-window-<id>` or `codex-thread-<id>`); a window registered
+without one is **Not measured** with `session_not_registered`. Only the roots of clients
+that have such a window are walked.
 
 Each bounded JSONL line is parsed once. Conversation text may pass through the
 parser's memory; it is immediately discarded. Only numeric usage and structural
@@ -75,16 +79,22 @@ verification:** a same-length rewrite outside the sampled regions is not detecte
 and retains its old counts until the file is replaced, truncated or changes in a
 sampled region. A restored cache verifies the same samples before reusing counts.
 
-The normal
+The dashboard's
 collection slice is 250 ms, checked between bounded record parses, with 64 KiB
 read chunks and at most 16 MiB per record. The normal backward window is 8 MiB;
 finishing one long record may extend it to 16 MiB + 64 KiB, plus the 64 KiB Codex
 identity header. Raw fragments never persist between calls. A single parse can overrun the slice;
 this is not a hard real-time guarantee. At most 1,000 matched files per identity
 and 100,000 retained structural/numeric records per collector are allowed. Discovery
-checks a bounded file inventory and refreshes at most every 30 seconds. The explicit
-Usage CLI repeats slices up to a 30-second deadline and reports partial coverage
-when it expires. Automatic Balance reads take one slice and reuse the same cache.
+walks a bounded inventory (100,000 entries, beyond which it reports `discovery_limited`)
+and resumes across slices: while it runs, the windows it serves and the coverage say
+`collecting`. A completed inventory refreshes at most every 30 seconds, or sooner when a
+walked folder changes. The explicit Usage CLI and `squadra balance` give each slice the
+time left before their 30-second deadline and report partial coverage when it expires.
+Within a slice each selected file gets an equal share of the time left, from a rotating
+start, so one large file does not hold back another window. While collection runs, the
+cache is saved at most every 5 seconds. Automatic Balance reads on the dashboard take one
+slice and reuse the same cache.
 
 ## Disposable calculation cache
 

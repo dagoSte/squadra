@@ -2,9 +2,9 @@
 import json
 import unittest
 
+import test_projection
 from registry import canonical
 from registry_projections import freshness
-import test_projection
 
 
 class FullExportContract(unittest.TestCase):

@@ -1,6 +1,6 @@
 # Informativa privacy di Squadra
 
-Aggiornata il 15 ottobre 2026. [English](PRIVACY.md).
+Aggiornata il 16 ottobre 2026. [English](PRIVACY.md).
 
 Squadra è un software che esegui sul tuo computer. Il suo autore, Stefano
 D'Agostino, non gestisce un servizio che raccoglie dati da Squadra. Il registro
@@ -51,6 +51,14 @@ progetto ed è esclusa dai normali pacchetti `checkpoint` e `save`. Puoi elimina
 senza rischi: i numeri vengono ricostruiti dai file di sessione originali, senza
 rimuovere quei file o i dati del registro. I prezzi che inserisci nella pagina
 restano nella memoria locale del tuo browser e non vengono scritti nel registro.
+
+La pagina «Bilanciamento» e `squadra balance` combinano il registro con i numeri
+dei Consumi descritti sopra, raccolti nello stesso modo dagli stessi file di
+sessione. Non aggiungono altre fonti e non scrivono nulla nel registro. Il
+riferimento per Claude che puoi dichiarare nella pagina (token per 5 ore e per
+settimana) resta nella memoria locale del tuo browser e arriva solo alla dashboard
+locale; `squadra balance --reference` lo legge da un file che indichi tu. Nessuno
+dei due viene scritto nel registro.
 
 ## La dashboard e i servizi esterni
 

@@ -38,7 +38,9 @@ def validate_value(kind, value, *, allow_loopback=False):
 def private(fd, directory=False):
     info = os.fstat(fd)
     p.require(info.st_uid == os.getuid() and stat.S_IMODE(info.st_mode) == (0o700 if directory else 0o600)
-              and (directory or info.st_nlink == 1), 'unsafe_permissions')
+              and (directory or info.st_nlink in (0, 1)), 'unsafe_permissions')
+    # Reopen a replaced snapshot; never read an unlinked fd as the current file.
+    p.require(directory or info.st_nlink == 1, 'busy')
 
 
 @contextmanager
@@ -95,16 +97,21 @@ def locked(parent, write=False):
 
 
 def current(parent, fields, repair=()):
+    """Try up to three opens for an unlinked snapshot; exhaustion remains busy."""
     kinds = {f['id']: f['kind'] for f in fields}
-    try:
-        saved = p._read(parent, 'settings.json', LIMIT, private)
-    except p.Refused as exc:
-        if exc.code == 'not_found':
-            saved = {'schema': 1, 'updated': '1970-01-01T00:00:00Z', 'values': {}, 'secrets': []}
-        elif exc.code in {'invalid_json', 'too_large'}:
-            raise p.Refused('settings_invalid') from None
-        else:
-            raise
+    for attempt in range(3):
+        try:
+            saved = p._read(parent, 'settings.json', LIMIT, private)
+        except p.Refused as exc:
+            if exc.code == 'busy' and attempt < 2:
+                continue
+            if exc.code == 'not_found':
+                saved = {'schema': 1, 'updated': '1970-01-01T00:00:00Z', 'values': {}, 'secrets': []}
+            elif exc.code in {'invalid_json', 'too_large'}:
+                raise p.Refused('settings_invalid') from None
+            else:
+                raise
+        break
     try:
         p._fields(saved, ('schema', 'updated', 'values', 'secrets'))
         p._schema(saved)

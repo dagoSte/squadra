@@ -89,7 +89,7 @@ class ShortOutput(unittest.TestCase):
         for task in state['tasks'].values():
             task['status'] = 'done'
         text = registry.table(state, read_at=self.at, compact=True)
-        self.assertIn('ack: 38', text)
+        self.assertIn('ack: 30', text)
         self.assertNotIn('- ack ·', text)
 
     def test_task_waits_processes_and_active_window_pings_remain_visible(self):
@@ -102,7 +102,8 @@ class ShortOutput(unittest.TestCase):
                                 'status': 'running', 'utc': '2026-10-15T12:00:00+00:00'}
         state['runs']['CLEANUP'] = {**state['runs']['RUN'], 'id': 'CLEANUP', 'status': 'cleanup-unknown'}
         state['messages']['PING'] = {'id': 'PING', 'from': 'C', 'to': 'R', 'body': 'Ping', 'ping': True,
-                                     'availability_event': None, 'utc': '2026-10-15T12:00:00+00:00', 'ack': None}
+                                     'availability_event': None, 'utc': '2026-10-15T12:00:00+00:00', 'ack': None,
+                                     'transport_all_failed': False}
         text = registry.table(state, read_at=self.at, compact=True)
         for kind in ('delivered', 'reviewed', 'heartbeat', 'cleanup-unknown', 'alive'):
             self.assertIn('- ' + kind + ' ·', text)

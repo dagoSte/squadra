@@ -31,6 +31,8 @@ class Features(unittest.TestCase):
         self.ack("N")
 
     def test_calculated_age_crosses_threshold_without_events(self):
+        # The coordinator queued the assignment to the Codex owner, so it is an ACK wait, not one to forward.
+        self.store.append("transport", "C", {"message": "assign-T", "via": "codex-queue", "delivered": True})
         state = self.store.state(); before = len(self.store.events())
         stamp = dt.datetime.fromisoformat(state["messages"]["assign-T"]["utc"])
         self.assertFalse(waits(state, stamp + dt.timedelta(seconds=899)))

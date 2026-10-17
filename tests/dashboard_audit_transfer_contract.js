@@ -35,7 +35,7 @@ const tests={
   app.run("transferUI.sections.set('mail:',{messages:{}})");
   app.http=()=>new Promise(resolve=>{release=resolve});app.run("panelOpenStory('TASK-KQ1')");await settle();
   assert.equal(app.doc.getElementById('story').open,true);
-  app.http=()=>Promise.resolve({ok:false,status:409,text:async()=> 'integrity_failure'});await app.refresh();
+  app.http=()=>Promise.resolve({ok:false,status:409,text:async()=> '{"error":"registry_invalid"}'});await app.refresh();
   assert.equal(app.run('state'),null);assert.equal(app.run('loadUI.integrity'),true);
   assert.equal(app.doc.getElementById('story').open,false);assert.equal(text(app.doc.getElementById('content')),'');
   release(reply({head:value.registry_head.hash,section:'story',record:'TASK-KQ1',patch:{tasks:{'TASK-KQ1':base.tasks['TASK-KQ1']}}}));await settle();await settle();

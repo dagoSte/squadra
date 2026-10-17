@@ -8,7 +8,7 @@ The most complete team skill for Claude Code, Codex and Cursor.
 
 **Free and open source** — MIT licence, no account, everything runs on your machine.
 
-**Version 3.10.1** · Free · MIT · Local toolkit · Python 3.12+ · macOS / POSIX
+**Version 3.10.2** · Free · MIT · Local toolkit · Python 3.12+ · macOS / POSIX
 
 **English** · [Italiano](README.it.md) · [Privacy](PRIVACY.md)
 
@@ -29,29 +29,55 @@ It installs with `/plugin` in Claude Code and Codex. **Install:** see [Installat
 <a id="news"></a>
 ## What's new
 
-**3.10.1 — see what every AI window really spends, and where the next task should go**
+**3.10.2 — messages that always arrive, and a dashboard that keeps up with a working squad**
 
-A squad mixes Claude Code and Codex windows, and each provider shows you only its own usage. Squadra 3.10.1 puts all of them in one view, for every task: which window spent how many tokens, with which model, against which quota, and which window or model should take the next task. You can see why each piece of advice is given. It is computed on your computer from the session files the clients already keep; no text of the conversations is stored, shown or sent anywhere.
+The coordinator can deliver every message to its window, the dashboard updates only what changed, and the search box finds past work by the words people wrote. The registry format does not change.
 
 **Watch the two-minute film of what's new — turn the sound on in the player:**
 
 https://github.com/user-attachments/assets/6ea747a5-a993-4aa7-a58d-1b2b7f908720
 
+- **Messages always find their way.** The coordinator can deliver any message, including one written by a sandboxed Codex window, and every delivery attempt is recorded. A Claude window receives its own mail as it arrives with `squadra inbox --follow`. A message to a Codex window that nobody has delivered yet is listed first, as «to forward», with how long it has been waiting.
+- **Waits that tell the truth.** The waits list only what is still open: a closed task's confirmations leave it, and a plan waiting for its reader shows up there.
+- **Search.** The search box finds past work by the words people wrote, in any order and with or without accents, including decisions, questions and reviews. The dropdown shows the newest results first and ends with a ready-made question for your agent.
+- **Newest first, everywhere.** Every list and task picker shows the latest items on top.
+- **A dashboard that keeps up.** After a new event the page updates only what changed; an idle page costs almost nothing, and a search sends only its results.
+- **Shorter answers.** `task`, `brief` and `start` print a short summary. Plain `inbox` shows the messages waiting for you plus the latest 10; `--all` shows everything.
+- **A safer registry.** A new registry folder is ignored by Git, so it cannot be committed by accident. A slow write holds the other windows only briefly. `doctor` is read-only and reports a damaged cache; `doctor --repair` fixes it and `--quick` is a fast check. Commands explain errors in plain words. A file leaked into the registry can be removed with a recorded decision.
+- **Save and restore you can rely on.** `save` works on large projects and on repositories that track `.env.example`; the way back to an older version works with either version; a save package restores after you open it, and stashed work comes back.
+- **Usage and Balance measure every window registered as the guide shows** (`--session`), also on machines with many saved conversations.
+- **Install anywhere.** The installer works under a shared-group umask and with a linked home folder. On Python older than 3.12 it refuses with one clear line.
+- **English stays English.** An English workspace gets English in every command.
+- **Joining and presence.** A new window can answer its first presence call, and the coordinator's own sweep keeps the coordinator active.
+- Plugins: memoranda 1.0.7, Playwright 1.0.8, Sentry 0.1.5.
+
+**Measured on our own squad.** Our coordinator ran the same script against the dashboard of published 3.10.1 and then of 3.10.2, on the same copy of this squad's registry (11,488 events), on an 8-core machine under moderate load (load average 5 to 11 during the runs): five updates, each after one new message, and three searches. Time is the dashboard's own processing time for one request. Here the dashboard was already open on the copy before its first write, so the first update paid one more full read (8.5 s): a copied or moved registry has its cache re-bound by its first write in the new place, and a dashboard already open there pays one full read on the next update. The table shows the updates after it.
+
+| What we measured | 3.10.1 | 3.10.2 |
+|---|---|---|
+| Page update after a new message | 4.7–5.3 s, 8.2 MB | 0.17 s, 0.56 MB |
+| A search | 3.1–6.6 s, 8.3 MB | 0.4 s, at most 0.13 MB |
+| Page update when nothing changed | 0.02 s | about 0.001 s |
+
+**3.10.1 — see what every AI window really spends, and where the next task should go**
+
+A squad mixes Claude Code and Codex windows, and each provider shows you only its own usage. Squadra 3.10.1 puts all of them in one view, for every task: which window spent how many tokens, with which model, against which quota, and which window or model should take the next task. You can see why each piece of advice is given. It is computed on your computer from the session files the clients already keep; no text of the conversations is stored, shown or sent anywhere.
+
 - **Balance (new system skill).** Advice on windows and models by load, quota and history, with the numbers each piece of advice rests on. It assigns nothing. The page says in plain words what it checks, today's values, and why there is no advice when there is none.
-- **Usage totals stay stable while session files grow.** Saved calculations let a dashboard restart reuse earlier counts; a file that was rewritten is counted again, and a missing or unsafe cache (for example a symbolic link on its path) is rebuilt, which the Usage page says.
-- **Commands that cost the windows fewer tokens.** Every command used to print the whole list of open waits into the window that ran it; now it prints a short answer, and `squadra status --all` prints the full list (the figures are in the table below).
+- **Usage totals stay stable while session files grow.** Saved calculations let a dashboard restart reuse earlier counts; a file that was rewritten is counted again, and a missing or damaged cache is rebuilt. If a folder on the cache's path is a symbolic link, the cache stays off and the Usage page says so: the figures stay correct, but every dashboard restart reads the session files again.
+- **Commands that cost the windows fewer tokens.** Every command used to print the whole list of open waits into the window that ran it; now it prints a short answer, and `squadra status --all` prints the full list. `task`, `brief` and `start` add the forecast and a short balance, the first window for building and for reading with its reason; `squadra balance --task` prints the whole ranking (the figures are in the table below).
 - **A registry that stays fast as the history grows.** A command now reads and writes what changed, not the whole history; on a copy of our 8,500-event registry, sending a message to another window went from 27 s to 3.2 s. Integrity checks still cover the whole chain at the moments listed in the guide.
 - **A lighter dashboard** that downloads only what changed, and **animated charts** on the Usage and Balance pages.
 - **Information messages** (`send --info`) that expect no reply no longer stay open as waits.
 - Plugins: memoranda 1.0.6, Playwright 1.0.7, Sentry 0.1.4.
 
-**Measured on our own squad.** Our coordinator took these figures on this squad's registry (about 9,980 events) after installing 3.10.1. The two «before» times come from the same commands timed on an earlier copy of the same registry, before the change. After the upgrade, the first commands build a verified snapshot in about 6 s; the times below are for the commands after it.
+**Measured on our own squad.** Our coordinator took these figures on this squad's registry (about 9,980 events) after installing 3.10.1. The two «before» times come from the same commands timed on an earlier copy of the same registry, before the change. A missing or moved cache needs verified reconstruction on the first write; its cost depends on the registry and machine. Read-only commands use verified replay until a cache is available. The times below describe subsequent warm commands, not a guaranteed cold start.
 
 | What we measured | Before | With 3.10.1 |
 |---|---|---|
 | «Where are we» (`squadra status`) | 8.6 s | 0.85 s |
 | Saving an output (`squadra output`) | 10.7 s | 0.86 s |
-| Answer printed by a command | 75–95 KB | about 2.2 KB |
+| Answer printed by a command | 75–95 KB | about 2.2 KB; `task`, `brief` and `start` about 2.0 KB with 10 windows (synthetic squad), forecast and balance included |
 | Dashboard refresh when nothing changed | 8 MB | 0.2 KB |
 | Usage totals while windows work | went up and down | only grow (50 samples, none lower) |
 
@@ -140,7 +166,7 @@ codex plugin marketplace add dagoSte/squadra
 codex plugin add squadra@squadra
 ```
 
-The plugin brings the skill, its scripts, references and dashboard. It does not put the `squadra` shell command on your PATH: agents run `python3 <skill folder>/scripts/squadra.py`. Use either the plugin or the standalone installer, not both, so the skill is not registered twice.
+The plugin brings the skill, its scripts, references and dashboard. It does not put the `squadra` shell command on your PATH: agents run `python3 <skill folder>/scripts/squadra.py`, also for the instructions Squadra prints, such as `squadra ack …`. To have the `squadra` command itself, use the standalone installer below instead of the plugin. Use either the plugin or the standalone installer, not both, so the skill is not registered twice.
 
 ### Standalone installer (adds the `squadra` command)
 
@@ -153,7 +179,7 @@ export PATH="$HOME/.local/bin:$PATH"
 squadra --version
 ```
 
-Install from a clean, committed checkout with a **new backup directory** each time; the installer keeps your previous skills and launcher, so you can roll back. Without installing, run `python3 -B scripts/squadra.py <command>`. [Details and rollback](references/start.md#install-and-join-details).
+Install from a clean, committed checkout with a **new backup directory** each time; the installer keeps your previous skills and launcher, so you can roll back. The `export PATH` line lasts for that terminal only: add it to your shell profile (for example `~/.zshrc` or `~/.bashrc`) so new terminals find `squadra`. Without installing, run `python3 -B scripts/squadra.py <command>`. [Details and rollback](references/start.md#install-and-join-details).
 
 ### Updating
 
@@ -170,14 +196,21 @@ squadra --version
 
 Every release raises the version number. Plugins installed from the Store keep their version until `squadra plugin install <name>` runs again from the new release ([Plugins bundled in your release](#plugin-store)). Open windows keep the version they read until they restart, and a running squad keeps its protocol until you switch it explicitly.
 
-**Updating from 3.10.0 or earlier to 3.10.1: the registry gets lighter, and every window must move together.**
-- **Before you update,** save the squad: `squadra save --actor <your window> --to <a new folder>`. It is your way back.
+**Updating from 3.10.1 to 3.10.2: the registry stays as it is.**
+- **Windows can move one at a time.** 3.10.1 and 3.10.2 windows share the same registry while you update them; nothing is converted.
+- **Two things wait for the last window.** A settings change made from a 3.10.1 window puts the two new wait thresholds (`to-forward` and `plan`) back to their defaults. And removing a leaked file with a recorded decision makes a 3.10.1 window's full audit and dashboard fail on the missing file, so update every window before you remove one.
+- **Plugins from the Store:** run `squadra plugin install <name>` again, as after every release.
+
+**Updating from 3.10.0 or earlier to 3.10.1: less repeated history work, and every window must move together.**
+- **Before you update,** the coordinator saves the squad: `squadra save --actor <coordinator> --to <a new folder>`. It is your way back.
 - **Your registry is read as it is.** Nothing is converted and the history already written is not touched. From the first command on 3.10.1, new events are written in the lighter format.
 - **Update every window at once,** Claude Code and Codex. A window still on 3.10.0 stops at the first new event with `Event integrity failure at sequence N`. That is on purpose: an old version stops rather than accept events it cannot read. Nothing is lost: update that window and it carries on.
-- **No way back on the same registry.** After the update, 3.10.0 cannot use that registry. To go back, restore the save you made before updating.
+- **No way back on the same registry.** After the update, 3.10.0 cannot use that registry. To go back, restore the save you made before updating, with either version, then keep using the old version on the restored copy: the first command of 3.10.1 or later on it writes the newer format again.
 - **If in doubt,** run `squadra doctor` on 3.10.1: it says when a registry needs 3.10.1 or later.
 - **Plugins from the Store:** run `squadra plugin install <name>` again, as after every release.
 - **If you installed Squadra from the Claude directory,** you get the version the directory lists until it moves to 3.10.1.
+
+The first window to write an older or moved registry builds its cache; other windows wait. If a command says `registry busy, retry`, retry after that first write finishes.
 
 ### Rule 0: find the windows and introduce yourself
 
@@ -187,16 +220,20 @@ Then create one durable registry, outside temporary folders:
 
 ```sh
 export SQUADRA_ROOT="$HOME/.local/state/squadra/my-project"
-squadra init --name "My project" --project /path/to/project
-squadra agent --id coord --identity window-01 \
-  --role coordinator --client codex --repo /path/to/project
-squadra agent --id builder --identity window-02 \
+squadra init --name "My project" --project /path/to/project --lang en
+squadra agent --id coord --identity window-01 --session CLAUDE-SESSION-ID \
+  --role coordinator --client claude --repo /path/to/project
+squadra agent --id builder --identity window-02 --session CLAUDE-SESSION-ID \
   --role builder --client claude --repo /path/to/builder-checkout
-squadra agent --id reader --identity window-03 \
+squadra agent --id reader --identity window-03 --session CODEX-THREAD-ID \
   --role reviewer --client codex --repo /path/to/reader-checkout
 squadra status
 squadra dash --open
 ```
+
+`--session` is the window's own session ID: the file name of its transcript under `~/.claude/projects/<project>/`, without
+`.jsonl`, for Claude Code, the UUID at the end of its `~/.codex/sessions/…/rollout-…` file for Codex. Usage and Balance measure a
+window only through it, and the Codex queue needs it.
 
 <a id="rule-1"></a>
 ### Rule 1: work in parallel
@@ -280,6 +317,8 @@ Take a checkpoint and show me the progress table. Do not publish anything.
 ```text
 Open the squadra dashboard for this registry in my browser.
 ```
+
+A Codex window whose sandbox blocks network access cannot open the dashboard's local port: ask a Claude window.
 
 **Record a decision (coordinator)**
 
@@ -386,7 +425,7 @@ New to Squadra? Try these twelve steps once, end to end, on a test project. A **
 7. **The builder proves and delivers:** `prove` runs the agreed check on the exact files; `deliver` hands them over.
 8. **Someone else reads:** a reader who did not write the work records a verdict with `review`.
 9. **The coordinator closes:** `check`, then `close`.
-10. **Check who still answers:** `ping --all`; `ping --sweep` puts an unanswered window in stand-by, which stops nothing it runs.
+10. **Check who still answers:** the coordinator runs `ping --all`; `ping --sweep` puts an unanswered window in stand-by, which stops nothing it runs.
 11. **Open the dashboard** with `dash --open`; «How to read this page» explains every term.
 12. **Record what the owner says** with `decision`, `--owner-words`, `--channel` and `--task`.
 
@@ -456,7 +495,7 @@ Views: **Summary**, **Windows**, **Tasks**, **Mail**, **Communications**, **Deci
 
 *The Usage, Balance and System skills pages on the same synthetic Atlas registry, with synthetic session files that contain no conversation text ([Italian](docs/images/dashboard-usage-it.png), [Balance in Italian](docs/images/dashboard-balance-it.png), [System skills in Italian](docs/images/dashboard-system-skills-it.png)).*
 
-**Refresh and safety.** The page refreshes every two seconds, pauses while the tab is hidden, and refreshes immediately when you return. It offers text search and opens registered artifacts in a dialog. It is **read-only except declared settings and selections of installed plugins**; registry actions use the CLI. It listens on `127.0.0.1`, checks Host and token, checks Origin for settings and selection writes, and loads no remote scripts or CDN. `--port` picks a port (by default a free one); `Ctrl-C` closes the dashboard server, not the agents; a disconnected page keeps its last view with a warning.
+**Refresh and safety.** The page refreshes every two seconds, pauses while the tab is hidden, and refreshes immediately when you return. Search finds recorded tasks, runs, messages, outputs, decisions, questions and reads by word prefix, ignoring accents; its dropdown shows the newest first and offers a prompt to copy for your agent. Registered artifacts open in a dialog. It is **read-only except declared settings and selections of installed plugins**; registry actions use the CLI. It listens on `127.0.0.1`, checks Host and token, checks Origin for settings and selection writes, and loads no remote scripts or CDN. `--port` picks a port (by default a free one); `Ctrl-C` closes the dashboard server, not the agents; a disconnected page keeps its last view with a warning.
 
 <a id="plugins"></a>
 ### Local data plugins
@@ -547,7 +586,7 @@ Each box in the graph is a recorded fact; solid lines are recorded links, dashed
 
 **The rules of the read:** only a grave finding blocks; the rest is fixed now with a non-author check or recorded as a follow-up with an owner and a trigger. **Never hand commands to the owner.** All the rules: [details](references/work.md#readme-protocol-details).
 
-**Contract, proof, review and close.** Keep evidence outside the delivered checkout: `scope.md` (behaviour, owned paths, dependencies, resources, checks, release boundaries), `argv.json` as an exact argument list, not a shell string (`["python3", "-B", "-m", "unittest", "discover", "-s", "tests", "-v"]`), and an optional `requirements.json` (`[{"id": "R1", "text": "Values add up correctly"}]`).
+**Contract, proof, review and close.** Keep evidence outside the delivered checkout: `scope.md` (behaviour, owned paths, dependencies, resources, checks, release boundaries), `argv.json` as an exact argument list, not a shell string (`["python3", "-B", "-m", "unittest", "discover", "-s", "tests", "-v"]`), and an optional `requirements.json` (`[{"id": "R1", "text": "Values add up correctly"}, {"id": "R2", "text": "An empty list adds up to zero"}]`).
 
 ```sh
 squadra task --actor coord --id T1 --owner builder --reviewer reader \
@@ -641,7 +680,7 @@ Thresholds, presence calls and why every window should run the same version: [de
 ```sh
 squadra checkpoint --to /durable/checkpoint-001
 squadra save --actor coord --to /durable/recovery-001
-squadra restore-check --from /durable/recovery-001 --to /durable/restore-test-001
+squadra restore-check --actor coord --from /durable/recovery-001 --to /durable/restore-test-001
 squadra pause --actor coord --reason "Owner requested stop"
 squadra doctor
 squadra resume --actor coord --reason "Owner explicitly resumed"
@@ -672,7 +711,7 @@ squadra selftest --output /durable/selftest-001
 | `registry.sqlite3` | Authoritative state; transactional events, WAL, synchronous FULL. |
 | `artifacts/` | Content-addressed evidence and source-file manifests; manifests preserve the original source fingerprint. |
 | `events.jsonl` | Event projection extended with committed events; may lag after an interrupted update. |
-| `state.json` | Complete structured export, refreshed by `export`, `checkpoint` or `save`. |
+| `state.json` | Complete structured export, refreshed in the live registry by `export`; `checkpoint` and `save` write it into their copy. |
 | `stato.md`, `squadra-posta.md` | Readable status and mailbox projections; use the CLI for current work and inbox. |
 | `posta/exchange-YYYY-MM-DD.md` | Shared daily UTC projection; ordinary writes update affected days. |
 
@@ -681,11 +720,12 @@ Read-only commands do not write the registry or its projections. Use `squadra ex
 | Operation | What is verified |
 |---|---|
 | Other ordinary commands, including `check` and an ordinary task's `close`; dashboard refresh after startup | The anchor event and its hash, all newer events and links, and authenticated proofs for each cache value or index read. |
+| Quick resume check (`doctor --quick`) | Anchor, suffix and demanded cache values; explicitly limited, without a full historical/artifact audit or replay-root comparison. |
 | Explicit `usage`/`balance` calculations, a lesson's source check, and the lesson hint after a failed proof | The complete event hash chain and the requested historical evidence. These reads do not perform a full artifact audit. |
 | `doctor`, `export`, `checkpoint`, `save`, `restore-check`, and a release-gate task's `close` | The complete chain, referenced artifacts/manifests, and full replay to compare or rebuild the derived cache. |
 | Dashboard startup | The ordinary verified path serves data while a full chain/artifact/replay audit runs in the background. A visible status marks the pending audit; failure stops data responses and removes the displayed data. |
 
-The other ordinary reads above do not reverify earlier events, untouched cache leaves, or the cached root against a complete replay of the reducer. A missing, foreign or invalid cache requires verified reconstruction; a failed verification never becomes a cached success. Upgrade every window together before the first new-format write. Events written by this version include a format marker in their hash: Squadra 3.10.0 stops with an integrity error at that marker, including on status/check/close. That refusal is intentional, not lost data; use the upgraded CLI. Older events stay unchanged. Always write through the CLI, never into generated files. Integrity does not prove that claims are true or authenticate identities cryptographically. [Details](references/recovery.md#registry-verification).
+The other ordinary reads above do not reverify earlier events, untouched cache leaves, or the cached root against a complete replay of the reducer. A missing or foreign cache requires verified reconstruction. A full audit that finds cache/journal disagreement reports a mismatch: read-only `doctor` refuses, and the dashboard fails closed. Use explicit `doctor --repair` in a writable workspace to rebuild the derived cache; saved packages and checkpoints refuse repair. A failed verification never becomes a cached success. Derived indexes can increase disk use; the new event format does not promise a smaller database. Upgrade every window together before the first new-format write. Events written by this version include a format marker in their hash: Squadra 3.10.0 stops with an integrity error at that marker, including on status/check/close. That refusal is intentional, not lost data; use the upgraded CLI. Older events stay unchanged. Always write through the CLI, never into generated files. Integrity does not prove that claims are true or authenticate identities cryptographically. [Details](references/recovery.md#registry-verification).
 
 ### Small changes: the light route
 
@@ -696,7 +736,7 @@ The coordinator may declare `task --route light` for a bounded, reversible chang
 
 You do not have to type these commands: **asking your window in plain words is the recommended way**, as in the *Or just ask* column and the [example prompts](#prompts), and the window runs the command for you. The commands are what the windows run, and what you can type yourself to check.
 
-Every command, grouped by purpose: **50 subcommands**, plus `--version`. Use `squadra <command> --help` for the flags; registry commands accept `--root` or `SQUADRA_ROOT`. «Coordinator only» marks what only the coordinator can record: `task`, `route`, `supersede`, `brief`, `close`, `ask`, `decision`, `settings`, `pause`, `resume`, `save`, `standby`, `ping --sweep`, and the receipt that `restore-check` writes into the live registry. Without installing, the same commands run as `python3 -B scripts/squadra.py <command>`.
+Every command, grouped by purpose: **50 subcommands**, plus `--version`. Use `squadra <command> --help` for the flags; registry commands accept `--root` or `SQUADRA_ROOT`. «Coordinator only» marks what only the coordinator can record: `task`, `route`, `supersede`, `brief`, `close`, `ask`, `decision`, `settings`, `pause`, `resume`, `save`, `standby`, `ping --all`, `ping --sweep`, and the receipt that `restore-check` writes into the live registry. Without installing, the same commands run as `python3 -B scripts/squadra.py <command>`.
 
 <details>
 <summary><strong>All 50 commands and their prompts, grouped by purpose</strong></summary>
@@ -708,8 +748,8 @@ Every command, grouped by purpose: **50 subcommands**, plus `--version`. Use `sq
 | `--version` | Print the installed version. | “Which version of Squadra is installed?” |
 | `init` | Create the registry for a project, with its name, language and review budgets. | “Use the squadra skill and create the registry for this project in ~/.local/state/squadra/atlas.” |
 | `agent` | Register a window: identity, role, client, checkout, and the skills it actually read. | “Register this window in the squad, with the skills you actually read.” |
-| `census` | Find the project's Codex, Claude and Cursor windows without writing anything; `--project` is required before `init`. | “Find the Codex, Claude and Cursor windows working on this project, without writing anything.” |
-| `ping` | Send a presence call to one window (`--to`) or to all (`--all`); `--sweep` (coordinator only) records stand-by for an unanswered call, and the return after a fresh ACK. | “Check which windows are still there: send a presence call to all of them.” |
+| `census` | Find the project's Codex, Claude and Cursor windows without writing anything; `--project` is required before `init`. Run it from a Claude window: inside a Codex sandbox it cannot see the other windows, and says so. | “Find the Codex, Claude and Cursor windows working on this project, without writing anything.” |
+| `ping` | Send a presence call to one window (`--to`) or, coordinator only, to all (`--all`); `--sweep` (coordinator only) records stand-by for an unanswered call that a transport delivered, and the return after a fresh ACK. | To the coordinator: “Check which windows are still there: send a presence call to all of them.” |
 | `standby` | Coordinator only: put a window in stand-by, or bring it back with `--resume`; its work, runs and reservations stay its own. | To the coordinator: “Put the reviewer window in stand-by until I say otherwise.” |
 | `settings` | Coordinator only: set the wait thresholds in seconds: `ack`, `delivered`, `reviewed`, `heartbeat`, `alive`. | To the coordinator: “Show a missing ACK as a wait after 10 minutes instead of 15.” |
 
@@ -730,7 +770,7 @@ Every command, grouped by purpose: **50 subcommands**, plus `--version`. Use `sq
 | Command | What it does | Or just ask |
 |---|---|---|
 | `send` | Write a message to a window, optionally about a task or in reply to another; `--info` marks a notice that needs no ACK (not with `--to-new`). | “Tell the builder that the old keys must stay readable for a month.” |
-| `inbox` | Read a window's messages and their confirmations. | “Read your messages and tell me which ones still need a confirmation.” |
+| `inbox` | Read the messages still waiting for your ACK plus the latest 10 (`--all` for every message, `--message ID` for one in full); `--follow [--since SEQ]` watches repeated `--agent` names read-only and resumes without replaying older mail; `--until-first` exits after the first mail, for a background command that wakes its window. | “Read your messages; keep watching mail for all this window's names, act on arrivals and re-arm with the last cursor when the watch expires.” |
 | `ack` | Confirm a message you actually received; only the recipient can do it. | “Confirm the messages you have actually read.” |
 | `transport` | Deliver a message by hand or through the Codex queue (for a seat registered with `--session`), and record the outcome. | “The reviewer has not seen my message: prepare the manual handoff and record that it still has to be forwarded.” |
 
@@ -775,7 +815,7 @@ Every command, grouped by purpose: **50 subcommands**, plus `--version`. Use `sq
 | Command | What it does | Or just ask |
 |---|---|---|
 | `run` | Start a non-interactive turn of the registered Codex or Claude client, to read or to build. | “Start a non-interactive Codex turn to read the candidate of T1.” |
-| `cancel` | Ask for an owned run to stop; with `--abandon`, `--reason` and `--evidence`, the window that started a run declares it orphaned, with no process and no results. | “Stop the run you started for T1.” |
+| `cancel` | Ask for an owned run to stop; with `--abandon`, `--reason` and `--evidence`, the window that started a run declares it orphaned, with no process and no results; with `--reconcile`, it ends an orphaned run that left a receipt or output, from the receipt or as interrupted with its logs. | “Stop the run you started for T1.” |
 
 ### Status and history
 

@@ -14,10 +14,13 @@ from registry import Store, Error, VERSION, atomic, canonical, digest, git, now,
 
 SECRET_NAMES = (".env*", "*.pem", "*.key", "*.p12", "id_rsa*", "id_ed25519*", ".netrc",
                 "auth.json", ".credentials.json", "credentials*")
+TEMPLATE_SUFFIXES = (".example", ".sample", ".template", ".dist")
 
 
-def secret(path, body=b""):
-    return any(fnmatch.fnmatch(path.name.lower(), p) for p in SECRET_NAMES) or any(
+def secret(path, body=b"", tracked=False):
+    """A secret name or a private-key header; a tracked template is judged by its content only."""
+    name = path.name.lower()
+    return (not (tracked and name.endswith(TEMPLATE_SUFFIXES)) and any(fnmatch.fnmatch(name, p) for p in SECRET_NAMES)) or any(
         line.strip().startswith(b"-----BEGIN ") and b"PRIVATE KEY-----" in line for line in body.splitlines())
 
 
@@ -77,13 +80,24 @@ def included_files(repo, includes):
     return result
 
 
+LONG_GIT_SECONDS = 3600
+
+
+def volatile(rel, size):
+    """SQLite's shared-memory file, and an empty write-ahead log, appear when a package registry is only read."""
+    return rel == "registry/registry.sqlite3-shm" or (rel == "registry/registry.sqlite3-wal" and size == 0)
+
+
 def inventory(folder):
     result = {}
     for path in sorted(folder.rglob("*")):
         if path == folder / "CHECKSUMS.json":
             continue
         if path.is_file() or path.is_symlink():
-            result[str(path.relative_to(folder))] = record_file(path, folder)
+            rel = str(path.relative_to(folder))
+            if not path.is_symlink() and volatile(rel, path.stat().st_size):
+                continue
+            result[rel] = record_file(path, folder)
     return result
 
 
@@ -131,10 +145,10 @@ def save(store, destination, repos=None, includes=None, temporary=False, declare
                 if path.is_symlink(): record_file(path, repo)
                 body = path.read_bytes() if path.is_file() and not path.is_symlink() else b""
                 historical = git(repo, "show", "HEAD:" + rel) if rel in head_files else b""
-                require(not secret(path, body) and not secret(path, historical), "Tracked secret candidate refused: " + rel)
+                require(not secret(path, body, True) and not secret(path, historical, True), "Tracked secret candidate refused: " + rel)
             name = "repo-" + str(n); folder = destination / name; folder.mkdir(mode=0o700)
-            git(repo, "bundle", "create", str(folder / "history.bundle"), "--all", "HEAD")
-            git(repo, "bundle", "verify", str(folder / "history.bundle"))
+            git(repo, "bundle", "create", str(folder / "history.bundle"), "--all", "HEAD", timeout=LONG_GIT_SECONDS)
+            git(repo, "bundle", "verify", str(folder / "history.bundle"), timeout=LONG_GIT_SECONDS)
             (folder / "index.patch").write_bytes(git(repo, "diff", "--cached", "--binary", "--no-ext-diff"))
             (folder / "worktree.patch").write_bytes(git(repo, "diff", "--binary", "--no-ext-diff"))
             untracked = {repo / os.fsdecode(p) for p in git(repo, "ls-files", "--others", "--exclude-standard", "-z").split(b'\0')
@@ -153,15 +167,22 @@ def save(store, destination, repos=None, includes=None, temporary=False, declare
             manifest["repositories"].append({"folder": name, "original": str(repo), "head": before["head"],
                 "branch": git(repo, "branch", "--show-current").decode().strip(), "snapshot": expected,
                 "index_sha256": old_index, "files": copied, "excluded": excluded,
+                "stash_entries": len(git(repo, "stash", "list").splitlines()),
                 "extra": [r for p, r in extra_before.items() if p not in excluded and p not in untracked]})
             require(snapshot(repo, store.root) == before and index(repo) == old_index and
                     {str(p.relative_to(repo)): record_file(p, repo) for p in extra} == extra_before, "Torn source/index snapshot")
-        store.checkpoint(destination / "registry")
-        check = Store(destination / "registry")
-        try:
-            events = check.audit()["events"]
-            manifest["registry"] = {"event_count": len(events), "event_head": events[-1]["hash"] if events else '0'*64}
-        finally: check.close()
+        report = {}
+        store.checkpoint(destination / "registry", audit_source=False, report=report)
+        if not report:
+            check = Store(destination / "registry")
+            try:
+                events = check.audit()["events"]
+                report = {"event_count": len(events), "event_head": events[-1]["hash"] if events else '0'*64}
+            finally: check.close()
+        scrubbed = report.pop("scrubbed", None)
+        manifest["registry"] = report
+        if scrubbed:
+            manifest["scrubbed"] = scrubbed
         for repo, before, old_index, extra, extra_before in guards:
             require(snapshot(repo, store.root) == before and index(repo) == old_index and
                     {str(p.relative_to(repo)): record_file(p, repo) for p in extra} == extra_before,
@@ -182,10 +203,35 @@ def verify_package(folder):
     require(isinstance(expected, dict), "Checksum inventory must be a mapping")
     for rel in expected:
         require(not Path(rel).is_absolute() and '..' not in Path(rel).parts, "Escaping checksum path")
+    expected = {rel: row for rel, row in expected.items()
+                if not (isinstance(row, dict) and volatile(rel, row.get("bytes")))}
     require(inventory(folder) == expected, "Package missing, added, escaping or tampered file")
     manifest = json.loads((folder / "MANIFEST.json").read_text())
     require(manifest.get("schema") == 1 and manifest.get("status") == "saved", "Incomplete/unsupported package")
     return manifest
+
+
+def restore_refs(package, bundle, repo, saved_stashes=None):
+    """Recreate the stash from the bundle and name every other ref the clone does not map."""
+    stash, dropped = False, []
+    for line in git(package, "bundle", "list-heads", str(bundle), timeout=LONG_GIT_SECONDS).decode().splitlines():
+        sha, _, ref = line.partition(" ")
+        if ref == "refs/stash":
+            try:
+                git(repo, "cat-file", "-e", sha + "^{commit}")
+            except Error:
+                dropped.append(ref)
+                continue
+            subject = git(repo, "log", "-1", "--format=%s", sha).decode().strip() or "restored stash"
+            git(repo, "update-ref", "--create-reflog", "-m", subject, "refs/stash", sha)
+            stash = True
+        elif ref != "HEAD" and not ref.startswith(("refs/heads/", "refs/tags/")):
+            dropped.append(ref)
+    result = {"stash_restored": stash, "refs_not_restored": sorted(dropped)}
+    if isinstance(saved_stashes, int):
+        # A bundle keeps only the newest stash entry; older ones are named, not silently lost.
+        result["stash_entries_not_restored"] = max(0, saved_stashes - int(stash))
+    return result
 
 
 def restore_check(package, destination):
@@ -200,19 +246,24 @@ def restore_check(package, destination):
         shutil.copytree(package / "registry", target / "registry")
         store = Store(target / "registry")
         try:
-            events = store.audit()["events"]
+            checked = store.audit()
+            events = checked["events"]
             require({"event_count": len(events), "event_head": events[-1]["hash"] if events else '0'*64} == manifest["registry"], "Registry head/count mismatch")
             result["registry_integrity"] = "passed"
+            if checked["scrubbed"]:
+                result["scrubbed"] = checked["scrubbed"]
         finally: store.close()
         for row in manifest["repositories"]:
             name = row["folder"]; require(Path(name).name == name and name.startswith("repo-"), "Invalid repository folder")
             source = package / name; repo = target / name
-            git(package, "clone", "--no-hardlinks", str(source / "history.bundle"), str(repo))
-            git(repo, "checkout", "--detach", row["head"])
+            bundle = source / "history.bundle"
+            git(package, "clone", "--no-hardlinks", str(bundle), str(repo), timeout=LONG_GIT_SECONDS)
+            git(repo, "checkout", "--detach", row["head"], timeout=LONG_GIT_SECONDS)
+            restored_refs = restore_refs(package, bundle, repo, row.get("stash_entries"))
             for filename, extra in [("index.patch", ["--index"]), ("worktree.patch", [])]:
                 patch = source / filename
                 if patch.stat().st_size:
-                    git(repo, "apply", *extra, str(patch))
+                    git(repo, "apply", *extra, str(patch), timeout=LONG_GIT_SECONDS)
             for entry in row["files"]:
                 rel = entry["path"]; path = repo / rel
                 require(not Path(rel).is_absolute() and '..' not in Path(rel).parts and inside(path.resolve(), repo), "Escaping restore file")
@@ -224,7 +275,8 @@ def restore_check(package, destination):
                 require(record_file(path, repo) == entry, "Restored untracked mode/content mismatch")
             actual = snapshot(repo)
             require(actual["head"] == row["head"] and actual["files"] == row["snapshot"]["files"] and index(repo) == row["index_sha256"], "Restored source/index mismatch")
-            result["repositories"].append({"original": row["original"], "restored": str(repo), "head": row["head"], "verified": True})
+            result["repositories"].append({"original": row["original"], "restored": str(repo), "head": row["head"], "verified": True,
+                                           **restored_refs})
         frozen = Store(target / "registry")
         try:
             frozen.append("restore.freeze", "system", {"reason": "Historical restore; explicit reconciliation and owner resume required"})

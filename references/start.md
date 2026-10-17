@@ -26,12 +26,15 @@ missed; also consult the Claude client's peer list and Codex session files. A Cu
 window appears as a `cursor-agent` process and registers with `--client cursor`
 (it works interactively only). A PID, a registered session and a response are separate
 evidence; only an ACK proves a response to the call. Scan errors remain visible in
-the report.
+the report. Run the census from a Claude window: inside a Codex sandbox the process
+list hides the other windows (`ps` is refused or lists only the sandbox's own
+processes), so the report is partial and its errors say to run census from a Claude
+window.
 
 To join a registry that already has a coordinator:
 
 ```sh
-squadra agent --id newcomer --identity actual-session --role executor --client codex --repo /path/to/project
+squadra agent --id newcomer --identity actual-session --session CODEX-THREAD-ID --role executor --client codex --repo /path/to/project
 squadra ping --actor newcomer --to coord
 # Forward the returned ID to the coordinator; wait for its actual ACK.
 squadra transport --actor newcomer --message PING-ID --via manual
@@ -41,14 +44,20 @@ Do not create a competing coordinator while the call is pending or overdue:
 reconcile the existing role and resources with the owner. For new work, register
 the coordinator role and every identity actually known.
 
-Example: the project directory as the working directory, with a local registry ignored by Git:
+Example: the project directory as the working directory, with a local registry ignored by Git.
+`init` creates a private `.gitignore` containing `*` inside the registry folder before
+opening its database. It refuses the Git worktree root or a registry folder with
+tracked files: an ignore rule cannot remove files already in Git. Do not force-add
+the registry. Existing registries receive the same ignore file on their next
+writable open if it is absent; `doctor` warns if the database is already tracked
+and prints the command to remove the folder from the index, without running it.
 
 ```sh
 export SQUADRA_ROOT="$PWD/.squadra"
-squadra init --name "Our squad" --project "$PWD"
-squadra agent --id coord --identity window-01 --role coordinator --client codex --repo "$PWD" --skill /path/to/squadra/SKILL.md
-squadra agent --id builder --identity window-02 --role builder --client claude --repo /path/to/builder-checkout --skill /path/to/skill/SKILL.md
-squadra agent --id reviewer --identity window-03 --role reviewer --client codex --repo /path/to/reviewer-checkout
+squadra init --name "Our squad" --project "$PWD" --lang en
+squadra agent --id coord --identity window-01 --session CLAUDE-SESSION-ID --role coordinator --client claude --repo "$PWD" --skill /path/to/squadra/SKILL.md
+squadra agent --id builder --identity window-02 --session CLAUDE-SESSION-ID --role builder --client claude --repo /path/to/builder-checkout --skill /path/to/skill/SKILL.md
+squadra agent --id reviewer --identity window-03 --session CODEX-THREAD-ID --role reviewer --client codex --repo /path/to/reviewer-checkout
 squadra dash --open
 ```
 
@@ -73,7 +82,10 @@ durable location, not tmp; `init --temporary` is an explicit exception for dispo
 Identity identifies the actual window/session, not its role, model or account name.
 Two roles in the same window share an identity; a new session must be declared.
 `--session` records a known ID for an external window: it does not prove that the
-window is alive. `--model` records the requested model. The runner preserves the
+window is alive. Usage and Balance measure a window only through it (the transcript's
+file name under `~/.claude/projects/<project>/`, or the UUID at the end of a Codex
+`~/.codex/sessions/…/rollout-…` file); a window registered without one is reported as
+`session_not_registered`. `--model` records the requested model. The runner preserves the
 session actually returned; the observed model remains unknown when the client does
 not expose it. Skills are declarations of use with a file hash, not proof that the
 model read them. Declare them after actually reading them.
@@ -99,8 +111,10 @@ squadra transport --actor coord --message HELLO-reviewer --via manual
 squadra ack --actor reviewer --message HELLO-reviewer
 ```
 
-`codex-queue` requires a registered, verified Codex session; do not treat a PID as a
-session. For recipients not yet identified, retain the discovery and pending handoff
+`codex-queue` requires a Codex seat registered with `agent --session`. Squadra checks
+only that a session ID is recorded and that the local `codex queue` accepts `--thread`
+and `--message`; it does not check that the ID names a live thread, so record only an
+ID you have seen. Do not treat a PID as a session. For recipients not yet identified, retain the discovery and pending handoff
 without registering fictional identities. Delivery is not an ACK. Keep the census
 and recipients current throughout the work.
 See [keep-alive and stand-by](work.md#keep-alive-e-stand-by).
@@ -122,17 +136,17 @@ Install from a clean, committed checkout with a **new backup directory** each ti
 7. **The builder proves and delivers:** `prove` runs the agreed check on the exact files; `deliver` hands them over.
 8. **Someone else reads:** a reader who did not write the work confirms the handoff and records a verdict with `review`.
 9. **The coordinator closes:** `check` verifies that proof and read concern the same version; `close` records the end.
-10. **Check who still answers:** `ping --all` calls every other window, and each answers with `ack`; `ping --sweep` puts in stand-by a window whose call went unanswered past the `alive` wait (300 seconds unless `settings` changes it). It gets no new assignments, and nothing it runs is stopped.
+10. **Check who still answers:** the coordinator's `ping --all` calls every other window, and each answers with `ack`; `ping --sweep` puts in stand-by a window whose call went unanswered past the `alive` wait (300 seconds unless `settings` changes it). It gets no new assignments, and nothing it runs is stopped.
 11. **Open the dashboard** with `dash --open`; «How to read this page» explains every term.
 12. **Record what the owner says, with its links:** `decision` with `--owner-words`, `--channel` and `--task`; then select its box in the Decisions view.
 
-Replace `PING-ID` with the returned ID and wait for the real ACK. Census matches executable names and working directories, can miss wrappers, graphical or remote clients and exited processes, and keeps scan errors visible; add Claude's peer list and the Codex session files. Processes, registrations and queue receipts do not prove that a window answers, and identity is never inferred from a PID or a shared directory. Each introduction (identity, role, registry, next step) goes out with `send` and `transport`: `--via codex-queue` for a Codex seat registered with `agent --session`, Claude's native peer messaging with a kept receipt, otherwise `--via manual`. Unanswered introductions stay pending. Details in [startup and presentation](start.md).
+Replace `PING-ID` with the returned ID and wait for the real ACK. Census matches executable names and working directories, can miss wrappers, graphical or remote clients and exited processes, and keeps scan errors visible; add Claude's peer list and the Codex session files. Processes, registrations and queue receipts do not prove that a window answers, and identity is never inferred from a PID or a shared directory. Each introduction (identity, role, registry, next step) goes out with `send` and `transport`: `--via codex-queue` for a Codex seat registered with `agent --session`, Claude's native peer messaging with a kept receipt, otherwise `--via manual`. Unanswered introductions stay pending. The coordinator should be an unsandboxed Claude window: it relays any message a sandboxed window could not deliver with `squadra transport --actor <coordinator> --message <ID> --via codex-queue` (a Codex recipient) or `--via manual`, recorded with `relayed_by`. A Codex window needs the registry folder among its writable roots (`codex --add-dir <registry>`), or it cannot write its ACKs. Details in [startup and presentation](start.md).
 
 ```sh
 # Census writes nothing, even before init. Use the same shared --root throughout.
 squadra census --root /path/to/registry --project /path/to/project
 # Joining an existing squad: register the real window as an executor, then call the coordinator.
-squadra agent --id arrival --identity actual-session --role executor --client codex --repo /path/to/project
+squadra agent --id arrival --identity actual-session --session CODEX-THREAD-ID --role executor --client codex --repo /path/to/project
 squadra ping --actor arrival --to coord
 squadra transport --actor arrival --message PING-ID --via manual
 ```

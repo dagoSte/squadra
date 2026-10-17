@@ -1,7 +1,7 @@
 ---
 name: squadra
 description: Coordinates work entrusted to several Codex, Claude, Cursor or mixed windows, with tasks, acknowledgements, proofs, a non-author reviewer and a persistent registry. Includes squadra dash to view the activity and squadra selftest to test the protocol. Use when the owner asks for a squad (squadra), a coordinator/builders/reviewer, resuming a squad or its dashboard; it does not impose this scheme on ordinary changes in a single window.
-compatibility: Runs locally with Python 3; the dashboard listens on 127.0.0.1. Network access occurs through optional plugins and MCP services you install and configure, coding clients and tools you authorize, and external links you open. Squadra does not automatically upload its registry to its author.
+compatibility: Runs locally with Python 3.12+; the dashboard listens on 127.0.0.1. Network access occurs through optional plugins and MCP services you install and configure, coding clients and tools you authorize, and external links you open. Squadra does not automatically upload its registry to its author.
 ---
 
 # Squadra 3
@@ -18,7 +18,9 @@ operating rule for the agent, not an automatic election run by any CLI command.
 - Look for the shared registry; use `squadra census` (before `init`, add
   `--project <project>`). Complete the census with Claude's peer list and the
   available Codex sessions; Cursor appears as a `cursor-agent` process. A PID does not prove that mail is read;
-  denied access or unobservable processes are limits, not absent windows.
+  denied access or unobservable processes are limits, not absent windows. Take the census from
+  a Claude window: inside a Codex sandbox the process list hides the other windows, and the
+  report says to run it from a Claude window.
 - If you find a coordinator already registered in the same registry, register your
   identity with the executor role and send it a `ping`. If it answers with an ACK,
   introduce yourself and wait for the role you are assigned. A ping still pending does
@@ -28,12 +30,20 @@ operating rule for the agent, not an automatic election run by any CLI command.
   identity, role, registry and next step. Use `transport --via codex-queue` for Codex
   sessions actually identified; for Claude use peer messaging if available, keeping
   its receipt, otherwise `transport --via manual` (also for Cursor).
+  The coordinator is an unsandboxed Claude window and relays mail a sandboxed window
+  cannot deliver: `squadra transport --actor <coordinator> --message <ID> --via codex-queue`
+  for a Codex recipient, `--via manual` otherwise; the record names it in `relayed_by`,
+  and only the recipient's ACK ends the wait. Every codex-queue attempt is recorded and
+  exits 1 unless delivered. A Codex window needs the registry folder among its writable
+  roots (`codex --add-dir <registry>`).
   A process without a verified session remains a recipient to reconcile: do not
   invent its identity and do not declare the introduction complete.
 - While coordinating, use `ping --all` and forward the messages; the recipient's ACK
   is the answer. `settings` configures `alive` (default 300 seconds). Time is computed
   at read time. `ping --sweep`, run by the coordinator, records stand-by for expired
-  answers; no timer changes the state.
+  answers to pings a transport delivered (`delivered: true`); no timer changes the state.
+  Mail to a Codex window that no transport delivered is listed «to forward» for the
+  coordinator, who relays it with `--via codex-queue`.
 - Stand-by applies to every role of the same identity and prevents new tasks and
   review handoffs. A new `ping --to <window>` and its ACK let the coordinator's next
   sweep record the return; `standby --resume --reason ...` records it explicitly. An old
@@ -153,12 +163,24 @@ Announce the skill when you apply it. Read the project's mandate and the owner's
 instructions first. Keep the authorizations already given and the release boundaries:
 an accepted review does not grant a new authorization to publish.
 
-1. Look for an existing registry and read `status`, `doctor`, tasks, the latest delivery
+1. Look for an existing registry and read `status`, `doctor --quick`, tasks, the latest delivery
    and mail before assigning work. Do not replay old queues blindly.
    All windows of the same squad use a single shared registry; separate clones do not
    create separate mailboxes. `posta/exchange-YYYY-MM-DD.md` is the daily projection
    of the events, not a second source to edit. Use the current `inbox` when receiving
-   or transporting messages; a complete mailbox export is not a live queue.
+   or transporting messages; a complete mailbox export is not a live queue. `inbox`
+   prints the messages still waiting for an ACK plus the latest ten; open one in full
+   with `--message ID` and the whole history with `--all`.
+   Every window without a native queue, including every Claude window and the
+   coordinator, arms `inbox --follow` for all its agent names on joining/resuming
+   (include `coord` for the coordinator). Re-arm on expiry with `--since` and the
+   highest event on a complete consumed line; an empty resumed watch stays quiet.
+   Use Claude Code Monitor, a background command with `--until-first` (no 30-minute
+   limit; it wakes the window when mail arrives), or an actively watched background
+   process, as shown in
+   [following mail](references/work.md#following-mail-without-a-native-queue).
+   Status cannot show a follower that stopped: the window re-arms it itself.
+   Following never confirms a message: read it and explicitly ACK when required.
 2. For a new squad choose a durable folder outside `/tmp`. Use
    `references/start.md` to initialize it and register windows/skills/versions.
 3. Distinguish **identity** (the actual window/session) from **role**. If a window
@@ -171,7 +193,8 @@ an accepted review does not grant a new authorization to publish.
    starting. An unreachable client stays pending.
 
 The installed command is `squadra`. Without the launcher use
-`python3 <skill-folder>/scripts/squadra.py`. Do not guess user paths.
+`python3 <skill-folder>/scripts/squadra.py`, also for the `squadra …` instructions the CLI
+prints: the `/plugin` install puts no launcher on PATH. Do not guess user paths.
 `--root` and `SQUADRA_ROOT` select the same registry for every window.
 
 ## Work, verification and limits
@@ -188,10 +211,11 @@ the System skills page labels it **Computed on demand** rather than inventing a 
 
 ### Bilanciamento: follow the suggestion or record why not
 
-At task creation, briefing and start, read the automatically printed balance after the
-forecast and follow [bilanciamento](references/skills/bilanciamento.md). It ranks windows
-for building and for reading, with reasons. The coordinator follows the suggestion or
-records the reason in a decision linked to the task. The advice assigns nothing and
+At task creation, briefing and start, read the short balance printed after the
+forecast and follow [bilanciamento](references/skills/bilanciamento.md): it names the
+first window for building and for reading, each with its reason, in about 2 KB with
+the forecast and 10 windows; `squadra balance --task` prints the whole ranking. The
+coordinator follows the suggestion or records the reason in a decision linked to the task. The advice assigns nothing and
 never overrides independence, stand-by, route or permissions. An author is never a
 reader candidate. Tokens and quota appear only with `squadra balance` or the Balance
 page. Claude quota is an estimate against a reference the viewer declares: never quote
@@ -280,8 +304,10 @@ the answer it records `decision --answers` with the choice and the channel `type
 Relayed words are receipts: they add no executive authorization.
 A question is closed once, with an answer or `--withdraws`.
 
-`status`, `stato.md` and the dashboard use the same derived view: «Needs you» contains
-open requests, exhausted budgets and pause; «Who is waiting» contains the waits between windows.
+`status`, the dashboard and the complete `stato.md` written by `squadra export` use the
+same derived view: «Needs you» contains open requests, exhausted budgets and pause; «Who
+is waiting» contains the waits between windows. Ordinary commands leave only a short
+summary in `stato.md`.
 No question is inferred from the chat, from mail bodies or from the `output.next` text.
 An empty panel only means that there are no recorded requests.
 The dashboard shows the requests and the overview of the work first; the details are below.
@@ -338,7 +364,7 @@ from the chat. Show the Rule 2 table (`squadra board`), without invented percent
 If the registry is not writable, keep the durable finding, declare the limit and
 reconcile before proceeding: do not claim a save that did not succeed.
 
-`squadra board [--lang it|en]` shows the tables by window, work and state, also at the top of `status` and `stato.md`.
+`squadra board [--lang it|en]` shows the tables by window, work and state, also at the top of `status` and of the `stato.md` written by `squadra export`.
 
 ## Built-in skills: errata and rasoio
 
@@ -392,8 +418,9 @@ the owner, and every activation leaves a registry event.
   index/worktree patches and untracked files; `--repo` is a partial choice. `checkpoint`
   remains the copy of the registry only. Read the filters and limits in
   `references/recovery.md`; do not promise that secrets are absent from the whole history.
+- A secret recorded into an artifact by mistake: delete its file and record `decision --scrub-artifact SHA256 --reason ...` (coordinator only); read «Removing a leaked artifact» in `references/recovery.md`.
 - To resume, wait for the owner's request, reread and reconcile
-  `doctor`, reservations, sources and messages, record `resume` and assign the current step.
+  `doctor --quick`, reservations, sources and messages, record `resume` and assign the current step.
   An ACK, a resume or a review does not authorize an implicit publication.
 - Old packets can be imported as **unverified historical copies**;
   they generate no tasks, ACKs or acceptances. A squad already active keeps its
@@ -423,9 +450,17 @@ from the selftest, from a single turn or from different permission profiles.
 | Operation | Verified during that operation |
 | --- | --- |
 | Other ordinary commands, including `check` and an ordinary task's `close`; dashboard refresh after startup | The recorded anchor event and its hash, every newer event's hash and previous link, and the authenticated index proofs for each cache value or index read. |
+| Quick resume check (`doctor --quick`) | The anchor, newer suffix and demanded cache values; the report explicitly excludes full historical/artifact verification and replay-root comparison. |
 | Explicit `usage`/`balance` calculations, a lesson's source check, and the lesson hint after a failed proof | The complete event hash chain and the requested historical evidence. These reads do not perform a full artifact audit. |
 | `doctor`, `export`, `checkpoint`, `save`, `restore-check`, and a release-gate task's `close` | The complete event chain and referenced artifacts/manifests, plus full replay to compare or rebuild the derived cache. |
 | Dashboard startup | The ordinary verified path serves data while a full chain/artifact/replay audit runs in the background. A visible status marks the pending audit; failure stops data responses and removes the displayed data. |
+
+Use `doctor` without `--quick` for the full audit. It stays read-only and refuses a
+cache/journal mismatch; only explicit `doctor --repair` rebuilds the derived tables
+in a writable workspace. Repair refuses saved packages and checkpoint folders.
+The expensive cold-cache build and release-gate audit run outside the journal's
+exclusive write transaction; publication rechecks the prepared snapshot, and a
+busy retry never means that the requested write committed.
 
 The other ordinary reads above do **not** reverify events before the anchor, untouched cache
 leaves, or whether the cached root equals a complete replay of the reducer. An

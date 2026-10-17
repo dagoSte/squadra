@@ -340,7 +340,14 @@ Where the data comes from is up to you. A producer may also read the registry's
 close. `state.json` and complete mail/history exports are refreshed by `export`,
 `checkpoint` or `save`, not by every command. Request an explicit export before
 consuming those complete files, and check its recorded sequence/head for freshness;
-alternatively, use the supported version's verified Store accessors. Do not read
+alternatively, read through the supported version's `Store`. A producer that ships a
+copy of `registry.py` alone, as the bundled plugins do, can use only
+`Store(root, read_only=True).events()`, which verifies the whole hash chain, and
+`state(events, resolve=False)`. `view()`, `task()`, `resolved()`, `audit()` and `state()`
+with its default `resolve=True` import other modules of the release
+(`registry_cache.py`, `registry_radix.py`, `registry_current.py`, `source_manifests.py`):
+`state()` fails as soon as the registry holds a run, a delivery or a challenge, the
+others always. Call them only from the release's own `scripts/` folder. Do not read
 an old mailbox projection to decide which messages to receive or transport: use
 the current `inbox`. Source fingerprints may reference immutable manifests;
 resolve the file list for source comparisons while retaining stored packet hashes.

@@ -1,8 +1,11 @@
 # Bilanciamento — suggest windows and models by load
 
 Use this system skill when creating, briefing or starting a task, and when asked
-which window or model should take work. The CLI prints the advice automatically
-at those three moments, after the forecast. It assigns nothing.
+which window or model should take work. The CLI prints a short form of the advice
+automatically at those three moments, after the forecast: the first window for
+building and for reading, each with its reason and the number of candidates, any
+S1–S4 suggestion, and the `squadra balance --task` command that prints the whole
+ranking with its numbers. It assigns nothing.
 
 ```sh
 squadra balance --task TASK --root REGISTRY [--reference FILE]
@@ -30,8 +33,8 @@ the same calculation from `/api/balance`, only while the page is open.
     registered Claude windows by it. It assumes those windows share one account,
     and says so. There is no reset time for an estimate. Without a reference the
     page shows the two sums and «estimate unavailable».
-  - The automatic print at task, brief and start does not collect tokens: they
-    are marked «not collected» there. Run `squadra balance` for them.
+  - The automatic print at task, brief and start does not collect tokens, so its
+    reasons say «quota not measured». Run `squadra balance` for tokens and quota.
 - **History**, from one previsione cohort for the task: tasks each window built
   and code verdicts it gave. A median or a changes-required share appears only
   with at least three samples for that window.

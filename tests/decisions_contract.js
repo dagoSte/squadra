@@ -344,10 +344,10 @@ const scenarios={
   const app=await boot({fixture:looped,language:'it-IT'});await app.tab('Decisioni');
   const box=one(app.content(),e=>hasClass(e,'dec-unordered'),'listing of unordered links');
   assert.match(text(box),/Collegamenti non ordinabili/);
-  assert.deepEqual(all(box,e=>e.tag==='li').map(li=>li.getAttribute('data-node-id')),['decision:LOOP-A','decision:LOOP-B']);
+  assert.deepEqual(all(box,e=>e.tag==='li').map(li=>li.getAttribute('data-node-id')),['decision:LOOP-B','decision:LOOP-A']);
   assert.equal(all(app.svg(),e=>e.tag==='g'&&e.getAttribute('data-node-id')).length,base.graph.nodes.length,'every orderable node is still drawn');
   one(box,e=>e.tag==='button').onclick();await settle();
-  assert.equal(app.aside().getAttribute('data-node-id'),'decision:LOOP-A');
+  assert.equal(app.aside().getAttribute('data-node-id'),'decision:LOOP-B');
  },
  async phone(){
   assert.match(styles,/\.dec-list-box\{display:none\}/);
@@ -355,9 +355,9 @@ const scenarios={
   assert.match(styles,/@media \(prefers-reduced-motion: reduce\)\{\.dec-new\{animation:none\}/);
   assert.match(styles,/@media \(prefers-color-scheme: light\)\{:root\{color-scheme:light;/);
   const app=await boot({language:'it-IT'});await app.tab('Decisioni');
-  const box=one(app.content(),e=>hasClass(e,'dec-list-box'));assert.equal(box.children[0].textContent,'Elenco in ordine di tempo');
+  const box=one(app.content(),e=>hasClass(e,'dec-list-box'));assert.equal(box.children[0].textContent,'Elenco · più recenti in alto');
   const list=one(box,e=>e.tag==='ol'&&hasClass(e,'dec-list'));
-  assert.deepEqual(list.children.map(li=>li.getAttribute('data-node-id')),base.graph.nodes.slice().sort((a,b)=>a.seq-b.seq).map(n=>n.id));
+  assert.deepEqual(list.children.map(li=>li.getAttribute('data-node-id')),base.graph.nodes.slice().sort((a,b)=>b.seq-a.seq).map(n=>n.id));
   const item=list.children.find(li=>li.getAttribute('data-node-id')==='decision:D-SCOPE');
   assert.match(text(item),/Istruzione del proprietario · riferito da un'altra finestra/);
   assert.match(text(item),/Arriva da: .*segue/);
@@ -423,7 +423,8 @@ const scenarios={
    await app.tab('Incarichi');
    const rows=app.content().children[0].children.filter(c=>hasClass(c,'row'));
    const row=title=>{const r=rows.find(x=>x.children[0].children[0].textContent===title);assert.ok(r,'Incarichi row titled '+title);return r};
-   assert.equal(rows[0].children[0].children[0].textContent,'Servizio delle chiavi','the first heading is the brief title');
+   const kRow=rows.find(r=>r.getAttribute('data-read-scope')==='tasks:K');assert.ok(kRow,'the K row');
+   assert.equal(kRow.children[0].children[0].textContent,'Servizio delle chiavi','its heading is the brief title');
    const k=row('Servizio delle chiavi');assert.match(text(k),/Perché: i clienti ruotano le chiavi senza fermare il servizio/);
    const tech=all(k,e=>hasClass(e,'mono')&&/\bID K\b/.test(e.textContent));
    assert.equal(tech.length,1,'one technical line carries the ID');assert.match(tech[0].textContent,lang==='it'?/titolo registrato «Key service»/:/recorded title “Key service”/);
