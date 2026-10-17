@@ -64,6 +64,9 @@ https://github.com/user-attachments/assets/6ea747a5-a993-4aa7-a58d-1b2b7f908720
 | A search | 3.1–6.6 s, 8.3 MB | 0.4 s, at most 0.13 MB |
 | Page update when nothing changed | 0.02 s | about 0.001 s |
 
+<details>
+<summary><strong>Earlier versions</strong></summary>
+
 **3.10.1 — see what every AI window really spends, and where the next task should go**
 
 A squad mixes Claude Code and Codex windows, and each provider shows you only its own usage. Squadra 3.10.1 puts all of them in one view, for every task: which window spent how many tokens, with which model, against which quota, and which window or model should take the next task. You can see why each piece of advice is given. It is computed on your computer from the session files the clients already keep; no text of the conversations is stored, shown or sent anywhere.
@@ -89,9 +92,6 @@ A squad mixes Claude Code and Codex windows, and each provider shows you only it
 **3.10.0**
 - **Usage page: tokens spent by the models.** Squadra reads the session files Claude Code and Codex already keep on your computer and keeps only the token counts, with the model, time and session and message identifiers needed to count each message once; it never stores, shows or sends the text of the conversations. It shows them per window, day, model and task, with charts and suggestions per model. Codex quota is shown as measured, for each provider window; an estimated cost appears only if you enter your own prices. `squadra usage` prints the same data.
 - Plugins: memoranda 1.0.5, Playwright 1.0.6, Sentry 0.1.3.
-
-<details>
-<summary><strong>Earlier versions</strong></summary>
 
 **3.9.1**
 - **Interface fixes.** More room on the System skills page and between its blocks; bold text in skill descriptions shows as bold; the project goal and the reading help appear on the overview only; more badges at the top of this page.

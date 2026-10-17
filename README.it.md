@@ -64,6 +64,9 @@ https://github.com/user-attachments/assets/8f38a443-b738-48f8-b562-9b072419b5f0
 | Una ricerca | 3,1–6,6 s, 8,3 MB | 0,4 s, al massimo 0,13 MB |
 | Aggiornamento della pagina quando nulla è cambiato | 0,02 s | circa 0,001 s |
 
+<details>
+<summary><strong>Versioni precedenti</strong></summary>
+
 **3.10.1 — vedi quanto spende davvero ogni finestra AI, e a chi conviene dare il prossimo lavoro**
 
 Una squadra mescola finestre Claude Code e Codex, e ogni fornitore ti mostra solo i propri consumi. Squadra 3.10.1 li mette tutti in un'unica vista, lavoro per lavoro: quale finestra ha speso quanti token, con quale modello, rispetto a quale quota, e a quale finestra o modello conviene dare il prossimo lavoro. Per ogni consiglio vedi anche il perché. Il calcolo avviene sul tuo computer, a partire dai file di sessione che i programmi già tengono; il testo delle conversazioni non viene salvato, mostrato né inviato da nessuna parte.
@@ -89,9 +92,6 @@ Una squadra mescola finestre Claude Code e Codex, e ogni fornitore ti mostra sol
 **3.10.0**
 - **Pagina «Consumi»: i token spesi dai modelli.** Squadra legge i file di sessione che Claude Code e Codex tengono già sul tuo computer e ne conserva solo i conteggi dei token, con modello, orario e gli identificativi di sessione e di messaggio che servono a contarli una volta sola: non salva, non mostra e non invia mai il testo delle conversazioni. Li mostra per finestra, giorno, modello e incarico, con grafici e suggerimenti per modello. La quota di Codex è misurata, per ogni finestra del fornitore; un costo stimato compare solo se inserisci i tuoi prezzi. `squadra usage` stampa gli stessi dati.
 - Plugin: memoranda 1.0.5, Playwright 1.0.6, Sentry 0.1.3.
-
-<details>
-<summary><strong>Versioni precedenti</strong></summary>
 
 **3.9.1**
 - **Ritocchi all'interfaccia.** Più spazio nella pagina «Skill di sistema» e tra i suoi blocchi; il grassetto nelle descrizioni delle skill appare come grassetto; l'obiettivo del progetto e la guida alla lettura compaiono solo nella panoramica; più badge in cima a questa pagina.
