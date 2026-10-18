@@ -35,8 +35,9 @@ Problems in Claude Code, Codex, Cursor or other clients belong to their makers; 
 ## Test fixtures are not secrets
 
 Files under `tests/` contain synthetic credentials, such as `Synthetic-Only!Key-123`, `SENTINEL-SECRET-0f9e8d7c` and a
-fake OpenSSH key header. They exist to prove that Squadra never shows, stores or sends a secret value, and they open
-nothing. Secret scanners flag them; they are not leaked secrets.
+fake OpenSSH key header. They test how Squadra handles secrets: for example, that a plugin's saved secret stays in its
+own private file, with no copy elsewhere in the HOME folder or in error messages, and that `squadra save` refuses to
+back up tracked files that look like keys or credentials. They open nothing. Secret scanners flag them; they are not leaked secrets.
 
 Some JavaScript contract tests load the dashboard's script with `new Function` or `eval` inside the test harness. That
 code runs only in the test suite; Squadra itself uses neither.
