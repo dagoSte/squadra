@@ -48,6 +48,8 @@ Il coordinatore può consegnare ogni messaggio alla sua finestra, la dashboard a
 
 https://github.com/user-attachments/assets/8f38a443-b738-48f8-b562-9b072419b5f0
 
+- **Si installa con una frase.** Incolla nel tuo agente la frase in cima a questa pagina: ti mostra il piano, aspetta il tuo sì, installa e verifica ([SETUP.md](SETUP.md)).
+- **Le piccole modifiche di testo richiedono minuti.** Prima di assegnare, il coordinatore ti dice la strada e quanti minuti servono. Una modifica di solo testo ha i test che la leggono e una rilettura di un'altra finestra; nessuno ripete controlli già fatti, e il secondo revisore finale resta per le versioni nuove.
 - **I messaggi arrivano sempre.** Il coordinatore può consegnare qualsiasi messaggio, anche uno scritto da una finestra Codex nella sandbox, e ogni tentativo di consegna resta registrato. Una finestra Claude riceve la propria posta appena arriva con `squadra inbox --follow`. Un messaggio per una finestra Codex che nessuno ha ancora consegnato compare per primo, come «da inoltrare», con da quanto tempo aspetta.
 - **Attese che dicono il vero.** Le attese elencano solo ciò che è ancora aperto: le conferme di un incarico chiuso ne escono, e un piano che aspetta il suo lettore vi compare.
 - **Ricerca.** La casella di ricerca trova il lavoro passato dalle parole che le persone hanno scritto, in qualsiasi ordine e con o senza accenti, comprese decisioni, domande e letture. Il menu a tendina mostra prima i risultati più recenti e finisce con una domanda pronta per il tuo agente.

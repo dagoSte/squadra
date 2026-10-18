@@ -264,6 +264,12 @@ For the dashboard plugins' data and declared settings read [folders, schemas and
   of your own processes only. Capability and delegation do not exceed the environment's permissions.
 - Skills are chosen **for each task**, recording path and hash. Do not launch a
   council, an adversarial audit or the full suite just because they are available.
+- **The cost follows the change and is said first.** Before assigning, tell the owner the
+  route and the expected minutes. A text-only change (README, docs, setup or notes; no
+  code, tests, manifests, pins or version) gets the tests that read the changed files
+  (the whole suite when it runs in minutes), one non-author read of the diff and of the
+  builder's evidence, without repeating it, and no second reader: the Claude + Codex
+  final pair is for releases. If the time grows, say so and why before going on.
 - Fix the budget before the cycle: by default 3 plan reads, 1 build + 2 fixes, 2 code
   reads. An explicit timeout per process. At the limit keep the candidate, the findings
   and the concrete question; do not restart with an alias or an identical task to reset
