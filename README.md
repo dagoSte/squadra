@@ -49,7 +49,7 @@ The coordinator can deliver every message to its window, the dashboard updates o
 https://github.com/user-attachments/assets/6ea747a5-a993-4aa7-a58d-1b2b7f908720
 
 - **Install with one sentence.** Paste the sentence at the top of this page into your coding agent: it shows the plan, waits for your yes, installs and checks ([SETUP.md](SETUP.md)).
-- **Small text changes take minutes.** Before assigning, the coordinator tells you the route and how many minutes it takes. A change to text only gets the tests that read it and one read by another window; nobody repeats checks already done, and the second final reader is kept for releases.
+- **Small changes take minutes.** Before starting, the agent tells you how many minutes it needs. A small change is simply made, with at most one check. A read by another window or the whole test suite runs only when you or the coordinator ask for it; for an important change it is suggested, with its time.
 - **Messages always find their way.** The coordinator can deliver any message, including one written by a sandboxed Codex window, and every delivery attempt is recorded. A Claude window receives its own mail as it arrives with `squadra inbox --follow`. A message to a Codex window that nobody has delivered yet is listed first, as «to forward», with how long it has been waiting.
 - **Waits that tell the truth.** The waits list only what is still open: a closed task's confirmations leave it, and a plan waiting for its reader shows up there.
 - **Search.** The search box finds past work by the words people wrote, in any order and with or without accents, including decisions, questions and reviews. The dropdown shows the newest results first and ends with a ready-made question for your agent.
