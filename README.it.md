@@ -20,11 +20,22 @@ La skill di squadra più completa per Claude Code, Codex e Cursor.
 
 Controlli statici, comportamentali e delle dipendenze, con `tests/` esclusa. Il controllo passa in assenza di rilievi HIGH o CRITICAL; quelli di gravità inferiore restano nel report. Clicca sul badge per i risultati.
 
+<a id="one-sentence"></a>
+**Si installa con una frase.** Incollala in Claude Code, Codex o Cursor:
+
+```text
+Installa Squadra seguendo https://github.com/dagoSte/squadra/blob/main/SETUP.md: mostrami prima il piano, aspetta il mio sì, poi installala e controlla che funzioni.
+```
+
+L'agente controlla che cosa hai già, ti mostra ogni comando con che cosa cambia e come annullarlo, aspetta il tuo sì, installa e fa una verifica di un secondo.
+
+A te resta un solo gesto: `/reload-plugins` in Claude Code, oppure una nuova sessione in Codex o Cursor.
+
+Gli altri modi di installarla: [Installazione](#start).
+
 **Guarda il tour di 84 secondi — attiva l'audio nel lettore:**
 
 https://github.com/user-attachments/assets/d0a696da-9562-4a84-9eea-0fda7b8c75d1
-
-Si installa con `/plugin` in Claude Code e Codex. **Per installarla:** vedi [Installazione](#start).
 
 <a id="news"></a>
 ## Novità
@@ -154,6 +165,10 @@ Altri termini, come log ed exit, UTC, PID e cwd: [la guida della pagina](referen
 ## Installazione e primo registro
 
 **Requisiti:** Python 3.12+, Git e la libreria standard di Python. **Node.js** esegue i controlli JavaScript della dashboard nella suite di test e in `selftest`: senza Node quei controlli falliscono, non vengono mai saltati. Un browser per la dashboard; la CLI di Codex o di Claude solo per i runner nativi. L'ambiente di processi provato è macOS/POSIX; il controllo dei processi su Windows e il ripristino con submodule, LFS o checkout sparsi non sono qualificati.
+
+### Con una frase
+
+Incolla [la frase in cima a questa pagina](#one-sentence) in Claude Code, Codex o Cursor. L'agente segue [SETUP.md](SETUP.md), in inglese: controlla che cosa è già installato, ti mostra il piano con ogni comando, che cosa cambia e come annullarlo, e aspetta il tuo sì. Poi installa con i comandi del client (il plugin in Claude Code e Codex, l'installatore autonomo in Cursor) e verifica l'installazione su un registro usa e getta. Poi tu scrivi `/reload-plugins` in Claude Code, oppure apri una nuova sessione in Codex o Cursor.
 
 ### Con /plugin (consigliato)
 

@@ -20,11 +20,22 @@ The most complete team skill for Claude Code, Codex and Cursor.
 
 Static, behavioral and dependency checks, excluding `tests/`. Passing means no HIGH or CRITICAL findings; lower-severity findings remain in the report. Click the badge for results.
 
+<a id="one-sentence"></a>
+**Install it with one sentence.** Paste this into Claude Code, Codex or Cursor:
+
+```text
+Install Squadra by following https://github.com/dagoSte/squadra/blob/main/SETUP.md: show me the plan first, wait for my yes, then install it and check that it works.
+```
+
+The agent checks what you already have, shows each command with what it changes and how to undo it, waits for your yes, installs and runs a one-second check.
+
+One act stays with you: `/reload-plugins` in Claude Code, or a new session in Codex or Cursor.
+
+Other ways to install: [Installation](#start).
+
 **Watch the 80-second tour — turn the sound on in the player:**
 
 https://github.com/user-attachments/assets/69f512be-775c-40ae-95c2-e1e403b3f5d1
-
-It installs with `/plugin` in Claude Code and Codex. **Install:** see [Installation](#start).
 
 <a id="news"></a>
 ## What's new
@@ -154,6 +165,10 @@ More terms, such as log and exit, UTC, PID and cwd: [the page guide](references/
 ## Installation and first workspace
 
 **Requirements:** Python 3.12+, Git and the Python standard library. **Node.js** runs the dashboard's JavaScript checks in the test suite and in `selftest`: without it they fail, they are never skipped. A browser for the dashboard; the Codex or Claude CLI only for the native runners. macOS/POSIX is the tested process environment; Windows process controls and recovery with submodules, LFS or sparse checkouts are not qualified.
+
+### With one sentence
+
+Paste [the sentence at the top of this page](#one-sentence) into Claude Code, Codex or Cursor. The agent follows [SETUP.md](SETUP.md): it checks what is already installed, shows the plan with every command, what it changes and how to undo it, and waits for your yes. Then it installs with the client's own commands (the plugin in Claude Code and Codex, the standalone installer in Cursor) and checks the installation on a throwaway registry. You then type `/reload-plugins` in Claude Code, or start a new session in Codex or Cursor.
 
 ### With /plugin (recommended)
 
