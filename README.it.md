@@ -172,7 +172,7 @@ Altri termini, come log ed exit, UTC, PID e cwd: [la guida della pagina](referen
 
 Incolla [la frase in cima a questa pagina](#one-sentence) in Claude Code, Codex o Cursor. L'agente segue [SETUP.md](SETUP.md), in inglese: controlla che cosa è già installato, ti mostra il piano con ogni comando, che cosa cambia e come annullarlo, e aspetta il tuo sì. Poi installa con i comandi del client (il plugin in Claude Code e Codex, l'installatore autonomo in Cursor) e verifica l'installazione su un registro usa e getta. Poi tu scrivi `/reload-plugins` in Claude Code, oppure apri una nuova sessione in Codex o Cursor.
 
-### Con /plugin (consigliato)
+### Con /plugin
 
 In Claude Code:
 
