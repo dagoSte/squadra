@@ -1,5 +1,10 @@
 <div align="center">
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/squadra-logo-dark.svg">
+  <img src="assets/squadra-logo-light.svg" alt="Squadra" height="96">
+</picture>
+
 # Squadra 3+
 
 **Your coding agents, one team — and proof for every step.**
