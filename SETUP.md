@@ -183,7 +183,8 @@ Say, in the user's language:
 3. for the standalone installer, whether `~/.local/bin` is on the `PATH` (`command -v squadra`). If it is not, offer to
    add `export PATH="$HOME/.local/bin:$PATH"` to their shell profile, and do it only after its own yes. Agents can
    always use the full path `~/.local/bin/squadra`;
-4. the first sentence to start a squad, ready to copy:
+4. the first sentence to start a squad, ready to copy. It goes to a Claude window, which becomes the coordinator; a
+   Codex window called first does not coordinate and points the user to a Claude window:
 
 ```text
 Use the squadra skill for this project. Shared registry: ~/.local/state/squadra/my-project.
