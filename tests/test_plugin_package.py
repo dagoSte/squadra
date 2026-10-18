@@ -82,6 +82,26 @@ class PluginPackage(unittest.TestCase):
             self.assertIsInstance(prompt, str)
             self.assertGreater(len(prompt.strip()), 0)
             self.assertLessEqual(len(prompt), 128)
+        keywords = data["keywords"]
+        self.assertIsInstance(keywords, list)
+        self.assertGreaterEqual(len(keywords), 1)
+        for keyword in keywords:
+            self.assertIsInstance(keyword, str)
+            self.assertTrue(keyword.strip())
+        self.assertEqual(interface["capabilities"], ["Interactive", "Read", "Write"])
+        self.assertEqual(interface["websiteURL"], REPOSITORY)
+        self.assertEqual(interface["privacyPolicyURL"], f"{REPOSITORY}/blob/main/PRIVACY.md")
+        self.assertEqual(interface["termsOfServiceURL"], f"{REPOSITORY}/blob/main/LICENSE")
+        for name in ("PRIVACY.md", "LICENSE"):
+            self.assertTrue((ROOT / name).is_file(), name)
+        screenshots = interface["screenshots"]
+        self.assertIsInstance(screenshots, list)
+        self.assertGreaterEqual(len(screenshots), 1)
+        for relative in (interface["composerIcon"], interface["logo"], *screenshots):
+            self.assertTrue(relative.startswith("./"), relative)
+            path = (ROOT / relative).resolve()
+            self.assertTrue(path.is_relative_to(ROOT.resolve()), relative)
+            self.assertTrue(path.is_file(), relative)
 
     def test_mit_license_has_owner_grant_and_disclaimer(self):
         license_text = (ROOT / "LICENSE").read_text(encoding="utf-8")

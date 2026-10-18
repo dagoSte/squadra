@@ -8,6 +8,17 @@
   "license": "MIT",
   "repository": "https://github.com/dagoSte/squadra",
   "homepage": "https://github.com/dagoSte/squadra",
+  "keywords": [
+    "multi-agent",
+    "coordination",
+    "code-review",
+    "proof",
+    "registry",
+    "dashboard",
+    "claude-code",
+    "codex",
+    "cursor"
+  ],
   "skills": "./.",
   "interface": {
     "displayName": "Squadra 3+",
@@ -15,11 +26,25 @@
     "longDescription": "Coordinate Claude Code, Codex and Cursor windows in one shared registry: scoped tasks, acknowledgements, proof bound to the exact code, a non-author review on every change, owner questions with the sentence to say, and a live local dashboard with sounds and toasts.",
     "developerName": "Stefano D'Agostino",
     "category": "Productivity",
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
+    "websiteURL": "https://github.com/dagoSte/squadra",
+    "privacyPolicyURL": "https://github.com/dagoSte/squadra/blob/main/PRIVACY.md",
+    "termsOfServiceURL": "https://github.com/dagoSte/squadra/blob/main/LICENSE",
     "defaultPrompt": [
       "Use $squadra to coordinate this project.",
       "Show the squad's progress table.",
       "Resume the squad and show what needs me."
     ],
-    "logo": "./assets/squadra-icon.png"
+    "composerIcon": "./assets/squadra-icon.svg",
+    "logo": "./assets/squadra-icon.png",
+    "screenshots": [
+      "./docs/images/dashboard-overview-en.png",
+      "./docs/images/dashboard-comms-en.png",
+      "./docs/images/dashboard-reads-en.png"
+    ]
   }
 }
