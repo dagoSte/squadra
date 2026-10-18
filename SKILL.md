@@ -10,11 +10,24 @@ This file is written in English for agents; always answer the user in the user's
 
 ## Rule 0 — who coordinates, who answers
 
-The first window that invokes this skill for a piece of work takes the coordinator
-role. **Before assigning or starting work, it takes a census of every Codex, Claude
-and Cursor window of the project and introduces itself to each one.** This is an
-operating rule for the agent, not an automatic election run by any CLI command.
+**The coordinator is a Claude window.** The first Claude window that invokes this skill
+for a piece of work takes the coordinator role. **Before assigning or starting work, it
+takes a census of every Codex, Claude and Cursor window of the project and introduces
+itself to each one.** This is an operating rule for the agent, not an automatic election
+run by any CLI command.
 
+- A Codex window, or any client that cannot see and wake every window, does not take the
+  role when it is called first: inside its sandbox the census misses the other windows,
+  and no transport of its own wakes a Claude window. It tells the owner so in plain
+  words and gives the exact sentence to type in a Claude window, in the owner's language,
+  with the registry path, for example: «Use squadra to coordinate this project, with the
+  registry at <path>: introduce yourself to every window». If a registry exists, it
+  registers its identity with the executor role and waits for its assignment.
+- The Claude window that then takes the role introduces itself to every window,
+  including the Codex window that sent the owner there, before assigning work.
+- If the owner has no Claude window and does not want to open one, the owner decides.
+  The Codex window first states its limits: windows it cannot see, and mail the owner
+  must deliver by hand (`transport --via manual`). It never coordinates silently.
 - Look for the shared registry; use `squadra census` (before `init`, add
   `--project <project>`). Complete the census with Claude's peer list and the
   available Codex sessions; Cursor appears as a `cursor-agent` process. A PID does not prove that mail is read;

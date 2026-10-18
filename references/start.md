@@ -6,9 +6,17 @@ Python 3.12 or later, Git and the standard library only. No service to buy.
 The local `squadra` launcher runs `scripts/squadra.py`; use `--help` for commands.
 Native clients are optional: mail, proofs and the dashboard work without models.
 
-Before assigning or starting work, the first window that invokes the skill becomes
-the coordinator, takes a census of the project and introduces itself to every window
-found. The CLI does not infer the role from running a command. An already registered
+The coordinator is a Claude window. Before assigning or starting work, the first Claude
+window that invokes the skill becomes the coordinator, takes a census of the project and
+introduces itself to every window found. A Codex window, or any client that cannot see
+and wake every window, does not take the role when it is called first: it tells the
+owner that from its sandbox it can neither find nor wake the Claude windows, gives the
+exact sentence to type in a Claude window (the registry path, and «introduce yourself to
+every window»), registers as an executor if a registry exists, and waits. The Claude
+window that then takes the role introduces itself to every window, the Codex one
+included, before assigning work. Without a Claude window the owner decides, after the
+Codex window states its limits: windows it cannot see, and mail delivered by hand.
+The CLI does not infer the role from running a command. An already registered
 coordinator that answers a ping takes precedence; the new window introduces itself
 and waits. A pending response does not authorize replacing the coordinator.
 
@@ -140,7 +148,7 @@ Install from a clean, committed checkout with a **new backup directory** each ti
 11. **Open the dashboard** with `dash --open`; «How to read this page» explains every term.
 12. **Record what the owner says, with its links:** `decision` with `--owner-words`, `--channel` and `--task`; then select its box in the Decisions view.
 
-Replace `PING-ID` with the returned ID and wait for the real ACK. Census matches executable names and working directories, can miss wrappers, graphical or remote clients and exited processes, and keeps scan errors visible; add Claude's peer list and the Codex session files. Processes, registrations and queue receipts do not prove that a window answers, and identity is never inferred from a PID or a shared directory. Each introduction (identity, role, registry, next step) goes out with `send` and `transport`: `--via codex-queue` for a Codex seat registered with `agent --session`, Claude's native peer messaging with a kept receipt, otherwise `--via manual`. Unanswered introductions stay pending. The coordinator should be an unsandboxed Claude window: it relays any message a sandboxed window could not deliver with `squadra transport --actor <coordinator> --message <ID> --via codex-queue` (a Codex recipient) or `--via manual`, recorded with `relayed_by`. A Codex window needs the registry folder among its writable roots (`codex --add-dir <registry>`), or it cannot write its ACKs. Details in [startup and presentation](start.md).
+Replace `PING-ID` with the returned ID and wait for the real ACK. Census matches executable names and working directories, can miss wrappers, graphical or remote clients and exited processes, and keeps scan errors visible; add Claude's peer list and the Codex session files. Processes, registrations and queue receipts do not prove that a window answers, and identity is never inferred from a PID or a shared directory. Each introduction (identity, role, registry, next step) goes out with `send` and `transport`: `--via codex-queue` for a Codex seat registered with `agent --session`, Claude's native peer messaging with a kept receipt, otherwise `--via manual`. Unanswered introductions stay pending. The coordinator is an unsandboxed Claude window: it relays any message a sandboxed window could not deliver with `squadra transport --actor <coordinator> --message <ID> --via codex-queue` (a Codex recipient) or `--via manual`, recorded with `relayed_by`. A Codex window needs the registry folder among its writable roots (`codex --add-dir <registry>`), or it cannot write its ACKs. Details in [startup and presentation](start.md).
 
 ```sh
 # Census writes nothing, even before init. Use the same shared --root throughout.

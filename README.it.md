@@ -50,6 +50,7 @@ https://github.com/user-attachments/assets/8f38a443-b738-48f8-b562-9b072419b5f0
 
 - **Si installa con una frase.** Incolla nel tuo agente la frase in cima a questa pagina: ti mostra il piano, aspetta il tuo sì, installa e verifica ([SETUP.md](SETUP.md)).
 - **Le piccole modifiche richiedono minuti.** Prima di cominciare, l'agente ti dice quanti minuti servono. Una piccola modifica si fa e basta, con al massimo un controllo. La rilettura di un'altra finestra o la suite completa dei test partono solo se le chiedete tu o il coordinatore; per una modifica importante ti vengono proposte, con il loro tempo.
+- **La squadra parte da Claude.** Una finestra Codex chiamata per prima non coordina più finestre che non vede e non può raggiungere: ti dice quale frase scrivere in una finestra Claude, e quella finestra si presenta a tutte, compresa quella Codex.
 - **I messaggi arrivano sempre.** Il coordinatore può consegnare qualsiasi messaggio, anche uno scritto da una finestra Codex nella sandbox, e ogni tentativo di consegna resta registrato. Una finestra Claude riceve la propria posta appena arriva con `squadra inbox --follow`. Un messaggio per una finestra Codex che nessuno ha ancora consegnato compare per primo, come «da inoltrare», con da quanto tempo aspetta.
 - **Attese che dicono il vero.** Le attese elencano solo ciò che è ancora aperto: le conferme di un incarico chiuso ne escono, e un piano che aspetta il suo lettore vi compare.
 - **Ricerca.** La casella di ricerca trova il lavoro passato dalle parole che le persone hanno scritto, in qualsiasi ordine e con o senza accenti, comprese decisioni, domande e letture. Il menu a tendina mostra prima i risultati più recenti e finisce con una domanda pronta per il tuo agente.
@@ -146,8 +147,8 @@ Squadra fa lavorare più finestre di agenti AI sullo stesso progetto come una sq
 **Le finestre Cursor lavorano solo in modo interattivo:** sei tu ad aprire l'agente Cursor (`cursor-agent`), che poi usa la CLI di squadra come ogni altra finestra. Squadra non lo avvia mai da sola, perché Cursor esegue gli hook del team, dell'utente e dell'azienda fuori da qualunque sandbox e non permette di disattivarli.
 
 **Come funziona.**
-1. **Installala** e di' alla prima finestra: «Usa squadra per questo progetto. Usa il registro in `/percorso/del/registro`. Trova le altre finestre e presentati; descrivi il lavoro in parole semplici.»
-2. **Apri le altre finestre** su quel registro. La prima coordina; ogni finestra conferma il proprio incarico prima di cominciare.
+1. **Installala** e di' a una finestra Claude: «Usa squadra per questo progetto. Usa il registro in `/percorso/del/registro`. Trova le altre finestre e presentati; descrivi il lavoro in parole semplici.» Una finestra Codex chiamata per prima non coordina: ti dà la frase da scrivere in una finestra Claude.
+2. **Apri le altre finestre** su quel registro. Coordina la finestra Claude; ogni finestra conferma il proprio incarico prima di cominciare.
 3. **Apri la dashboard** con `squadra dash --root /percorso/del/registro --open` (se hai installato il plugin, chiedi all'agente di aprirla) e segui ogni incarico: conferma → lavoro → verifica eseguita → lettura di un'altra finestra → chiusura del coordinatore.
 4. **Quando Serve a te chiede il tuo parere**, rispondi al coordinatore; il tempo che passa non è una risposta. Il lavoro chiuso non viene mai pubblicato da solo.
 
@@ -238,7 +239,7 @@ La prima finestra che scrive su un registro precedente o spostato costruisce la 
 
 ### Regola 0: trovare le finestre e presentarsi
 
-La prima finestra che applica la skill diventa il coordinatore: trova ogni finestra Codex, Claude o Cursor del progetto e si presenta a ciascuna. Un coordinatore già presente nello stesso registro, che risponde a un ping, mantiene il ruolo; un ping in attesa o scaduto non trasferisce mai la guida o le risorse. La regola completa è nella [skill](SKILL.md); i limiti del censimento e come entrare in una squadra sono in [avvio e presentazione](references/start.md#install-and-join-details), in inglese.
+La squadra parte da una finestra Claude: la prima finestra Claude che applica la skill diventa il coordinatore, trova ogni finestra Codex, Claude o Cursor del progetto e si presenta a ciascuna. Una finestra Codex chiamata per prima non coordina, perché dalla sua sandbox non riesce né a trovare né a raggiungere le finestre Claude: te lo dice, ti dà la frase da scrivere in una finestra Claude e aspetta come esecutore. Poi la finestra Claude si presenta a ogni finestra, compresa quella Codex. Se non hai una finestra Claude decidi tu, dopo che la finestra Codex ti ha detto che cosa non può fare. Un coordinatore già presente nello stesso registro, che risponde a un ping, mantiene il ruolo; un ping in attesa o scaduto non trasferisce mai la guida o le risorse. La regola completa è nella [skill](SKILL.md); i limiti del censimento e come entrare in una squadra sono in [avvio e presentazione](references/start.md#install-and-join-details), in inglese.
 
 Poi crea un unico registro durevole, fuori dalle cartelle temporanee:
 
@@ -275,9 +276,9 @@ Leggi prima di citare; registra la decisione prima di cambiare un test che fissa
 <a id="prompts"></a>
 ## Prompt di esempio
 
-Con gli agenti parli in parole semplici; i comandi li eseguono loro. Copia un prompt nella finestra a cui è destinato e sostituisci percorsi e nomi. Ogni prompt funziona nelle finestre Codex, Claude e Cursor interattivo che hanno la skill squadra installata.
+Con gli agenti parli in parole semplici; i comandi li eseguono loro. Copia un prompt nella finestra a cui è destinato e sostituisci percorsi e nomi. Ogni prompt funziona nelle finestre Codex, Claude e Cursor interattivo che hanno la skill squadra installata; una squadra parte da una finestra Claude.
 
-**Avviare una squadra (la prima finestra diventa il coordinatore)**
+**Avviare una squadra (in una finestra Claude, che diventa il coordinatore)**
 
 ```text
 Usa la skill squadra per questo progetto. Registro comune: ~/.local/state/squadra/atlas.

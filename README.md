@@ -50,6 +50,7 @@ https://github.com/user-attachments/assets/6ea747a5-a993-4aa7-a58d-1b2b7f908720
 
 - **Install with one sentence.** Paste the sentence at the top of this page into your coding agent: it shows the plan, waits for your yes, installs and checks ([SETUP.md](SETUP.md)).
 - **Small changes take minutes.** Before starting, the agent tells you how many minutes it needs. A small change is simply made, with at most one check. A read by another window or the whole test suite runs only when you or the coordinator ask for it; for an important change it is suggested, with its time.
+- **The squad starts from Claude.** A Codex window called first no longer coordinates windows it cannot see or wake: it tells you which sentence to type in a Claude window, and that window introduces itself to every window, the Codex one included.
 - **Messages always find their way.** The coordinator can deliver any message, including one written by a sandboxed Codex window, and every delivery attempt is recorded. A Claude window receives its own mail as it arrives with `squadra inbox --follow`. A message to a Codex window that nobody has delivered yet is listed first, as «to forward», with how long it has been waiting.
 - **Waits that tell the truth.** The waits list only what is still open: a closed task's confirmations leave it, and a plan waiting for its reader shows up there.
 - **Search.** The search box finds past work by the words people wrote, in any order and with or without accents, including decisions, questions and reviews. The dropdown shows the newest results first and ends with a ready-made question for your agent.
@@ -146,8 +147,8 @@ Squadra lets several AI agent windows work on one project as a team you can foll
 **Cursor windows work interactively only:** you open the Cursor agent (`cursor-agent`) yourself, and it uses the squadra CLI like any other window. Squadra never starts it, because Cursor runs team, user and enterprise hooks outside any sandbox and cannot switch them off.
 
 **How it works.**
-1. **Install** and tell the first window: “Use squadra for this project. Use the registry at `/path/to/registry`. Find the other windows and introduce yourself; describe the work in plain words.”
-2. **Open the other windows** on that registry. The first one coordinates; each window confirms its assignment before starting.
+1. **Install** and tell a Claude window: “Use squadra for this project. Use the registry at `/path/to/registry`. Find the other windows and introduce yourself; describe the work in plain words.” A Codex window called first does not coordinate: it gives you the sentence to type in a Claude window.
+2. **Open the other windows** on that registry. The Claude window coordinates; each window confirms its assignment before starting.
 3. **Open the dashboard** with `squadra dash --root /path/to/registry --open` (with the plugin install, ask the agent to open it) and follow each task: confirmation → work → executed check → another window's review → coordinator closure.
 4. **When Needs you asks for your input**, answer the coordinator; elapsed time is not an answer. Closed work is never published automatically.
 
@@ -238,7 +239,7 @@ The first window to write an older or moved registry builds its cache; other win
 
 ### Rule 0: find the windows and introduce yourself
 
-The first window that applies the skill becomes the coordinator: it finds every Codex, Claude or Cursor window of the project and introduces itself to each one. An existing coordinator in the same registry that answers a ping keeps the role; a pending or expired ping never transfers leadership or resources. The full rule is in [the skill](SKILL.md); census limits and joining in detail are in [startup and presentation](references/start.md#install-and-join-details).
+The squad starts from a Claude window: the first Claude window that applies the skill becomes the coordinator, finds every Codex, Claude or Cursor window of the project and introduces itself to each one. A Codex window called first does not coordinate, because from its sandbox it can neither find nor wake the Claude windows: it tells you so, gives you the sentence to type in a Claude window and waits as an executor. The Claude window then introduces itself to every window, the Codex one included. Without a Claude window you decide, after the Codex window has said what it cannot do. An existing coordinator in the same registry that answers a ping keeps the role; a pending or expired ping never transfers leadership or resources. The full rule is in [the skill](SKILL.md); census limits and joining in detail are in [startup and presentation](references/start.md#install-and-join-details).
 
 Then create one durable registry, outside temporary folders:
 
@@ -275,9 +276,9 @@ Read before you cite; record a decision before a pinned test changes; parallel l
 <a id="prompts"></a>
 ## Example prompts
 
-You talk to the agents in plain words; they run the commands. Copy a prompt into the window it is meant for and replace the paths and names. Every prompt works in Codex, Claude and interactive Cursor windows that have the squadra skill installed.
+You talk to the agents in plain words; they run the commands. Copy a prompt into the window it is meant for and replace the paths and names. Every prompt works in Codex, Claude and interactive Cursor windows that have the squadra skill installed; a squad starts from a Claude window.
 
-**Start a squad (the first window becomes the coordinator)**
+**Start a squad (in a Claude window, which becomes the coordinator)**
 
 ```text
 Use the squadra skill for this project. Shared registry: ~/.local/state/squadra/atlas.
