@@ -912,6 +912,15 @@ Squadra is a community project: it gets better with every plugin, report and sha
 - **Help Squadra spread.** Star the repository, share it with your team and tell others how your squad works: a prompt or a short write-up helps someone start.
 - **Use it and tell us how it goes.** What works, what gets in the way, what you would add: real use is what shapes the next releases.
 
+## Star history
+
+<a href="https://www.star-history.com/#dagoste/squadra&Date">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=dagoste/squadra&type=Date&theme=dark">
+   <img alt="Star history chart for dagoste/squadra" src="https://api.star-history.com/svg?repos=dagoste/squadra&type=Date">
+ </picture>
+</a>
+
 ---
 
 Developed by Stefano D'Agostino · [GitHub](https://github.com/dagoSte/squadra)

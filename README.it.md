@@ -914,6 +914,15 @@ Squadra è un progetto della community: migliora con ogni plugin, ogni segnalazi
 - **Aiuta Squadra a farsi conoscere.** Metti una stella al repository, condividilo con il tuo gruppo di lavoro e racconta come lavora la tua squadra: un prompt o un breve resoconto aiutano qualcuno a cominciare.
 - **Usala e raccontaci come va.** Cosa funziona, cosa ti ostacola, cosa aggiungeresti: è l'uso reale a orientare le prossime versioni.
 
+## Andamento delle stelle
+
+<a href="https://www.star-history.com/#dagoste/squadra&Date">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=dagoste/squadra&type=Date&theme=dark">
+   <img alt="Grafico dell'andamento delle stelle di dagoste/squadra" src="https://api.star-history.com/svg?repos=dagoste/squadra&type=Date">
+ </picture>
+</a>
+
 ---
 
 Sviluppato da Stefano D'Agostino · [GitHub](https://github.com/dagoSte/squadra)
