@@ -13,7 +13,7 @@ The most complete team skill for Claude Code, Codex and Cursor.
 
 **Free and open source** — MIT licence, no account, everything runs on your machine.
 
-**Version 3.10.2** · Free · MIT · Local toolkit · Python 3.12+ · macOS / POSIX
+**Version 3.10.3** · Free · MIT · Local toolkit · Python 3.12+ · macOS / POSIX
 
 **English** · [Italiano](README.it.md) · [Privacy](PRIVACY.md)
 
@@ -44,6 +44,16 @@ https://github.com/user-attachments/assets/69f512be-775c-40ae-95c2-e1e403b3f5d1
 
 <a id="news"></a>
 ## What's new
+
+**3.10.3 — the final block is the default.** Agree the shared contract and seams
+before building. Merge lanes on delivery with their own green proof, keep a delta
+ledger, then freeze a candidate for Claude and Codex non-author reads of every
+delta and seam. One fix round is followed by one re-read block of its deltas.
+Only grave findings block; one decision records non-grave carry-overs for tasks
+created at the next milestone's kickoff. Required runtime proofs bind the release
+head. Per-lane reads remain an owner-selected option. This changes the skill's
+workflow, not CLI behaviour or the registry format; active squads keep their
+recorded mode until explicitly switched. [Workflow](references/work.md#final-block).
 
 **Smaller context for long tasks.** `squadra context --task ID` prepares a bounded,
 read-only resume packet so an agent can continue from task, scope and proof
@@ -84,7 +94,7 @@ https://github.com/user-attachments/assets/6ea747a5-a993-4aa7-a58d-1b2b7f908720
 - **One proof for both final reads.** `prove --also <task>` lets one run of the suite serve several tasks on the same frozen code, such as a release's Claude and Codex final reads; each task still checks its own requirements. Use it when every reader's Squadra lists `--also` in `squadra prove --help`; otherwise prove each task on its own.
 - **Windows that are gone stop filling the waits.** Mail to a window you put in stand-by shows as one line per window, for example «12 messages to core-A on stand-by (window closed)», and comes back as soon as the window returns.
 - **A registry that stays small.** The registry's journal file goes back to a small size after writes, even with a dashboard open; `doctor` reports its size and `doctor --repair` compacts it. Nothing is deleted.
-- **The coordinator coordinates, and releases leave sooner.** The coordinator builds only the integration and the release, and gives the lanes to the builders. Every lane is read once in full; its fixes are read together in the release's final read, with one fix round.
+- **The coordinator coordinates, and releases leave sooner.** The coordinator builds only the integration and the release, and gives the lanes to the builders. In 3.10.2 each lane had its own full read, with fixes read together at release; 3.10.3 makes the final block the default instead.
 - Plugins: memoranda 1.0.7, Playwright 1.0.8, Sentry 0.1.5.
 
 **Measured on our own squad.** Our coordinator ran the same script against the dashboard of published 3.10.1 and then of 3.10.2, on the same copy of this squad's registry (11,488 events), on an 8-core machine under moderate load (load average 5 to 11 during the runs): five updates, each after one new message, and three searches. Time is the dashboard's own processing time for one request. Here the dashboard was already open on the copy before its first write, so the first update paid one more full read (8.5 s): a copied or moved registry has its cache re-bound by its first write in the new place, and a dashboard already open there pays one full read on the next update. The table shows the updates after it.
@@ -288,7 +298,7 @@ Every update to the owner shows the table from `squadra board`: **In progress**,
 
 ### Rules 3–10: method
 
-Read before you cite; record a decision before a pinned test changes; parallel lanes own their files; state the cost and a cap before spending; every lane is read once in full and its fixes are read together in the release's final read, unless the owner chooses another mode; every close says how the next task can go faster; and a release leaves on time: a cut-off two hours after its scope is fixed, final reads scoped to the integration when every lane was already read, the parallel runner as release proof, and a stalled read moved to a free reader; a fix round fixes only the problem. Every rule in full: [the skill](SKILL.md).
+Read before you cite; record a decision before a pinned test changes; parallel lanes own their files; state the cost and a cap before spending. The default is one final block: shared contract first, merge green deliveries, record every delta and freeze a candidate for Claude/Codex non-author reads, then one fix round and one re-read block. Only grave findings block; carry-overs get tasks at the next milestone's kickoff. Every close says how the next task can go faster. The release keeps its cut-off two hours after scope is fixed, unless the owner sets another time; proofs bind the release head and stalled reads move to a free reader. Per-lane reads remain an option on the owner's word. Every rule in full: [the skill](SKILL.md).
 
 <a id="prompts"></a>
 ## Example prompts
@@ -439,8 +449,9 @@ Before any paid call (models, voice, images), tell me the expected cost and a ca
 ```
 
 ```text
-For this release use one final review only: merge the lanes as they deliver, then a Claude
-reader and a Codex reader read everything together.
+Use the default final block: settle the seams, merge proven deliveries and freeze a
+candidate. Claude and Codex non-authors read every delta; make one fix round and
+re-read its deltas together. Keep non-grave carry-overs for the next milestone.
 ```
 
 </details>
@@ -620,13 +631,13 @@ Each box in the graph is a recorded fact; solid lines are recorded links, dashed
 <a id="workflow"></a>
 ## Assignment, proof, independent read, closure
 
-**Choose the path.** The builder proposes a path, the non-author reader confirms or disagrees, and the coordinator settles it with a recorded reason, answering the five questions of [the IT/EN triage page](references/work.md#triage-in-una-pagina). No regex, path pattern or score chooses the path.
+**Choose the path.** The builder proposes a path and the coordinator records the choice using the five questions of [the IT/EN triage page](references/work.md#triage-in-una-pagina); the non-author reader checks it in the assigned block. No regex, path pattern or score chooses the path. Coordinated milestones use the [default final block](references/work.md#final-block); the commands below illustrate a standalone task or an owner-selected per-lane read.
 
 - **Fix now with proof:** reversible, Q1 no and Q3 yes; a brief non-author check before closure.
 - **One code read:** an ordinary bounded choice, with scope, bound proof and an independent review.
-- **Full path:** Q1 yes or unknown, Q2 unresolved, material silent harm under Q5, or an existing mandate: an accepted plan before construction, then proof, a non-author read and the required checks.
+- **Full path:** Q1 yes or unknown, Q2 unresolved, material silent harm under Q5, or an existing mandate: full proof, a non-author read and required checks. A plan read can precede building on the owner's word or for a trust boundary; an already required plan stays required.
 
-**The rules of the read:** only a grave finding blocks; the rest is fixed now with a non-author check or recorded as a follow-up with an owner and a trigger. **Never hand commands to the owner.** All the rules: [details](references/work.md#readme-protocol-details).
+**The rules of the read:** only a grave finding blocks; in the final block unresolved non-grave findings go in one deferral decision, then become tasks at the next milestone's kickoff, each with owner, acceptance check and source finding. **Never hand commands to the owner.** All the rules: [details](references/work.md#readme-protocol-details).
 
 **Contract, proof, review and close.** Keep evidence outside the delivered checkout: `scope.md` (behaviour, owned paths, dependencies, resources, checks, release boundaries), `argv.json` as an exact argument list, not a shell string (`["python3", "-B", "-m", "unittest", "discover", "-s", "tests", "-v"]`), and an optional `requirements.json` (`[{"id": "R1", "text": "Values add up correctly"}, {"id": "R2", "text": "An empty list adds up to zero"}]`).
 
@@ -636,7 +647,7 @@ squadra task --actor coord --id T1 --owner builder --reviewer reader \
   --scope-file /evidence/scope.md --proof-file /evidence/argv.json \
   --requirements-file /evidence/requirements.json
 squadra ack --actor builder --message assign-T1
-# Full path: a plan read by a non-author before construction.
+# Optional or already required: a non-author plan read before construction.
 squadra plan --actor coord --task T1 --file /evidence/plan.md
 squadra review --actor reader --task T1 --stage plan \
   --verdict accepted --report /evidence/plan-read.md

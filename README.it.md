@@ -13,7 +13,7 @@ La skill di squadra più completa per Claude Code, Codex e Cursor.
 
 **Gratuita e open source** — licenza MIT, nessun account, tutto gira sul tuo computer.
 
-**Versione 3.10.2** · Gratuita · MIT · Toolkit locale · Python 3.12+ · macOS / POSIX
+**Versione 3.10.3** · Gratuita · MIT · Toolkit locale · Python 3.12+ · macOS / POSIX
 
 [English](README.md) · **Italiano** · [Privacy](PRIVACY.it.md)
 
@@ -44,6 +44,17 @@ https://github.com/user-attachments/assets/d0a696da-9562-4a84-9eea-0fda7b8c75d1
 
 <a id="news"></a>
 ## Novità
+
+**3.10.3 — il blocco finale diventa la modalità predefinita.** Contratto comune e
+giunture si fissano prima di costruire. Le corsie si uniscono alla consegna con la
+propria prova verde; un registro dei delta prepara il candidato congelato per le
+letture non autrici di Claude e Codex su ogni delta e giuntura. Un giro di correzione
+è seguito da un blocco di rilettura dei suoi delta. Bloccano solo i reperti gravi;
+una decisione raccoglie i rinvii non gravi, trasformati in incarichi all'avvio della
+tappa successiva. Le prove native richieste riguardano la testa del rilascio.
+Le letture per corsia restano un'opzione scelta dal proprietario. Cambia il metodo
+della skill, non la CLI o il formato del registro; una squadra attiva mantiene la
+modalità registrata fino al cambio esplicito. [Metodo](references/work.md#final-block).
 
 **Contesto più piccolo nei lavori lunghi.** `squadra context --task ID` prepara un
 passaggio di consegne breve, in sola lettura, con riferimenti a incarico, perimetro
@@ -85,7 +96,7 @@ https://github.com/user-attachments/assets/8f38a443-b738-48f8-b562-9b072419b5f0
 - **Una sola prova per le due letture finali.** `prove --also <incarico>` fa valere una sola esecuzione della suite per più incarichi sullo stesso codice congelato, come le letture finali Claude e Codex di un rilascio; ogni incarico controlla comunque i propri requisiti. Usala quando lo Squadra di ogni lettore elenca `--also` in `squadra prove --help`; altrimenti prova ogni incarico per conto suo.
 - **Le finestre che non ci sono più non riempiono le attese.** La posta per una finestra messa in stand-by compare come una riga per finestra, per esempio «12 messaggi a core-A in stand-by (finestra chiusa)», e torna appena la finestra rientra.
 - **Un registro che resta piccolo.** Il file di appoggio del registro torna piccolo dopo le scritture, anche con la dashboard aperta; `doctor` ne riporta la dimensione e `doctor --repair` lo compatta. Non si cancella nulla.
-- **Il coordinatore coordina, e i rilasci partono prima.** Il coordinatore costruisce solo l'unione e il rilascio, e affida le corsie ai costruttori. Ogni corsia è letta una volta per intero; le sue correzioni si rileggono insieme nella lettura finale del rilascio, con un solo giro di correzione.
+- **Il coordinatore coordina, e i rilasci partono prima.** Il coordinatore costruisce solo l'unione e il rilascio, e affida le corsie ai costruttori. In 3.10.2 ogni corsia aveva una propria lettura completa e le correzioni si rileggevano insieme al rilascio; 3.10.3 rende invece predefinito il blocco finale.
 - Plugin: memoranda 1.0.7, Playwright 1.0.8, Sentry 0.1.5.
 
 **Misurato sulla nostra squadra.** Il nostro coordinatore ha lanciato lo stesso script sulla dashboard della 3.10.1 pubblicata e poi della 3.10.2, sulla stessa copia del registro di questa squadra (11.488 eventi), su un computer a 8 core con un carico moderato (load average tra 5 e 11 durante le misure): cinque aggiornamenti, ciascuno dopo un nuovo messaggio, e tre ricerche. Il tempo è quello che la dashboard impiega per elaborare una richiesta. Qui la dashboard era già aperta sulla copia prima della sua prima scrittura, quindi il primo aggiornamento ha pagato una lettura completa in più (8,5 s): un registro copiato o spostato ricollega la propria cache alla prima scrittura nella nuova posizione, e una dashboard già aperta lì paga una lettura completa all'aggiornamento successivo. La tabella mostra gli aggiornamenti seguenti.
@@ -289,7 +300,7 @@ Ogni aggiornamento al proprietario mostra la tabella di `squadra board`: **In co
 
 ### Regole 3–10: metodo
 
-Leggi prima di citare; registra la decisione prima di cambiare un test che fissa un requisito; ogni corsia parallela ha i suoi file; dichiara costo e tetto prima di spendere; ogni corsia è letta una volta per intero e le sue correzioni si rileggono insieme nella lettura finale del rilascio, salvo che il proprietario scelga un'altra modalità; ogni chiusura dice come far andare più veloce l'incarico successivo; e il rilascio parte in orario: un'ora limite due ore dopo che il contenuto è fissato, riletture finali limitate all'unione quando ogni corsia è già stata letta, la prova in parallelo come prova di rilascio, e una lettura ferma passa a un lettore libero; un giro di correzione corregge solo il problema. Tutte le regole per intero: la [skill](SKILL.md).
+Leggi prima di citare; registra la decisione prima di cambiare un test che fissa un requisito; ogni corsia parallela ha i suoi file; dichiara costo e tetto prima di spendere. Il metodo predefinito è un blocco finale: contratto comune prima del lavoro, unione delle consegne verdi, registro di ogni delta e candidato congelato per letture non autrici Claude/Codex, poi un giro di correzione e un blocco di rilettura. Bloccano solo i reperti gravi; i rinvii diventano incarichi all'avvio della tappa successiva. Ogni chiusura dice come accelerare il prossimo incarico. Resta l'ora limite due ore dopo che il perimetro è fissato, salvo altro orario scelto dal proprietario; le prove riguardano la testa del rilascio e le letture ferme passano a lettori liberi. Le letture per corsia restano un'opzione su parola del proprietario. Tutte le regole per intero: la [skill](SKILL.md).
 
 <a id="prompts"></a>
 ## Prompt di esempio
@@ -442,8 +453,9 @@ tetto, e fermati al tetto.
 ```
 
 ```text
-Per questo rilascio fai un'unica revisione finale: unisci le corsie man mano che consegnano,
-poi un lettore Claude e un lettore Codex leggono tutto insieme.
+Usa il blocco finale predefinito: fissa le giunture, unisci le consegne provate e congela
+un candidato. Claude e Codex non autori leggono ogni delta; fai un giro di correzione
+e rileggine insieme i delta. Conserva i rinvii non gravi per la tappa successiva.
 ```
 
 </details>
@@ -623,13 +635,13 @@ Ogni riquadro del grafo è un fatto registrato; le linee continue sono collegame
 <a id="workflow"></a>
 ## Incarico, prova, lettura indipendente e chiusura
 
-**Scegli il percorso.** Il costruttore propone un percorso, il lettore non autore lo conferma o non è d'accordo, e il coordinatore decide con una ragione registrata, rispondendo alle cinque domande della [pagina di triage IT/EN](references/work.md#triage-in-una-pagina). Nessuna regex, nessun modello di percorso e nessun punteggio sceglie il percorso.
+**Scegli il percorso.** Il costruttore propone e il coordinatore registra la scelta usando le cinque domande della [pagina di triage IT/EN](references/work.md#triage-in-una-pagina); il lettore non autore la controlla nel blocco assegnato. Nessuna regex, nessun modello di percorso e nessun punteggio sceglie il percorso. Le tappe coordinate usano il [blocco finale predefinito](references/work.md#final-block); i comandi seguenti illustrano un incarico isolato o una lettura per corsia scelta dal proprietario.
 
 - **Correggi subito con prova:** reversibile, Q1 no e Q3 sì; un breve controllo di un non autore prima della chiusura.
 - **Una lettura del codice:** una scelta ordinaria e delimitata, con perimetro, prova vincolata e una lettura indipendente.
-- **Percorso completo:** Q1 sì o incerta, Q2 irrisolta, un danno silenzioso rilevante in Q5, o un mandato esistente: un piano accettato prima della costruzione, poi prova, lettura di un non autore e le verifiche richieste.
+- **Percorso completo:** Q1 sì o incerta, Q2 irrisolta, un danno silenzioso rilevante in Q5, o un mandato esistente: prova completa, lettura di un non autore e verifiche richieste. La lettura del piano può precedere il lavoro su parola del proprietario o per un confine di fiducia; un piano già richiesto resta obbligatorio.
 
-**Le regole della lettura:** blocca solo un rilievo grave; il resto si corregge subito con una verifica di un non autore o si registra come attività da seguire, con un responsabile e un'occasione di verifica. **Mai passare comandi al proprietario.** Tutte le regole: [dettagli](references/work.md#readme-protocol-details), in inglese.
+**Le regole della lettura:** blocca solo un rilievo grave; nel blocco finale i reperti non gravi irrisolti vanno in una decisione di rinvio, poi diventano incarichi all'avvio della tappa successiva, ognuno con responsabile, verifica di accettazione e reperto di origine. **Mai passare comandi al proprietario.** Tutte le regole: [dettagli](references/work.md#readme-protocol-details), in inglese.
 
 **Contratto, prova, lettura e chiusura.** Tieni le prove fuori dal checkout consegnato: `scope.md` (comportamento, percorsi posseduti, dipendenze, risorse, verifiche, confini del rilascio), `argv.json` come elenco esatto di argomenti, non una stringa di shell (`["python3", "-B", "-m", "unittest", "discover", "-s", "tests", "-v"]`), e un `requirements.json` facoltativo (`[{"id": "R1", "text": "I valori si sommano correttamente"}, {"id": "R2", "text": "La somma di una lista vuota è zero"}]`).
 
@@ -639,7 +651,7 @@ squadra task --actor coord --id T1 --owner builder --reviewer reader \
   --scope-file /evidence/scope.md --proof-file /evidence/argv.json \
   --requirements-file /evidence/requirements.json
 squadra ack --actor builder --message assign-T1
-# Percorso completo: un piano letto da un non autore prima della costruzione.
+# Facoltativo o già richiesto: un piano letto da un non autore prima della costruzione.
 squadra plan --actor coord --task T1 --file /evidence/plan.md
 squadra review --actor reader --task T1 --stage plan \
   --verdict accepted --report /evidence/plan-read.md
