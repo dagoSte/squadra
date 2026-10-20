@@ -45,6 +45,12 @@ https://github.com/user-attachments/assets/d0a696da-9562-4a84-9eea-0fda7b8c75d1
 <a id="news"></a>
 ## Novità
 
+**Contesto più piccolo nei lavori lunghi.** `squadra context --task ID` prepara un
+passaggio di consegne breve, in sola lettura, con riferimenti a incarico, perimetro
+e prove. Il flusso usa la compattazione nativa di Codex/Claude e conserva le
+verifiche previste. Non svuota la cache del fornitore e non garantisce risparmi.
+[Gestione del contesto](references/context.md).
+
 **Correzione consumi — 20 ottobre 2026.** I totali del progetto contano solo i token
 successivi all'ingresso registrato di ogni finestra. Riutilizzare una sessione più
 vecchia non porta più i giorni precedenti nei grafici o nelle stime di costo del
@@ -838,6 +844,7 @@ Ogni comando, raggruppato per scopo: **50 sottocomandi**, più `--version`. Usa 
 | `forecast` | Confronta un incarico aperto con lavori simili conclusi: tempi trascorsi osservati e percorso suggerito; sola lettura, nessuna cifra sotto tre esempi completi. | «Quanto tempo hanno richiesto lavori simili a T5? Conviene il percorso leggero?» |
 | `balance` | Suggerisce finestre e modelli in base a carico, quota e lavori simili, con i numeri di ogni suggerimento; sola lettura, non assegna nulla, quota di Claude solo come stima dichiarata. | «A quale finestra o modello conviene dare il prossimo incarico?» |
 | `usage` | Leggi i token locali per finestra, modello e incarico, con copertura e stime su prezzi inseriti da te; [dettagli](references/usage.md) in inglese. | «Quanti token hanno consumato finestre e modelli?» |
+| `context` | Prepara un passaggio di consegne breve, in sola lettura, per compattare con il client o riprendere in una sessione nuova; [dettagli](references/context.md). | «Dammi lo stato essenziale registrato per T5 senza la cronologia della conversazione.» |
 
 ### Continuità
 

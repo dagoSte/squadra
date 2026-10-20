@@ -332,6 +332,10 @@ def parser():
     a = sub.add_parser("usage", help="Read-only local token usage; partial coverage after a 30-second collection deadline")
     a.add_argument("--json", action="store_true", help="Print the same measured data as JSON")
     a.add_argument("--prices", metavar="FILE", help="Optional local price table for a labelled estimate; no default prices")
+    a = sub.add_parser("context", help="Read-only bounded task resume packet; no model call or client compaction")
+    a.add_argument("--task", required=True)
+    a.add_argument("--max-chars", type=int, default=8000, help="Complete output cap, 4000..32000 characters (default 8000)")
+    a.add_argument("--json", action="store_true")
     a = sub.add_parser("init"); a.add_argument("--name", required=True); a.add_argument("--project", required=True)
     a.add_argument("--lang", choices=["it", "en"], help="Workspace board language (default it)")
     a.add_argument("--temporary", action="store_true", help="Explicit disposable test/demo workspace")
@@ -1036,6 +1040,18 @@ def main(argv=None):
             if a.follow:
                 from inbox_follow import follow
                 return follow(workspace_path(a.root), a.agent, a.timeout, a.since, until_first=a.until_first)
+        if a.command == "context":
+            import context_brief
+            store = Store(workspace_path(a.root), read_only=True)
+            state = store.resolved(store.view(), compact=True)
+            known_id(state['tasks'], a.task, 'task')
+            seq = state['event_count']
+            row = store.db.execute('SELECT * FROM events WHERE seq=?', (seq,)).fetchone()
+            head = store.decode_event(row)['hash'] if row else '0' * 64
+            packet = context_brief.build(state, a.task, {'seq': seq, 'hash': head},
+                                         registry_root=str(store.root), max_chars=a.max_chars, as_json=a.json)
+            print(context_brief.render(packet, a.json), end='')
+            return 0
         if a.command == "usage":
             import time
             import usage

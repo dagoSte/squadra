@@ -45,6 +45,12 @@ https://github.com/user-attachments/assets/69f512be-775c-40ae-95c2-e1e403b3f5d1
 <a id="news"></a>
 ## What's new
 
+**Smaller context for long tasks.** `squadra context --task ID` prepares a bounded,
+read-only resume packet so an agent can continue from task, scope and proof
+references rather than full conversation/log dumps. The workflow uses native
+Codex/Claude compaction and preserves existing gates. It neither clears provider
+cache nor guarantees savings. [Context workflow](references/context.md).
+
 **Usage correction — 20 October 2026.** Project totals now count tokens only after
 each window's recorded registration in that project. Reusing an older session no
 longer brings previous days into the project's charts or cost estimates. Intervals
@@ -835,6 +841,7 @@ Every command, grouped by purpose: **50 subcommands**, plus `--version`. Use `sq
 | `forecast` | Compare an open task with similar completed work: observed elapsed times and a route suggestion; read-only, no figures below three complete samples. | “How long did work like T5 take before, and does the light route suit it?” |
 | `balance` | Suggest windows and models by load, quota and similar work, with the numbers behind each suggestion; read-only, assigns nothing, Claude quota only as a labelled estimate. | “Which window or model should take the next task?” |
 | `usage` | Read local token usage by window, model and task, with coverage and optional user-priced estimates; [details](references/usage.md). | “How many tokens has each window and model used?” |
+| `context` | Prepare a bounded read-only task resume packet for native compaction or a fresh session; [details](references/context.md). | “Give me the essential recorded state for T5 without the conversation history.” |
 
 ### Continuity
 

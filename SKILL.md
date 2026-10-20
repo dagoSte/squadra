@@ -415,6 +415,13 @@ the owner, and every activation leaves a registry event.
 
 ## Dashboard, stop and continuity
 
+- **Keep working context small.** At a task/phase boundary or a compaction signal,
+  use `squadra context --task <ID> --root <registry>` for a bounded resume packet
+  instead of carrying full history/log dumps. Follow [context and native compaction](references/context.md)
+  when preparing a handoff. The packet is recorded data, not authorization or a
+  replacement for scope, mail, source checks or proofs. Use the client's native
+  compaction; preserve required checkpoints and source recovery. Never claim to
+  clear provider cache or guarantee savings. Existing protocol/version stays frozen.
 - **Autonomous checkpoints:** do not wait for the owner to ask for them. After a
   completed increment, an accepted review and before a session change or
   publication, run `checkpoint --to <new-durable-folder>` and record the
