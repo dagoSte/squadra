@@ -214,6 +214,32 @@ def seats(state):
     return sorted(grouped.values(), key=lambda x: x['identity'])
 
 
+def project_scope(events, state, windows):
+    """Derive join boundaries from verified events, never from transcript dates.
+
+    Keep source counters intact: Codex needs pre-join observations as baselines.
+    The source session, rather than a role alias, owns each join boundary.
+    """
+    starts = [instant(e['utc']) for e in events if e['kind'] == 'init']
+    if not starts:
+        return {'kind': 'session', 'from': None, 'reason': 'project_boundary_unknown'}, {}
+    start, joins = min(starts), {}
+    for w in windows:
+        for e in events:
+            d = e['data']
+            if e['kind'] != 'agent':
+                continue
+            # Identity/session owns the boundary even if the original alias left.
+            old = seats({'agents': {d['id']: d}})[0]
+            if old['identity'] != w['identity'] or old['client'] != w['client']:
+                continue
+            for session in old['sessions']:
+                key = (w['identity'], session)
+                at = max(start, instant(e['utc']))
+                joins[key] = min(joins.get(key, at), at)
+    return {'kind': 'project', 'from': utc(start), 'reason': None}, joins
+
+
 class Source:
     def __init__(self, path, root, client, session):
         self.path, self.root, self.client, self.session = path, root, client, session
@@ -429,7 +455,8 @@ class Source:
                     reasons.add('duplicate_conflict')
                     conflicted.add(row['key']); dedup.pop(row['key'])
                     continue
-                dedup[row['key']] = {**row, 'from': row['at'], 'estimated': False, 'reasons': []}
+                dedup[row['key']] = {**row, 'from': old['from'] if old else row['at'],
+                                     'estimated': False, 'reasons': []}
             else:
                 at = row['at']
                 for q in row['quota']:
@@ -482,6 +509,7 @@ class Collector:
         self.walk = None
         self.turn = 0
         self.saved_at = None
+        self.session_inventory = {}
 
     def discover(self, windows, deadline):
         """Find each registered window's session files; an unfinished walk resumes on the next call."""
@@ -549,6 +577,8 @@ class Collector:
                         reasons.add('identity_ambiguous')
         if not unfinished:
             self.walk = None
+            self.session_inventory = {client: {s for s, _ in candidates}
+                                      for client, candidates in found.items() if client not in errors}
             if 'discovery_limited' not in errors.values():
                 self.inventory, self.discovered = (signature, result), time.monotonic()
                 self.directories = walk['directories']
@@ -671,6 +701,7 @@ class Collector:
     def _collect(self, events, state, now, budget_seconds):
         deadline = time.monotonic() + max(0, min(budget_seconds, 30))
         windows = seats(state)
+        scope, joins = project_scope(events, state, windows)
         discovery = self.discover(windows, deadline)
         planned = []
         for w in windows:
@@ -703,7 +734,17 @@ class Collector:
                 reasons.update(src_reasons)
                 complete = complete and source.checked and source.cursor == 0 and source.append_cursor == source.end and not source.pending and not source.reasons
                 observed = min(observed, source.observed) if observed and source.observed else source.observed
+                # Discovery may expand a unique registered session prefix.
+                boundaries = [at for (identity, registered), at in joins.items()
+                              if identity == w['identity'] and (session == registered or
+                                  (session.startswith(registered) and
+                                   {s for s in self.session_inventory.get(w['client'], ())
+                                    if s.startswith(registered)} == {session}))]
+                boundary = min(boundaries) if boundaries else None
+                if scope['kind'] == 'project' and boundary is None:
+                    reasons.add('project_registration_unknown')
                 for sample in src_samples:
+                    sample = {**sample, 'identity': w['identity'], '_scope_from': boundary}
                     skey = sample.get('key')
                     if skey is not None:
                         old = dedup.get(skey)
@@ -711,11 +752,24 @@ class Collector:
                             reasons.add('duplicate_conflict'); complete = False
                             conflicts.add(skey)
                         if old:
+                            old['from'] = min(old['from'], sample['from'])
                             continue
                         dedup[skey] = sample
-                    samples.append({**sample, 'identity': w['identity']})
+                    samples.append(sample)
                 quotas.extend({**q, 'identity': w['identity']} for q in src_quota)
             samples = [s for s in samples if s['at'] <= now and s.get('key') not in conflicts]
+            if scope['kind'] == 'project':
+                scoped = []
+                for sample in samples:
+                    boundary = sample['_scope_from']
+                    if boundary is None or sample['at'] < boundary:
+                        continue
+                    if sample['from'] < boundary:
+                        if sample['tokens']['total']:
+                            reasons.add('project_boundary_overlap')
+                        continue
+                    scoped.append(sample)
+                samples = scoped
             if not samples:
                 reasons.add('no_usage_observed')
             totals = add_tokens(samples) if samples else None
@@ -748,6 +802,7 @@ class Collector:
                          'estimated': any(s['estimated'] for s in group)})
         tasks = attribute(all_samples, spans, complete)
         data = {'schema': 1, 'observed_at': utc(now), 'status': 'measured' if complete else 'partial' if all_samples else 'not_measured',
+                'scope': scope,
                 'coverage': {'status': 'collecting' if self.walk is not None or any(s.restored or s.cursor or (s.append_cursor < s.end and not s.pending) or not s.checked for s in self.sources.values()) else 'ready' if complete else 'limited',
                              'sources': len(self.sources), 'measured': measured_sources,
                              'reasons': sorted({r for w in result for r in w['reasons']})},
@@ -1062,7 +1117,10 @@ def text_report(data):
     def count(row):
         total = row.get('totals', {}).get('total') if row.get('totals') else None
         return str(total) if total is not None else 'not measured'
-    lines = ['Usage — tokens, not a subscription bill', 'Coverage: ' + data['status']]
+    scope = data.get('scope', {})
+    label = ('Project usage since ' + scope['from'] + '; each window starts at registration'
+             if scope.get('kind') == 'project' else 'Session history; project boundary unavailable')
+    lines = ['Usage — tokens, not a subscription bill', label, 'Coverage: ' + data['status']]
     for w in data['windows']:
         total = count(w)
         lines.append(f"{w['identity']}: {total} tokens ({w['status']}; {', '.join(w['reasons']) or 'observed'})")

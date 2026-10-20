@@ -45,6 +45,13 @@ https://github.com/user-attachments/assets/d0a696da-9562-4a84-9eea-0fda7b8c75d1
 <a id="news"></a>
 ## Novità
 
+**Correzione consumi — 20 ottobre 2026.** I totali del progetto contano solo i token
+successivi all'ingresso registrato di ogni finestra. Riutilizzare una sessione più
+vecchia non porta più i giorni precedenti nei grafici o nelle stime di costo del
+progetto. Gli intervalli che attraversano l'ingresso sono esclusi e segnalati come
+parziali. Lo storico resta intatto; la quota dell'account rimane separata.
+[Perimetro e limiti](references/usage.md#project-scope).
+
 **3.10.2 — messaggi che arrivano sempre, e una dashboard che sta al passo con una squadra al lavoro**
 
 Il coordinatore può consegnare ogni messaggio alla sua finestra, la dashboard aggiorna solo ciò che è cambiato e la casella di ricerca trova il lavoro passato dalle parole che le persone hanno scritto. Il formato del registro non cambia.

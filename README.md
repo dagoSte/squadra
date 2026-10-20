@@ -45,6 +45,12 @@ https://github.com/user-attachments/assets/69f512be-775c-40ae-95c2-e1e403b3f5d1
 <a id="news"></a>
 ## What's new
 
+**Usage correction — 20 October 2026.** Project totals now count tokens only after
+each window's recorded registration in that project. Reusing an older session no
+longer brings previous days into the project's charts or cost estimates. Intervals
+crossing registration are excluded and marked partial. Session history is preserved;
+account quota stays separate. [Scope and limits](references/usage.md#project-scope).
+
 **3.10.2 — messages that always arrive, and a dashboard that keeps up with a working squad**
 
 The coordinator can deliver every message to its window, the dashboard updates only what changed, and the search box finds past work by the words people wrote. The registry format does not change.

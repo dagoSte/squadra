@@ -37,11 +37,12 @@ class UsageRoutes(unittest.TestCase):
         usage._COLLECTORS.clear()
         self.store = Store(self.base / 'registry', create=True)
         self.addCleanup(self.store.close)
-        seed(self.store, self.base)
-        # A registered identity is enough for collection; no transcript content is recorded.
-        self.store.append('agent', 'coord', {'id': 'tokens', 'identity': 'claude-window-' + SESSION,
-                          'role': 'executor', 'client': 'claude', 'model': '', 'session': SESSION,
-                          'repo': str(self.base), 'skills': []})
+        # Join precedes the synthetic observations, independently of wall-clock date.
+        with patch('registry.now', return_value='2026-10-15T09:00:00+00:00'):
+            seed(self.store, self.base)
+            self.store.append('agent', 'coord', {'id': 'tokens', 'identity': 'claude-window-' + SESSION,
+                              'role': 'executor', 'client': 'claude', 'model': '', 'session': SESSION,
+                              'repo': str(self.base), 'skills': []})
         self.store.project()
         folder = self.home / '.claude/projects/project'; folder.mkdir(parents=True)
         self.source = folder / (SESSION + '.jsonl')
