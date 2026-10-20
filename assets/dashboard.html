@@ -4504,7 +4504,8 @@ function usagePayload(value){
  const totals=row=>row?pick(row,[...usageKinds,'reasoning','total']):null;
  const quota=row=>pick(row,['identity','model','observed_at','limit','used_percent','window_minutes','resets_at','plan_type','status']);
  const count=row=>({...pick(row,['identity','actors','client','model','task','day','status','estimated','partial_hour']),totals:totals(row.totals),reasons:(row.reasons||[]).filter(r=>typeof r==='string'&&/^[a-z][a-z0-9_]{0,60}$/.test(r))});
- return {schema:1,observed_at:value.observed_at,status:value.status,coverage:{...pick(value.coverage,['status','sources','measured']),notices:(Array.isArray(value.coverage?.notices)?value.coverage.notices:[]).filter(r=>r==='cache_off_unsafe_path').slice(0,1)},
+ const scoped=value.scope?.kind==='project'&&typeof value.scope.from==='string'&&/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,6})?Z$/.test(value.scope.from);
+ return {schema:1,observed_at:value.observed_at,status:value.status,scope:{kind:scoped?'project':'session',from:scoped?value.scope.from:null},coverage:{...pick(value.coverage,['status','sources','measured']),reasons:(Array.isArray(value.coverage?.reasons)?value.coverage.reasons:[]).filter(r=>['project_boundary_overlap','project_registration_unknown'].includes(r)),notices:(Array.isArray(value.coverage?.notices)?value.coverage.notices:[]).filter(r=>r==='cache_off_unsafe_path').slice(0,1)},
   windows:value.windows.map(w=>({...count(w),quota:(w.quota||[]).map(quota)})),models:value.models.map(count),tasks:value.tasks.map(count),days:value.days.map(count),quota_history:value.quota_history.map(quota),
   suggestions:(value.suggestions||[]).map(s=>({...pick(s,['id','model','window','message_key']),vars:Object.fromEntries(Object.entries(s.vars||{}).filter(([k,v])=>['total','share','percent','minutes'].includes(k)&&usageNumber(v)))})),cost:null};
 }

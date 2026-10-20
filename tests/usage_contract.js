@@ -12,7 +12,7 @@ const totals=(input,cache_read,cache_creation,output,reasoning=0)=>({input,cache
 function payload(){
  const a=totals(100,800,0,100,20),b=totals(500,0,0,600,200),at='2026-10-15T11:30:00Z';
  const q={identity:'first',model:'model-a',limit:'primary',used_percent:85,window_minutes:300,resets_at:'2026-10-15T13:00:00Z',observed_at:at,status:'measured'};
- return {schema:1,observed_at:at,status:'measured',coverage:{status:'ready',sources:2,measured:2,reasons:[]},
+ return {schema:1,observed_at:at,status:'measured',scope:{kind:'project',from:'2026-10-15T09:00:00Z'},coverage:{status:'ready',sources:2,measured:2,reasons:[]},
  windows:[{identity:'first',actors:[],client:'claude',status:'measured',reasons:[],totals:a,models:[],quota:[q]},{identity:'second',actors:[],client:'codex',status:'measured',reasons:[],totals:b,models:[],quota:[]}],
  models:[{model:'model-a',status:'measured',totals:a,windows:['first']},{model:'model-b',status:'measured',totals:b,windows:['second']}],
  tasks:[{task:null,status:'measured',totals:totals(600,800,0,700,220),estimated:true,reasons:['overlapping_tasks']}],
@@ -30,6 +30,8 @@ const tests={
  async charts(){
   for(const language of ['it-IT','en-US'])for(const theme of ['light','dark'])for(const phone of [false,true]){
    const app=await setup({language,stored:{'squadra-theme':theme},phone});await app.select();
+   assert.match(text(app.content),language==='it-IT'?/Progetto avviato: 2026-10-15T09:00:00Z/:/Project started: 2026-10-15T09:00:00Z/);
+   assert.doesNotMatch(text(app.content),/Session history:|Storico delle sessioni:/);
    assert.equal(app.doc.getElementById('usage-links').children[0].getAttribute('aria-current'),'page');
    assert.deepEqual(all(app.content,e=>e.getAttribute('data-usage-chart')).map(e=>e.getAttribute('data-usage-chart')),['daily','byWindow','byModel','byTask','quota']);
    assert.equal(all(app.content,e=>e.getAttribute('role')==='img').length,5,'five accessible graphics');
@@ -44,11 +46,13 @@ const tests={
   }
  },
  async coverage(){
-  const app=await setup();app.data.status='partial';app.data.coverage.status='collecting';app.data.windows[1].totals=null;app.data.windows[1].status='not_measured';app.data.windows[1].reasons=['source_missing'];app.data.models[1].totals=totals(0,0,0,0);app.data.days.push({day:'2026-10-14',status:'not_measured',totals:null});
+  const app=await setup();app.data.status='partial';app.data.coverage.status='collecting';app.data.coverage.reasons=['project_boundary_overlap','project_registration_unknown'];app.data.windows[1].totals=null;app.data.windows[1].status='not_measured';app.data.windows[1].reasons=['source_missing'];app.data.models[1].totals=totals(0,0,0,0);app.data.days.push({day:'2026-10-14',status:'not_measured',totals:null});
   await app.select();assert.match(text(app.content),/Raccolta in corso/);assert.match(text(chart(app,'byWindow')),/Non misurato/);assert.match(text(chart(app,'byTask')),/Attribuzione stimata/);
+  assert.match(text(app.content),/esclusi intervalli che attraversano/);assert.match(text(app.content),/non ha una registrazione verificabile/);
   assert.ok(rows(app,'byModel').some(r=>r[0]==='model-b'&&r[1]==='0'),'observed zero remains zero');assert.equal(rows(app,'daily')[1][5],'Non misurato','unknown is never a zero');
   app.data={...payload(),windows:[],models:[],tasks:[],days:[],quota_history:[],suggestions:[],status:'not_measured',coverage:{status:'limited',sources:1,measured:0,reasons:['source_missing']}};await app.refresh();assert.match(text(app.content),/non significa consumo zero/);assert.equal(all(app.content,e=>e.getAttribute('role')==='img').length,0);
   assert.match(text(app.content),/Non ci sono dati sufficienti/);assert.match(text(app.content),/Stima disattivata/);
+  delete app.data.scope;await app.refresh();assert.match(text(app.content),/Storico delle sessioni:.*non sono attribuiti al progetto/);
  },
  async polling(){
   const app=await setup();await app.refresh();assert.equal(requests(app).length,0,'closed Usage causes no collection');
@@ -79,7 +83,7 @@ const tests={
   app.data.windows[0].quota[0].status='expired';await app.refresh();assert.equal(all(app.content,e=>e.getAttribute('data-usage-advice')==='quota').length,0,'history display never authorizes stale quota advice');
  },
  async privacy(){
-  const app=await setup();app.data.private_text='PRIVATE_CANARY_sk-sensitive';app.data.windows[0].conversation='PRIVATE_CANARY_sk-sensitive';app.data.suggestions.push({id:'unknown',message_key:'usage.evil',vars:{text:'PRIVATE_CANARY_sk-sensitive'}});await app.select();
+  const app=await setup();app.data.private_text='PRIVATE_CANARY_sk-sensitive';app.data.scope.private_text='PRIVATE_CANARY_sk-sensitive';app.data.coverage.reasons=['PRIVATE_CANARY_sk-sensitive'];app.data.windows[0].conversation='PRIVATE_CANARY_sk-sensitive';app.data.suggestions.push({id:'unknown',message_key:'usage.evil',vars:{text:'PRIVATE_CANARY_sk-sensitive'}});await app.select();
   assert.equal(all(app.content,e=>e.getAttribute('data-usage-advice')).length,3);assert.doesNotMatch(app.run('JSON.stringify(usageUI.data)'),/PRIVATE_CANARY/);assert.doesNotMatch(text(app.content),/PRIVATE_CANARY|sk-sensitive|⟦/);
   assert.match(text(app.content),/1000 token, 80%/);assert.match(text(app.content),/85%.*300/);assert.match(text(app.content),/Ripristino/);
   app.data.models[0].status='partial';app.data.models[1].status='not_measured';app.data.windows[0].quota[0].observed_at='2026-10-14T00:00:00Z';await app.refresh();assert.equal(all(app.content,e=>e.getAttribute('data-usage-advice')).length,0,'partial/missing model and stale quota give no advice');
