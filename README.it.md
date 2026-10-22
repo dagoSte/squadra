@@ -9,21 +9,63 @@
 
 **I tuoi agenti di codice, una sola squadra — e la prova di ogni passo.**
 
-La skill di squadra più completa per Claude Code, Codex e Cursor.
+Coordina Claude Code, Codex e Cursor con incarichi condivisi, revisioni indipendenti e una dashboard locale.
 
 **Gratuita e open source** — licenza MIT, nessun account, tutto gira sul tuo computer.
 
-**Versione 3.10.3** · Gratuita · MIT · Toolkit locale · Python 3.12+ · macOS / POSIX
+**Versione 3.10.3** · Python 3.12+ · macOS / POSIX
 
 [English](README.md) · **Italiano** · [Privacy](PRIVACY.it.md)
 
-[Novità](#news) · [Inizia](#start) · [Prompt di esempio](#prompts) · [Primi passi](#first-steps) · [Dashboard](#dashboard) · [Plugin](#plugins) · [Decisioni](#decisions) · [Flusso di lavoro](#workflow) · [Checkpoint](#checkpoints) · [Comandi](#commands) · [Comunità](#community)
+[Panoramica](#overview) · [Installa](#start) · [Primi passi](#first-steps) · [Prompt](#prompts) · [Dashboard](#dashboard) · [Plugin](#plugins) · [Comandi](#commands) · [Guide](#reference) · [Novità](#news) · [Comunità](#community)
 
 </div>
 
 [![Scansione di sicurezza Cisco](https://img.shields.io/github/actions/workflow/status/dagoSte/squadra/cisco-skill-scan.yml?branch=main&label=Cisco%20security%20scan&logo=cisco)](https://github.com/dagoSte/squadra/actions/workflows/cisco-skill-scan.yml) [![HOL Guard](https://img.shields.io/endpoint?url=https%3A%2F%2Fhol.org%2Fapi%2Fregistry%2Fbadges%2Fplugin%3Fslug%3Ddagoste%252Fsquadra%26metric%3Dtrust)](https://hol.org/registry/plugins/dagoste%2Fsquadra) [![Ultima versione](https://img.shields.io/github/v/release/dagoSte/squadra?label=release&color=2ea44f)](https://github.com/dagoSte/squadra/releases/latest) [![Licenza](https://img.shields.io/github/license/dagoSte/squadra?color=blue)](https://github.com/dagoSte/squadra/blob/main/LICENSE) [![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-3776AB?logo=python&logoColor=white)](#start) [![Dipendenze: solo libreria standard Python](https://img.shields.io/badge/dependencies-stdlib%20only-brightgreen)](#start) [![Claude Code skill](https://img.shields.io/badge/Claude%20Code-skill-D97757?logo=claude&logoColor=white)](#start) [![Codex plugin](https://img.shields.io/badge/Codex-plugin-412991?logo=openai&logoColor=white)](#start) [![Piattaforma](https://img.shields.io/badge/platform-macOS%20%7C%20POSIX-555)](#start) [![Stelle su GitHub](https://img.shields.io/github/stars/dagoSte/squadra?style=flat&logo=github&color=yellow)](https://github.com/dagoSte/squadra/stargazers) [![Ultimo aggiornamento](https://img.shields.io/github/last-commit/dagoSte/squadra)](https://github.com/dagoSte/squadra/commits/main)
 
-Controlli statici, comportamentali e delle dipendenze, con `tests/` esclusa. Il controllo passa in assenza di rilievi HIGH o CRITICAL; quelli di gravità inferiore restano nel report. Clicca sul badge per i risultati.
+[Che cosa copre la scansione di sicurezza](#security-scan).
+
+<a id="overview"></a>
+## Cosa fa Squadra
+
+Squadra fa lavorare più finestre di agenti di codice sullo stesso progetto come una squadra: una coordina, altre costruiscono e una finestra che non ha scritto il codice lo rilegge. Incarichi, decisioni, verifiche eseguite e rapporti di revisione restano in un unico registro condiviso sul tuo computer.
+
+Usala quando il lavoro coinvolge più sessioni di agenti e vuoi sapere chi segue ogni incarico, quale codice è stato verificato e che cosa aspetta una decisione. Ogni finestra può lavorare nella propria copia del codice, il checkout, e condividere lo stesso registro.
+
+| Parte | Che cosa fa |
+|---|---|
+| **Skill** | Indica agli agenti il metodo di coordinamento da seguire. |
+| **CLI** | Registra incarichi, messaggi, verifiche e decisioni. |
+| **Dashboard** | Mostra avanzamento, prove e richieste del tuo parere. |
+
+**Composizione della squadra:** parti da un coordinatore Claude, poi fai entrare le finestre Codex, Claude o Cursor interattive. Le [regole di squadra](#team-rules) spiegano ruoli e limiti.
+
+![Quadro di Squadra in italiano: una frase su dove è il lavoro, indicatori in parole e una scheda per ogni lavoro](docs/images/dashboard-overview-it.png)
+
+*Il Quadro su un registro dimostrativo, Atlas ([in inglese](docs/images/dashboard-overview-en.png), [tema scuro](docs/images/dashboard-overview-dark-it.png)). I testi registrati, come i briefing, le parole del proprietario e i messaggi, restano come sono stati scritti. Gli esempi non contengono dati di clienti e non misurano la qualità dei modelli.*
+
+**Guarda il tour di 84 secondi — attiva l'audio nel lettore:**
+
+https://github.com/user-attachments/assets/d0a696da-9562-4a84-9eea-0fda7b8c75d1
+
+<a id="cosa-la-rende-diversa"></a>
+## Perché usare Squadra
+
+- **Un solo registro per tutte le finestre.** Incarichi, prove e decisioni restano sul tuo computer, non nella memoria di una chat.
+- **Chi scrive non si rilegge.** Ogni modifica la controlla una finestra che non l'ha scritta.
+- **Prove legate al codice esatto.** Se il codice cambia dopo la prova, prova e lettura non valgono più.
+- **Prima la conferma, poi il lavoro.** Un incarico parte solo quando chi lo riceve conferma di averlo ricevuto.
+- **Domande con la frase pronta.** Quando serve una tua decisione, ricevi le opzioni, una raccomandazione e le parole esatte per rispondere.
+- **Una dashboard in parole semplici**, in italiano o in inglese, per seguire tutto dal vivo.
+- **Claude, Codex e Cursor insieme**, e aperta ai plugin della community.
+- **Un'unica vista di quanto spende ogni finestra AI.** Token per finestra, modello e lavoro, tra Claude Code e Codex, con il consiglio su quale finestra o modello debba prendere il prossimo lavoro, calcolati sul tuo computer.
+
+<a id="start"></a>
+## Installazione
+
+**Requisiti:** Python 3.12+, Git e un browser per la dashboard. Il programma usa la libreria standard di Python; Node.js serve per `selftest`. macOS / POSIX è l’ambiente provato. [Requisiti completi e limiti delle piattaforme](#requirements).
+
+### Consigliata: installazione con una frase
 
 <a id="one-sentence"></a>
 **Si installa con una frase.** Incollala in Claude Code, Codex o Cursor:
@@ -36,171 +78,8 @@ L'agente controlla che cosa hai già, ti mostra ogni comando con che cosa cambia
 
 A te resta un solo gesto: `/reload-plugins` in Claude Code, oppure una nuova sessione in Codex o Cursor.
 
-Gli altri modi di installarla: [Installazione](#start).
-
-**Guarda il tour di 84 secondi — attiva l'audio nel lettore:**
-
-https://github.com/user-attachments/assets/d0a696da-9562-4a84-9eea-0fda7b8c75d1
-
-<a id="news"></a>
-## Novità
-
-**3.10.3 — il blocco finale diventa la modalità predefinita.** Contratto comune e
-giunture si fissano prima di costruire. Le corsie si uniscono alla consegna con la
-propria prova verde; un registro dei delta prepara il candidato congelato per le
-letture non autrici di Claude e Codex su ogni delta e giuntura. Un giro di correzione
-è seguito da un blocco di rilettura dei suoi delta. Bloccano solo i reperti gravi;
-una decisione raccoglie i rinvii non gravi, trasformati in incarichi all'avvio della
-tappa successiva. Le prove native richieste riguardano la testa del rilascio.
-Le letture per corsia restano un'opzione scelta dal proprietario. Cambia il metodo
-della skill, non la CLI o il formato del registro; una squadra attiva mantiene la
-modalità registrata fino al cambio esplicito. [Metodo](references/work.md#final-block).
-
-**Contesto più piccolo nei lavori lunghi.** `squadra context --task ID` prepara un
-passaggio di consegne breve, in sola lettura, con riferimenti a incarico, perimetro
-e prove. Il flusso usa la compattazione nativa di Codex/Claude e conserva le
-verifiche previste. Non svuota la cache del fornitore e non garantisce risparmi.
-[Gestione del contesto](references/context.md).
-
-**Correzione consumi — 20 ottobre 2026.** I totali del progetto contano solo i token
-successivi all'ingresso registrato di ogni finestra. Riutilizzare una sessione più
-vecchia non porta più i giorni precedenti nei grafici o nelle stime di costo del
-progetto. Gli intervalli che attraversano l'ingresso sono esclusi e segnalati come
-parziali. Lo storico resta intatto; la quota dell'account rimane separata.
-[Perimetro e limiti](references/usage.md#project-scope).
-
-**3.10.2 — messaggi che arrivano sempre, e una dashboard che sta al passo con una squadra al lavoro**
-
-Il coordinatore può consegnare ogni messaggio alla sua finestra, la dashboard aggiorna solo ciò che è cambiato e la casella di ricerca trova il lavoro passato dalle parole che le persone hanno scritto. Il formato del registro non cambia.
-
-**Guarda il film delle novità, due minuti — attiva l'audio nel lettore:**
-
-https://github.com/user-attachments/assets/8f38a443-b738-48f8-b562-9b072419b5f0
-
-- **Si installa con una frase.** Incolla nel tuo agente la frase in cima a questa pagina: ti mostra il piano, aspetta il tuo sì, installa e verifica ([SETUP.md](SETUP.md)).
-- **Le piccole modifiche richiedono minuti.** Prima di cominciare, l'agente ti dice quanti minuti servono. Una piccola modifica si fa e basta, con al massimo un controllo. La rilettura di un'altra finestra o la suite completa dei test partono solo se le chiedete tu o il coordinatore; per una modifica importante ti vengono proposte, con il loro tempo.
-- **La squadra parte da Claude.** Una finestra Codex chiamata per prima non prova più a coordinare finestre che non vede e non può raggiungere: ti dice quale frase scrivere in una finestra Claude, e quella finestra si presenta a tutte, compresa quella Codex.
-- **I messaggi arrivano sempre.** Il coordinatore può consegnare qualsiasi messaggio, anche uno scritto da una finestra Codex nella sandbox, e ogni tentativo di consegna resta registrato. Una finestra Claude riceve la propria posta appena arriva con `squadra inbox --follow`. Un messaggio per una finestra Codex che nessuno ha ancora consegnato compare per primo, come «da inoltrare», con da quanto tempo aspetta.
-- **Attese che dicono il vero.** Le attese elencano solo ciò che è ancora aperto: le conferme di un incarico chiuso ne escono, e un piano che aspetta il suo lettore vi compare.
-- **Ricerca.** La casella di ricerca trova il lavoro passato dalle parole che le persone hanno scritto, in qualsiasi ordine e con o senza accenti, comprese decisioni, domande e letture. Il menu a tendina mostra prima i risultati più recenti e finisce con una domanda pronta per il tuo agente.
-- **I più recenti in cima, ovunque.** Ogni elenco e ogni scelta dell'incarico mostra per primi gli elementi più recenti.
-- **Una dashboard che sta al passo.** Dopo un nuovo evento la pagina aggiorna solo ciò che è cambiato; una pagina ferma non costa quasi nulla, e una ricerca invia solo i suoi risultati.
-- **Risposte più brevi.** `task`, `brief` e `start` stampano un riepilogo breve. `inbox` senza opzioni mostra i messaggi che aspettano te più gli ultimi 10; `--all` mostra tutto.
-- **Un registro più sicuro.** Una nuova cartella del registro viene ignorata da Git, così non finisce in un commit per sbaglio. Una scrittura lenta trattiene le altre finestre solo per poco. `doctor` lavora in sola lettura e segnala una cache danneggiata; `doctor --repair` la ripara e `--quick` fa un controllo veloce. I comandi spiegano gli errori a parole semplici. Un file finito nel registro per errore si può rimuovere con una decisione registrata.
-- **Salvataggio e ripristino affidabili.** `save` funziona su progetti grandi e sui repository che tracciano `.env.example`; il ritorno a una versione precedente funziona con l'una e con l'altra versione; un pacchetto di salvataggio si ripristina anche dopo che l'hai aperto, e il lavoro messo da parte con lo stash torna indietro.
-- **Consumi e Bilanciamento misurano ogni finestra registrata come indica la guida** (`--session`), anche sui computer con molte conversazioni salvate.
-- **Si installa ovunque.** L'installatore funziona con una umask di gruppo condivisa e con una cartella home collegata. Con Python più vecchio della 3.12 si rifiuta con una riga chiara.
-- **L'inglese resta inglese.** Uno spazio di lavoro in inglese riceve l'inglese in ogni comando.
-- **Ingresso e presenza.** Una nuova finestra può rispondere al suo primo appello di presenza, e il giro di presenza del coordinatore lascia attivo il coordinatore stesso.
-- **In fila, invece che a tentativi.** `resource acquire --wait SECONDI` tiene il posto in fila per una risorsa occupata, come la suite dei test, invece di fallire finché non si libera: le finestre che aspettano con `--wait` la ottengono nell'ordine in cui l'hanno chiesta, e mentre aspettano non si registra nulla. `prove` controlla prima di partire che la prova copra i requisiti dell'incarico, così una prova lunga non va mai buttata per un `--covers` mancante.
-- **Una sola prova per le due letture finali.** `prove --also <incarico>` fa valere una sola esecuzione della suite per più incarichi sullo stesso codice congelato, come le letture finali Claude e Codex di un rilascio; ogni incarico controlla comunque i propri requisiti. Usala quando lo Squadra di ogni lettore elenca `--also` in `squadra prove --help`; altrimenti prova ogni incarico per conto suo.
-- **Le finestre che non ci sono più non riempiono le attese.** La posta per una finestra messa in stand-by compare come una riga per finestra, per esempio «12 messaggi a core-A in stand-by (finestra chiusa)», e torna appena la finestra rientra.
-- **Un registro che resta piccolo.** Il file di appoggio del registro torna piccolo dopo le scritture, anche con la dashboard aperta; `doctor` ne riporta la dimensione e `doctor --repair` lo compatta. Non si cancella nulla.
-- **Il coordinatore coordina, e i rilasci partono prima.** Il coordinatore costruisce solo l'unione e il rilascio, e affida le corsie ai costruttori. In 3.10.2 ogni corsia aveva una propria lettura completa e le correzioni si rileggevano insieme al rilascio; 3.10.3 rende invece predefinito il blocco finale.
-- Plugin: memoranda 1.0.7, Playwright 1.0.8, Sentry 0.1.5.
-
-**Misurato sulla nostra squadra.** Il nostro coordinatore ha lanciato lo stesso script sulla dashboard della 3.10.1 pubblicata e poi della 3.10.2, sulla stessa copia del registro di questa squadra (11.488 eventi), su un computer a 8 core con un carico moderato (load average tra 5 e 11 durante le misure): cinque aggiornamenti, ciascuno dopo un nuovo messaggio, e tre ricerche. Il tempo è quello che la dashboard impiega per elaborare una richiesta. Qui la dashboard era già aperta sulla copia prima della sua prima scrittura, quindi il primo aggiornamento ha pagato una lettura completa in più (8,5 s): un registro copiato o spostato ricollega la propria cache alla prima scrittura nella nuova posizione, e una dashboard già aperta lì paga una lettura completa all'aggiornamento successivo. La tabella mostra gli aggiornamenti seguenti.
-
-| Cosa abbiamo misurato | 3.10.1 | 3.10.2 |
-|---|---|---|
-| Aggiornamento della pagina dopo un nuovo messaggio | 4,7–5,3 s, 8,2 MB | 0,17 s, 0,56 MB |
-| Una ricerca | 3,1–6,6 s, 8,3 MB | 0,4 s, al massimo 0,13 MB |
-| Aggiornamento della pagina quando nulla è cambiato | 0,02 s | circa 0,001 s |
-
 <details>
-<summary><strong>Versioni precedenti</strong></summary>
-
-**3.10.1 — vedi quanto spende davvero ogni finestra AI, e a chi conviene dare il prossimo lavoro**
-
-Una squadra mescola finestre Claude Code e Codex, e ogni fornitore ti mostra solo i propri consumi. Squadra 3.10.1 li mette tutti in un'unica vista, lavoro per lavoro: quale finestra ha speso quanti token, con quale modello, rispetto a quale quota, e a quale finestra o modello conviene dare il prossimo lavoro. Per ogni consiglio vedi anche il perché. Il calcolo avviene sul tuo computer, a partire dai file di sessione che i programmi già tengono; il testo delle conversazioni non viene salvato, mostrato né inviato da nessuna parte.
-
-- **Bilanciamento (nuova skill di sistema).** Consigli su finestre e modelli in base a carico, quota e storia, con i numeri su cui si basa ogni consiglio. Non assegna niente. La pagina dice a parole semplici cosa controlla, i valori di oggi e perché non c'è nessun consiglio quando non ce n'è.
-- **I totali dei Consumi restano stabili mentre i file di sessione crescono.** I calcoli salvati si riusano al riavvio della dashboard; un file riscritto viene ricontato, e una cache assente o danneggiata viene ricostruita. Se una cartella nel percorso della cache è un collegamento simbolico, la cache resta spenta e la pagina Consumi lo segnala: i numeri restano corretti, ma a ogni riavvio la dashboard rilegge i file di sessione.
-- **Comandi che costano meno token alle finestre.** Ogni comando stampava nella finestra che lo lanciava l'intero elenco degli avvisi aperti; ora stampa una risposta breve, e `squadra status --all` stampa l'elenco completo. `task`, `brief` e `start` aggiungono la previsione e un bilanciamento breve, la prima finestra per costruire e per leggere con il suo motivo; `squadra balance --task` stampa la classifica completa (le misure sono nella tabella qui sotto).
-- **Un registro che resta veloce mentre la storia cresce.** Un comando ora legge e scrive solo ciò che è cambiato, non tutta la storia; su una copia del nostro registro di 8.500 eventi, l'invio di un messaggio a un'altra finestra è passato da 27 a 3,2 secondi. La verifica dell'intera catena resta, nei momenti indicati nella guida.
-- **Una dashboard più leggera** che scarica solo ciò che è cambiato, e **grafici animati** nelle pagine Consumi e Bilanciamento.
-- **Messaggi solo informativi** (`send --info`) che non chiedono risposta: non restano più aperti come attese.
-- Plugin: memoranda 1.0.6, Playwright 1.0.7, Sentry 0.1.4.
-
-**Misurato sulla nostra squadra.** Il nostro coordinatore ha preso queste misure sul registro di questa squadra (circa 9.980 eventi) dopo l'installazione della 3.10.1. I due tempi «prima» vengono dagli stessi comandi cronometrati su una copia precedente dello stesso registro, prima della modifica. Una cache mancante o spostata richiede una ricostruzione verificata alla prima scrittura; il costo dipende dal registro e dalla macchina. I comandi di sola lettura ricostruiscono dai dati verificati finché la cache non è disponibile. I tempi qui sotto descrivono i comandi successivi con cache pronta, non un tempo garantito di avvio.
-
-| Cosa abbiamo misurato | Prima | Con la 3.10.1 |
-|---|---|---|
-| «A che punto siamo» (`squadra status`) | 8,6 s | 0,85 s |
-| Salvare un aggiornamento (`squadra output`) | 10,7 s | 0,86 s |
-| Risposta stampata da un comando | 75–95 KB | circa 2,2 KB; `task`, `brief` e `start` circa 2,0 KB con 10 finestre (squadra sintetica), previsione e bilanciamento compresi |
-| Aggiornamento della dashboard quando nulla è cambiato | 8 MB | 0,2 KB |
-| Totali dei Consumi mentre le finestre lavorano | salivano e scendevano | solo in crescita (50 campioni, nessuno più basso) |
-
-**3.10.0**
-- **Pagina «Consumi»: i token spesi dai modelli.** Squadra legge i file di sessione che Claude Code e Codex tengono già sul tuo computer e ne conserva solo i conteggi dei token, con modello, orario e gli identificativi di sessione e di messaggio che servono a contarli una volta sola: non salva, non mostra e non invia mai il testo delle conversazioni. Li mostra per finestra, giorno, modello e incarico, con grafici e suggerimenti per modello. La quota di Codex è misurata, per ogni finestra del fornitore; un costo stimato compare solo se inserisci i tuoi prezzi. `squadra usage` stampa gli stessi dati.
-- Plugin: memoranda 1.0.5, Playwright 1.0.6, Sentry 0.1.3.
-
-**3.9.1**
-- **Ritocchi all'interfaccia.** Più spazio nella pagina «Skill di sistema» e tra i suoi blocchi; il grassetto nelle descrizioni delle skill appare come grassetto; l'obiettivo del progetto e la guida alla lettura compaiono solo nella panoramica; più badge in cima a questa pagina.
-- Plugin: memoranda 1.0.4, Playwright 1.0.5, Sentry 0.1.2.
-
-**3.9.0**
-- **Skill di sistema che si attivano da sole.** *errata* riporta a galla le lezioni che la squadra ha registrato dopo una prova fallita, una lettura che chiedeva modifiche o la chiusura di una correzione, quando un nuovo incarico tocca gli stessi file o le stesse parole. *rasoio* è una lente per il codice snello nelle letture del codice, che dichiara quante righe si potrebbero togliere. *previsione* confronta un nuovo incarico con quelli simili già chiusi e suggerisce un percorso. errata e rasoio registrano ogni attivazione nel registro; previsione viene calcolata al momento e non registra nulla.
-- **Una pagina «Skill di sistema» nella dashboard** elenca le tre skill con cosa fanno, la loro attività registrata e l'esito del controllo di sicurezza sui loro file.
-- **Prove sull'intera suite più veloci.** `tools/parallel_tests.py` esegue la suite su più processi e fallisce se un test raccolto non è stato eseguito: circa tre volte più veloce sulla nostra macchina di prova.
-- **Più lettori a disposizione.** Un incarico può indicare fino a quattro lettori; il primo che conferma prende la lettura. Le piccole modifiche leggere si possono leggere una sola volta, al controllo di rilascio, e fino ad allora risultano chiuse ma non ancora lette.
-- **Controlli rapidi prima della prova e della consegna.** Un progetto può dichiarare controlli veloci, per esempio che i file copiati siano identici, eseguiti sui file esatti prima di `prove` e `deliver`.
-- **Un README più leggero.** Stesse sezioni, circa metà della lettura; i dettagli sono passati nelle guide.
-- **Il rilascio parte in orario.** È una regola, non una scelta: l'ora limite è due ore dopo che il contenuto è fissato; le riletture finali guardano solo come sono state unite le corsie quando ognuna è già stata letta; una lettura che nessuno prende passa a un lettore libero.
-- Plugin: memoranda 1.0.3, Playwright 1.0.4, Sentry 0.1.1.
-
-**3.8.0**
-- **Le correzioni di difetti dimostrano che il loro test fallisce senza di loro.** Dichiara una correzione con `task --defect-fix`; prima della chiusura, `challenge` esegue i test concordati sul codice originale e su quello consegnato.
-- **Plugin Sentry (anteprima).** Porta in Squadra riepiloghi ripuliti degli errori. Gratis · Sviluppo finanziato da memoranda. Provato solo con una connessione simulata.
-- **Una vista Letture più comoda.** Mantiene lo scorrimento della tabella, mostra schede sul telefono e perde lo spazio vuoto; i passi numerati dei plugin hanno un solo segno.
-- Plugin: memoranda 1.0.2, Playwright 1.0.3, Sentry 0.1.0.
-
-</details>
-
-## Cosa la rende diversa
-
-- **Un solo registro per tutte le finestre.** Incarichi, prove e decisioni restano sul tuo computer, non nella memoria di una chat.
-- **Chi scrive non si rilegge.** Ogni modifica la controlla una finestra che non l'ha scritta.
-- **Prove legate al codice esatto.** Se il codice cambia dopo la prova, prova e lettura non valgono più.
-- **Prima la conferma, poi il lavoro.** Un incarico parte solo quando chi lo riceve conferma di averlo ricevuto.
-- **Domande con la frase pronta.** Quando serve una tua decisione, ricevi le opzioni, una raccomandazione e le parole esatte per rispondere.
-- **Una dashboard in parole semplici**, in italiano o in inglese, per seguire tutto dal vivo.
-- **Claude, Codex e Cursor insieme**, e aperta ai plugin della community.
-- **Un'unica vista di quanto spende ogni finestra AI.** Token per finestra, modello e lavoro, tra Claude Code e Codex, con il consiglio su quale finestra o modello debba prendere il prossimo lavoro, calcolati sul tuo computer.
-
-## Cosa fa Squadra
-
-Squadra fa lavorare più finestre di agenti AI sullo stesso progetto come una squadra che puoi seguire: una finestra coordina, un'altra fa la modifica e una terza, mai l'autrice, la controlla. È pensata per i punti in cui il lavoro degli agenti di solito si inceppa: un autore che rilegge il proprio lavoro, un test verde eseguito su un codice diverso, una decisione persa in una conversazione lunga. Tre parti lavorano insieme: **la skill**, che gli agenti seguono; **la CLI**, che registra ogni passo; **la dashboard**, dove leggi il registro. Ogni finestra può lavorare su una propria copia del codice, un *checkout*, e tutte condividono un unico registro.
-
-**Le finestre Cursor lavorano solo in modo interattivo:** sei tu ad aprire l'agente Cursor (`cursor-agent`), che poi usa la CLI di squadra come ogni altra finestra. Squadra non lo avvia mai da sola, perché Cursor esegue gli hook del team, dell'utente e dell'azienda fuori da qualunque sandbox e non permette di disattivarli.
-
-**Come funziona.**
-1. **Installala** e di' a una finestra Claude: «Usa squadra per questo progetto. Usa il registro in `/percorso/del/registro`. Trova le altre finestre e presentati; descrivi il lavoro in parole semplici.» Una finestra Codex chiamata per prima non coordina: ti dà la frase da scrivere in una finestra Claude.
-2. **Apri le altre finestre** su quel registro. Coordina la finestra Claude; ogni finestra conferma il proprio incarico prima di cominciare.
-3. **Apri la dashboard** con `squadra dash --root /percorso/del/registro --open` (se hai installato il plugin, chiedi all'agente di aprirla) e segui ogni incarico: conferma → lavoro → verifica eseguita → lettura di un'altra finestra → chiusura del coordinatore.
-4. **Quando Serve a te chiede il tuo parere**, rispondi al coordinatore; il tempo che passa non è una risposta. Il lavoro chiuso non viene mai pubblicato da solo.
-
-**Parole che incontrerai.**
-
-| Termine | Significato |
-|---|---|
-| ACK | La conferma esplicita del destinatario; un messaggio in coda non è ancora confermato. |
-| Candidato / lettura | Una versione fissata del lavoro / un controllo fatto da chi non l'ha scritto. |
-| Checkpoint / WIP | Una copia del registro per il ripristino / modifiche al codice non ancora finite. Un checkpoint da solo non copia il codice. |
-| Briefing | Una breve descrizione in parole semplici del progetto o di un incarico, scritta dal coordinatore; il briefing di un incarico gli dà il nome sulla pagina. |
-| Ping / stand-by | Una chiamata di presenza che chiede a una finestra di confermare che risponde ancora / la registrazione, fatta dal coordinatore, che una finestra per ora non riceve nuovi incarichi. Lo stand-by non ferma nulla di ciò che è in esecuzione. |
-
-Altri termini, come log ed exit, UTC, PID e cwd: [la guida della pagina](references/recovery.md#dashboard-page), in inglese.
-
-<a id="start"></a>
-## Installazione e primo registro
-
-**Requisiti:** Python 3.12+, Git e la libreria standard di Python. **Node.js** esegue i controlli JavaScript della dashboard nella suite di test e in `selftest`: senza Node quei controlli falliscono, non vengono mai saltati. Un browser per la dashboard; la CLI di Codex o di Claude solo per i runner nativi. L'ambiente di processi provato è macOS/POSIX; il controllo dei processi su Windows e il ripristino con submodule, LFS o checkout sparsi non sono qualificati.
-
-### Con una frase
-
-Incolla [la frase in cima a questa pagina](#one-sentence) in Claude Code, Codex o Cursor. L'agente segue [SETUP.md](SETUP.md), in inglese: controlla che cosa è già installato, ti mostra il piano con ogni comando, che cosa cambia e come annullarlo, e aspetta il tuo sì. Poi installa con i comandi del client (il plugin in Claude Code e Codex, l'installatore autonomo in Cursor) e verifica l'installazione su un registro usa e getta. Poi tu scrivi `/reload-plugins` in Claude Code, oppure apri una nuova sessione in Codex o Cursor.
+<summary><strong>Altri metodi: plugin o comando autonomo</strong></summary>
 
 ### Con /plugin
 
@@ -232,6 +111,12 @@ squadra --version
 ```
 
 Installa da un checkout pulito, senza modifiche fuori dai commit, con una **nuova cartella di backup** ogni volta; l'installatore conserva le skill e il comando precedenti, così puoi tornare indietro. La riga `export PATH` vale solo per quel terminale: aggiungila al profilo della shell (per esempio `~/.zshrc` o `~/.bashrc`) perché i terminali nuovi trovino `squadra`. Senza installare, usa `python3 -B scripts/squadra.py <comando>`. [Dettagli e ritorno alla versione precedente](references/start.md#install-and-join-details), in inglese.
+
+</details>
+
+<a id="updating"></a>
+<details>
+<summary><strong>Aggiornare un’installazione esistente</strong></summary>
 
 ### Aggiornare
 
@@ -266,41 +151,77 @@ Ogni rilascio alza il numero di versione, tranne un aggiornamento dello stesso r
 
 La prima finestra che scrive su un registro precedente o spostato costruisce la cache; le altre attendono. Se un comando risponde `registry busy, retry`, riprova quando la prima scrittura è terminata.
 
-### Regola 0: trovare le finestre e presentarsi
+</details>
 
-La squadra parte da una finestra Claude: la prima finestra Claude che applica la skill diventa il coordinatore, trova ogni finestra Codex, Claude o Cursor del progetto e si presenta a ciascuna. Una finestra Codex chiamata per prima non coordina, perché dalla sua sandbox non riesce né a trovare né a raggiungere le finestre Claude: te lo dice, ti dà la frase da scrivere in una finestra Claude e aspetta come esecutore. Poi la finestra Claude si presenta a ogni finestra, compresa quella Codex. Se non hai una finestra Claude decidi tu, dopo che la finestra Codex ti ha detto che cosa non può fare. Un coordinatore già presente nello stesso registro, che risponde a un ping, mantiene il ruolo; un ping in attesa o scaduto non trasferisce mai la guida o le risorse. La regola completa è nella [skill](SKILL.md); i limiti del censimento e come entrare in una squadra sono in [avvio e presentazione](references/start.md#install-and-join-details), in inglese.
+<a id="requirements"></a>
+<details>
+<summary><strong>Requisiti completi: self-test, runner nativi e limiti delle piattaforme</strong></summary>
 
-Poi crea un unico registro durevole, fuori dalle cartelle temporanee:
+**Requisiti:** Python 3.12+, Git e la libreria standard di Python. **Node.js** esegue i controlli JavaScript della dashboard nella suite di test e in `selftest`: senza Node quei controlli falliscono, non vengono mai saltati. Un browser per la dashboard; la CLI di Codex o di Claude solo per i runner nativi. L'ambiente di processi provato è macOS/POSIX; il controllo dei processi su Windows e il ripristino con submodule, LFS o checkout sparsi non sono qualificati.
+
+</details>
+
+<a id="first-steps"></a>
+## Primi passi
+
+Dopo l’installazione dai istruzioni in parole semplici; gli agenti eseguono i comandi. Una **finestra** è una sessione di lavoro. Tutte le finestre della squadra usano lo stesso registro.
+
+1. **Avvia il coordinatore.** Di' a una finestra Claude: «Usa squadra per questo progetto. Usa il registro in `/percorso/del/registro`. Trova le altre finestre e presentati; descrivi il lavoro in parole semplici.» Una finestra Codex chiamata per prima non coordina: ti dà la frase da scrivere in una finestra Claude.
+2. **Apri le altre finestre** su quel registro. Coordina la finestra Claude; ogni finestra conferma il proprio incarico prima di cominciare.
+3. **Affida il primo incarico al coordinatore.** Descrivi il risultato che vuoi e come verificarlo. Il coordinatore assegna il lavoro e la revisione indipendente; i [prompt di esempio](#prompts) ti danno istruzioni pronte da copiare.
+4. **Apri la dashboard** con `squadra dash --root /percorso/del/registro --open` (se hai installato il plugin, chiedi all'agente di aprirla) e segui ogni incarico: conferma → lavoro → verifica eseguita → lettura di un'altra finestra → chiusura del coordinatore.
+
+**Quando Serve a te chiede il tuo parere**, rispondi al coordinatore; il tempo che passa non è una risposta. Il lavoro chiuso non viene mai pubblicato da solo.
+
+<details>
+<summary><strong>Percorso completo: dodici passi e comandi</strong></summary>
+
+È la prima volta con Squadra? Prova questi dodici passi una volta, dall'inizio alla fine, su un progetto di prova. Una **finestra** è una sessione di lavoro: un agente Codex, Claude o Cursor, oppure una persona. Tutte le finestre usano lo stesso registro.
+
+1. **Installa** e imposta `export SQUADRA_ROOT=...` in ogni finestra.
+2. **Crea il registro e registra ogni finestra** con `init` e `agent`.
+3. **Trova le finestre e presentati:** `census` le elenca senza scrivere nulla; `send` e `transport` consegnano la presentazione; ogni finestra risponde con `ack`.
+4. **Racconta in parole semplici di cosa si tratta** con `brief --project`.
+5. **Assegna il primo incarico e spiegalo** con `task` e `brief --task`.
+6. **Il costruttore conferma e comincia:** `ack`, poi `start`.
+7. **Il costruttore prova e consegna:** `prove` esegue la verifica concordata sui file esatti; `deliver` li consegna.
+8. **Legge qualcun altro:** un lettore che non ha scritto il lavoro registra il verdetto con `review`.
+9. **Il coordinatore chiude:** `check`, poi `close`.
+10. **Controlla chi risponde ancora:** il coordinatore lancia `ping --all`; `ping --sweep` mette in stand-by una finestra che non ha risposto, senza fermare nulla di ciò che esegue.
+11. **Apri la dashboard** con `dash --open`; «Come leggere questa pagina» spiega ogni termine.
+12. **Registra quello che dice il proprietario** con `decision`, `--owner-words`, `--channel` e `--task`.
+
+Ogni passo più in dettaglio: [avvio e presentazione](references/start.md#install-and-join-details), in inglese.
+
+**I dodici passi come comandi**
 
 ```sh
-export SQUADRA_ROOT="$HOME/.local/state/squadra/my-project"
-squadra init --name "My project" --project /path/to/project
-squadra agent --id coord --identity window-01 --session CLAUDE-SESSION-ID \
-  --role coordinator --client claude --repo /path/to/project
-squadra agent --id builder --identity window-02 --session CLAUDE-SESSION-ID \
-  --role builder --client claude --repo /path/to/builder-checkout
-squadra agent --id reader --identity window-03 --session CODEX-THREAD-ID \
-  --role reviewer --client codex --repo /path/to/reader-checkout
-squadra status
+squadra census --project /path/to/project
+squadra send --actor coord --to builder --id HELLO-builder --body-file /evidence/introduction.md
+squadra transport --actor coord --message HELLO-builder --via manual
+squadra ack --actor builder --message HELLO-builder
+squadra brief --actor coord --project --file /evidence/project.md
+squadra task --actor coord --id T1 --owner builder --reviewer reader \
+  --title "Key rotation" --repo /path/to/builder-checkout \
+  --scope-file /evidence/scope.md --proof-file /evidence/argv.json
+squadra brief --actor coord --task T1 --file /evidence/t1.md
+squadra ack --actor builder --message assign-T1
+squadra start --actor builder --task T1
+squadra prove --actor builder --task T1 -- python3 -B -m unittest discover -s tests -v
+squadra deliver --actor builder --task T1
+squadra ack --actor reader --message "review-ID-RETURNED-BY-DELIVER"
+squadra review --actor reader --task T1 --verdict accepted --report /evidence/code-read.md
+squadra check --actor coord --task T1
+squadra close --actor coord --task T1
+squadra ping --actor coord --all
+squadra ack --actor builder --message "PING-ID-RETURNED-BY-PING"
+squadra ping --actor coord --sweep
+squadra decision --actor coord --reason "Istruzione del proprietario" --task T1 \
+  --owner-words "Teniamo leggibili le chiavi vecchie per un mese" --channel typed-here
 squadra dash --open
 ```
 
-`--session` è l'identificativo della sessione della finestra: il nome del file della sua trascrizione in
-`~/.claude/projects/<progetto>/`, senza `.jsonl`, per Claude Code, l'UUID alla fine del suo file `~/.codex/sessions/…/rollout-…` per Codex.
-Usage e Balance misurano una finestra solo attraverso questo, e la coda di Codex ne ha bisogno.
-
-<a id="rule-1"></a>
-### Regola 1: lavoro in parallelo
-
-Il coordinatore affida subito lavoro indipendente a ogni finestra disponibile (Codex, Claude, Cursor interattivo), e nessuna finestra resta ferma mentre c'è lavoro: un costruttore per albero, letture su copie congelate, e la lettura finale di un rilascio fatta da un lettore Claude e da un lettore Codex nello stesso momento. Il coordinatore costruisce solo l'unione e il rilascio e affida le corsie ai costruttori, così resta attento alla posta e alle giunture. Il coordinatore legge la posta del registro a ogni passo, perché una finestra può ricevere lavoro direttamente dal proprietario e riferirlo solo lì.
-
-### Regola 2: la tabella sempre visibile
-
-Ogni aggiornamento al proprietario mostra la tabella di `squadra board`: **In corso**, **Da fare** e **Fatti**, colonne **Finestra | Lavoro | Stato | Tempo (circa)**, «Realizzati X su Y» in fondo, poi «Tu adesso: …». I tempi sono misurati, le stime sono segnate come stime, nessuna percentuale inventata.
-
-### Regole 3–10: metodo
-
-Leggi prima di citare; registra la decisione prima di cambiare un test che fissa un requisito; ogni corsia parallela ha i suoi file; dichiara costo e tetto prima di spendere. Il metodo predefinito è un blocco finale: contratto comune prima del lavoro, unione delle consegne verdi, registro di ogni delta e candidato congelato per letture non autrici Claude/Codex, poi un giro di correzione e un blocco di rilettura. Bloccano solo i reperti gravi; i rinvii diventano incarichi all'avvio della tappa successiva. Ogni chiusura dice come accelerare il prossimo incarico. Resta l'ora limite due ore dopo che il perimetro è fissato, salvo altro orario scelto dal proprietario; le prove riguardano la testa del rilascio e le letture ferme passano a lettori liberi. Le letture per corsia restano un'opzione su parola del proprietario. Tutte le regole per intero: la [skill](SKILL.md).
+</details>
 
 <a id="prompts"></a>
 ## Prompt di esempio
@@ -460,71 +381,8 @@ e rileggine insieme i delta. Conserva i rinvii non gravi per la tappa successiva
 
 </details>
 
-## Cosa hanno fermato le letture
-
-Apri **Letture** nella dashboard per vedere i verdetti su piani e codice, in totale e per incarico, e le nuove versioni presentate dopo una richiesta di modifiche, ognuna collegata al suo rapporto e alla storia dell'incarico. Sono conteggi di letture e di versioni successive, non di difetti evitati o correzioni riuscite; le letture ripetute restano registrazioni distinte, e gli incarichi chiusi o sostituiti restano inclusi.
-
-![La vista Letture: i verdetti registrati in totale e per incarico, con le osservazioni fornite dai lettori](docs/images/dashboard-reads-it.png)
-
-Il lettore può aggiungere osservazioni limitate con `review --findings-file`; vedi [i dettagli](references/work.md#readme-protocol-details), in inglese.
-
-<a id="first-steps"></a>
-## Primi passi
-
-È la prima volta con Squadra? Prova questi dodici passi una volta, dall'inizio alla fine, su un progetto di prova. Una **finestra** è una sessione di lavoro: un agente Codex, Claude o Cursor, oppure una persona. Tutte le finestre usano lo stesso registro.
-
-1. **Installa** e imposta `export SQUADRA_ROOT=...` in ogni finestra.
-2. **Crea il registro e registra ogni finestra** con `init` e `agent`.
-3. **Trova le finestre e presentati:** `census` le elenca senza scrivere nulla; `send` e `transport` consegnano la presentazione; ogni finestra risponde con `ack`.
-4. **Racconta in parole semplici di cosa si tratta** con `brief --project`.
-5. **Assegna il primo incarico e spiegalo** con `task` e `brief --task`.
-6. **Il costruttore conferma e comincia:** `ack`, poi `start`.
-7. **Il costruttore prova e consegna:** `prove` esegue la verifica concordata sui file esatti; `deliver` li consegna.
-8. **Legge qualcun altro:** un lettore che non ha scritto il lavoro registra il verdetto con `review`.
-9. **Il coordinatore chiude:** `check`, poi `close`.
-10. **Controlla chi risponde ancora:** il coordinatore lancia `ping --all`; `ping --sweep` mette in stand-by una finestra che non ha risposto, senza fermare nulla di ciò che esegue.
-11. **Apri la dashboard** con `dash --open`; «Come leggere questa pagina» spiega ogni termine.
-12. **Registra quello che dice il proprietario** con `decision`, `--owner-words`, `--channel` e `--task`.
-
-Ogni passo più in dettaglio: [avvio e presentazione](references/start.md#install-and-join-details), in inglese.
-
-<details>
-<summary><strong>I dodici passi come comandi</strong></summary>
-
-```sh
-squadra census --project /path/to/project
-squadra send --actor coord --to builder --id HELLO-builder --body-file /evidence/introduction.md
-squadra transport --actor coord --message HELLO-builder --via manual
-squadra ack --actor builder --message HELLO-builder
-squadra brief --actor coord --project --file /evidence/project.md
-squadra task --actor coord --id T1 --owner builder --reviewer reader \
-  --title "Key rotation" --repo /path/to/builder-checkout \
-  --scope-file /evidence/scope.md --proof-file /evidence/argv.json
-squadra brief --actor coord --task T1 --file /evidence/t1.md
-squadra ack --actor builder --message assign-T1
-squadra start --actor builder --task T1
-squadra prove --actor builder --task T1 -- python3 -B -m unittest discover -s tests -v
-squadra deliver --actor builder --task T1
-squadra ack --actor reader --message "review-ID-RETURNED-BY-DELIVER"
-squadra review --actor reader --task T1 --verdict accepted --report /evidence/code-read.md
-squadra check --actor coord --task T1
-squadra close --actor coord --task T1
-squadra ping --actor coord --all
-squadra ack --actor builder --message "PING-ID-RETURNED-BY-PING"
-squadra ping --actor coord --sweep
-squadra decision --actor coord --reason "Istruzione del proprietario" --task T1 \
-  --owner-words "Teniamo leggibili le chiavi vecchie per un mese" --channel typed-here
-squadra dash --open
-```
-
-</details>
-
 <a id="dashboard"></a>
 ## Dashboard: il lavoro a colpo d'occhio
-
-![Quadro di Squadra in italiano: una frase su dove è il lavoro, indicatori in parole e una scheda per ogni lavoro](docs/images/dashboard-overview-it.png)
-
-*Il Quadro su un registro dimostrativo, Atlas ([in inglese](docs/images/dashboard-overview-en.png), [tema scuro](docs/images/dashboard-overview-dark-it.png)). I testi registrati, come i briefing, le parole del proprietario e i messaggi, restano come sono stati scritti. Gli esempi non contengono dati di clienti e non misurano la qualità dei modelli.*
 
 `squadra dash --open` si apre sul **Quadro**: una frase e quattro indicatori dicono a che punto è il lavoro, **Serve a te** compare solo quando qualcosa aspetta il proprietario, e una scheda per incarico mostra i suoi passi, chi costruisce e chi legge, e il prossimo passo. Ogni scheda apre la **storia** dell'incarico in ordine di tempo.
 
@@ -552,27 +410,38 @@ Viste: **Quadro**, **Finestre**, **Incarichi**, **Posta**, **Comunicazioni**, **
 
 *Le pagine Consumi, Bilanciamento e Skill di sistema sullo stesso registro dimostrativo Atlas, con file di sessione dimostrativi senza testo di conversazioni ([in inglese](docs/images/dashboard-usage-en.png), [Bilanciamento in inglese](docs/images/dashboard-balance-en.png), [Skill di sistema in inglese](docs/images/dashboard-system-skills-en.png)).*
 
+### Cosa hanno fermato le letture
+
+Apri **Letture** nella dashboard per vedere i verdetti su piani e codice, in totale e per incarico, e le nuove versioni presentate dopo una richiesta di modifiche, ognuna collegata al suo rapporto e alla storia dell'incarico. Sono conteggi di letture e di versioni successive, non di difetti evitati o correzioni riuscite; le letture ripetute restano registrazioni distinte, e gli incarichi chiusi o sostituiti restano inclusi.
+
+![La vista Letture: i verdetti registrati in totale e per incarico, con le osservazioni fornite dai lettori](docs/images/dashboard-reads-it.png)
+
+Il lettore può aggiungere osservazioni limitate con `review --findings-file`; vedi [i dettagli](references/work.md#readme-protocol-details), in inglese.
+
+<a id="decisions"></a>
+### Le decisioni e la loro storia
+
+![La vista Decisioni: una risposta del proprietario e un'istruzione riferita collegate all'incarico e alla domanda, con i dettagli dell'istruzione selezionata](docs/images/dashboard-decisions-it.png)
+
+*Il riquadro selezionato è un'istruzione del proprietario riferita dal coordinatore: chi, quando, le parole esatte, il canale e i collegamenti registrati.*
+
+Risali da una risposta del proprietario alla domanda e all’incarico. [Briefing e collegamenti registrati](#decision-reference) spiegano come si costruisce la traccia.
+
+<details>
+<summary><strong>Aggiornamento della dashboard, ricerca e accesso locale</strong></summary>
+
 **Aggiornamento e sicurezza.** La pagina si aggiorna ogni due secondi, sospende gli aggiornamenti quando la scheda è nascosta e si aggiorna subito al ritorno. La ricerca trova incarichi, esecuzioni, messaggi, risultati, decisioni, domande e letture per inizio di parola, senza distinguere gli accenti; il menù mostra prima i più recenti e offre un prompt da copiare per il tuo agente. Gli artefatti registrati si aprono in una finestra. È **in sola lettura salvo impostazioni e selezioni dichiarate dei plugin installati**; le azioni sul registro passano dalla CLI. Ascolta su `127.0.0.1`, verifica Host e token, controlla Origin per il salvataggio di impostazioni e selezioni, e non carica script remoti né CDN. `--port` sceglie una porta (senza, ne cerca una libera); `Ctrl-C` chiude il server della dashboard, non gli agenti; se si disconnette, la pagina conserva l'ultima vista con un avviso.
 
+</details>
+
 <a id="plugins"></a>
-### Plugin di dati locali
+## Plugin
 
-Un **plugin** porta nella dashboard i dati di un altro strumento: una cartella `$HOME/.squadra/plugins/<name>/` con un manifesto `plugin.json`, in cui un programma separato, il *produttore* del plugin, scrive i pannelli di dati. Il gruppo **Plugin** del menù elenca ogni manifesto installato, oppure dice «Nessun plugin installato» e spiega dove si installano; scegline uno per vedere i suoi dati per il registro aperto.
-
-Le cartelle dei plugin devono appartenere a te e non essere scrivibili da gruppo o altri; lo Store le crea private.
-
-**Costruisci il tuo.** Il formato è aperto: chiunque nella community può pubblicare un plugin per squadra, gratuito o a pagamento. Un plugin è fatto di dati e di un programma separato. La dashboard e la CLI non eseguono mai il codice dei plugin; gli agenti lo eseguono solo come indicato nell'`AGENTS.md` del plugin, rispettando le [condizioni di affidabilità del file e i permessi già concessi dall'utente](references/plugins.md#agent-instructions). Parti dal [formato dei plugin](references/plugins.md).
-
-**Passo per passo:** la [guida per creare un plugin](references/plugin-authoring.md) (in inglese) costruisce un plugin funzionante, lo prova con la dashboard e spiega come pubblicarlo, gratuito o a pagamento.
+I plugin portano nella dashboard i dati di altri strumenti. Apri **Plugin** per vedere le integrazioni installate e i loro dati per il registro corrente.
 
 ![La pagina di un plugin installato: intestazione con autore e versione, e le schede Panoramica, Impostazioni e Memorie](docs/images/dashboard-plugins-it.png)
 
 Impostazioni, risultati per ogni servizio, selezione delle bozze e regole di aggiornamento dello Store: [la pagina del plugin in dettaglio](references/plugins.md#plugin-page), in inglese.
-
-<a id="plugin-agent-instructions"></a>
-**Chi esegue la richiesta?** Un plugin installato può fornire `$HOME/.squadra/plugins/<name>/AGENTS.md` con istruzioni per gli agenti. La finestra coordinatrice lo legge all’avvio e alla ripresa ed esegue solo i comandi indicati, nei permessi già autorizzati: il produttore dopo una chiusura, il consumatore quando la dashboard mostra una richiesta in attesa, poi riferisce l’esito. Vale solo un file regolare di proprietà dell’utente, non scrivibile da gruppo o altri e non un link simbolico. Senza un file valido, la richiesta resta in attesa e la coordinatrice lo segnala: non devi lanciare comandi. La dashboard non legge, non scrive e non esegue questo file. Questo file non amplia mai i permessi e non autorizza installazioni, push, pubblicazioni o decisioni riservate all’utente; per qualunque richiesta oltre a eseguire il produttore o il consumatore di quel plugin, fermarsi e riferire.
-
-Schemi, dimensioni, limiti e codici di rifiuto esatti: [contratto dei plugin](references/plugins.md), [metadati about](references/plugins.md#optional-about-metadata), [sito e icona](references/plugins.md#homepage-and-local-icon).
 
 <a id="plugin-store"></a>
 ### Plugin inclusi nella release
@@ -593,47 +462,118 @@ gratuitamente; il servizio collegato inizia con una prova gratuita, poi è a pag
 
 **Porta dentro gli errori dell'app (anteprima):** il [plugin Sentry](plugins/sentry/README.it.md), facoltativo, porta in Squadra riepiloghi ripuliti degli errori dalla tua connessione Sentry autorizzata, così scegli i problemi da analizzare e ne segui gli incarichi. Gratis · Sviluppo finanziato da memoranda: plugin gratuito per tutti. Provato solo con una connessione simulata; il collegamento reale a Sentry non è ancora verificato.
 
+<a id="plugin-agent-instructions"></a>
+<details>
+<summary><strong>File, esecuzione e permessi dei plugin</strong></summary>
+
+### Plugin di dati locali
+
+Un **plugin** porta nella dashboard i dati di un altro strumento: una cartella `$HOME/.squadra/plugins/<name>/` con un manifesto `plugin.json`, in cui un programma separato, il *produttore* del plugin, scrive i pannelli di dati. Il gruppo **Plugin** del menù elenca ogni manifesto installato, oppure dice «Nessun plugin installato» e spiega dove si installano; scegline uno per vedere i suoi dati per il registro aperto.
+
+Le cartelle dei plugin devono appartenere a te e non essere scrivibili da gruppo o altri; lo Store le crea private.
+
+**Chi esegue la richiesta?** Un plugin installato può fornire `$HOME/.squadra/plugins/<name>/AGENTS.md` con istruzioni per gli agenti. La finestra coordinatrice lo legge all’avvio e alla ripresa ed esegue solo i comandi indicati, nei permessi già autorizzati: il produttore dopo una chiusura, il consumatore quando la dashboard mostra una richiesta in attesa, poi riferisce l’esito. Vale solo un file regolare di proprietà dell’utente, non scrivibile da gruppo o altri e non un link simbolico. Senza un file valido, la richiesta resta in attesa e la coordinatrice lo segnala: non devi lanciare comandi. La dashboard non legge, non scrive e non esegue questo file. Questo file non amplia mai i permessi e non autorizza installazioni, push, pubblicazioni o decisioni riservate all’utente; per qualunque richiesta oltre a eseguire il produttore o il consumatore di quel plugin, fermarsi e riferire.
+
+Schemi, dimensioni, limiti e codici di rifiuto esatti: [contratto dei plugin](references/plugins.md), [metadati about](references/plugins.md#optional-about-metadata), [sito e icona](references/plugins.md#homepage-and-local-icon).
+
+</details>
+
+<details>
+<summary><strong>Creare e pubblicare un plugin</strong></summary>
+
+### Creare un plugin
+
+**Costruisci il tuo.** Il formato è aperto: chiunque nella community può pubblicare un plugin per squadra, gratuito o a pagamento. Un plugin è fatto di dati e di un programma separato. La dashboard e la CLI non eseguono mai il codice dei plugin; gli agenti lo eseguono solo come indicato nell'`AGENTS.md` del plugin, rispettando le [condizioni di affidabilità del file e i permessi già concessi dall'utente](references/plugins.md#agent-instructions). Parti dal [formato dei plugin](references/plugins.md).
+
+**Passo per passo:** la [guida per creare un plugin](references/plugin-authoring.md) (in inglese) costruisce un plugin funzionante, lo prova con la dashboard e spiega come pubblicarlo, gratuito o a pagamento.
+
 **Pubblica il tuo plugin:** leggi la [panoramica italiana](docs/plugin-authoring.it.md), che rimanda alla guida tecnica in inglese per esempi, verifiche e compatibilità. Questi plugin di dati sono separati dall’installazione di Squadra tramite `/plugin`; pubblicare un pacchetto non lo inserisce automaticamente in un catalogo, non lo installa e non lo approva.
 
-<a id="decisions"></a>
-## Grafo delle decisioni e briefing
+</details>
 
-![La vista Decisioni: una risposta del proprietario e un'istruzione riferita collegate all'incarico e alla domanda, con i dettagli dell'istruzione selezionata](docs/images/dashboard-decisions-it.png)
+<a id="reference"></a>
+## Flusso di lavoro e guide
 
-*Il riquadro selezionato è un'istruzione del proprietario riferita dal coordinatore: chi, quando, le parole esatte, il canale e i collegamenti registrati.*
+Le sezioni seguenti conservano gli esempi operativi completi. Apri l’argomento che ti serve; le guide collegate definiscono l’intero protocollo.
 
-I **briefing** sono brevi descrizioni in testo semplice scritte dal coordinatore, da leggere prima di qualunque identificativo.
+| Vuoi… | Apri |
+|---|---|
+| Configurare le finestre o capire le regole | [Regole e configurazione manuale](#team-rules) |
+| Seguire un incarico dall’assegnazione alla chiusura | [Flusso di lavoro](#workflow) |
+| Ricostruire un’istruzione o registrare una decisione | [Briefing, messaggi e decisioni](#decision-reference) |
+| Salvare il lavoro o riprendere una sessione | [Checkpoint e ripristino](#checkpoints) |
+| Cercare un comando o il suo prompt in parole semplici | [Tutti i 51 comandi](#commands) |
+
+[Skill](SKILL.md) · [Avvio](references/start.md) · [Lavoro/prova/lettura](references/work.md) · [Runner nativi](references/runtime.md) · [Ripristino/passaggio di contesto](references/recovery.md) · [Sfide/confronto](references/benchmark.md) · [Plugin](references/plugins.md) · [Creare un plugin](references/plugin-authoring.md)
+
+I riferimenti dettagliati del protocollo sono in inglese. Questo README e [l'edizione inglese](README.md) descrivono le stesse funzioni e gli stessi confini.
+
+<details>
+<summary><strong>Termini usati nelle guide</strong></summary>
+
+| Termine | Significato |
+|---|---|
+| ACK | La conferma esplicita del destinatario; un messaggio in coda non è ancora confermato. |
+| Candidato / lettura | Una versione fissata del lavoro / un controllo fatto da chi non l'ha scritto. |
+| Checkpoint / WIP | Una copia del registro per il ripristino / modifiche al codice non ancora finite. Un checkpoint da solo non copia il codice. |
+| Briefing | Una breve descrizione in parole semplici del progetto o di un incarico, scritta dal coordinatore; il briefing di un incarico gli dà il nome sulla pagina. |
+| Ping / stand-by | Una chiamata di presenza che chiede a una finestra di confermare che risponde ancora / la registrazione, fatta dal coordinatore, che una finestra per ora non riceve nuovi incarichi. Lo stand-by non ferma nulla di ciò che è in esecuzione. |
+
+Altri termini, come log ed exit, UTC, PID e cwd: [la guida della pagina](references/recovery.md#dashboard-page), in inglese.
+
+</details>
+
+<a id="rule-1"></a>
+<a id="team-rules"></a>
+<details>
+<summary><strong>Regole di squadra e configurazione manuale del registro</strong></summary>
+
+### Regola 0: trovare le finestre e presentarsi
+
+La squadra parte da una finestra Claude: la prima finestra Claude che applica la skill diventa il coordinatore, trova ogni finestra Codex, Claude o Cursor del progetto e si presenta a ciascuna. Una finestra Codex chiamata per prima non coordina, perché dalla sua sandbox non riesce né a trovare né a raggiungere le finestre Claude: te lo dice, ti dà la frase da scrivere in una finestra Claude e aspetta come esecutore. Poi la finestra Claude si presenta a ogni finestra, compresa quella Codex. Se non hai una finestra Claude decidi tu, dopo che la finestra Codex ti ha detto che cosa non può fare. Un coordinatore già presente nello stesso registro, che risponde a un ping, mantiene il ruolo; un ping in attesa o scaduto non trasferisce mai la guida o le risorse. La regola completa è nella [skill](SKILL.md); i limiti del censimento e come entrare in una squadra sono in [avvio e presentazione](references/start.md#install-and-join-details), in inglese.
+
+**Le finestre Cursor lavorano solo in modo interattivo:** sei tu ad aprire l'agente Cursor (`cursor-agent`), che poi usa la CLI di squadra come ogni altra finestra. Squadra non lo avvia mai da sola, perché Cursor esegue gli hook del team, dell'utente e dell'azienda fuori da qualunque sandbox e non permette di disattivarli.
+
+### Configurazione manuale del registro
+
+Crea un unico registro durevole, fuori dalle cartelle temporanee:
 
 ```sh
-squadra brief --actor coord --project --file /evidence/project.md
-squadra brief --actor coord --task T1 --file /evidence/t1.md
+export SQUADRA_ROOT="$HOME/.local/state/squadra/my-project"
+squadra init --name "My project" --project /path/to/project
+squadra agent --id coord --identity window-01 --session CLAUDE-SESSION-ID \
+  --role coordinator --client claude --repo /path/to/project
+squadra agent --id builder --identity window-02 --session CLAUDE-SESSION-ID \
+  --role builder --client claude --repo /path/to/builder-checkout
+squadra agent --id reader --identity window-03 --session CODEX-THREAD-ID \
+  --role reviewer --client codex --repo /path/to/reader-checkout
+squadra status
+squadra dash --open
 ```
 
-```markdown
-# Atlas
-Atlas tiene in ordine le chiavi d'accesso dei clienti. Questa fase porta in produzione il servizio delle chiavi.
+`--session` è l'identificativo della sessione della finestra: il nome del file della sua trascrizione in
+`~/.claude/projects/<progetto>/`, senza `.jsonl`, per Claude Code, l'UUID alla fine del suo file `~/.codex/sessions/…/rollout-…` per Codex.
+Usage e Balance misurano una finestra solo attraverso questo, e la coda di Codex ne ha bisogno.
 
-## Passi
-- [x] Piano del servizio delle chiavi
-- [ ] Servizio delle chiavi in produzione
+### Regola 1: lavoro in parallelo
 
-## Glossario
-- JEV: verifica del motore dei lavori
-```
+Il coordinatore affida subito lavoro indipendente a ogni finestra disponibile (Codex, Claude, Cursor interattivo), e nessuna finestra resta ferma mentre c'è lavoro: un costruttore per albero, letture su copie congelate, e la lettura finale di un rilascio fatta da un lettore Claude e da un lettore Codex nello stesso momento. Il coordinatore costruisce solo l'unione e il rilascio e affida le corsie ai costruttori, così resta attento alla posta e alle giunture. Il coordinatore legge la posta del registro a ogni passo, perché una finestra può ricevere lavoro direttamente dal proprietario e riferirlo solo lì.
 
-**Collegamenti registrati.**
+### Regola 2: la tabella sempre visibile
 
-```sh
-squadra decision --actor coord --id D-SCOPE --task T1 \
-  --follows ask:Q1 --follows decision:D-EARLIER \
-  --owner-words "Teniamo leggibili le chiavi vecchie per un mese" --channel relayed \
-  --reason "Istruzione del proprietario riferita dal coordinatore"
-```
+Ogni aggiornamento al proprietario mostra la tabella di `squadra board`: **In corso**, **Da fare** e **Fatti**, colonne **Finestra | Lavoro | Stato | Tempo (circa)**, «Realizzati X su Y» in fondo, poi «Tu adesso: …». I tempi sono misurati, le stime sono segnate come stime, nessuna percentuale inventata.
 
-Ogni riquadro del grafo è un fatto registrato; le linee continue sono collegamenti registrati, le tratteggiate dicono solo «dopo, nello stesso incarico». Le regole per briefing, collegamenti delle decisioni, sostituzione di un incarico e lettura del grafo sono nei [dettagli](references/work.md#readme-protocol-details), in inglese.
+### Regole 3–10: metodo
+
+Leggi prima di citare; registra la decisione prima di cambiare un test che fissa un requisito; ogni corsia parallela ha i suoi file; dichiara costo e tetto prima di spendere. Il metodo predefinito è un blocco finale: contratto comune prima del lavoro, unione delle consegne verdi, registro di ogni delta e candidato congelato per letture non autrici Claude/Codex, poi un giro di correzione e un blocco di rilettura. Bloccano solo i reperti gravi; i rinvii diventano incarichi all'avvio della tappa successiva. Ogni chiusura dice come accelerare il prossimo incarico. Resta l'ora limite due ore dopo che il perimetro è fissato, salvo altro orario scelto dal proprietario; le prove riguardano la testa del rilascio e le letture ferme passano a lettori liberi. Le letture per corsia restano un'opzione su parola del proprietario. Tutte le regole per intero: la [skill](SKILL.md).
+
+</details>
 
 <a id="workflow"></a>
-## Incarico, prova, lettura indipendente e chiusura
+<details>
+<summary><strong>Flusso di lavoro: incarico, prova, lettura indipendente e chiusura</strong></summary>
+
+### Incarico, prova, lettura indipendente e chiusura
 
 **Scegli il percorso.** Il costruttore propone e il coordinatore registra la scelta usando le cinque domande della [pagina di triage IT/EN](references/work.md#triage-in-una-pagina); il lettore non autore la controlla nel blocco assegnato. Nessuna regex, nessun modello di percorso e nessun punteggio sceglie il percorso. Le tappe coordinate usano il [blocco finale predefinito](references/work.md#final-block); i comandi seguenti illustrano un incarico isolato o una lettura per corsia scelta dal proprietario.
 
@@ -673,7 +613,45 @@ Opzioni, budget e che cosa registrano `prove`, `deliver`, `review` e `check`: [d
 
 **Il completamento non dà l'autorità di pubblicare.** Il protocollo completo è in [lavoro, prova e lettura](references/work.md).
 
-## Posta, output e cose da ricordare
+</details>
+
+<a id="decision-reference"></a>
+<details>
+<summary><strong>Briefing, messaggi, output e decisioni del proprietario</strong></summary>
+
+### Grafo delle decisioni e briefing
+
+I **briefing** sono brevi descrizioni in testo semplice scritte dal coordinatore, da leggere prima di qualunque identificativo.
+
+```sh
+squadra brief --actor coord --project --file /evidence/project.md
+squadra brief --actor coord --task T1 --file /evidence/t1.md
+```
+
+```markdown
+# Atlas
+Atlas tiene in ordine le chiavi d'accesso dei clienti. Questa fase porta in produzione il servizio delle chiavi.
+
+## Passi
+- [x] Piano del servizio delle chiavi
+- [ ] Servizio delle chiavi in produzione
+
+## Glossario
+- JEV: verifica del motore dei lavori
+```
+
+**Collegamenti registrati.**
+
+```sh
+squadra decision --actor coord --id D-SCOPE --task T1 \
+  --follows ask:Q1 --follows decision:D-EARLIER \
+  --owner-words "Teniamo leggibili le chiavi vecchie per un mese" --channel relayed \
+  --reason "Istruzione del proprietario riferita dal coordinatore"
+```
+
+Ogni riquadro del grafo è un fatto registrato; le linee continue sono collegamenti registrati, le tratteggiate dicono solo «dopo, nello stesso incarico». Le regole per briefing, collegamenti delle decisioni, sostituzione di un incarico e lettura del grafo sono nei [dettagli](references/work.md#readme-protocol-details), in inglese.
+
+### Posta, output e cose da ricordare
 
 ```sh
 squadra send --actor coord --to builder --id M1 \
@@ -690,11 +668,11 @@ Salva **un output sostanziale per ogni passo completato**; il prossimo passo che
 |---|---|---|---|---|
 | builder / esecutore | T1 / SHA esatto | Exit nativo + log | Hash della skill | Ricevuta salvata + azione successiva |
 
-### Da ricordare alla chiusura (facoltativo)
+#### Da ricordare alla chiusura (facoltativo)
 
 Alla chiusura, registra quello che vale la pena ricordare (una decisione e chi l'ha presa, un vincolo, una trappola già pagata) in `da-ricordare.json`, allegato all'output di chiusura, ognuno con la sua prova e quanto ne sei sicuro. **Mai** inserire segreti, dati personali o percorsi privati: gli artefatti registrati sono immutabili, quindi un segreto inserito per errore non si può più togliere. Se è in uso un servizio di memoria, dichiara alla chiusura e non proporre la stessa voce attraverso un altro canale; nulla viene proposto o approvato da solo. Vedi [lo schema e gli esempi](references/work.md#da-ricordare-at-close), in inglese.
 
-## Domande e decisioni del proprietario
+### Domande e decisioni del proprietario
 
 `ask` registra una domanda prima che venga mostrata, con almeno due opzioni dai valori `id`, `label` e `say` distinti (`say` è la frase da dire); `buys`, `costs` ed `example` sono facoltativi.
 
@@ -717,14 +695,24 @@ squadra decision --actor coord --reason "Il proprietario ha scelto il perimetro 
 
 Parole riferite, ritiri e che cosa non vale mai come decisione: [dettagli](references/work.md#readme-protocol-details), in inglese.
 
-## Attese, risorse e presenza
+</details>
+
+<details>
+<summary><strong>Attese, risorse e presenza</strong></summary>
+
+### Attese, risorse e presenza
 
 Le attese si calcolano quando una vista viene letta; valori predefiniti in secondi: **ACK 900**, **delivered 3600**, **reviewed 1800**, **heartbeat 1800**, **alive 300**. Un avviso non riprova, non riassegna e non rilascia nulla. I comandi stampano le attese raggruppate, al massimo cinque; `squadra status --all` le stampa tutte. Riserva gate, porte e database prima di usarli. **Lo stand-by non ferma nulla:** non annulla processi, non rilascia risorse, non trasferisce ruoli e non riassegna lavoro.
 
 Soglie, chiamate di presenza e perché tutte le finestre dovrebbero usare la stessa versione: [dettagli](references/work.md#readme-protocol-details), in inglese.
 
+</details>
+
 <a id="checkpoints"></a>
-## Checkpoint, ripristino e contesti puliti
+<details>
+<summary><strong>Checkpoint, ripristino e contesti puliti</strong></summary>
+
+### Checkpoint, ripristino e contesti puliti
 
 **Gli agenti fanno i checkpoint senza aspettare che tu lo chieda.** È il modo di lavorare richiesto dalla skill, non un servizio in background né un contatore invisibile di token.
 
@@ -747,11 +735,16 @@ squadra resume --actor coord --reason "Il proprietario ha ripreso esplicitamente
 
 **Limiti del ripristino:** i filtri per i segreti sono parziali, **non** una scansione completa di storia e artefatti; una copia sullo stesso disco non sopravvive a un guasto del disco; `--declared-offsite` è una dichiarazione, non un archivio remoto verificato. Il contratto completo è in [ripristino e passaggio di contesto](references/recovery.md).
 
-## Runner nativi facoltativi
+</details>
+
+<details>
+<summary><strong>Runner nativi, self-test e verifiche dei difetti</strong></summary>
+
+### Runner nativi facoltativi
 
 `run` avvia un nuovo turno non interattivo di Codex o Claude e non si collega mai a una finestra aperta; un exit 0 da solo non è un esito valido. **Cursor viene rifiutato:** Squadra non avvia `cursor-agent`. Vedi [il riassunto](references/runtime.md#readme-runner-summary) e [i contratti di esecuzione](references/runtime.md), in inglese, prima di usare i runner in automatico.
 
-## Self-test, sfide ai difetti e banco comparativo
+### Self-test, sfide ai difetti e banco comparativo
 
 Per un incarico dichiarato con `task --defect-fix`, la chiusura richiede la prova che il test rilevi il difetto senza la modifica: gli stessi byte del test falliscono per un'asserzione sulla base registrata e passano sul candidato esatto. Il coordinatore può dichiarare un'eccezione motivata; il lettore indipendente la verifica, e non compare mai come una verifica riuscita. Vedi [l'esempio completo e i limiti](references/work.md#defect-fixes-show-that-the-regression-detects-the-original), in inglese.
 
@@ -761,7 +754,12 @@ squadra selftest --output /durable/selftest-001
 
 `selftest` mette alla prova il toolkit senza chiamare alcun modello, non il tuo prodotto né un modello; il confronto offline usa client finti e non proclama mai un vincitore. Vedi [il riassunto](references/benchmark.md#readme-selftest-summary) e [i contratti di sfide e confronti](references/benchmark.md), in inglese.
 
-## Stato durevole e integrità
+</details>
+
+<details>
+<summary><strong>File del registro, integrità e percorso leggero</strong></summary>
+
+### Stato durevole e integrità
 
 | File | A cosa serve |
 |---|---|
@@ -784,9 +782,11 @@ I comandi di sola lettura non scrivono nel registro né nelle sue viste derivate
 
 Le altre letture ordinarie indicate sopra non ricontrollano gli eventi precedenti, le parti della cache non lette o la sua impronta complessiva rispetto alla ricostruzione completa dello stato. Una cache mancante o estranea richiede una ricostruzione verificata. Se il controllo completo trova una discordanza tra cache e registro, `doctor` resta in sola lettura e rifiuta il risultato; anche la dashboard smette di fornire dati. Usa esplicitamente `doctor --repair` in un registro scrivibile per ricostruire la cache; salvataggi e checkpoint rifiutano la riparazione. Una verifica fallita non diventa un successo grazie alla cache. Gli indici derivati possono aumentare lo spazio usato; il nuovo formato degli eventi non promette un database più piccolo. Aggiorna tutte le finestre insieme prima della prima scrittura nel nuovo formato. Gli eventi di questa versione includono un indicatore di formato nella loro impronta: Squadra 3.10.0 si ferma con un errore di integrità a quel punto, anche con status/check/close. Il rifiuto è intenzionale, non una perdita di dati; usa la CLI aggiornata. Gli eventi precedenti restano invariati. Scrivi sempre attraverso la CLI, mai nei file generati. L'integrità non prova che le affermazioni siano vere, né autentica crittograficamente le identità. [Dettagli](references/recovery.md#registry-verification), in inglese.
 
-### Piccole modifiche: il percorso leggero
+#### Piccole modifiche: il percorso leggero
 
 Il coordinatore può dichiarare `task --route light` per una modifica delimitata e reversibile: al massimo **80 righe aggiunte più eliminate in quattro file** (criterio **light-v1 / P2**), contate dalla base Git originale pulita. Script, pacchetti dei plugin, file di istruzioni e contratti normativi restano protetti, e un impatto sulla sicurezza o un gate completo richiesto portano comunque al percorso completo. Il percorso leggero salta la lettura del piano e usa la prova mirata concordata; restano la lettura di un non autore, i legami e i budget. Solo il coordinatore può promuovere un incarico al percorso completo, e la promozione non azzera mai un budget. Vedi [il percorso leggero](references/work.md#light-route) e [i dettagli](references/work.md#readme-protocol-details), in inglese.
+
+</details>
 
 <a id="commands"></a>
 ## Comandi di squadra
@@ -907,11 +907,145 @@ Ogni comando, raggruppato per scopo: **51 sottocomandi**, più `--version`. Usa 
 - **Non un'accettazione:** le verifiche sintetiche non sono un'accettazione per la produzione né per la qualità dei modelli.
 - **Nessun pulsante della dashboard** pubblica qualcosa o esegue comandi.
 
-## Guide del protocollo
+<a id="security-scan"></a>
+<details>
+<summary><strong>Che cosa copre la scansione di sicurezza</strong></summary>
 
-[Skill](SKILL.md) · [Avvio](references/start.md) · [Lavoro/prova/lettura](references/work.md) · [Runner nativi](references/runtime.md) · [Ripristino/passaggio di contesto](references/recovery.md) · [Sfide/confronto](references/benchmark.md) · [Plugin](references/plugins.md) · [Creare un plugin](references/plugin-authoring.md)
+Controlli statici, comportamentali e delle dipendenze, con `tests/` esclusa. Il controllo passa in assenza di rilievi HIGH o CRITICAL; quelli di gravità inferiore restano nel report. Clicca sul badge per i risultati.
 
-I riferimenti dettagliati del protocollo sono in inglese. Questo README e [l'edizione inglese](README.md) descrivono le stesse funzioni e gli stessi confini.
+</details>
+
+<a id="news"></a>
+## Novità
+
+**3.10.3**
+
+- **Blocco finale di revisione predefinito.** I costruttori consegnano lavoro verificato; lettori indipendenti Claude e Codex rileggono il candidato riunito prima del rilascio.
+- **Continuità per i lavori lunghi.** `squadra context --task ID` prepara un pacchetto di ripresa limitato all’incarico e alle sue prove.
+- **Consumi circoscritti al progetto.** I totali dei token partono dall’ingresso registrato di ogni finestra nel progetto; la quota dell’account resta separata.
+
+<details>
+<summary><strong>3.10.3: dettagli su metodo, contesto e consumi</strong></summary>
+
+**3.10.3 — il blocco finale diventa la modalità predefinita.** Contratto comune e
+giunture si fissano prima di costruire. Le corsie si uniscono alla consegna con la
+propria prova verde; un registro dei delta prepara il candidato congelato per le
+letture non autrici di Claude e Codex su ogni delta e giuntura. Un giro di correzione
+è seguito da un blocco di rilettura dei suoi delta. Bloccano solo i reperti gravi;
+una decisione raccoglie i rinvii non gravi, trasformati in incarichi all'avvio della
+tappa successiva. Le prove native richieste riguardano la testa del rilascio.
+Le letture per corsia restano un'opzione scelta dal proprietario. Cambia il metodo
+della skill, non la CLI o il formato del registro; una squadra attiva mantiene la
+modalità registrata fino al cambio esplicito. [Metodo](references/work.md#final-block).
+
+**Contesto più piccolo nei lavori lunghi.** `squadra context --task ID` prepara un
+passaggio di consegne breve, in sola lettura, con riferimenti a incarico, perimetro
+e prove. Il flusso usa la compattazione nativa di Codex/Claude e conserva le
+verifiche previste. Non svuota la cache del fornitore e non garantisce risparmi.
+[Gestione del contesto](references/context.md).
+
+**Correzione consumi — 20 ottobre 2026.** I totali del progetto contano solo i token
+successivi all'ingresso registrato di ogni finestra. Riutilizzare una sessione più
+vecchia non porta più i giorni precedenti nei grafici o nelle stime di costo del
+progetto. Gli intervalli che attraversano l'ingresso sono esclusi e segnalati come
+parziali. Lo storico resta intatto; la quota dell'account rimane separata.
+[Perimetro e limiti](references/usage.md#project-scope).
+
+</details>
+
+**3.10.2 — messaggi che arrivano sempre, e una dashboard che sta al passo con una squadra al lavoro**
+
+Il coordinatore può consegnare ogni messaggio alla sua finestra, la dashboard aggiorna solo ciò che è cambiato e la casella di ricerca trova il lavoro passato dalle parole che le persone hanno scritto. Il formato del registro non cambia.
+
+**Guarda il film delle novità, due minuti — attiva l'audio nel lettore:**
+
+https://github.com/user-attachments/assets/8f38a443-b738-48f8-b562-9b072419b5f0
+
+<details>
+<summary><strong>3.10.2: miglioramenti e misure della dashboard</strong></summary>
+
+- **Si installa con una frase.** Incolla nel tuo agente la frase in [Installazione](#one-sentence): ti mostra il piano, aspetta il tuo sì, installa e verifica ([SETUP.md](SETUP.md)).
+- **Le piccole modifiche richiedono minuti.** Prima di cominciare, l'agente ti dice quanti minuti servono. Una piccola modifica si fa e basta, con al massimo un controllo. La rilettura di un'altra finestra o la suite completa dei test partono solo se le chiedete tu o il coordinatore; per una modifica importante ti vengono proposte, con il loro tempo.
+- **La squadra parte da Claude.** Una finestra Codex chiamata per prima non prova più a coordinare finestre che non vede e non può raggiungere: ti dice quale frase scrivere in una finestra Claude, e quella finestra si presenta a tutte, compresa quella Codex.
+- **I messaggi arrivano sempre.** Il coordinatore può consegnare qualsiasi messaggio, anche uno scritto da una finestra Codex nella sandbox, e ogni tentativo di consegna resta registrato. Una finestra Claude riceve la propria posta appena arriva con `squadra inbox --follow`. Un messaggio per una finestra Codex che nessuno ha ancora consegnato compare per primo, come «da inoltrare», con da quanto tempo aspetta.
+- **Attese che dicono il vero.** Le attese elencano solo ciò che è ancora aperto: le conferme di un incarico chiuso ne escono, e un piano che aspetta il suo lettore vi compare.
+- **Ricerca.** La casella di ricerca trova il lavoro passato dalle parole che le persone hanno scritto, in qualsiasi ordine e con o senza accenti, comprese decisioni, domande e letture. Il menu a tendina mostra prima i risultati più recenti e finisce con una domanda pronta per il tuo agente.
+- **I più recenti in cima, ovunque.** Ogni elenco e ogni scelta dell'incarico mostra per primi gli elementi più recenti.
+- **Una dashboard che sta al passo.** Dopo un nuovo evento la pagina aggiorna solo ciò che è cambiato; una pagina ferma non costa quasi nulla, e una ricerca invia solo i suoi risultati.
+- **Risposte più brevi.** `task`, `brief` e `start` stampano un riepilogo breve. `inbox` senza opzioni mostra i messaggi che aspettano te più gli ultimi 10; `--all` mostra tutto.
+- **Un registro più sicuro.** Una nuova cartella del registro viene ignorata da Git, così non finisce in un commit per sbaglio. Una scrittura lenta trattiene le altre finestre solo per poco. `doctor` lavora in sola lettura e segnala una cache danneggiata; `doctor --repair` la ripara e `--quick` fa un controllo veloce. I comandi spiegano gli errori a parole semplici. Un file finito nel registro per errore si può rimuovere con una decisione registrata.
+- **Salvataggio e ripristino affidabili.** `save` funziona su progetti grandi e sui repository che tracciano `.env.example`; il ritorno a una versione precedente funziona con l'una e con l'altra versione; un pacchetto di salvataggio si ripristina anche dopo che l'hai aperto, e il lavoro messo da parte con lo stash torna indietro.
+- **Consumi e Bilanciamento misurano ogni finestra registrata come indica la guida** (`--session`), anche sui computer con molte conversazioni salvate.
+- **Si installa ovunque.** L'installatore funziona con una umask di gruppo condivisa e con una cartella home collegata. Con Python più vecchio della 3.12 si rifiuta con una riga chiara.
+- **L'inglese resta inglese.** Uno spazio di lavoro in inglese riceve l'inglese in ogni comando.
+- **Ingresso e presenza.** Una nuova finestra può rispondere al suo primo appello di presenza, e il giro di presenza del coordinatore lascia attivo il coordinatore stesso.
+- **In fila, invece che a tentativi.** `resource acquire --wait SECONDI` tiene il posto in fila per una risorsa occupata, come la suite dei test, invece di fallire finché non si libera: le finestre che aspettano con `--wait` la ottengono nell'ordine in cui l'hanno chiesta, e mentre aspettano non si registra nulla. `prove` controlla prima di partire che la prova copra i requisiti dell'incarico, così una prova lunga non va mai buttata per un `--covers` mancante.
+- **Una sola prova per le due letture finali.** `prove --also <incarico>` fa valere una sola esecuzione della suite per più incarichi sullo stesso codice congelato, come le letture finali Claude e Codex di un rilascio; ogni incarico controlla comunque i propri requisiti. Usala quando lo Squadra di ogni lettore elenca `--also` in `squadra prove --help`; altrimenti prova ogni incarico per conto suo.
+- **Le finestre che non ci sono più non riempiono le attese.** La posta per una finestra messa in stand-by compare come una riga per finestra, per esempio «12 messaggi a core-A in stand-by (finestra chiusa)», e torna appena la finestra rientra.
+- **Un registro che resta piccolo.** Il file di appoggio del registro torna piccolo dopo le scritture, anche con la dashboard aperta; `doctor` ne riporta la dimensione e `doctor --repair` lo compatta. Non si cancella nulla.
+- **Il coordinatore coordina, e i rilasci partono prima.** Il coordinatore costruisce solo l'unione e il rilascio, e affida le corsie ai costruttori. In 3.10.2 ogni corsia aveva una propria lettura completa e le correzioni si rileggevano insieme al rilascio; 3.10.3 rende invece predefinito il blocco finale.
+- Plugin: memoranda 1.0.7, Playwright 1.0.8, Sentry 0.1.5.
+
+**Misurato sulla nostra squadra.** Il nostro coordinatore ha lanciato lo stesso script sulla dashboard della 3.10.1 pubblicata e poi della 3.10.2, sulla stessa copia del registro di questa squadra (11.488 eventi), su un computer a 8 core con un carico moderato (load average tra 5 e 11 durante le misure): cinque aggiornamenti, ciascuno dopo un nuovo messaggio, e tre ricerche. Il tempo è quello che la dashboard impiega per elaborare una richiesta. Qui la dashboard era già aperta sulla copia prima della sua prima scrittura, quindi il primo aggiornamento ha pagato una lettura completa in più (8,5 s): un registro copiato o spostato ricollega la propria cache alla prima scrittura nella nuova posizione, e una dashboard già aperta lì paga una lettura completa all'aggiornamento successivo. La tabella mostra gli aggiornamenti seguenti.
+
+| Cosa abbiamo misurato | 3.10.1 | 3.10.2 |
+|---|---|---|
+| Aggiornamento della pagina dopo un nuovo messaggio | 4,7–5,3 s, 8,2 MB | 0,17 s, 0,56 MB |
+| Una ricerca | 3,1–6,6 s, 8,3 MB | 0,4 s, al massimo 0,13 MB |
+| Aggiornamento della pagina quando nulla è cambiato | 0,02 s | circa 0,001 s |
+
+</details>
+
+<details>
+<summary><strong>Versioni precedenti</strong></summary>
+
+**3.10.1 — vedi quanto spende davvero ogni finestra AI, e a chi conviene dare il prossimo lavoro**
+
+Una squadra mescola finestre Claude Code e Codex, e ogni fornitore ti mostra solo i propri consumi. Squadra 3.10.1 li mette tutti in un'unica vista, lavoro per lavoro: quale finestra ha speso quanti token, con quale modello, rispetto a quale quota, e a quale finestra o modello conviene dare il prossimo lavoro. Per ogni consiglio vedi anche il perché. Il calcolo avviene sul tuo computer, a partire dai file di sessione che i programmi già tengono; il testo delle conversazioni non viene salvato, mostrato né inviato da nessuna parte.
+
+- **Bilanciamento (nuova skill di sistema).** Consigli su finestre e modelli in base a carico, quota e storia, con i numeri su cui si basa ogni consiglio. Non assegna niente. La pagina dice a parole semplici cosa controlla, i valori di oggi e perché non c'è nessun consiglio quando non ce n'è.
+- **I totali dei Consumi restano stabili mentre i file di sessione crescono.** I calcoli salvati si riusano al riavvio della dashboard; un file riscritto viene ricontato, e una cache assente o danneggiata viene ricostruita. Se una cartella nel percorso della cache è un collegamento simbolico, la cache resta spenta e la pagina Consumi lo segnala: i numeri restano corretti, ma a ogni riavvio la dashboard rilegge i file di sessione.
+- **Comandi che costano meno token alle finestre.** Ogni comando stampava nella finestra che lo lanciava l'intero elenco degli avvisi aperti; ora stampa una risposta breve, e `squadra status --all` stampa l'elenco completo. `task`, `brief` e `start` aggiungono la previsione e un bilanciamento breve, la prima finestra per costruire e per leggere con il suo motivo; `squadra balance --task` stampa la classifica completa (le misure sono nella tabella qui sotto).
+- **Un registro che resta veloce mentre la storia cresce.** Un comando ora legge e scrive solo ciò che è cambiato, non tutta la storia; su una copia del nostro registro di 8.500 eventi, l'invio di un messaggio a un'altra finestra è passato da 27 a 3,2 secondi. La verifica dell'intera catena resta, nei momenti indicati nella guida.
+- **Una dashboard più leggera** che scarica solo ciò che è cambiato, e **grafici animati** nelle pagine Consumi e Bilanciamento.
+- **Messaggi solo informativi** (`send --info`) che non chiedono risposta: non restano più aperti come attese.
+- Plugin: memoranda 1.0.6, Playwright 1.0.7, Sentry 0.1.4.
+
+**Misurato sulla nostra squadra.** Il nostro coordinatore ha preso queste misure sul registro di questa squadra (circa 9.980 eventi) dopo l'installazione della 3.10.1. I due tempi «prima» vengono dagli stessi comandi cronometrati su una copia precedente dello stesso registro, prima della modifica. Una cache mancante o spostata richiede una ricostruzione verificata alla prima scrittura; il costo dipende dal registro e dalla macchina. I comandi di sola lettura ricostruiscono dai dati verificati finché la cache non è disponibile. I tempi qui sotto descrivono i comandi successivi con cache pronta, non un tempo garantito di avvio.
+
+| Cosa abbiamo misurato | Prima | Con la 3.10.1 |
+|---|---|---|
+| «A che punto siamo» (`squadra status`) | 8,6 s | 0,85 s |
+| Salvare un aggiornamento (`squadra output`) | 10,7 s | 0,86 s |
+| Risposta stampata da un comando | 75–95 KB | circa 2,2 KB; `task`, `brief` e `start` circa 2,0 KB con 10 finestre (squadra sintetica), previsione e bilanciamento compresi |
+| Aggiornamento della dashboard quando nulla è cambiato | 8 MB | 0,2 KB |
+| Totali dei Consumi mentre le finestre lavorano | salivano e scendevano | solo in crescita (50 campioni, nessuno più basso) |
+
+**3.10.0**
+- **Pagina «Consumi»: i token spesi dai modelli.** Squadra legge i file di sessione che Claude Code e Codex tengono già sul tuo computer e ne conserva solo i conteggi dei token, con modello, orario e gli identificativi di sessione e di messaggio che servono a contarli una volta sola: non salva, non mostra e non invia mai il testo delle conversazioni. Li mostra per finestra, giorno, modello e incarico, con grafici e suggerimenti per modello. La quota di Codex è misurata, per ogni finestra del fornitore; un costo stimato compare solo se inserisci i tuoi prezzi. `squadra usage` stampa gli stessi dati.
+- Plugin: memoranda 1.0.5, Playwright 1.0.6, Sentry 0.1.3.
+
+**3.9.1**
+- **Ritocchi all'interfaccia.** Più spazio nella pagina «Skill di sistema» e tra i suoi blocchi; il grassetto nelle descrizioni delle skill appare come grassetto; l'obiettivo del progetto e la guida alla lettura compaiono solo nella panoramica; più badge in cima a questa pagina.
+- Plugin: memoranda 1.0.4, Playwright 1.0.5, Sentry 0.1.2.
+
+**3.9.0**
+- **Skill di sistema che si attivano da sole.** *errata* riporta a galla le lezioni che la squadra ha registrato dopo una prova fallita, una lettura che chiedeva modifiche o la chiusura di una correzione, quando un nuovo incarico tocca gli stessi file o le stesse parole. *rasoio* è una lente per il codice snello nelle letture del codice, che dichiara quante righe si potrebbero togliere. *previsione* confronta un nuovo incarico con quelli simili già chiusi e suggerisce un percorso. errata e rasoio registrano ogni attivazione nel registro; previsione viene calcolata al momento e non registra nulla.
+- **Una pagina «Skill di sistema» nella dashboard** elenca le tre skill con cosa fanno, la loro attività registrata e l'esito del controllo di sicurezza sui loro file.
+- **Prove sull'intera suite più veloci.** `tools/parallel_tests.py` esegue la suite su più processi e fallisce se un test raccolto non è stato eseguito: circa tre volte più veloce sulla nostra macchina di prova.
+- **Più lettori a disposizione.** Un incarico può indicare fino a quattro lettori; il primo che conferma prende la lettura. Le piccole modifiche leggere si possono leggere una sola volta, al controllo di rilascio, e fino ad allora risultano chiuse ma non ancora lette.
+- **Controlli rapidi prima della prova e della consegna.** Un progetto può dichiarare controlli veloci, per esempio che i file copiati siano identici, eseguiti sui file esatti prima di `prove` e `deliver`.
+- **Un README più leggero.** Stesse sezioni, circa metà della lettura; i dettagli sono passati nelle guide.
+- **Il rilascio parte in orario.** È una regola, non una scelta: l'ora limite è due ore dopo che il contenuto è fissato; le riletture finali guardano solo come sono state unite le corsie quando ognuna è già stata letta; una lettura che nessuno prende passa a un lettore libero.
+- Plugin: memoranda 1.0.3, Playwright 1.0.4, Sentry 0.1.1.
+
+**3.8.0**
+- **Le correzioni di difetti dimostrano che il loro test fallisce senza di loro.** Dichiara una correzione con `task --defect-fix`; prima della chiusura, `challenge` esegue i test concordati sul codice originale e su quello consegnato.
+- **Plugin Sentry (anteprima).** Porta in Squadra riepiloghi ripuliti degli errori. Gratis · Sviluppo finanziato da memoranda. Provato solo con una connessione simulata.
+- **Una vista Letture più comoda.** Mantiene lo scorrimento della tabella, mostra schede sul telefono e perde lo spazio vuoto; i passi numerati dei plugin hanno un solo segno.
+- Plugin: memoranda 1.0.2, Playwright 1.0.3, Sentry 0.1.0.
+
+</details>
 
 <a id="community"></a>
 ## Sponsor, sostenitori e contributori
