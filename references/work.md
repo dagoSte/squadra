@@ -44,10 +44,10 @@ the cross-model rule below: with one client only, open a window of the other mod
 with an imbalance such as 2 Claude and 1 Codex, the lone Codex window reads everything and
 becomes the bottleneck, so give it a build lane read by a Claude window or open another
 Codex window; with a balanced squad, pair each builder with a reader of the other model,
-listed for the newest open tasks; in the [final block](#final-block) that is the ledger's
-planned reader of the other model for the builder's delta. The coordinator gives this
-advice to the owner when it introduces itself, at every resume and when a window joins or
-leaves. It assigns nothing and refuses nothing.
+listed for the newest open tasks that record no same-client reason; in the
+[final block](#final-block) that is the ledger's planned reader of the other model for the
+builder's delta. The coordinator gives this advice to the owner when it introduces itself,
+at every resume and when a window joins or leaves. It assigns nothing and refuses nothing.
 
 <a id="triage-in-una-pagina"></a>
 ## Triage on one page

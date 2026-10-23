@@ -131,7 +131,7 @@ python3 -B scripts/install.py \
 squadra --version
 ```
 
-Ogni rilascio alza il numero di versione, tranne un aggiornamento dello stesso rilascio annunciato nelle Novità, come per la 3.10.2 il 17 ottobre 2026. I plugin installati dallo Store mantengono la loro versione finché `squadra plugin install <nome>` non viene rieseguito dalla nuova release ([Plugin inclusi nella release](#plugin-store)). Le finestre già aperte mantengono la versione letta finché non si riavviano, e una squadra al lavoro mantiene il suo protocollo finché non la cambi esplicitamente.
+Ogni rilascio alza il numero di versione, tranne un aggiornamento che arricchisce un rilascio mantenendone il numero, come per la 3.10.2 il 17 ottobre 2026. I plugin installati dallo Store mantengono la loro versione finché `squadra plugin install <nome>` non viene rieseguito dalla nuova release ([Plugin inclusi nella release](#plugin-store)). Le finestre già aperte mantengono la versione letta finché non si riavviano, e una squadra al lavoro mantiene il suo protocollo finché non la cambi esplicitamente.
 
 **Aggiornare dalla 3.10.3 o dalla 3.10.2 alla 3.10.4: il registro resta com'è.**
 - **Le finestre possono passare una alla volta.** Finestre 3.10.2, 3.10.3 e 3.10.4 condividono lo stesso registro; niente viene convertito.
@@ -560,7 +560,7 @@ Usage e Balance misurano una finestra solo attraverso questo, e la coda di Codex
 
 ### Regola 1: lavoro in parallelo
 
-Il coordinatore affida subito lavoro indipendente a ogni finestra disponibile (Codex, Claude, Cursor interattivo), e nessuna finestra resta ferma mentre c'è lavoro: un costruttore per albero, letture su copie congelate, e la lettura finale di un rilascio fatta da un lettore Claude e da un lettore Codex nello stesso momento. Se scrive Codex rilegge Claude, e viceversa: conta la lettura dell'altro modello, una lettura dello stesso modello si aggiunge soltanto, e `task` rifiuta un lettore dello stesso modello di chi costruisce, a meno che tu non registri il motivo con `--same-client-reason`. Il coordinatore costruisce solo l'unione e il rilascio e affida le corsie ai costruttori, così resta attento alla posta e alle giunture. Il coordinatore legge la posta del registro a ogni passo, perché una finestra può ricevere lavoro direttamente dal proprietario e riferirlo solo lì.
+Il coordinatore affida subito lavoro indipendente a ogni finestra disponibile (Codex, Claude, Cursor interattivo), e nessuna finestra resta ferma mentre c'è lavoro: un costruttore per albero, letture su copie congelate, e la lettura finale di un rilascio fatta da un lettore Claude e da un lettore Codex nello stesso momento. Se scrive Codex rilegge Claude, e viceversa: conta la lettura dell'altro modello, una lettura dello stesso modello si aggiunge soltanto, e `task` rifiuta un lettore dello stesso modello del titolare dell'incarico, a meno che tu non registri il motivo con `--same-client-reason`. Il coordinatore costruisce solo l'unione e il rilascio e affida le corsie ai costruttori, così resta attento alla posta e alle giunture. Il coordinatore legge la posta del registro a ogni passo, perché una finestra può ricevere lavoro direttamente dal proprietario e riferirlo solo lì.
 
 ### Regola 2: la tabella sempre visibile
 
@@ -921,9 +921,9 @@ Controlli statici, comportamentali e delle dipendenze, con `tests/` esclusa. Il 
 <a id="news"></a>
 ## Novità
 
-**3.10.4 — una cartella temporanea privata e corta per le prove, e Claude e Codex rileggono l'uno il lavoro dell'altro**
+**3.10.4 — le prove in una cartella temporanea privata dal percorso corto, e Claude e Codex rileggono l'uno il lavoro dell'altro**
 
-- **Una cartella temporanea privata e corta per le prove.** Le prove, i controlli rapidi, `selftest` e i benchmark offline tengono i file temporanei in una cartella privata e corta, fuori dal registro, così un progetto tenuto in una cartella condivisa come `htdocs` di MAMP non fallisce più per percorsi temporanei troppo lunghi o scrivibili da altri.
+- **Le prove in una cartella temporanea privata dal percorso corto.** Le prove, i controlli rapidi, `selftest` e i benchmark offline tengono i file temporanei in una cartella privata dal percorso corto, fuori dal registro, così un progetto tenuto in una cartella condivisa come `htdocs` di MAMP non fallisce più per percorsi temporanei troppo lunghi o scrivibili da altri.
 - **Rifiuti che nominano i file.** Una lettura rifiutata dice quali file sono cambiati dopo la consegna.
 - **Due modelli che si controllano a vicenda.** Se scrive Codex rilegge Claude, e viceversa: un lettore dello stesso modello viene rifiutato, a meno che tu non registri il motivo. Nel blocco finale, per ogni modifica conta la lettura dell'altro modello.
 - **Un consiglio su come dividere le finestre.** Il coordinatore ti dice come dividere le finestre tra i due modelli, per esempio che con 2 finestre Claude e 1 Codex la finestra Codex rileggerebbe tutto.

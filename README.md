@@ -131,7 +131,7 @@ python3 -B scripts/install.py \
 squadra --version
 ```
 
-Every release raises the version number, except a refresh of the same release announced in What's new, as for 3.10.2 on 17 October 2026. Plugins installed from the Store keep their version until `squadra plugin install <name>` runs again from the new release ([Plugins bundled in your release](#plugin-store)). Open windows keep the version they read until they restart, and a running squad keeps its protocol until you switch it explicitly.
+Every release raises the version number, except a refresh that adds to a release under the same number, as 3.10.2 did on 17 October 2026. Plugins installed from the Store keep their version until `squadra plugin install <name>` runs again from the new release ([Plugins bundled in your release](#plugin-store)). Open windows keep the version they read until they restart, and a running squad keeps its protocol until you switch it explicitly.
 
 **Updating from 3.10.3 or 3.10.2 to 3.10.4: the registry stays as it is.**
 - **Windows can move one at a time.** 3.10.2, 3.10.3 and 3.10.4 windows share the same registry; nothing is converted.
@@ -558,7 +558,7 @@ window only through it, and the Codex queue needs it.
 
 ### Rule 1: work in parallel
 
-The coordinator gives independent work to every available window at once (Codex, Claude, interactive Cursor), and no window waits idle while some exists: one builder per tree, reads on frozen copies, and a release's final read by a Claude reader and a Codex reader at the same time. Codex writes and Claude reads, Claude writes and Codex reads: the read that counts comes from the other model, a same-model read only adds to it, and `task` refuses a reader of the builder's own model unless you record why with `--same-client-reason`. The coordinator builds only the integration and the release, and gives the lanes to the builders, so it keeps its attention for mail and seams. The coordinator reads its registry mail at every step, because a window may get work directly from the owner and report it only there.
+The coordinator gives independent work to every available window at once (Codex, Claude, interactive Cursor), and no window waits idle while some exists: one builder per tree, reads on frozen copies, and a release's final read by a Claude reader and a Codex reader at the same time. Codex writes and Claude reads, Claude writes and Codex reads: the read that counts comes from the other model, a same-model read only adds to it, and `task` refuses a reader of the task owner's model unless you record why with `--same-client-reason`. The coordinator builds only the integration and the release, and gives the lanes to the builders, so it keeps its attention for mail and seams. The coordinator reads its registry mail at every step, because a window may get work directly from the owner and report it only there.
 
 ### Rule 2: the progress table is always visible
 

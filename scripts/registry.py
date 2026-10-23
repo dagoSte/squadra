@@ -3259,9 +3259,13 @@ def composition_windows(state):
 
 
 def composition_pairs(state):
-    """For the newest open tasks of Claude or Codex builders: the reader of the other model, or the free candidates."""
+    """For the newest open tasks of Claude or Codex builders: the reader of the other model, or the free candidates.
+
+    A task with a recorded same-client reason, such as a final block's paired read, already says why its
+    reader shares the owner's model, so it gets no advice."""
     agents, result = state["agents"], []
-    open_tasks = [t for t in state["tasks"].values() if t["status"] != "done" and not t.get("superseded_by")]
+    open_tasks = [t for t in state["tasks"].values() if t["status"] != "done" and not t.get("superseded_by")
+                  and t.get("same_client_reason") is None]
     for task in list(reversed(open_tasks))[:COMPOSITION_PAIRS]:
         own = agents[task["owner"]]["client"]
         if own not in MODEL_CLIENTS:

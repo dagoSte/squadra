@@ -77,6 +77,19 @@ class Advice(unittest.TestCase):
         self.assertEqual(composition_lines(value)[2:], ["- T2: b2 (Codex) → r2 (da nominare)", "- T1: b1 (Claude) → r1"])
 
     # PT7
+    def test_a_reasoned_same_client_read_gets_no_pairing_advice(self):
+        # A final block: Codex built the lane; the Claude coordinator's paired Claude read records its reason.
+        state = squad(COORD, ("b1", "builder", "claude"), ("b2", "builder", "codex"),
+                      ("r1", "reviewer", "claude"), ("x1", "reviewer", "codex"))
+        state["tasks"] = {
+            "LANE": {"id": "LANE", "owner": "b2", "reviewer": None, "status": "working"},
+            "REL-CLAUDE": {"id": "REL-CLAUDE", "owner": "coord", "reviewer": "r1", "status": "waiting-ack",
+                           "same_client_reason": "Paired with REL-CODEX, the read by the other model"}}
+        value = composition(state)
+        self.assertEqual(value["case"], "balanced")
+        self.assertEqual([(p["task"], p["readers"]) for p in value["pairs"]], [("LANE", ["r1"])])
+
+    # PT7
     def test_the_coordinator_window_and_windows_in_stand_by_are_not_counted(self):
         state = squad(COORD, ("coord-review", "reviewer", "claude", "window-coord"),
                       ("b1", "builder", "claude"), ("x1", "reviewer", "codex"), ("x2", "builder", "codex"))
