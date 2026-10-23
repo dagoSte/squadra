@@ -6,6 +6,31 @@ not a bill, processor utilization or evidence that a window is currently working
 The page has charts and tables for days, windows, models, tasks and observed Codex
 quota. It refreshes only while open, through the dashboard's existing serial cycle.
 
+## Project scope
+
+For a verified project registry, token totals start at each window's first recorded
+registration of its current identity and session, no earlier than registry creation.
+Earlier days and token observations are excluded from every project aggregate,
+including models, tasks, charts and optional cost estimates. Registering another
+role alias or updating the same registration does not reset that boundary. A new
+session gets its own boundary. Unregistered Claude subagents inherit their parent's
+boundary; independently registered subagents use their own.
+
+Codex counters are still normalized over the complete available session, so a
+pre-project counter remains a baseline. A nonzero delta spanning the join is
+excluded, with `project_boundary_overlap` and partial coverage; it cannot be split
+accurately. A Claude message first observed before the join and updated afterwards
+is excluded for the same reason. A window with no matching registration event is
+excluded with `project_registration_unknown`. If the input has no registry creation
+event, the response explicitly says **Session history**, with
+`scope.reason: project_boundary_unknown`; those totals are not project spending.
+
+The response's additive `scope` field and the page/CLI explain the scope. Original
+session files and the numeric calculation cache retain their history. Codex quota
+and quota history remain account observations and can predate the project: they
+are neither reset nor relabelled as project consumption. This changes no registry
+event format and needs no migration.
+
 ## What is read
 
 Only locally available sessions belonging to registered windows are selected.

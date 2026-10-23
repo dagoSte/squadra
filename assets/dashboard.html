@@ -2959,7 +2959,11 @@ Object.assign(I18N,{
  'balance.notice':{it:'Solo un consiglio: non assegna nulla e non cambia percorso, lettore, budget o permessi.',en:'Advice only: assigns nothing and changes no route, reader, budget or permission.'},
  "usage.title":{"it":"Consumi","en":"Usage"},
  "tab.Usage":{"it":"Consumi","en":"Usage"},
- "usage.intro":{"it":"I token misurati nelle finestre di questo progetto, suddivisi per modello e lavoro. I token sono unità di testo elaborate dal modello; non sono un addebito.","en":"Measured tokens in this project’s windows, by model and task. Tokens are units of text processed by a model; they are not a charge."},
+ "usage.scopeUnknown":{"it":"Storico delle sessioni: data di avvio del progetto non disponibile. Questi totali non sono attribuiti al progetto.","en":"Session history: project start is unavailable. These totals are not attributed to this project."},
+ "usage.scopeFrom":{"it":"Progetto avviato: {time}. Ogni finestra conta dal suo ingresso registrato.","en":"Project started: {time}. Each window counts from its recorded registration."},
+ "usage.boundaryOverlap":{"it":"Conteggio parziale: esclusi intervalli che attraversano l’ingresso nel progetto.","en":"Partial count: intervals crossing project registration are excluded."},
+ "usage.registrationUnknown":{"it":"Una finestra non ha una registrazione verificabile: i suoi consumi sono esclusi.","en":"A window has no verifiable registration: its usage is excluded."},
+ "usage.intro":{"it":"Token osservati dopo l’ingresso di ogni finestra in questo progetto, suddivisi per modello e lavoro. Gli intervalli che attraversano l’ingresso sono esclusi e segnalati. La quota dell’account resta separata; i token non sono un addebito.","en":"Tokens observed after each window joined this project, by model and task. Intervals crossing the join are excluded and reported. Account quota remains separate; tokens are not a charge."},
  "usage.loading":{"it":"Raccolta dei contatori locali…","en":"Collecting local counters…"},
  "usage.refreshing":{"it":"Aggiornamento dei contatori…","en":"Refreshing counters…"},
  "usage.error":{"it":"Non è possibile leggere i consumi. I dati precedenti, se presenti, sono conservati.","en":"Usage could not be read. Previous data, if any, is retained."},
@@ -4512,7 +4516,8 @@ function usagePayload(value){
  const totals=row=>row?pick(row,[...usageKinds,'reasoning','total']):null;
  const quota=row=>pick(row,['identity','model','observed_at','limit','used_percent','window_minutes','resets_at','plan_type','status']);
  const count=row=>({...pick(row,['identity','actors','client','model','task','day','status','estimated','partial_hour']),totals:totals(row.totals),reasons:(row.reasons||[]).filter(r=>typeof r==='string'&&/^[a-z][a-z0-9_]{0,60}$/.test(r))});
- return {schema:1,observed_at:value.observed_at,status:value.status,coverage:{...pick(value.coverage,['status','sources','measured']),notices:(Array.isArray(value.coverage?.notices)?value.coverage.notices:[]).filter(r=>r==='cache_off_unsafe_path').slice(0,1)},
+ const scoped=value.scope?.kind==='project'&&typeof value.scope.from==='string'&&/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,6})?Z$/.test(value.scope.from);
+ return {schema:1,observed_at:value.observed_at,status:value.status,scope:{kind:scoped?'project':'session',from:scoped?value.scope.from:null},coverage:{...pick(value.coverage,['status','sources','measured']),reasons:(Array.isArray(value.coverage?.reasons)?value.coverage.reasons:[]).filter(r=>['project_boundary_overlap','project_registration_unknown'].includes(r)),notices:(Array.isArray(value.coverage?.notices)?value.coverage.notices:[]).filter(r=>r==='cache_off_unsafe_path').slice(0,1)},
   windows:value.windows.map(w=>({...count(w),quota:(w.quota||[]).map(quota)})),models:value.models.map(count),tasks:value.tasks.map(count),days:value.days.map(count),quota_history:value.quota_history.map(quota),
   suggestions:(value.suggestions||[]).map(s=>({...pick(s,['id','model','window','message_key']),vars:Object.fromEntries(Object.entries(s.vars||{}).filter(([k,v])=>['total','share','percent','minutes'].includes(k)&&usageNumber(v)))})),cost:null};
 }
@@ -4623,6 +4628,9 @@ function usageRender(content){
   const toolbar=node('div',undefined,'sq-usage-toolbar'),live=node('p');usageUI.live=live;live.setAttribute('role','status');live.setAttribute('aria-live','polite');toolbar.append(live,usageButton(tr('usage.refresh'),'refresh',usageRetry));box.append(toolbar);
   if(usageUI.error){const error=node('div',undefined,'sq-usage-status warn');error.setAttribute('role','alert');error.append(node('p',tr('usage.error')),usageButton(tr('usage.retry'),'retry',usageRetry));box.append(error)}
   if(data){
+   box.append(node('p',data.scope?.kind==='project'?tr('usage.scopeFrom',{time:data.scope.from}):tr('usage.scopeUnknown'),'sq-usage-muted'));
+   if(data.coverage?.reasons?.includes('project_boundary_overlap'))box.append(node('p',tr('usage.boundaryOverlap'),'sq-usage-muted'));
+   if(data.coverage?.reasons?.includes('project_registration_unknown'))box.append(node('p',tr('usage.registrationUnknown'),'sq-usage-muted'));
    const coverage=node('div',undefined,'sq-usage-status'+(data.status==='measured'?'':' warn'));coverage.append(node('strong',usageStatus(data)),node('p',tr('usage.coverage',{measured:usageCount(data.coverage?.measured),sources:usageCount(data.coverage?.sources)})));if(['collecting','limited'].includes(data.coverage?.status))coverage.append(node('p',tr('usage.'+data.coverage.status)));if(data.coverage?.notices?.includes('cache_off_unsafe_path'))coverage.append(node('p',tr('usage.cacheOffUnsafe')));box.append(coverage);
    const windows=data.windows.filter(w=>usageNumber(w.totals?.total)),models=data.models.filter(m=>usageNumber(m.totals?.total)),total=windows.length?windows.reduce((n,w)=>n+w.totals.total,0):null,cards=node('div',undefined,'sq-usage-cards');
    for(const [label,value] of [['total',total],['windows',windows.length],['models',models.length]]){const card=node('div',undefined,'sq-usage-stat');card.append(node('span',tr('usage.'+label)),node('strong',usageCount(value)));cards.append(card)}box.append(cards);

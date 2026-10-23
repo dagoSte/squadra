@@ -139,11 +139,11 @@ Install from a clean, committed checkout with a **new backup directory** each ti
 2. **Create the registry and register each window** with `init` and `agent`, as above.
 3. **Find the windows and introduce yourself (rule 0):** `census` lists the project's Codex, Claude and Cursor (`cursor-agent`) processes without writing; `send` and `transport` deliver an introduction, and each window answers with `ack`.
 4. **Say what the project is** in plain words with `brief --project`; the dashboard shows it first.
-5. **Assign and explain the first task:** `task` assigns it; `brief --task` gives it a readable title and says why it exists, for whom, and when it is finished.
+5. **Set the contract, then assign:** record shared formats, interfaces, fixed limits and owned files before lanes start; `task` assigns each lane and `brief --task` explains it. Relay seam questions as recorded decisions.
 6. **The builder confirms and starts:** `ack` («I have received it»), then `start` («I am building»).
-7. **The builder proves and delivers:** `prove` runs the agreed check on the exact files; `deliver` hands them over.
-8. **Someone else reads:** a reader who did not write the work confirms the handoff and records a verdict with `review`.
-9. **The coordinator closes:** `check` verifies that proof and read concern the same version; `close` records the end.
+7. **The builder proves and delivers:** `prove` runs the agreed check on the exact files; `deliver` hands them over. Merge green deliveries and record every delta, including coordinator changes and resolutions, in the ledger.
+8. **Read in the final block:** freeze `<milestone>-rcN`; Claude and Codex non-authors ACK their handoffs and read every delta and seam. One fix round is followed by one re-read block of its deltas; see the [workflow](work.md#final-block).
+9. **The coordinator closes the read tasks:** supersede the lanes/fixes they cover; `check` and `close` verify proof/read bindings. Check dual ledger coverage and exact release-head runtime proofs. Non-grave carry-overs get one deferral decision and tasks at the next kickoff; only grave findings block. Standalone or owner-selected per-lane reads keep their own close sequence.
 10. **Check who still answers:** the coordinator's `ping --all` calls every other window, and each answers with `ack`; `ping --sweep` puts in stand-by a window whose call went unanswered past the `alive` wait (300 seconds unless `settings` changes it). It gets no new assignments, and nothing it runs is stopped.
 11. **Open the dashboard** with `dash --open`; «How to read this page» explains every term.
 12. **Record what the owner says, with its links:** `decision` with `--owner-words`, `--channel` and `--task`; then select its box in the Decisions view.

@@ -82,7 +82,9 @@ while there is independent work to give it.
 - Builds on separate trees, one builder per tree; reads of different tasks run
   together on frozen copies.
 - A large job is split by area after the shared contract (data format, interfaces)
-  is written: the parts proceed together and are joined afterwards.
+  is written: formats, interfaces, fixed limits and owned files are settled before
+  lanes start. The coordinator relays seam questions between lanes and records the
+  answer as a decision. The parts proceed together and are joined afterwards.
 - The final read of a release is done together by a Claude reader and a Codex
   reader, neither of them an author of what it reads.
 - Codex writes and Claude reads; Claude writes and Codex reads (owner, 2026-10-23).
@@ -125,20 +127,29 @@ declared but not recorded is written as such.
   Never edit a test only to make it pass.
 - **Rule 5 — parallel lanes own their files.** Each lane is told which files, and which
   parts of a shared file, it may change. The coordinator merges the lanes with three-way
-  merges, resolves conflicts and checks that every lane's accepted bytes are in the result.
+  merges, resolves conflicts and checks that every lane's delivered bytes are in the result.
   A lane that needs another lane's area asks the coordinator.
 - **Rule 6 — state the cost before spending money.** Before any paid call (model APIs,
   voice, images, cloud runs) the window states the expected cost and a cap, stops at the
   cap, and reports what was spent and on what. No secret key enters chat, logs or files.
-- **Rule 7 — every lane is read once, its fixes in the final block.** Default: one full
-  non-author read of every lane. When that read asks for changes, the fix is proven and
-  merged into the integration without a read of its own; the release's final dual read
-  (Claude and Codex, each reading what it did not author) covers every fix delta together
-  with the seams, with one fix round for the whole. The coordinator records which final
-  read covers which delta and replaces the open lane task with the final-read task
-  (`supersede`). On the owner's word a release uses another mode, recorded as a decision:
-  a re-read of every fix by the reader who raised it, or one final review only, where
-  lanes are merged on delivery without any read of their own.
+- **Rule 7 — the final block is the default.** Merge each lane on delivery with its
+  own green proof, without a per-lane read. Keep a delta ledger covering lane heads,
+  fixes, coordinator commits and merge resolutions, with the readers for each delta.
+  Freeze the integration as `<milestone>-rcN`; a Claude reader and a Codex reader
+  together cover every delta and the seams, split by author so neither reads its own
+  work. One fix round follows on branches from that candidate, then one re-read block
+  covers only the fix deltas, again by non-authors. The read tasks supersede the lanes
+  and fixes they cover; proof, handoff ACKs, independence and spent budgets remain.
+  Only grave findings block. Record unresolved non-grave findings in one deferral
+  decision; at the next milestone's kickoff create each carry-over task with its
+  owner, acceptance check and source finding. Runtime/native proofs must bind the
+  exact release-head sources. A coordinator may delegate its non-author read to a
+  fresh-context subagent, then verify its main claims before recording the verdict;
+  delegation never makes the coordinator's own work independent.
+  On the owner's word, record an alternative: the former per-lane read with fixes
+  read together at release, or individual corrective re-reads. A plan read may precede
+  building on the owner's word or when a lane touches a trust boundary. Follow the
+  [final-block workflow](references/work.md#final-block) for task and evidence details.
 - **Rule 8 — faster next time.** At every close the coordinator reads where the task's
   time went (the dashboard measures waiting for the acknowledgement, building, waiting
   for the read and fix rounds), writes one line «Faster next time: …» in its closing
@@ -146,14 +157,16 @@ declared but not recorded is written as such.
 - **Rule 9 — the release leaves on time.** These are rules, not coordinator choices.
   - **Cut-off.** When a release's scope is fixed, its cut-off is set two hours later,
     unless the owner names a time, and recorded as a decision. At the cut-off only lanes
-    with an accepted non-author code read and a green proof enter the release. The others
+    with a green proof and coverage by the required non-author reads enter the release.
+    In final-block mode that coverage comes from the frozen candidate's reads. The others
     move to the next patch release, recorded as deferred with «missed cut-off». Only the
     owner's word extends a cut-off.
-  - **Scoped final reads.** When every lane already has its own non-author code read, the
-    two final reads cover the fix deltas no lane read has accepted (Rule 7) and the
-    integration seams: conflict resolutions, version, pins, mirrors and release docs, from
-    the lane heads to the release head.
-    The whole-suite proof still runs on the release head. Small light tasks registered
+  - **Scoped final reads.** In the default mode, the ledger assigns every delta and
+    integration seam: conflict resolutions, version, pins, mirrors and release docs.
+    The re-read block covers only the fix deltas. If the owner chose per-lane reads,
+    the final reads cover previously unread fixes and the integration seams, from
+    lane heads to release head. Whole-suite and required runtime/native proofs bind
+    the exact release head. Small light tasks registered
     `--read-at-gate` have no read of their own, so the release task (`--release-gate`)
     must cover each of them, or the coordinator explicitly defers one
     (`decision --defer-read … --gate …`).
@@ -164,16 +177,21 @@ declared but not recorded is written as such.
     another non-author reader is free, moves to that reader. A reviewer pool
     (`task --reviewer` repeated) does this by itself: the first free member claims it.
 - **Rule 10 — a fix round fixes only the problem.** When a read asks for a change:
-  - the fix is one small task on the same branch carrying only that change;
-  - its delta is read in the release's final dual read (Rule 7), or, in the re-read mode,
-    by the reader who raised the problem; the reads already accepted on the rest stand,
-    recorded by the coordinator as a decision;
+  - gather the findings into one round of bounded fix tasks on branches from the frozen
+    candidate, each carrying only its assigned changes;
+  - merge their proven deliveries and read the fix deltas in one non-author re-read
+    block (Rule 7). Accepted reads on the rest stand, recorded by a decision. Under an
+    owner-selected alternative, use its declared corrective-read arrangement;
+  - a fix covered by that block carries its normal proof and red-to-green evidence
+    in the task output. Do not register a challenge agreement for it: a declared
+    defect fix cannot be superseded by an ordinary read task and binds an interpreter;
   - the proof is the parallel whole-suite runner when the repository has it: it is
     complete and faster than a serial subset (measured on 2026-10-14: 953 tests in
     about 105 s, against 228 s for the 416 tests that read the changed files).
     Without it, run the tests that read the changed files, and the whole suite when
     code changes;
-  - the reader is told at once, and a reviewer pool lets the first free member take it.
+  - tell the assigned block readers at once. Remaining grave findings keep the gate
+    closed; unresolved non-grave findings follow Rule 7's carry-over decision.
 
 ## What it is
 
@@ -265,15 +283,17 @@ For the dashboard plugins' data and declared settings read [folders, schemas and
 
 - At creation, at every finding or change of scope use the [five IT/EN
   questions](references/work.md#triage-in-una-pagina). The author proposes, the
-  non-author reader confirms or dissents, the coordinator resolves with a recorded reason.
+  coordinator records the choice, and the non-author checks it in the assigned block.
   Q1 yes or unknown, Q2 unresolved, hidden material harm under Q5, or a mandate
-  require the **full path**: plan accepted before building, proof, non-author read
-  and the checks due. In the other cases choose **fix now with proof** (reversible
+  require the **full path**: full proof, non-author read and the checks due. Plan
+  reads follow Rule 7's option; an already required plan stays required.
+  In the other cases choose **fix now with proof** (reversible
   remedy, no choices, short non-author check) or **one code read** (scope, bound
   proof, independent read).
   No regex, path pattern or score decides; no required check is dropped.
 - **Only grave findings block**, including missing mandatory security proofs.
-  The others are fixed right away with proof and non-author verification, or recorded
+  Final-block carry-overs follow Rule 7. For standalone work, other findings are
+  fixed with proof and non-author verification, or recorded
   for later: their own task, or a decision that names the task, with an assignee,
   trigger and acceptance check, linked from the report and visible until closed.
   A deferred requirement needs an authorized disposition; do not declare it satisfied.
@@ -429,6 +449,13 @@ the owner, and every activation leaves a registry event.
 
 ## Dashboard, stop and continuity
 
+- **Keep working context small.** At a task/phase boundary or a compaction signal,
+  use `squadra context --task <ID> --root <registry>` for a bounded resume packet
+  instead of carrying full history/log dumps. Follow [context and native compaction](references/context.md)
+  when preparing a handoff. The packet is recorded data, not authorization or a
+  replacement for scope, mail, source checks or proofs. Use the client's native
+  compaction; preserve required checkpoints and source recovery. Never claim to
+  clear provider cache or guarantee savings. Existing protocol/version stays frozen.
 - **Autonomous checkpoints:** do not wait for the owner to ask for them. After a
   completed increment, an accepted review and before a session change or
   publication, run `checkpoint --to <new-durable-folder>` and record the
@@ -471,7 +498,7 @@ the owner, and every activation leaves a registry event.
   frozen protocol until it receives an explicit version switch.
 
 For original/remedy/positive challenges or benchmarks read `references/benchmark.md`.
-For a defect fix the coordinator records `task --defect-fix` (or marks an open
+For a standalone defect fix outside the final re-read block, the coordinator records `task --defect-fix` (or marks an open
 task with `challenge --register --task ... --reason ...`). Before close, run the
 registered regression on the original task base and the exact candidate with
 `challenge --task ... --output ...`. The default `python-unittest-v1` runner uses

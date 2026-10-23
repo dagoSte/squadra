@@ -52,8 +52,9 @@ and refuses nothing.
 ## Triage on one page
 
 At task creation, on a finding and when the scope changes, the builder proposes;
-the non-author reader confirms or disagrees; the coordinator settles it and
-records the reason. Keep the answers and choice in one line of the scope or report.
+the coordinator settles it and records the reason. The non-author reader checks
+the choice in the assigned read; this does not add a per-lane gate before the
+default final block. Keep the answers and choice in one line of the scope or report.
 This is a judgment about effects: no regex, path pattern, score or parser
 turns these answers into automatic permissions.
 
@@ -68,16 +69,18 @@ turns these answers into automatic permissions.
 **At creation:**
 
 - **Fix now with proof:** Q1 no, effect known and reversible, Q3 yes. The builder
-  fixes within the confirmed scope; before closure, a non-author checks the bounded
-  diff and proof. This is not self-approval, and tests alone are not enough;
+  fixes within the confirmed scope; a non-author checks the bounded diff and proof
+  in the final block, or before standalone closure. Tests alone are not enough;
   no separate plan ceremony unless required by a mandate.
 - **One code read:** a bounded ordinary behavior or choice, Q1 no, effect known
   and reversible. Scope, bound proof and an independent read of the changed
-  contracts and callers; relevant checks.
+  contracts and callers in the assigned block; relevant checks.
 - **Full path:** Q1 yes **or unknown**, Q2 unresolved, material hidden harm under
-  Q5, or an existing mandate. A non-author accepts the plan before construction,
-  then bound proof, a non-author read and relevant probes; a full gate where
-  required. Q4 does not authorize omitting a requirement or check.
+  Q5, or an existing mandate. Use the required full proof, a non-author read and
+  relevant probes; a full gate where required. A plan read before construction
+  is an option on the owner's word or for a lane touching a trust boundary;
+  an already required plan still needs acceptance. Q4 does not authorize omitting
+  a requirement or check.
 
 **On a finding:**
 
@@ -88,7 +91,9 @@ turns these answers into automatic permissions.
 - **Fix now, demonstrate it:** a bounded remedy with no protected impact and a
   precise expected result. The builder fixes it; the non-author checks the new
   diff and original case within the authorized budget.
-- **Record for later:** a medium/low finding. Record the candidate, effect,
+- **Record for later:** in final-block mode, collect unresolved non-grave findings
+  in the single carry-over decision described below and create their tasks at the
+  next milestone's kickoff. For a standalone task, record the candidate, effect,
   owner, observable trigger or deadline and acceptance check in **its own task
   in the registry** (`task`, scope and proof), or in **a `decision --task ID`
   naming the task that owns it**. Link the entry from the report: the work stays
@@ -104,21 +109,96 @@ runner, `findings` contains blockers: an `accepted` response with nonempty
 `findings` is refused. Authorized nonblocking follow-ups go in the report/
 `limitations`, with links to the registered entries, without hiding them.
 
+<a id="final-block"></a>
+## Default: one final block per milestone
+
+This is Rule 7's default for coordinated lanes. Standalone tasks and owner-selected
+per-lane reads keep their own proof/read/close sequence; a plan read can precede
+building on the owner's word or for a lane that touches a trust boundary.
+
+1. **Set the seams before building.** The coordinator writes the shared formats,
+   interfaces, fixed limits and owned files per lane. Relay a seam question to the
+   affected lanes and record the answer as a decision linked to those tasks;
+   private agreement between two builders is not the shared contract.
+2. **Merge proven deliveries.** Each lane ACKs, builds on its own tree, proves its
+   exact committed head and delivers. The coordinator checks the proof, merges the
+   delivered bytes and resolves conflicts. There is no per-lane read. Keep a delta
+   ledger: range/head, author, owned files, proof, coordinator/merge-resolution
+   changes and planned Claude/Codex readers for every delta.
+3. **Freeze and read together.** Tag the integration `<milestone>-rcN`. Register
+   final-read tasks on that exact candidate, with scopes partitioned by author:
+   every delta and seam gets both a Claude and a Codex non-author read. Include
+   coordinator commits, merge resolutions, version, pins, mirrors and release docs.
+   Each actual recipient ACKs its handoff before reading a frozen private copy.
+   A coordinator may use a fresh-context subagent for a non-author read, supplied
+   with the candidate, scope and raw evidence; it verifies the subagent's main
+   claims before recording its own verdict. Keep the real identity: a fresh context
+   or alias never makes the coordinator's own work independently reviewable.
+4. **Use one fix round.** Collect all findings, then assign bounded fix tasks on
+   branches from the frozen candidate. Deliver each with its normal green proof
+   and red-to-green evidence in its task output: original base, exact remedy,
+   frozen test/probe bytes, assertion outcomes and log paths. Distinguish setup
+   errors, skips and timeouts from an assertion failure. Do not register a
+   `challenge` agreement for a fix covered by the re-read block. That marks it as a
+   defect fix that cannot be superseded by an ordinary read task and pins a host
+   interpreter. Already declared defect fixes retain all their obligations; this
+   workflow is not a waiver or a way to replace them with ordinary tasks.
+5. **Re-read the fix deltas once.** Merge their proven deliveries, freeze the next
+   candidate and open one non-author re-read block for the fix deltas and any new
+   integration resolutions. Keep accepted reads on the unchanged work. Only grave
+   findings block; an unresolved grave finding keeps the gate closed.
+6. **Defer non-grave findings explicitly.** Record all unresolved non-grave findings
+   in one ordinary deferral decision linked to the release read tasks, naming each
+   source finding, intended owner, acceptance check and next-milestone kickoff.
+   At that kickoff, create each carry-over task with those fields and link it back
+   to the decision and source report. This does not mark a binding requirement met
+   or silently defer required safety evidence. Do not use `--defer-read` for findings:
+   that option names one unread light task and one release gate.
+7. **Prove the release head.** Whole-suite proof uses `tools/parallel_tests.py` when
+   present, with collected equal to executed. Required runtime/native proofs bind
+   the exact release-head sources, rather than only lane heads. Check both readers'
+   coverage against the ledger, record the accepted scope and close the read tasks.
+   Completion grants no authority to publish.
+
+**Represent the block with existing tasks.** Final-read tasks name the lanes/fixes
+they cover and the paired reader's scope. Supersede each covered open lane/fix with
+its responsible final-read task; the ledger retains the second reader's coverage.
+Do not close an ordinary unread lane as though it had its own accepted read. The
+replacement must be registered later and must not depend, even indirectly, on the
+task it replaces. Reconcile runs, reservations and open questions first. Supersession
+preserves history, failed proofs and spent budgets; it never resets a read budget.
+
+```sh
+# REL-CODEX already exists, covers LANE-A and does not depend on it.
+squadra supersede --actor coord --task LANE-A --by REL-CODEX --reason "Covered in the final block; paired Claude scope is in the delta ledger"
+```
+
+`--read-at-gate` remains light-only. `--gate-covers` is for its outstanding tasks,
+not a general coverage flag for full lanes; `--release-gate` does not enforce the
+whole delta ledger or choose the two readers. The coordinator checks that coverage
+and the exact proof bindings. This is an agent workflow, not a registry format or
+CLI change. On the owner's word, record the former per-lane read plus final fix
+block, or individual corrective re-reads, instead.
+
 <a id="lettori-disponibili-lavoro-parallelo-e-capacità"></a>
 ## Available readers, parallel work and capability
 
-At creation, use `task --reviewer` to choose an available non-author reader by
+When creating a read task, use `task --reviewer` to choose an available non-author reader by
 real identity; an alias does not create independence. **Codex writes and Claude reads;
 Claude writes and Codex reads** (owner, 2026-10-23): the read that counts comes from the
 other model, and a same-client read only adds to it. For a Claude or Codex owner, `task`
 refuses a reader of the owner's client and names both clients, unless
 `--same-client-reason TEXT` records why, for example because no window of the other model is
 available; `check` and `close` then need an accepted read of the current candidate from the
-other client, or that recorded reason. The rule binds tasks recorded by the 3.10.3 `task`
+other client, or that recorded reason. The rule binds tasks recorded by the 3.10.4 `task`
 command (they carry `cross_client`); tasks recorded earlier are never re-judged, and work by
 a manual or Cursor seat, whose model is not known, is not judged by it. A task read at a release
-gate is judged on the gate's reader ([Read at the gate](#read-at-gate)). Readers of different tasks
-work at the same time and may run alongside construction on other trees.
+gate is judged on the gate's reader ([Read at the gate](#read-at-gate)). In the
+[final block](#final-block) every delta already gets a Claude and a Codex read, and the one
+that counts is the read by the other model than the delta's author. A final-read task whose
+reader shares its owner's model, such as the Claude read of a Claude coordinator's
+integration, names its paired read of the other model in `--same-client-reason`. Readers
+of different tasks work at the same time and may run alongside construction on other trees.
 One builder per tree; reads on frozen copies, dependencies respected, shared
 gates/ports/databases still reserved. Do not wait for a single reader when another
 suitable identity is available; do not reassign by changing state or reset the
@@ -126,7 +206,8 @@ budget with an equivalent task.
 
 The handoff generated by `deliver` starts the already assigned read: the reader
 ACKs it and begins, without another "go" from the coordinator. Delivery neither
-invokes the client nor proves it is awake. Before the verdict, a correction
+invokes the client nor proves it is awake. In final-block mode, gather corrections
+into the single fix/re-read round above. For an individual corrective read, a change
 suspends the read on the frozen copy: the builder fixes, a new proof/delivery,
 actual ACK, then a reread of the delta and counterexample. **A narrow corrective
 reread is still a read within the same budget**; spent rounds stay spent.
@@ -244,7 +325,7 @@ and the reason cannot be empty. T0's reads, failed proofs and spent budget stay
 in its history; the Decisions graph draws the same replacement arrow from T0
 to T1, taken only from the registered event.
 
-For a plan to be read before construction:
+For an optional or already required plan read before construction:
 
 ```sh
 squadra plan --actor coord --task T1 --file /evidence/plan.md
@@ -259,7 +340,8 @@ new task to evade them. `decision` preserves a choice; it does not automatically
 increase counters. An extension requires a newly, explicitly authorized scope;
 all earlier findings are preserved.
 
-After the change, with frozen sources:
+For a standalone task or owner-selected per-lane read, after the change with frozen
+sources (coordinated lanes use the [final block](#final-block)):
 
 ```sh
 squadra prove --actor builder --task T1 --timeout 120 -- python3 -m pytest tests/test_fix.py -q
@@ -891,6 +973,11 @@ Older windows ignore pool and read-at-gate metadata: every writer of a squad upg
 together before using them.
 
 ## Defect fixes: show that the regression detects the original
+
+Fixes covered by the final re-read block use normal proof and red-to-green evidence
+in their task output, as described [above](#final-block), without registering an
+agreement. This section applies to standalone declared defect fixes. Existing
+declarations cannot be undone or superseded by ordinary final-read tasks.
 
 The coordinator marks a task with `task --defect-fix`. It can register the oracle
 at creation with `--challenge-file`, or later on an open task as below. Marking is
