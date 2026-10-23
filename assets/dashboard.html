@@ -561,6 +561,9 @@ const CORE={
  "ov.stepDone":{it:"fatto, secondo il briefing",en:"done, according to the brief"},"ov.stepTodo":{it:"da fare, secondo il briefing",en:"to do, according to the brief"},
  "ov.glossary":{it:"Sigle del progetto, come scritte nel briefing",en:"Project terms, as written in the brief"},
  "ov.windowsEmpty":{it:"Nessuna finestra registrata.",en:"No window recorded."},
+ "ov.composition":{it:"Composizione: {claude} Claude, {codex} Codex",en:"Composition: {claude} Claude, {codex} Codex"},
+ "ov.compositionSource":{it:"Fonte: {source}. È solo un consiglio: non assegna e non blocca nulla.",en:"Source: {source}. Advice only: it assigns and blocks nothing."},
+ "ov.compositionNoReader":{it:"nessun lettore libero dell'altro modello",en:"no free reader of the other model"},
  "ov.windowName":{it:"{role} {id} ({client})",en:"{role} {id} ({client})"},
  "ov.windowDoing":{it:"{role} di «{task}» ({client})",en:"{role} of “{task}” ({client})"},
  "ov.card.assigned":{it:"Compito assegnato",en:"Assigned task"},"ov.card.activity":{it:"Ultima attività registrata",en:"Latest recorded activity"},
@@ -1860,8 +1863,17 @@ function assignmentTime(tasks,seat,reading){
   return {utc:taskCreated(t.id),key:reading?'ov.card.namedReaderAt':'ov.card.assignedAt'}}).filter(x=>x.utc).sort((a,b)=>a.utc<b.utc?-1:1);
  const last=times.at(-1);return last?tr(last.key,{date:when(last.utc)}):tr('ov.card.noTime');
 }
+// How Claude and Codex windows can split the work: the server's advice in the page language.
+function ovComposition(){
+ const all=state.composition,c=all&&(all[window.UI_LANG]||all.it);if(!c)return null;
+ const box=node('div',undefined,'ov-composition');box.setAttribute('data-composition',c.case);
+ box.append(node('p',tr('ov.composition',{claude:c.claude,codex:c.codex}),'ov-label'),node('p',c.message,'bodytext'));
+ if(c.pairs?.length){const list=node('ul');for(const pair of c.pairs)list.append(node('li',taskTitle(pair.task)+': '+seatName(pair.builder)+' → '+(pair.readers.map(seatName).join(', ')||tr('ov.compositionNoReader'))));box.append(list)}
+ box.append(node('div',tr('ov.compositionSource',{source:c.source}),'sub'));return box;
+}
 function ovWindows(){
  const s=ovSection('ov.q2');const agents=Object.values(state.agents||{});
+ const mix=ovComposition();if(mix)s.append(mix);
  if(!agents.length){s.append(node('p',tr('ov.windowsEmpty'),'empty'));return s}
  const grid=node('div',undefined,'ov-cards');const all=Object.values(state.tasks||{});
  for(const a of agents){

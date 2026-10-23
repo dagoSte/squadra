@@ -17,7 +17,8 @@ from urllib.parse import unquote, urlparse
 import webbrowser
 
 from registry import (Store, Error, digest, attention, waits, now, requirement_matrix, initial, apply, decision_graph, decision_id,
-                      task_progress, presence, fix_status, plain, wait_view, scrub_index, fold_recorded, pending_ack_ids)
+                      task_progress, presence, fix_status, plain, wait_view, scrub_index, fold_recorded, pending_ack_ids,
+                      composition)
 from comms import communications
 from panel import activity
 from reads import read_value
@@ -748,6 +749,8 @@ def make_server(root, port=0):
                     state["attention"] = {**recorded_view, "waiting": fold_recorded(recorded, recorded_view["waiting"], waiting),
                                           "pending_ack": pending_ack_ids(recorded, attention_value=recorded_view)}
                     state["waits"], state["presence"] = waiting, present
+                    # Advice on splitting the work between Claude and Codex windows; it assigns nothing.
+                    state["composition"] = {lang: composition(recorded, lang=lang) for lang in ("it", "en")}
                     state["project_started"] = events[0]["utc"]
                     state["events"] = [{**event, 'data': {}, 'detail_pending': True} for event in events[-120:]] if conditional else events[-120:]
                     state["integrity"] = "verified"

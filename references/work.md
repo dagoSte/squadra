@@ -34,6 +34,20 @@ with its reason and the number of candidates, without tokens or quota, and the
 the quota slots and the Claude estimate. The coordinator follows the suggestion or records
 a reason; the advice cannot change an owner, reviewer, route, budget or permission.
 
+`status`, `stato.md`, `census` and the dashboard's overview also show a **Composition**
+line: the Claude and Codex windows that can build or read, counted from the registered
+windows (the coordinator's window and windows in stand-by left out), with the source named.
+`census` adds the processes it sees, never counted as windows, and says when its scan is
+partial; before any registration it counts those processes and says so. The advice follows
+the cross-model rule below: with one client only, open a window of the other model or record a
+`--same-client-reason` for each read (with only Codex, a Claude window still coordinates);
+with an imbalance such as 2 Claude and 1 Codex, the lone Codex window reads everything and
+becomes the bottleneck, so give it a build lane read by a Claude window or open another
+Codex window; with a balanced squad, pair each builder with a reader of the other model,
+listed for the newest open tasks. The coordinator gives this advice to the owner when it
+introduces itself, at every resume and when a window joins or leaves. It assigns nothing
+and refuses nothing.
+
 <a id="triage-in-una-pagina"></a>
 ## Triage on one page
 
@@ -94,7 +108,15 @@ runner, `findings` contains blockers: an `accepted` response with nonempty
 ## Available readers, parallel work and capability
 
 At creation, use `task --reviewer` to choose an available non-author reader by
-real identity; an alias does not create independence. Readers of different tasks
+real identity; an alias does not create independence. **Codex writes and Claude reads;
+Claude writes and Codex reads** (owner, 2026-10-23): the read that counts comes from the
+other model, and a same-client read only adds to it. For a Claude or Codex owner, `task`
+refuses a reader of the owner's client and names both clients, unless
+`--same-client-reason TEXT` records why, for example because no window of the other model is
+available; `check` and `close` then need an accepted read of the current candidate from the
+other client, or that recorded reason. The rule binds tasks recorded by the 3.10.3 `task`
+command (they carry `cross_client`); tasks recorded earlier are never re-judged, and work by
+a manual or Cursor seat, whose model is not known, is not judged by it. Readers of different tasks
 work at the same time and may run alongside construction on other trees.
 One builder per tree; reads on frozen copies, dependencies respected, shared
 gates/ports/databases still reserved. Do not wait for a single reader when another
@@ -255,6 +277,18 @@ requires a gate-labelled proof: first `resource acquire --actor builder --name
 gate --reason ...`, then `prove --gate`, finally `resource release` after the
 terminal receipt. The label does not prove the command is the whole suite:
 the coordinator must agree on the correct command and project reservations.
+
+`prove`, a probe, the quick checks, `selftest` and an offline benchmark give their process
+HOME and TMPDIR in a private folder made for that run (`sq-` and eight characters, mode
+0700) in the system temporary folder, never under the registry: Unix socket paths stop near
+104 bytes, and a registry deep under a shared folder such as MAMP's `htdocs` gave paths of
+146 characters under folders others can write. `SQUADRA_TMP` chooses another parent folder.
+Before anything starts and before any run is recorded, a folder path over 64 characters, or
+one under a folder others can write that is not a root-owned sticky folder like `/tmp`, is
+refused with the path and the fix (`SQUADRA_TMP=<a short private folder>`). Logs, metadata
+and the lease stay in `<registry>/runs/<id>/`; the run record names the private folder and
+whether it was removed when the run ended, whatever its outcome. Claude and Codex turns keep
+the caller's HOME, where the client keeps its sign-in.
 
 ### One execution for the two final reads
 
@@ -539,12 +573,17 @@ produce drafts; the user's explicit selection is a separate request.
 ## Candidate, reader and requirement coverage
 
 `task --reviewer reader` selects an already registered reader whose identity
-differs from the authors'. `deliver` saves the candidate, content-addressed packet
+differs from the authors' and, for a Claude or Codex author, whose client is the other
+model's (see above). `deliver` saves the candidate, content-addressed packet
 with scope/plan/proofs and `review-...` message in one transaction. The command
 returns that ID. The recipient ACKs it before the code review or `read` turn.
 The message names the commit only when the working tree equals it; otherwise it names
 the working-tree snapshot and the uncommitted or untracked paths the commit lacks.
-A new fingerprint requires a new handoff and ACK. Repeating the same packet does
+A new fingerprint requires a new handoff and ACK. **Reader evidence lives outside the
+candidate tree**: a report, log or probe a reader writes into the builder's checkout after
+delivery changes the fingerprint, and `review`, `check` and `close` refuse with «Candidate
+drift», naming the paths added, removed or changed since the delivery (up to 20, then a
+count) and a moved HEAD. Repeating the same packet does
 not duplicate events. New proofs change the packet and require a new message/ACK,
 even when returning to an earlier candidate. Without `--reviewer`, the manual
 protocol remains.

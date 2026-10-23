@@ -20,7 +20,7 @@ import unicodedata
 import weakref
 
 
-VERSION = "3.10.2"
+VERSION = "3.10.3"
 WAIT_SECONDS = {"ack": 900, "delivered": 3600, "reviewed": 1800, "heartbeat": 1800, "alive": 300,
                 "to-forward": 120, "plan": 3600}
 MESSAGE_WAIT_KEYS = {"to-forward", "plan"}
@@ -1066,9 +1066,89 @@ def current_proofs(task, current):
             and contract_matches(task, p)]
 
 
+DRIFT_PATHS = 20
+
+
+def drift(candidate, current):
+    """What moved since the delivery fingerprint, in a sentence: up to 20 paths, then a count."""
+    if not candidate:
+        return " (nothing was delivered yet)"
+    old = {row["path"]: row for row in candidate.get("files", [])}
+    new = {row["path"]: row for row in current.get("files", [])}
+    moved = []
+    for path in sorted(old.keys() | new.keys()):
+        before, after = old.get(path), new.get(path)
+        if before == after:
+            continue
+        if before is None or before.get("kind") == "deleted":
+            moved.append("added " + path)
+        elif after is None or after.get("kind") == "deleted":
+            moved.append("removed " + path)
+        else:
+            moved.append("changed " + path)
+    parts = []
+    if candidate.get("repo") != current.get("repo"):
+        parts.append("repository " + str(candidate.get("repo")) + " -> " + str(current.get("repo")))
+    if candidate.get("head") != current.get("head"):
+        parts.append("HEAD " + str(candidate.get("head"))[:12] + " -> " + str(current.get("head"))[:12])
+    parts += moved[:DRIFT_PATHS]
+    if len(moved) > DRIFT_PATHS:
+        parts.append("and " + str(len(moved) - DRIFT_PATHS) + " more paths")
+    return ". Moved since the delivery fingerprint: " + ", ".join(parts) if parts else ""
+
+
+def require_candidate(task, current, hint):
+    """Refuse a source that is not the delivered candidate, naming what moved."""
+    if current != task.get("candidate"):
+        raise Error("Candidate drift; " + hint + drift(task.get("candidate"), current))
+
+
+CROSS_CLIENT_RULE = ("the read that counts comes from another client: Codex writes and Claude reads, Claude writes "
+                     "and Codex reads; a same-client read only adds to it")
+# The rule names models; a manual or Cursor seat may run any model, so its work is not judged by it.
+MODEL_CLIENTS = ("claude", "codex")
+REASON_BYTES = 2000
+
+
+def same_client_readers(state, owner, readers):
+    """The named readers whose registered client is the owner's Claude or Codex client, as «reader (client)»."""
+    own = state["agents"][owner]["client"]
+    return [r + " (" + own + ")" for r in readers if own in MODEL_CLIENTS and state["agents"][r]["client"] == own]
+
+
+def validate_cross_client(state, d):
+    """A task recorded under the cross-client rule names readers of another client, or records why not."""
+    require(d.get("cross_client") is True, "cross_client_invalid: cross_client is true when present")
+    reason = d.get("same_client_reason")
+    require(reason is None or (isinstance(reason, str) and reason.strip() and len(reason.encode()) <= REASON_BYTES),
+            "same_client_reason_invalid: a nonempty reason of at most " + str(REASON_BYTES) + " bytes")
+    readers = [r for r in [d.get("reviewer"), *(d.get("pool") or [])] if r]
+    same = same_client_readers(state, d["owner"], readers)
+    owner = d["owner"] + " (" + state["agents"][d["owner"]]["client"] + ")"
+    if reason is None:
+        require(not same, "same_client_reader: " + ", ".join(same) + " would read the work of " + owner + "; " +
+                CROSS_CLIENT_RULE + ". Name a reader of another client, or record why with --same-client-reason")
+    else:
+        require(bool(same) or not readers, "same_client_reason_unneeded: every reader named for " + owner +
+                " is of another client")
+
+
+def cross_client_read(state, task, current):
+    """A task recorded under the cross-client rule closes only on an accepted current read from another client."""
+    authors = {state["agents"][a]["client"] for a in task["authors"]}
+    if (not task.get("cross_client") or task.get("same_client_reason") is not None or read_at_gate(task)
+            or not authors <= set(MODEL_CLIENTS)):
+        return
+    readers = {state["agents"][r["reviewer"]]["client"] for r in task["reviews"]
+               if r["stage"] == "code" and r["verdict"] == "accepted" and r["binding"] == (current or {}).get("sha256")}
+    require(bool(readers - authors), "cross_client_read_missing: " + task["id"] + " was written by " +
+            "/".join(sorted(authors)) + " and its accepted current reads come from " +
+            ("/".join(sorted(readers)) or "no reader") + "; " + CROSS_CLIENT_RULE)
+
+
 def candidate_checks(task, current, require_review=True, delivering=False):
     if not delivering:
-        require(current == task.get("candidate"), "Candidate drift; deliver/prove the new exact source")
+        require_candidate(task, current, "deliver/prove the new exact source")
     proof = current_proofs(task, current)
     require(bool(proof), "No complete native proof on current candidate")
     if task.get("full_gate"):
@@ -1731,6 +1811,8 @@ def validate(state, kind, actor, d, stored_packet=None):
             require(state["agents"][reader]["identity"] != state["agents"][d["owner"]]["identity"], "Author alias is not independent")
         if d.get("pool") is not None:
             check_pool(state, d)
+        if "cross_client" in d or "same_client_reason" in d:
+            validate_cross_client(state, d)
         if d.get("read_at_gate") is True:
             require(d.get("route") == "light", "read_at_gate_requires_light: a full-route task always has its own read")
             require(not d.get("reviewer") and not d.get("pool") and d.get("release_gate") is not True,
@@ -1857,6 +1939,7 @@ def validate(state, kind, actor, d, stored_packet=None):
         if kind == "close":
             require(task["status"] == "reviewed" or (read_at_gate(task) and task["status"] == "delivered"),
                     "Exact candidate independent review still pending")
+            cross_client_read(state, task, task.get("candidate"))
             if task.get("release_gate") is True:
                 gate_checks(state, task, snapshot(task["repo"], state.get("root")))
         if task.get("route") == "light" or task.get("contract"):
@@ -2912,6 +2995,8 @@ class Store:
                 lines = ["# Squadra · riepilogo corrente", "", "Registro #" + str(state['event_count']),
                          "Stato e posta completi: squadra export"]
             lines += forwarding_lines(fold_standby(state, view['waiting']), state['workspace'].get('lang', 'it'))
+            lines += ["", *composition_lines(composition(state, lang="en" if en_summary else "it"),
+                                             "en" if en_summary else "it")]
             lines += ["", "| Window | Next step |" if en_summary else "| Finestra | Prossimo passo |", "|---|---|"]
             for actor in state['agents']:
                 if index is not None:
@@ -2967,7 +3052,7 @@ class Store:
                 summary_attention = attention(summary_state)
                 self._summary_context = summary_state, summary_attention
                 atomic(self.root / "stato.md", (table(summary_state, events=events,
-                       attention_value=summary_attention) + "\n").encode())
+                       attention_value=summary_attention, advice=True) + "\n").encode())
                 from registry_projections import mark_full_export
                 mark_full_export(self, events[-1]['seq'] if events else 0,
                                  events[-1]['hash'] if events else '0' * 64, locked=True)
@@ -3132,14 +3217,144 @@ def wait_text(wait, en):
     return WAIT_TEXT_EN.get(kind) or STEP_TEXT_EN.get(kind) or wait["text"]
 
 
-def table(state, read_at=None, events=(), *, compact=False, lang=None, attention_value=None):
-    """Print the board and the owner, wait and next-step blocks in the workspace language."""
+MODEL_NAMES = {"claude": "Claude", "codex": "Codex"}
+COMPOSITION_PAIRS = 6
+
+
+def composition_windows(state):
+    """Registered windows that can build or read, by identity; the coordinator's and those in stand-by are left out."""
+    agents = state["agents"]
+    coordinating = {a["identity"] for a in agents.values() if a["role"] == "coordinator"}
+    found = {}
+    for name, agent in agents.items():
+        if (agent["role"] in {"builder", "reviewer"} and agent["identity"] not in coordinating
+                and not standby(state, name)):
+            found.setdefault(agent["identity"], agent["client"])
+    return found
+
+
+def composition_pairs(state):
+    """For the newest open tasks of Claude or Codex builders: the reader of the other model, or the free candidates."""
+    agents, result = state["agents"], []
+    open_tasks = [t for t in state["tasks"].values() if t["status"] != "done" and not t.get("superseded_by")]
+    for task in list(reversed(open_tasks))[:COMPOSITION_PAIRS]:
+        own = agents[task["owner"]]["client"]
+        if own not in MODEL_CLIENTS:
+            continue
+        other = MODEL_CLIENTS[1 - MODEL_CLIENTS.index(own)]
+        named = [r for r in [task.get("reviewer"), *(task.get("pool") or [])] if r]
+        crossing = [r for r in named if agents[r]["client"] == other]
+        candidates = crossing or sorted(
+            n for n, a in agents.items() if a["role"] == "reviewer" and a["client"] == other
+            and a["identity"] != agents[task["owner"]]["identity"] and not standby(state, n))
+        result.append({"task": task["id"], "builder": task["owner"], "client": own, "readers": candidates,
+                       "named": bool(crossing)})
+    return result
+
+
+def composition_message(counts, en):
+    """The advice for a count of Claude and Codex windows, and its case."""
+    claude, codex = counts["claude"], counts["codex"]
+    if claude + codex == 0:
+        return "none", ("No Claude or Codex window can build or read yet: open one of each, so that one model "
+                        "writes and the other reads." if en else
+                        "Nessuna finestra Claude o Codex può ancora costruire o leggere: aprine una per tipo, "
+                        "così un modello scrive e l'altro rilegge.")
+    if not claude or not codex:
+        only, missing = ("claude", "codex") if claude else ("codex", "claude")
+        mine, theirs, size = MODEL_NAMES[only], MODEL_NAMES[missing], str(counts[only])
+        if en:
+            text = ("Only " + mine + " windows (" + size + "): no read by the other model is possible. Open one " +
+                    theirs + " window to read; otherwise every read needs a recorded --same-client-reason.")
+        else:
+            text = ("Solo finestre " + mine + " (" + size + "): la rilettura con l'altro modello non è possibile. "
+                    "Apri una finestra " + theirs + " che rilegga; altrimenti ogni lettura ha bisogno di un motivo "
+                    "registrato con --same-client-reason.")
+        if only == "codex":
+            text += " Only a Claude window coordinates." if en else " Ricorda che coordina solo una finestra Claude."
+        return "one-client", text
+    if claude != codex:
+        few, many = ("claude", "codex") if claude < codex else ("codex", "claude")
+        lone, small, large = counts[few] == 1, MODEL_NAMES[few], MODEL_NAMES[many]
+        if en:
+            who = "The lone " + small + " window" if lone else "The " + str(counts[few]) + " " + small + " windows"
+            text = (who + " will read everything the " + str(counts[many]) + " " + large + " windows build and "
+                    "become the bottleneck. Give " + ("it" if lone else "one of them") + " a build lane read by a " +
+                    large + " window, or open one more " + small + " window.")
+        else:
+            who = ("L'unica finestra " + small + " rileggerà" if lone else
+                   "Le " + str(counts[few]) + " finestre " + small + " rileggeranno")
+            text = (who + " tutto quello che costruiscono le " + str(counts[many]) + " finestre " + large + " e " +
+                    ("diventerà" if lone else "diventeranno") + " il collo di bottiglia. " +
+                    ("Affidale" if lone else "Affida a una di loro") + " un lavoro da costruire, riletto da una "
+                    "finestra " + large + ", oppure apri un'altra finestra " + small + ".")
+        return "imbalance", text
+    return "balanced", ("Balanced: " + str(claude) + " Claude and " + str(codex) + " Codex. Pair each builder with "
+                        "a reader of the other model." if en else
+                        "In equilibrio: " + str(claude) + " Claude e " + str(codex) + " Codex. Abbina a ogni "
+                        "costruttore un lettore dell'altro modello.")
+
+
+def composition(state=None, observed=None, lang="it", scan="observed"):
+    """How the Claude and Codex windows can split the work under the cross-model rule.
+
+    Advice only: it assigns, changes and refuses nothing. It counts the registered windows, or, before any
+    registration, the processes a census saw; observed is that census list, and a partial scan is said, never filled in."""
+    en = lang == "en"
+    if state is not None:
+        clients = list(composition_windows(state).values())
+        source = ("registered windows (the coordinator's and those in stand-by left out)" if en else
+                  "finestre registrate (esclusa quella del coordinatore e quelle in stand-by)")
+    else:
+        clients = [p["client"] for p in observed or []]
+        source = ("census only: processes seen in the project, roles not known yet, the coordinator's window "
+                  "among them" if en else
+                  "solo censimento: processi visti nel progetto, ruoli non ancora noti, tra cui la finestra "
+                  "del coordinatore")
+    counts = {model: clients.count(model) for model in MODEL_CLIENTS}
+    seen = None
+    if state is not None and observed is not None:
+        seen = {model: sum(p["client"] == model for p in observed) for model in MODEL_CLIENTS}
+        source += (("; the census also sees " if en else "; il censimento vede anche ") +
+                   ", ".join(str(seen[m]) + " " + MODEL_NAMES[m] for m in MODEL_CLIENTS) +
+                   (" processes (a process is not a registered window)" if en else
+                    " processi (un processo non è una finestra registrata)"))
+    if observed is not None and scan != "observed":
+        source += ("; the census is partial and may not see every window" if en else
+                   "; il censimento è parziale e può non vedere tutte le finestre")
+    case, message = composition_message(counts, en)
+    return {"claude": counts["claude"], "codex": counts["codex"],
+            "other": sum(c not in MODEL_CLIENTS for c in clients), "source": source, "observed": seen,
+            "case": case, "message": message,
+            "pairs": composition_pairs(state) if case == "balanced" and state is not None else []}
+
+
+def composition_lines(value, lang="it"):
+    """The composition as plain lines for status and stato.md."""
+    en = lang == "en"
+    other = (", " + str(value["other"]) + (" other" if en else " altre")) if value["other"] else ""
+    out = [("Composition: " if en else "Composizione: ") + str(value["claude"]) + " Claude, " + str(value["codex"]) +
+           " Codex" + other + " · " + ("source: " if en else "fonte: ") + value["source"],
+           ("Advice: " if en else "Consiglio: ") + value["message"]]
+    for pair in value["pairs"]:
+        readers = ", ".join(pair["readers"]) or ("no free reader of the other model" if en else
+                                                  "nessun lettore libero dell'altro modello")
+        out.append("- " + pair["task"] + ": " + pair["builder"] + " (" + MODEL_NAMES[pair["client"]] + ") → " +
+                   readers + ("" if pair["named"] else (" (to name)" if en else " (da nominare)")))
+    return out
+
+
+def table(state, read_at=None, events=(), *, compact=False, lang=None, attention_value=None, advice=False):
+    """Print the board and the owner, wait and next-step blocks in the workspace language.
+
+    advice adds the composition advice; status and stato.md show it, the answers of other commands stay short."""
     lang = lang or state["workspace"].get("lang", "it")
     require(lang in {"it", "en"}, "Board language must be it or en")
     en = lang == "en"
     tasks = list(state["tasks"].values())
     view = attention(state) if attention_value is None else attention_value
     lines = [board(state, lang, read_at=read_at, events=events, live=read_at is not None), "",
+             *([*composition_lines(composition(state, lang=lang), lang), ""] if advice else []),
              "Needs you:" if en else "Serve a te:"]
     information = information_count(state)
     if information:

@@ -18,8 +18,8 @@ if sys.version_info[:2] < PYTHON:
 
 from registry import (Store, Error, VERSION, plain, BRIEF_BYTES, REFERENCE_KINDS, canonical, digest, require, snapshot, table, board, now,
                       git, waits, requirement_matrix, presence, standby, latest_ping, return_ping, coordinator_ping,
-                      current_proofs, candidate_checks, gate_checks, read_at_gate, pending_ack_ids, wait_settings, active_pool,
-                      scrub_report, SCRUB_NOTE)
+                      current_proofs, candidate_checks, require_candidate, cross_client_read, gate_checks, read_at_gate, pending_ack_ids,
+                      wait_settings, active_pool, scrub_report, SCRUB_NOTE)
 
 
 class InputRefusal(Error):
@@ -136,7 +136,7 @@ def bindings(store, task_id, require_review=True):
     state = store.resolved()
     task = state["tasks"][task_id]
     current = snapshot(task["repo"], store.root)
-    require(current == task.get("candidate"), "Candidate drift; deliver/prove the new exact source")
+    require_candidate(task, current, "deliver/prove the new exact source")
     store.verify_artifacts(task)
     plan = task.get("plan")
     if plan:
@@ -149,6 +149,8 @@ def bindings(store, task_id, require_review=True):
         if task["route"] == "light":
             measure(task, current)
     candidate_checks(task, current, require_review and not read_at_gate(task))
+    if require_review:
+        cross_client_read(state, task, current)
     if require_review and task.get("fix"):
         from fix_challenge import evidence, gate_exception
         gate_exception(task)
@@ -237,7 +239,7 @@ def deliver(store, actor, task_id, reconcile=False):
     from source_manifests import transform_packet
     previous_packet = transform_packet(previous.get("packet_data", {}), store.resolve_snapshot)
     if reconcile:
-        require(task.get("candidate") == current, "Candidate drift; owner must prove and deliver again")
+        require_candidate(task, current, "owner must prove and deliver again")
         if not task.get("reviewer") and not task.get("pool"):
             return {"manual_review": True, "reason": "No configured reader; existing independent review protocol applies"}
 
@@ -365,6 +367,7 @@ def parser():
     a.add_argument("--challenge-file", help="JSON oracle agreement; default runner python-unittest-v1")
     a.add_argument("--route", choices=["full", "light"], default="full", help="Explicit light-v1 small-change contract; default full")
     a.add_argument("--supersedes", help="Existing open task this one replaces; its history stays")
+    a.add_argument("--same-client-reason", help="Recorded reason to let a reader of the owner's client be the read that counts")
     a = sub.add_parser("route", help="Coordinator promotes light to full, retaining base, history and budgets")
     a.add_argument("--actor", required=True); a.add_argument("--task", required=True)
     a.add_argument("--full", action="store_true", required=True)
@@ -621,6 +624,10 @@ def dispatch(a, store):
             task["contract"] = contract(task)
         if a.supersedes is not None:
             task["supersedes"] = a.supersedes
+        # Tasks recorded from 3.10.3 on carry the cross-client rule; older tasks are never re-judged.
+        task["cross_client"] = True
+        if a.same_client_reason is not None:
+            task["same_client_reason"] = a.same_client_reason
         assignment = "assign-" + a.id
         store.batch([("task", actor, task, None), ("message", actor, {"id": assignment, "to": a.owner,
                      "task": a.id, "body": f"Assignment {a.id}: {a.title}\nBase {base['head']}\nScope {task['scope']['sha256']}\nACK required before starting."}, None)])
@@ -1081,7 +1088,11 @@ def main(argv=None):
                 store = Store(root, read_only=True)
                 state = store.resolved()
             require(a.project or state, "--project required before registry initialization")
-            print(json.dumps(collect(a.project or state["workspace"]["project"], state), ensure_ascii=False, indent=2))
+            from registry import composition
+            found = collect(a.project or state["workspace"]["project"], state)
+            lang = state["workspace"].get("lang", "it") if state else "it"
+            found["composition"] = composition(state, found["processes"], lang, found["scan"])
+            print(json.dumps(found, ensure_ascii=False, indent=2))
             return 0
         if a.command == "bench-example":
             from benchmark import example
@@ -1186,6 +1197,7 @@ def main(argv=None):
                     if current_index(state) is None and not events:
                         events = store.events()
                     print(table(state, read_at=now(), events=events, compact=a.command != 'status' or not a.all,
+                                advice=a.command == 'status',
                                 attention_value=attention_value))
                     if a.command == 'supersede':
                         print('- ' + a.task + ' → ' + a.by)

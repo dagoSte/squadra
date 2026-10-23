@@ -233,19 +233,18 @@ class Precheck(unittest.TestCase):
         marker = self.base / "check-started"
         command = py("open(" + repr(str(marker)) + ", 'w').write('ran')")
         self.declare([check("only", command, 1)], total=1)
-        real_mkdir, real_popen, spawned = Path.mkdir, precheck.subprocess.Popen, []
+        real_temp, real_popen, spawned = precheck.private_temp, precheck.subprocess.Popen, []
 
-        def slow_setup(path, *args, **kwargs):
-            if path.name == "tmp" and path.parent.parent == self.root / "runs":
-                time.sleep(1.5)
-            return real_mkdir(path, *args, **kwargs)
+        def slow_setup(parent):
+            time.sleep(1.5)
+            return real_temp(parent)
 
         def popen(argv, *args, **kwargs):
             if argv == command:
                 spawned.append(argv)
             return real_popen(argv, *args, **kwargs)
 
-        with patch.object(Path, "mkdir", slow_setup), patch("precheck.subprocess.Popen", popen):
+        with patch("precheck.private_temp", slow_setup), patch("precheck.subprocess.Popen", popen):
             with self.assertRaisesRegex(Error, r"precheck_failed: only \(interrupted, rc None, run \w+: deadline reached before start"):
                 precheck.run(self.store, "A", self.get())
         self.assertEqual(spawned, [])

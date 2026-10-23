@@ -11,7 +11,7 @@ import sys
 import time
 
 from registry import Store, Error, canonical, digest, git, now, require, snapshot
-from runtime import CURSOR_REFUSAL, cli_command, terminate, validate_reply
+from runtime import CURSOR_REFUSAL, cli_command, private_temp, remove_temp, temp_parent, terminate, validate_reply
 
 
 def check_pause(store, message):
@@ -94,6 +94,7 @@ def run(manifest_path,destination,allow_models=False,budget_file=None,store=None
         require(allow_models and budget_file,'Real turns require --allow-models and an explicit owner budget file')
         budget=json.loads(Path(budget_file).read_text());require(budget.get('owner_words') and type(budget.get('max_turns')) is int and budget['max_turns']>=len(m['arms'])*len(m['cases'])*m['repeats'],'Insufficient owner-scoped turn budget')
     folder=Path(destination).resolve();require(not folder.exists(),'Benchmark output must be new')
+    parent=temp_parent() if m['mode']=='offline' else None
     require(not any(Path(c['fixture']).resolve() in folder.parents for c in m['cases']),'Output outside fixtures')
     folder.mkdir(parents=True,mode=0o700);(folder/'manifest.json').write_bytes(body)
     result={'schema':1,'status':'running','manifest_sha256':digest(body),'oracle_sha256':m['oracle_sha256'],'mode':m['mode'],'started':now(),
@@ -120,23 +121,27 @@ def run(manifest_path,destination,allow_models=False,budget_file=None,store=None
                     result['turns'].append(row)
                     version=subprocess.run([argv[0],'--version'],capture_output=True,text=True,timeout=15);require(version.returncode==0,'CLI preflight failed');row['cli_version']=version.stdout.strip()
                     env=os.environ|{'PYTHONDONTWRITEBYTECODE':'1'}
+                    temp=None
                     if m['mode']=='offline':
-                        home=turn/'home';home.mkdir();env.update(HOME=str(home),TMPDIR=str(home))
-                    with (turn/'stdout.log').open('wb') as out,(turn/'stderr.log').open('wb') as err:
-                        proc=subprocess.Popen(argv,cwd=repo,env=env,stdin=subprocess.PIPE,stdout=out,stderr=err,start_new_session=True)
-                        try:
-                            proc.stdin.write(prompt.encode());proc.stdin.close()
-                            while proc.poll() is None:
-                                check_pause(store, 'Owner pause during benchmark')
-                                require(time.monotonic()-started<=m['timeout'],'Benchmark timeout')
-                                time.sleep(0.05)
-                            row['native_rc']=proc.wait();require(row['native_rc']==0,'Native turn failed')
-                        finally:
-                            try:terminate(proc);row['cleanup']='owned group disposed'
-                            except Exception as exc:
-                                row.update(status='cleanup-unknown',cleanup='not verified',cleanup_error=str(exc))
-                                raise
-                            finally:row['native_rc']=proc.poll()
+                        temp=row['temp']=private_temp(parent);env.update(HOME=temp,TMPDIR=temp)
+                    try:
+                        with (turn/'stdout.log').open('wb') as out,(turn/'stderr.log').open('wb') as err:
+                            proc=subprocess.Popen(argv,cwd=repo,env=env,stdin=subprocess.PIPE,stdout=out,stderr=err,start_new_session=True)
+                            try:
+                                proc.stdin.write(prompt.encode());proc.stdin.close()
+                                while proc.poll() is None:
+                                    check_pause(store, 'Owner pause during benchmark')
+                                    require(time.monotonic()-started<=m['timeout'],'Benchmark timeout')
+                                    time.sleep(0.05)
+                                row['native_rc']=proc.wait();require(row['native_rc']==0,'Native turn failed')
+                            finally:
+                                try:terminate(proc);row['cleanup']='owned group disposed'
+                                except Exception as exc:
+                                    row.update(status='cleanup-unknown',cleanup='not verified',cleanup_error=str(exc))
+                                    raise
+                                finally:row['native_rc']=proc.poll()
+                    finally:
+                        if temp:row.update(remove_temp(temp))
                     row.update(validate_reply(a['reader'],turn,structured=c['kind']=='read'));require(row['actual_session'] not in sessions,'Reused session, fresh reader not established');sessions.add(row['actual_session'])
                     after=snapshot(repo);require(after==before if c['kind']=='read' else after['head']==before['head'],'Unexpected source drift/commit')
                     row.update(after=after,status='completed',seconds=round(time.monotonic()-started,3),

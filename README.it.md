@@ -13,7 +13,7 @@ La skill di squadra più completa per Claude Code, Codex e Cursor.
 
 **Gratuita e open source** — licenza MIT, nessun account, tutto gira sul tuo computer.
 
-**Versione 3.10.2** · Gratuita · MIT · Toolkit locale · Python 3.12+ · macOS / POSIX
+**Versione 3.10.3** · Gratuita · MIT · Toolkit locale · Python 3.12+ · macOS / POSIX
 
 [English](README.md) · **Italiano** · [Privacy](PRIVACY.it.md)
 
@@ -44,6 +44,14 @@ https://github.com/user-attachments/assets/d0a696da-9562-4a84-9eea-0fda7b8c75d1
 
 <a id="news"></a>
 ## Novità
+
+**3.10.3 — prove che girano in qualunque cartella, e Claude e Codex rileggono l'uno il lavoro dell'altro**
+
+- **Prove che girano in qualunque cartella, rifiuti che nominano i file e due modelli che si controllano a vicenda.** Le prove e i controlli rapidi girano in una cartella temporanea privata e corta, così un progetto tenuto in una cartella condivisa come `htdocs` di MAMP non fallisce più per percorsi troppo lunghi o scrivibili da altri; una lettura rifiutata dice quali file sono cambiati dopo la consegna. Se scrive Codex rilegge Claude, e viceversa: un lettore dello stesso modello viene rifiutato, a meno che tu non registri il motivo, e il coordinatore ti dice come dividere le finestre tra i due modelli, per esempio che con 2 finestre Claude e 1 Codex la finestra Codex rileggerebbe tutto.
+- Plugin: memoranda 1.0.8, Playwright 1.0.9, Sentry 0.1.6.
+
+<details>
+<summary><strong>Versioni precedenti</strong></summary>
 
 **3.10.2 — messaggi che arrivano sempre, e una dashboard che sta al passo con una squadra al lavoro**
 
@@ -82,9 +90,6 @@ https://github.com/user-attachments/assets/8f38a443-b738-48f8-b562-9b072419b5f0
 | Aggiornamento della pagina dopo un nuovo messaggio | 4,7–5,3 s, 8,2 MB | 0,17 s, 0,56 MB |
 | Una ricerca | 3,1–6,6 s, 8,3 MB | 0,4 s, al massimo 0,13 MB |
 | Aggiornamento della pagina quando nulla è cambiato | 0,02 s | circa 0,001 s |
-
-<details>
-<summary><strong>Versioni precedenti</strong></summary>
 
 **3.10.1 — vedi quanto spende davvero ogni finestra AI, e a chi conviene dare il prossimo lavoro**
 
@@ -213,8 +218,6 @@ Installa da un checkout pulito, senza modifiche fuori dai commit, con una **nuov
 
 **Con /plugin.** In Claude Code esegui `/plugin marketplace update squadra`, poi `/plugin update squadra@squadra`, poi riavvia Claude Code. Per Codex esegui `codex plugin marketplace upgrade`, poi di nuovo `codex plugin add squadra@squadra`.
 
-**Se hai installato la 3.10.2 prima del pomeriggio del 17 ottobre 2026,** i miglioramenti elencati sotto la 3.10.2 nelle Novità, pubblicati con lo stesso numero di versione, arrivano in Claude Code solo reinstallando, perché `/plugin update` risponde che la 3.10.2 è già l'ultima: esegui `/plugin marketplace update squadra`, poi `/plugin uninstall squadra@squadra` e `/plugin install squadra@squadra`, poi riavvia Claude Code. Codex e l'installatore autonomo li ricevono con i passi soliti. Per controllare, chiedi alla finestra «Mostrami l'aiuto del comando `resource` di squadra»: l'aggiornamento elenca `--wait`.
-
 **Con l'installatore autonomo.** Dalla 3.6.1 in poi le versioni conservano la loro storia: esegui `git pull`, poi di nuovo l'installatore, con una nuova cartella di backup ogni volta. Un checkout della 3.6.0 o precedente richiede invece `git fetch origin` e `git reset --hard origin/main`, che cancella le modifiche locali di quel checkout.
 
 ```sh
@@ -225,6 +228,11 @@ squadra --version
 ```
 
 Ogni rilascio alza il numero di versione, tranne un aggiornamento dello stesso rilascio annunciato nelle Novità, come per la 3.10.2 il 17 ottobre 2026. I plugin installati dallo Store mantengono la loro versione finché `squadra plugin install <nome>` non viene rieseguito dalla nuova release ([Plugin inclusi nella release](#plugin-store)). Le finestre già aperte mantengono la versione letta finché non si riavviano, e una squadra al lavoro mantiene il suo protocollo finché non la cambi esplicitamente.
+
+**Aggiornare dalla 3.10.2 alla 3.10.3: il registro resta com'è.**
+- **Le finestre possono passare una alla volta.** Finestre 3.10.2 e 3.10.3 condividono lo stesso registro; niente viene convertito.
+- **Aggiorna prima il coordinatore.** La regola per cui rilegge l'altro modello vale per gli incarichi registrati da una finestra 3.10.3, e una finestra 3.10.2 non la controlla a `check` e `close`. Gli incarichi registrati prima dell'aggiornamento si chiudono come prima.
+- **Plugin dello Store:** esegui di nuovo `squadra plugin install <nome>`, come dopo ogni rilascio.
 
 **Aggiornare dalla 3.10.1 alla 3.10.2: il registro resta com'è.**
 - **Le finestre possono passare una alla volta.** Finestre 3.10.1 e 3.10.2 condividono lo stesso registro mentre le aggiorni; niente viene convertito.
@@ -244,7 +252,7 @@ La prima finestra che scrive su un registro precedente o spostato costruisce la 
 
 ### Regola 0: trovare le finestre e presentarsi
 
-La squadra parte da una finestra Claude: la prima finestra Claude che applica la skill diventa il coordinatore, trova ogni finestra Codex, Claude o Cursor del progetto e si presenta a ciascuna. Una finestra Codex chiamata per prima non coordina, perché dalla sua sandbox non riesce né a trovare né a raggiungere le finestre Claude: te lo dice, ti dà la frase da scrivere in una finestra Claude e aspetta come esecutore. Poi la finestra Claude si presenta a ogni finestra, compresa quella Codex. Se non hai una finestra Claude decidi tu, dopo che la finestra Codex ti ha detto che cosa non può fare. Un coordinatore già presente nello stesso registro, che risponde a un ping, mantiene il ruolo; un ping in attesa o scaduto non trasferisce mai la guida o le risorse. La regola completa è nella [skill](SKILL.md); i limiti del censimento e come entrare in una squadra sono in [avvio e presentazione](references/start.md#install-and-join-details), in inglese.
+La squadra parte da una finestra Claude: la prima finestra Claude che applica la skill diventa il coordinatore, trova ogni finestra Codex, Claude o Cursor del progetto e si presenta a ciascuna. Una finestra Codex chiamata per prima non coordina, perché dalla sua sandbox non riesce né a trovare né a raggiungere le finestre Claude: te lo dice, ti dà la frase da scrivere in una finestra Claude e aspetta come esecutore. Poi la finestra Claude si presenta a ogni finestra, compresa quella Codex. Se non hai una finestra Claude decidi tu, dopo che la finestra Codex ti ha detto che cosa non può fare. Un coordinatore già presente nello stesso registro, che risponde a un ping, mantiene il ruolo; un ping in attesa o scaduto non trasferisce mai la guida o le risorse. Con la presentazione, a ogni ripresa e quando una finestra entra o esce, il coordinatore ti dice come dividere il lavoro tra finestre Claude e Codex (la riga Composizione di `squadra status` e della dashboard): è solo un consiglio, non assegna nulla. La regola completa è nella [skill](SKILL.md); i limiti del censimento e come entrare in una squadra sono in [avvio e presentazione](references/start.md#install-and-join-details), in inglese.
 
 Poi crea un unico registro durevole, fuori dalle cartelle temporanee:
 
@@ -268,7 +276,7 @@ Usage e Balance misurano una finestra solo attraverso questo, e la coda di Codex
 <a id="rule-1"></a>
 ### Regola 1: lavoro in parallelo
 
-Il coordinatore affida subito lavoro indipendente a ogni finestra disponibile (Codex, Claude, Cursor interattivo), e nessuna finestra resta ferma mentre c'è lavoro: un costruttore per albero, letture su copie congelate, e la lettura finale di un rilascio fatta da un lettore Claude e da un lettore Codex nello stesso momento. Il coordinatore costruisce solo l'unione e il rilascio e affida le corsie ai costruttori, così resta attento alla posta e alle giunture. Il coordinatore legge la posta del registro a ogni passo, perché una finestra può ricevere lavoro direttamente dal proprietario e riferirlo solo lì.
+Il coordinatore affida subito lavoro indipendente a ogni finestra disponibile (Codex, Claude, Cursor interattivo), e nessuna finestra resta ferma mentre c'è lavoro: un costruttore per albero, letture su copie congelate, e la lettura finale di un rilascio fatta da un lettore Claude e da un lettore Codex nello stesso momento. Se scrive Codex rilegge Claude, e viceversa: conta la lettura dell'altro modello, una lettura dello stesso modello si aggiunge soltanto, e `task` rifiuta un lettore dello stesso modello di chi costruisce, a meno che tu non registri il motivo con `--same-client-reason`. Il coordinatore costruisce solo l'unione e il rilascio e affida le corsie ai costruttori, così resta attento alla posta e alle giunture. Il coordinatore legge la posta del registro a ogni passo, perché una finestra può ricevere lavoro direttamente dal proprietario e riferirlo solo lì.
 
 ### Regola 2: la tabella sempre visibile
 

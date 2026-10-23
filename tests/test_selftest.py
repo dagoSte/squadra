@@ -2,9 +2,11 @@
 import contextlib
 import io
 import json
+import os
 from pathlib import Path
 import shutil
 import signal
+import stat
 import subprocess
 import sys
 import tempfile
@@ -34,14 +36,21 @@ class Selftest(unittest.TestCase):
                     path = output / "parallel" / name
                     path.parent.mkdir(parents=True, exist_ok=True)
                     path.write_text(json.dumps(value))
-                self.assertNotEqual(options["env"]["HOME"], str(Path.home()))
-                self.assertEqual(Path(options["env"]["HOME"]).resolve(), (output / "home").resolve())
+                home = self.home = options["env"]["HOME"]
+                self.assertNotEqual(home, str(Path.home()))
+                # A private temp folder outside the output serves as HOME and TMPDIR (D-PROVE-TMP-PINS).
+                self.assertEqual(options["env"]["TMPDIR"], home)
+                self.assertLessEqual(len(home), 64)
+                self.assertFalse(Path(home).resolve().is_relative_to(output.resolve()))
+                self.assertEqual(stat.S_IMODE(os.stat(home).st_mode), 0o700)
                 return proc
 
             with patch.object(selftest.subprocess, "Popen", side_effect=launch), \
                     patch.object(selftest, "terminate") as terminate:
                 result = selftest.run(output, **kwargs)
             self.assertEqual(json.loads((output / "RESULT.json").read_text()), result)
+            self.assertEqual((result["temp"], result["temp_removed"]), (self.home, True))
+            self.assertFalse(os.path.lexists(self.home))
             timeout = kwargs.get("timeout", selftest.TIMEOUT_SECONDS)
             self.assertEqual(proc.wait.call_args_list[0], call(timeout=timeout))
             self.assertEqual(result["timeout_seconds"], timeout)

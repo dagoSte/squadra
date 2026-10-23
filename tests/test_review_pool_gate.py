@@ -28,7 +28,9 @@ class Pool(Fixture, unittest.TestCase):
         self.assertEqual(self.run_cli("task", "--id", "S", "--title", "Single", *common, "--reviewer", "R")[0], 0)
         self.assertEqual(self.registered("S")["reviewer"], "R")
         self.assertEqual(set(self.registered("S")), {"id", "title", "owner", "repo", "base", "scope", "proof",
-                                                     "expected", "full_gate", "depends", "reviewer", "requirements"})
+                                                     "expected", "full_gate", "depends", "reviewer", "requirements",
+                                                     "cross_client"})
+        self.assertIs(self.registered("S")["cross_client"], True)
         for size, members in ((2, ["R3", "R"]), (3, ["R2", "R", "R3"]), (4, ["R", "R2", "R3", "C"])):
             name = "P" + str(size)
             argv = [x for m in members for x in ("--reviewer", m)]

@@ -5,13 +5,98 @@ import json
 import os
 from pathlib import Path
 import re
+import shutil
 import signal
+import stat
 import subprocess
+import tempfile
 import time
 import uuid
 
 from registry import (Error, require, snapshot, now, atomic, canonical, run_lease, run_lease_paths,
                       shared_record, validate)
+
+# A measured process gets HOME and TMPDIR in a private folder outside the registry: Unix socket paths stop
+# near 104 bytes, and a folder others can write lets them swap what the process reads.
+TEMP_LIMIT = 64
+TEMP_PREFIX = "sq-"
+TEMP_FIX = "set SQUADRA_TMP to a short private folder, for example SQUADRA_TMP=/tmp"
+
+
+def _open_to_others(path):
+    """Whether others may write the folder: group- or other-writable, and not a root-owned sticky one like /tmp."""
+    info = os.stat(path)
+    return bool(info.st_mode & 0o022) and not (info.st_uid == 0 and info.st_mode & stat.S_ISVTX)
+
+
+def _temp_problem(path):
+    """Every reason a private temp folder at this path is refused, or None; the path need not exist yet."""
+    problems = []
+    if len(path) > TEMP_LIMIT:
+        problems.append(path + " is " + str(len(path)) + " characters, over " + str(TEMP_LIMIT))
+    if os.name != "nt":
+        parent = Path(path).parent
+        try:
+            real = Path(os.path.realpath(parent))
+            for folder in dict.fromkeys((parent, *parent.parents, real, *real.parents)):
+                if _open_to_others(folder):
+                    problems.append(path + " sits under " + str(folder) + ", which others can write")
+                    break
+        except OSError as exc:
+            problems.append(path + " cannot be checked (" + type(exc).__name__ + ": " + str(exc) + ")")
+    return "; ".join(problems) or None
+
+
+def temp_parent():
+    """The folder that receives a run's private temp folder: SQUADRA_TMP when set, else the system temp, else /tmp.
+
+    Refuses before anything starts, naming the path and the fix, when no candidate is short and safe."""
+    explicit = os.environ.get("SQUADRA_TMP")
+    candidates = [explicit] if explicit else dict.fromkeys((tempfile.gettempdir(), "/tmp"))
+    problems = []
+    for candidate in candidates:
+        parent = os.path.abspath(candidate)
+        problem = (_temp_problem(os.path.join(parent, TEMP_PREFIX + "XXXXXXXX")) if os.path.isdir(parent)
+                   else parent + " is not a folder")
+        if problem is None:
+            return parent
+        problems.append(problem)
+    raise Error("private_temp_refused: the run did not start; " + "; ".join(problems) +
+                ("" if explicit else " (from the system temp folder)") + ". Fix: " + TEMP_FIX)
+
+
+def private_temp(parent=None):
+    """Make a run's private temp folder (mode 0700) and return its path, refusing an unsafe or too-long one."""
+    folder = tempfile.mkdtemp(prefix=TEMP_PREFIX, dir=parent or temp_parent())
+    problem = _temp_problem(folder)
+    info = os.stat(folder)
+    if problem is None and os.name != "nt" and (stat.S_IMODE(info.st_mode) != 0o700 or info.st_uid != os.geteuid()):
+        problem = folder + " is not a private 0700 folder of this user"
+    if problem is not None:
+        os.rmdir(folder)
+        raise Error("private_temp_refused: the run did not start; " + problem + ". Fix: " + TEMP_FIX)
+    return folder
+
+
+def remove_temp(folder):
+    """Remove a run's private temp folder once its process group is gone; the result says whether it went."""
+    for attempt in (1, 2):
+        try:
+            shutil.rmtree(folder)
+            break
+        except FileNotFoundError:
+            break
+        except OSError as exc:
+            if attempt == 2:
+                return {"temp_removed": False, "temp_error": type(exc).__name__ + ": " + str(exc)}
+            # A test may leave read-only folders behind; the owner can always open its own.
+            for path, _, _ in os.walk(folder):
+                try:
+                    os.chmod(path, 0o700)
+                except OSError:
+                    pass
+    return {"temp_removed": True}
+
 
 REVIEW_SCHEMA = {"type": "object", "additionalProperties": False, "properties": {
     "verdict": {"type": "string", "enum": ["accepted", "changes-required", "blocked"]},
@@ -206,19 +291,26 @@ def _execute_owned(store, actor, task_id, argv, mode, prompt, timeout, gate, exe
     if shared is not None:
         record['shared_proof'] = shared
         validate(state, 'run.start', actor, record)
-    folder.mkdir(parents=True, mode=0o700, exist_ok=False)
-    if mode in {"read", "build"}:
-        (folder / "schema.json").write_text(json.dumps(REVIEW_SCHEMA))
-    _, _, lease_metadata, terminal_receipt = run_lease_paths(store.root, run_id)
-    atomic(lease_metadata, canonical({"run": run_id, "phase": "not-started", "pgid": None}).encode())
-    store.append("run.start", actor, record, "run-start:" + run_id)
-    store.publish()
+    # Model turns keep the caller's HOME, where the client keeps its sign-in.
+    temp = private_temp() if mode in {"proof", "probe"} else None
+    try:
+        if temp:
+            record["temp"] = temp
+        folder.mkdir(parents=True, mode=0o700, exist_ok=False)
+        if mode in {"read", "build"}:
+            (folder / "schema.json").write_text(json.dumps(REVIEW_SCHEMA))
+        _, _, lease_metadata, terminal_receipt = run_lease_paths(store.root, run_id)
+        atomic(lease_metadata, canonical({"run": run_id, "phase": "not-started", "pgid": None}).encode())
+        store.append("run.start", actor, record, "run-start:" + run_id)
+        store.publish()
+    except BaseException:
+        if temp:
+            remove_temp(temp)
+        raise
     result = {"id": run_id, "status": "failed", "native_rc": None, "started": now()}
     env = os.environ.copy()
-    if mode in {"proof", "probe"}:
-        home = folder / "home"; home.mkdir(mode=0o700)
-        tmp = folder / "tmp"; tmp.mkdir(mode=0o700)
-        env.update(HOME=str(home), TMPDIR=str(tmp), PYTHONDONTWRITEBYTECODE="1")
+    if temp:
+        env.update(HOME=temp, TMPDIR=temp, PYTHONDONTWRITEBYTECODE="1")
     proc = None
     start = time.monotonic()
     last_heartbeat = start
@@ -290,6 +382,8 @@ def _execute_owned(store, actor, task_id, argv, mode, prompt, timeout, gate, exe
             except Exception as exc:
                 result.update(status="cleanup-unknown", cleanup="not verified", error="Cleanup failed: " + str(exc))
             result["native_rc"] = proc.poll()
+        if temp:
+            result.update(remove_temp(temp))
         result["seconds"] = round(time.monotonic() - start, 3)
         result["ended"] = now()
         result["artifacts"] = []

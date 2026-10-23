@@ -243,7 +243,8 @@ class PanelJavaScript(unittest.TestCase):
         scope = write("scope.md", "Synthetic scope.\n")
         task = ["task", "--actor", "coord-zx", "--repo", str(repo), "--scope-file", scope]
         cli(*task, "--id", "TASK-KQ1", "--owner", "build-qv", "--reviewer", "read-wy", "--title", "Key service")
-        cli(*task, "--id", "TASK-KQ2", "--owner", "build-ht", "--reviewer", "read-wy", "--title", "<img src=x onerror=alert(1)> page")
+        cli(*task, "--id", "TASK-KQ2", "--owner", "build-ht", "--reviewer", "read-wy", "--title", "<img src=x onerror=alert(1)> page",
+            "--same-client-reason", "Synthetic page: one reader for both builders")
         cli(*task, "--id", "TASK-KQ3", "--owner", "build-qv", "--depends", "TASK-KQ2", "--title", "Guide")
         cli("brief", "--actor", "coord-zx", "--task", "TASK-KQ1", "--file", write("brief.md", "Servizio delle chiavi\nPerché: proteggere le chiavi.\n"))
         for seat, name in (("build-qv", "TASK-KQ1"), ("build-ht", "TASK-KQ2"), ("build-qv", "TASK-KQ3")):
@@ -302,7 +303,8 @@ class PanelJavaScript(unittest.TestCase):
         scope = write("scope.md", "Synthetic scope.\n")
         task = ["task", "--actor", "coord-cq", "--repo", str(repo), "--scope-file", scope]
         cli(*task, "--id", "TASK-LONG", "--owner", "build-bx", "--reviewer", "read-rx", "--title",
-            "Unione dei tre registri con la verifica delle prove, la lettura indipendente e il rilascio sul server condiviso della squadra")
+            "Unione dei tre registri con la verifica delle prove, la lettura indipendente e il rilascio sul server condiviso della squadra",
+            "--same-client-reason", "Synthetic cards: the Codex reader is busy")
         cli(*task, "--id", "TASK-OTHER", "--owner", "build-bx", "--title", "Grafo delle scelte")
         cli(*task, "--id", "TASK-THIRD", "--owner", "build-by", "--reviewer", "read-ry", "--title", "Guida per chi arriva")
         for seat, name in (("build-bx", "TASK-LONG"), ("build-bx", "TASK-OTHER"), ("build-by", "TASK-THIRD")):

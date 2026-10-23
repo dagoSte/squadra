@@ -9,7 +9,7 @@ import time
 import uuid
 
 from registry import atomic, digest, now, require
-from runtime import terminate
+from runtime import private_temp, remove_temp, temp_parent, terminate
 
 TIMEOUT_SECONDS = 1800
 GRACE_SECONDS = 30
@@ -46,25 +46,28 @@ def run(output=None, timeout=TIMEOUT_SECONDS):
     folder = Path(output).resolve() if output else Path.home() / ".local/state/squadra/selftests" / uuid.uuid4().hex
     require(timeout > 0, "Positive --timeout required")
     require(not folder.is_relative_to(source), "Selftest output must be outside the Squadra source")
+    parent = temp_parent()
     folder.mkdir(parents=True, mode=0o700, exist_ok=False)
     # The parallel runner fails a run whose executed tests differ from the collected ones.
     argv = [sys.executable, "-B", "tools/parallel_tests.py", "--timeout", str(timeout), "--output", str(folder / "parallel")]
     result = {"folder": str(folder), "argv": argv, "started": now(), "python": sys.version,
               "status": "failed", "native_rc": None, "timeout_seconds": timeout,
               "scope": "Synthetic toolkit checks; no live model or product gate"}
+    temp = result["temp"] = private_temp(parent)
     env = os.environ.copy()
-    for name in ["home", "tmp"]:
-        (folder / name).mkdir(mode=0o700)
-    env.update(HOME=str(folder / "home"), TMPDIR=str(folder / "tmp"), PYTHONDONTWRITEBYTECODE="1")
+    env.update(HOME=temp, TMPDIR=temp, PYTHONDONTWRITEBYTECODE="1")
     start = time.monotonic()
-    with (folder / "stdout.log").open("wb") as out, (folder / "stderr.log").open("wb") as err:
-        options = {"start_new_session": True} if os.name != "nt" else {"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP}
-        proc = subprocess.Popen(argv, cwd=source, env=env, stdout=out, stderr=err, **options)
-        try:
-            result["native_rc"] = proc.wait(timeout=timeout)
-        except (subprocess.TimeoutExpired, KeyboardInterrupt):
-            stop(proc)
-            result.update(status="interrupted", native_rc=proc.returncode)
+    try:
+        with (folder / "stdout.log").open("wb") as out, (folder / "stderr.log").open("wb") as err:
+            options = {"start_new_session": True} if os.name != "nt" else {"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP}
+            proc = subprocess.Popen(argv, cwd=source, env=env, stdout=out, stderr=err, **options)
+            try:
+                result["native_rc"] = proc.wait(timeout=timeout)
+            except (subprocess.TimeoutExpired, KeyboardInterrupt):
+                stop(proc)
+                result.update(status="interrupted", native_rc=proc.returncode)
+    finally:
+        result.update(remove_temp(temp))
     summary = counts(folder / "parallel")
     result.update(collected=summary.get("collected", 0), tests=summary.get("executed", 0))
     if (result["status"] != "interrupted" and result["native_rc"] == 0 and summary.get("passed") is True

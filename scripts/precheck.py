@@ -11,6 +11,7 @@ import time
 import uuid
 
 from registry import Error, atomic, canonical, digest, git, now, run_lease, run_lease_paths, snapshot
+from runtime import private_temp, remove_temp, temp_parent
 
 NAME = ".squadra-precheck.json"
 DECLARATION_BYTES = 16 * 1024
@@ -91,18 +92,17 @@ def _mark(source):
     return {"head": source["head"], "sha256": source["sha256"]}
 
 
-def _check(store, repo, folder, argv, timeout, deadline, before, *, lease_fd):
+def _check(store, repo, folder, argv, timeout, deadline, before, *, lease_fd, parent):
     """Run one check in its own process group; never raises an ordinary exception."""
     from runtime import terminate
     result = {"status": "failed", "native_rc": None, "started": now()}
     start = time.monotonic()
-    proc = None
+    proc = temp = None
     try:
         folder.mkdir(parents=True, mode=0o700, exist_ok=False)
-        home = folder / "home"; home.mkdir(mode=0o700)
-        tmp = folder / "tmp"; tmp.mkdir(mode=0o700)
+        temp = result["temp"] = private_temp(parent)
         env = os.environ.copy()
-        env.update(HOME=str(home), TMPDIR=str(tmp), PYTHONDONTWRITEBYTECODE="1")
+        env.update(HOME=temp, TMPDIR=temp, PYTHONDONTWRITEBYTECODE="1")
         options = {"start_new_session": True} if os.name != "nt" else {"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP}
         if os.name != "nt":
             options["pass_fds"] = (lease_fd,)
@@ -137,6 +137,8 @@ def _check(store, repo, folder, argv, timeout, deadline, before, *, lease_fd):
                 result.update(status="failed", error="cleanup not verified: " + str(exc))
             if result["native_rc"] is None:
                 result["native_rc"] = proc.poll()
+        if temp:
+            result.update(remove_temp(temp))
         result["seconds"] = round(time.monotonic() - start, 3)
         result["ended"] = now()
     try:
@@ -199,6 +201,8 @@ def run(store, actor, task, current=None):
     if task.get("contract"):
         bound["contract"] = task["contract"]
     declared = {"path": NAME, "sha256": row["sha256"]}
+    # An unsafe or too-long temp folder refuses before any run is recorded.
+    parent = temp_parent()
     runs = [{"id": uuid.uuid4().hex, "check": check} for check in spec["checks"]]
     for item in runs:
         item["folder"] = store.root / "runs" / item["id"]
@@ -224,7 +228,8 @@ def run(store, actor, task, current=None):
                                            "error": stop or "deadline reached before start; not started"}
                     continue
                 result = _check(store, repo, item["folder"], item["check"]["argv"],
-                                item["check"]["timeout_seconds"], deadline, before, lease_fd=item["lease_fd"])
+                                item["check"]["timeout_seconds"], deadline, before, lease_fd=item["lease_fd"],
+                                parent=parent)
                 if result.pop("changed", False):
                     stop = "not started: the source changed during an earlier check"
                 results[item["id"]] = result
