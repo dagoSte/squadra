@@ -116,7 +116,8 @@ refuses a reader of the owner's client and names both clients, unless
 available; `check` and `close` then need an accepted read of the current candidate from the
 other client, or that recorded reason. The rule binds tasks recorded by the 3.10.3 `task`
 command (they carry `cross_client`); tasks recorded earlier are never re-judged, and work by
-a manual or Cursor seat, whose model is not known, is not judged by it. Readers of different tasks
+a manual or Cursor seat, whose model is not known, is not judged by it. A task read at a release
+gate is judged on the gate's reader ([Read at the gate](#read-at-gate)). Readers of different tasks
 work at the same time and may run alongside construction on other trees.
 One builder per tree; reads on frozen copies, dependencies respected, shared
 gates/ports/databases still reserved. Do not wait for a single reader when another
@@ -283,12 +284,14 @@ HOME and TMPDIR in a private folder made for that run (`sq-` and eight character
 0700) in the system temporary folder, never under the registry: Unix socket paths stop near
 104 bytes, and a registry deep under a shared folder such as MAMP's `htdocs` gave paths of
 146 characters under folders others can write. `SQUADRA_TMP` chooses another parent folder.
-Before anything starts and before any run is recorded, a folder path over 64 characters, or
-one under a folder others can write that is not a root-owned sticky folder like `/tmp`, is
-refused with the path and the fix (`SQUADRA_TMP=<a short private folder>`). Logs, metadata
-and the lease stay in `<registry>/runs/<id>/`; the run record names the private folder and
-whether it was removed when the run ended, whatever its outcome. Claude and Codex turns keep
-the caller's HOME, where the client keeps its sign-in.
+Before anything starts and before any run is recorded, a folder path over 64 characters,
+one under a folder others can write that is not a root-owned sticky folder like `/tmp`, or
+one inside the registry, even through a link, is refused with the path and the fix
+(`SQUADRA_TMP=<a short private folder>`). Cleanup first reopens to its owner any folder the
+process left unreadable, and never follows a link. Logs, metadata and the lease stay in
+`<registry>/runs/<id>/`; the run record names the private folder and whether it was removed
+when the run ended, whatever its outcome. Claude and Codex turns keep the caller's HOME, where
+the client keeps its sign-in.
 
 ### One execution for the two final reads
 
@@ -855,8 +858,11 @@ while any outstanding read-at-gate task lacks the gate's current accepted code r
 covering it from a reader who is not its author (`gate_read_missing`), or while a path
 that task changed does not have its exact delivered bytes in the gate's candidate
 (`gate_bytes_missing`). The gate reader lists what the read covers with
-`--gate-covers`; a task that is not outstanding, or whose author is the reader, is
-refused (`gate_covers_invalid`). Equality is per whole file, including mode and
+`--gate-covers`; a task that is not outstanding, whose author is the reader or, under the
+cross-model rule, whose author's model is the reader's, is refused (`gate_covers_invalid`).
+Such a same-model gate read recorded anyway, for example by an older window, makes the gate's
+`check` and `close` refuse, naming the task (`cross_client_read_missing`): have the gate read
+by the other model, or defer the task. Equality is per whole file, including mode and
 deletion: a later change to the same file can keep the earlier task outstanding, and
 only a deferral then lets the gate close.
 

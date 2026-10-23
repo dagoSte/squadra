@@ -1133,11 +1133,29 @@ def validate_cross_client(state, d):
                 " is of another client")
 
 
-def cross_client_read(state, task, current):
-    """A task recorded under the cross-client rule closes only on an accepted current read from another client."""
+def cross_client_judged(state, task):
+    """The Claude or Codex clients that wrote a task the cross-client rule judges, or an empty set."""
     authors = {state["agents"][a]["client"] for a in task["authors"]}
-    if (not task.get("cross_client") or task.get("same_client_reason") is not None or read_at_gate(task)
-            or not authors <= set(MODEL_CLIENTS)):
+    if not task.get("cross_client") or task.get("same_client_reason") is not None or not authors <= set(MODEL_CLIENTS):
+        return set()
+    return authors
+
+
+def gate_same_client(state, task, reader):
+    """Why a release gate's reader cannot be the read that counts for a covered task, or None."""
+    authors, client = cross_client_judged(state, task), state["agents"][reader]["client"]
+    if client not in authors:
+        return None
+    return (task["id"] + " was written by " + "/".join(sorted(authors)) + " and the gate reader " + reader +
+            " is " + client + " too")
+
+
+def cross_client_read(state, task, current):
+    """A task recorded under the cross-client rule closes only on an accepted current read from another client.
+
+    A task read at a release gate is judged on the gate's reader instead (gate_same_client)."""
+    authors = cross_client_judged(state, task)
+    if not authors or read_at_gate(task):
         return
     readers = {state["agents"][r["reviewer"]]["client"] for r in task["reviews"]
                if r["stage"] == "code" and r["verdict"] == "accepted" and r["binding"] == (current or {}).get("sha256")}
@@ -1197,6 +1215,9 @@ def check_gate_covers(state, gate, actor, d):
                 "gate_covers_invalid: " + str(name) + ": not an outstanding read-at-gate task")
         require(reader not in {state["agents"][a]["identity"] for a in task["authors"]},
                 "gate_covers_invalid: " + name + ": the reader is its author")
+        same = gate_same_client(state, task, actor)
+        require(same is None, "gate_covers_invalid: " + str(same) + "; " + CROSS_CLIENT_RULE +
+                ". Have the gate read by another client, or defer the task with decision --defer-read")
 
 
 def check_deferral(state, d):
@@ -1218,24 +1239,28 @@ def gate_checks(state, gate, current):
     """Refuse a release gate while an outstanding read-at-gate task is neither covered nor deferred.
 
     Covered means: the gate's current accepted code read lists the task, from a reader who is
-    not its author, and every path the task changed has its exact delivered bytes in the gate.
+    not its author and, for a task under the cross-client rule, not of its author's client, and
+    every path the task changed has its exact delivered bytes in the gate.
     """
     read = last_code_read(gate)
     if read.get("verdict") != "accepted" or read.get("binding") != current["sha256"]:
         read = {}
     reader = state["agents"].get(read.get("reviewer"), {}).get("identity")
     rows = {r["path"]: r for r in current["files"] if r["kind"] != "deleted"}
-    unread, missing = [], []
+    unread, same, missing = [], [], []
     for task in state["tasks"].values():
         if not gate_pending(task) or gate_deferred(task, gate["id"]):
             continue
         if (task["id"] not in read.get("gate_covers", []) or reader is None or
                 reader in {state["agents"][a]["identity"] for a in task["authors"]}):
             unread.append(task["id"])
+        elif gate_same_client(state, task, read["reviewer"]):
+            same.append(gate_same_client(state, task, read["reviewer"]))
         delivered = {r["path"]: r for r in task["candidate"]["files"] if r["kind"] != "deleted"}
         missing += [task["id"] + " (" + c["path"] + ")" for c in task["delivery"]["light"]["changes"]
                     if delivered.get(c["path"]) != rows.get(c["path"])]
     problems = (["gate_read_missing: " + ", ".join(unread)] if unread else []) + (
+        ["cross_client_read_missing: " + "; ".join(same) + "; " + CROSS_CLIENT_RULE] if same else []) + (
         ["gate_bytes_missing: " + ", ".join(missing)] if missing else [])
     require(not problems, "; ".join(problems))
 

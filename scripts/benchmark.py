@@ -94,7 +94,7 @@ def run(manifest_path,destination,allow_models=False,budget_file=None,store=None
         require(allow_models and budget_file,'Real turns require --allow-models and an explicit owner budget file')
         budget=json.loads(Path(budget_file).read_text());require(budget.get('owner_words') and type(budget.get('max_turns')) is int and budget['max_turns']>=len(m['arms'])*len(m['cases'])*m['repeats'],'Insufficient owner-scoped turn budget')
     folder=Path(destination).resolve();require(not folder.exists(),'Benchmark output must be new')
-    parent=temp_parent() if m['mode']=='offline' else None
+    parent=temp_parent({'the benchmark output':folder}) if m['mode']=='offline' else None
     require(not any(Path(c['fixture']).resolve() in folder.parents for c in m['cases']),'Output outside fixtures')
     folder.mkdir(parents=True,mode=0o700);(folder/'manifest.json').write_bytes(body)
     result={'schema':1,'status':'running','manifest_sha256':digest(body),'oracle_sha256':m['oracle_sha256'],'mode':m['mode'],'started':now(),

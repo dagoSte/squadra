@@ -46,7 +46,7 @@ def run(output=None, timeout=TIMEOUT_SECONDS):
     folder = Path(output).resolve() if output else Path.home() / ".local/state/squadra/selftests" / uuid.uuid4().hex
     require(timeout > 0, "Positive --timeout required")
     require(not folder.is_relative_to(source), "Selftest output must be outside the Squadra source")
-    parent = temp_parent()
+    parent = temp_parent({"the selftest output": folder, "the Squadra source": source})
     folder.mkdir(parents=True, mode=0o700, exist_ok=False)
     # The parallel runner fails a run whose executed tests differ from the collected ones.
     argv = [sys.executable, "-B", "tools/parallel_tests.py", "--timeout", str(timeout), "--output", str(folder / "parallel")]

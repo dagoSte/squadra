@@ -78,9 +78,9 @@ class Fixture:
             "id": "assign-" + name, "to": "A", "task": name, "body": "Small change"}, None)])
         self.store.append("ack", "A", {"message": "assign-" + name})
 
-    def closed_at_gate(self, name="L1", path="README.md", text="Documented change\n"):
+    def closed_at_gate(self, name="L1", path="README.md", text="Documented change\n", **fields):
         """A read-at-gate task proved, delivered and closed without its own read, then committed."""
-        self.light_at_gate(name)
+        self.light_at_gate(name, **fields)
         (self.repo / path).parent.mkdir(parents=True, exist_ok=True)
         (self.repo / path).write_text(text)
         self.proved(name, covers=["R1"])

@@ -45,9 +45,9 @@ https://github.com/user-attachments/assets/69f512be-775c-40ae-95c2-e1e403b3f5d1
 <a id="news"></a>
 ## What's new
 
-**3.10.3 — proofs that run in any folder, and Claude and Codex read each other's work**
+**3.10.3 — a short private temporary folder for proofs, and Claude and Codex read each other's work**
 
-- **Proofs that run in any folder, refusals that name the files, and two models that check each other.** Proofs and quick checks run in a short private temporary folder, so a project kept under a shared folder such as MAMP's `htdocs` no longer fails on paths that are too long or that others can write; a refused read names the files that changed since delivery. Codex writes and Claude reads, Claude writes and Codex reads: a reader of the same model is refused unless you record why, and the coordinator tells you how to split your windows between the two models, for example that with 2 Claude windows and 1 Codex window the Codex window would read everything.
+- **A short private temporary folder for proofs, refusals that name the files, and two models that check each other.** Proofs and quick checks keep their temporary files in a short private folder outside the registry, so a project kept under a shared folder such as MAMP's `htdocs` no longer fails on temporary paths that are too long or that others can write; a refused read names the files that changed since delivery. Codex writes and Claude reads, Claude writes and Codex reads: a reader of the same model is refused unless you record why, and the coordinator tells you how to split your windows between the two models, for example that with 2 Claude windows and 1 Codex window the Codex window would read everything.
 - Plugins: memoranda 1.0.8, Playwright 1.0.9, Sentry 0.1.6.
 
 <details>

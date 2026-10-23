@@ -29,11 +29,19 @@ def _open_to_others(path):
     return bool(info.st_mode & 0o022) and not (info.st_uid == 0 and info.st_mode & stat.S_ISVTX)
 
 
-def _temp_problem(path):
-    """Every reason a private temp folder at this path is refused, or None; the path need not exist yet."""
+def _temp_problem(path, outside=None):
+    """Every reason a private temp folder at this path is refused, or None; the path need not exist yet.
+
+    outside maps a description to a folder the temp folder must not be in, such as the registry,
+    compared both as written and with every link resolved."""
     problems = []
     if len(path) > TEMP_LIMIT:
         problems.append(path + " is " + str(len(path)) + " characters, over " + str(TEMP_LIMIT))
+    for label, folder in (outside or {}).items():
+        mine, theirs = Path(os.path.abspath(path)), Path(os.path.abspath(folder))
+        if (mine.is_relative_to(theirs) or
+                Path(os.path.realpath(mine.parent)).is_relative_to(os.path.realpath(theirs))):
+            problems.append(path + " is inside " + label + " " + str(folder))
     if os.name != "nt":
         parent = Path(path).parent
         try:
@@ -47,16 +55,17 @@ def _temp_problem(path):
     return "; ".join(problems) or None
 
 
-def temp_parent():
+def temp_parent(outside=None):
     """The folder that receives a run's private temp folder: SQUADRA_TMP when set, else the system temp, else /tmp.
 
-    Refuses before anything starts, naming the path and the fix, when no candidate is short and safe."""
+    Refuses before anything starts, naming the path and the fix, when no candidate is short, safe and
+    outside the folders named in outside."""
     explicit = os.environ.get("SQUADRA_TMP")
     candidates = [explicit] if explicit else dict.fromkeys((tempfile.gettempdir(), "/tmp"))
     problems = []
     for candidate in candidates:
         parent = os.path.abspath(candidate)
-        problem = (_temp_problem(os.path.join(parent, TEMP_PREFIX + "XXXXXXXX")) if os.path.isdir(parent)
+        problem = (_temp_problem(os.path.join(parent, TEMP_PREFIX + "XXXXXXXX"), outside) if os.path.isdir(parent)
                    else parent + " is not a folder")
         if problem is None:
             return parent
@@ -65,10 +74,11 @@ def temp_parent():
                 ("" if explicit else " (from the system temp folder)") + ". Fix: " + TEMP_FIX)
 
 
-def private_temp(parent=None):
-    """Make a run's private temp folder (mode 0700) and return its path, refusing an unsafe or too-long one."""
-    folder = tempfile.mkdtemp(prefix=TEMP_PREFIX, dir=parent or temp_parent())
-    problem = _temp_problem(folder)
+def private_temp(parent=None, outside=None):
+    """Make a run's private temp folder (mode 0700) and return its path, refusing an unsafe or too-long one,
+    or one inside the folders named in outside; a parent from temp_parent(outside) was checked against them."""
+    folder = tempfile.mkdtemp(prefix=TEMP_PREFIX, dir=parent or temp_parent(outside))
+    problem = _temp_problem(folder, outside)
     info = os.stat(folder)
     if problem is None and os.name != "nt" and (stat.S_IMODE(info.st_mode) != 0o700 or info.st_uid != os.geteuid()):
         problem = folder + " is not a private 0700 folder of this user"
@@ -76,6 +86,20 @@ def private_temp(parent=None):
         os.rmdir(folder)
         raise Error("private_temp_refused: the run did not start; " + problem + ". Fix: " + TEMP_FIX)
     return folder
+
+
+def _open_for_owner(folder):
+    """Give each folder under folder back to its owner before it is listed; links are never followed."""
+    def reopen(path):
+        try:
+            if not os.path.islink(path):
+                os.chmod(path, 0o700)
+        except OSError:
+            pass
+    reopen(folder)
+    for path, folders, _ in os.walk(folder):
+        for name in folders:
+            reopen(os.path.join(path, name))
 
 
 def remove_temp(folder):
@@ -89,12 +113,8 @@ def remove_temp(folder):
         except OSError as exc:
             if attempt == 2:
                 return {"temp_removed": False, "temp_error": type(exc).__name__ + ": " + str(exc)}
-            # A test may leave read-only folders behind; the owner can always open its own.
-            for path, _, _ in os.walk(folder):
-                try:
-                    os.chmod(path, 0o700)
-                except OSError:
-                    pass
+            # A test may leave read-only or unreadable folders behind; the owner can always open its own.
+            _open_for_owner(folder)
     return {"temp_removed": True}
 
 
@@ -292,7 +312,7 @@ def _execute_owned(store, actor, task_id, argv, mode, prompt, timeout, gate, exe
         record['shared_proof'] = shared
         validate(state, 'run.start', actor, record)
     # Model turns keep the caller's HOME, where the client keeps its sign-in.
-    temp = private_temp() if mode in {"proof", "probe"} else None
+    temp = private_temp(outside={"the registry": store.root}) if mode in {"proof", "probe"} else None
     try:
         if temp:
             record["temp"] = temp

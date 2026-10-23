@@ -45,9 +45,9 @@ https://github.com/user-attachments/assets/d0a696da-9562-4a84-9eea-0fda7b8c75d1
 <a id="news"></a>
 ## Novità
 
-**3.10.3 — prove che girano in qualunque cartella, e Claude e Codex rileggono l'uno il lavoro dell'altro**
+**3.10.3 — una cartella temporanea privata e corta per le prove, e Claude e Codex rileggono l'uno il lavoro dell'altro**
 
-- **Prove che girano in qualunque cartella, rifiuti che nominano i file e due modelli che si controllano a vicenda.** Le prove e i controlli rapidi girano in una cartella temporanea privata e corta, così un progetto tenuto in una cartella condivisa come `htdocs` di MAMP non fallisce più per percorsi troppo lunghi o scrivibili da altri; una lettura rifiutata dice quali file sono cambiati dopo la consegna. Se scrive Codex rilegge Claude, e viceversa: un lettore dello stesso modello viene rifiutato, a meno che tu non registri il motivo, e il coordinatore ti dice come dividere le finestre tra i due modelli, per esempio che con 2 finestre Claude e 1 Codex la finestra Codex rileggerebbe tutto.
+- **Una cartella temporanea privata e corta per le prove, rifiuti che nominano i file e due modelli che si controllano a vicenda.** Le prove e i controlli rapidi tengono i file temporanei in una cartella privata e corta, fuori dal registro, così un progetto tenuto in una cartella condivisa come `htdocs` di MAMP non fallisce più per percorsi temporanei troppo lunghi o scrivibili da altri; una lettura rifiutata dice quali file sono cambiati dopo la consegna. Se scrive Codex rilegge Claude, e viceversa: un lettore dello stesso modello viene rifiutato, a meno che tu non registri il motivo, e il coordinatore ti dice come dividere le finestre tra i due modelli, per esempio che con 2 finestre Claude e 1 Codex la finestra Codex rileggerebbe tutto.
 - Plugin: memoranda 1.0.8, Playwright 1.0.9, Sentry 0.1.6.
 
 <details>

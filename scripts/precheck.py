@@ -201,8 +201,8 @@ def run(store, actor, task, current=None):
     if task.get("contract"):
         bound["contract"] = task["contract"]
     declared = {"path": NAME, "sha256": row["sha256"]}
-    # An unsafe or too-long temp folder refuses before any run is recorded.
-    parent = temp_parent()
+    # An unsafe, too-long or in-registry temp folder refuses before any run is recorded.
+    parent = temp_parent({"the registry": store.root})
     runs = [{"id": uuid.uuid4().hex, "check": check} for check in spec["checks"]]
     for item in runs:
         item["folder"] = store.root / "runs" / item["id"]

@@ -20,6 +20,16 @@ from registry import DRIFT_PATHS, Error, Store, snapshot
 from runtime import TEMP_LIMIT, execute
 from squadra import main
 
+# The child leaves folders nobody may list behind, one inside another, and inside them a link to a folder
+# outside, which the first removal attempt cannot reach.
+CLOSED = ("import os\n"
+          "tmp = os.environ['TMPDIR']\n"
+          "for name in ('closed', 'outer/inner'):\n"
+          "    os.makedirs(os.path.join(tmp, name)); open(os.path.join(tmp, name, 'f'), 'w').write('x')\n"
+          "os.symlink(os.environ['OUTSIDE'], os.path.join(tmp, 'outer', 'link'))\n"
+          "for name in ('closed', 'outer/inner', 'outer'):\n"
+          "    os.chmod(os.path.join(tmp, name), 0)\n")
+
 # The child reports what it was given, and leaves a read-only folder behind in its temp.
 REPORT = ("import json, os, stat\n"
           "home, tmp = os.environ['HOME'], os.environ['TMPDIR']\n"
@@ -46,8 +56,14 @@ class PrivateTemp(unittest.TestCase):
         # A registry deep under a folder its group can write, like MAMP's htdocs.
         self.shared = self.base / "shared"; self.shared.mkdir(); self.shared.chmod(0o775)
         self.deep = self.shared.joinpath(*["registry-folder-%02d" % n for n in range(6)], "record")
+        self.use_registry(self.deep)
+        self.environ = patch.dict(os.environ); self.environ.start(); self.addCleanup(self.environ.stop)
+        os.environ.pop("SQUADRA_TMP", None)
+
+    def use_registry(self, root):
+        """Move the synthetic squad and its task T to a new registry at root."""
         self.store.close()
-        self.root = self.deep
+        self.root = root
         self.store = Store(self.root, create=True); self.addCleanup(self.store.close)
         self.store.append("init", "system", {"name": "Synthetic team", "project": str(self.repo), "version": "2.0.0",
                           "limits": {"plan": 3, "code": 2, "build": 3}})
@@ -56,8 +72,6 @@ class PrivateTemp(unittest.TestCase):
             self.store.append("agent", name, {"id": name, "role": role, "identity": identity,
                               "client": client, "repo": str(self.repo), "skills": [], "session": ""})
         self.task(); self.ack()
-        self.environ = patch.dict(os.environ); self.environ.start(); self.addCleanup(self.environ.stop)
-        os.environ.pop("SQUADRA_TMP", None)
 
     def cli(self, *args):
         out, err = io.StringIO(), io.StringIO()
@@ -199,6 +213,50 @@ class PrivateTemp(unittest.TestCase):
             execute(self.store, "A", "T", argv=[sys.executable, "-c", "pass"])
         self.assertEqual(len(self.store.events()), events)
         self.assertEqual(list(long.iterdir()), [])
+
+    # PT1, PT2
+    def test_a_squadra_tmp_inside_the_registry_is_refused_even_through_a_link(self):
+        # A short private registry under /tmp, so that being inside it is the only reason.
+        short = Path(tempfile.mkdtemp(prefix="r", dir="/tmp")); self.addCleanup(shutil.rmtree, short)
+        self.use_registry(short / "reg")
+        alias = Path(tempfile.mkdtemp(prefix="k", dir="/tmp")); alias.rmdir()
+        alias.symlink_to(self.root, target_is_directory=True); self.addCleanup(alias.unlink)
+        marker = self.base / "ran"
+        for value in (str(self.root), str(alias)):
+            os.environ["SQUADRA_TMP"] = value
+            events = len(self.store.events())
+            with self.assertRaises(Error) as refused:
+                execute(self.store, "A", "T", argv=[sys.executable, "-c", "open(" + repr(str(marker)) + ", 'w')"])
+            self.assertEqual(str(refused.exception), "private_temp_refused: the run did not start; " + value +
+                             "/sq-XXXXXXXX is inside the registry " + str(self.store.root) + ". Fix: set SQUADRA_TMP to a "
+                             "short private folder, for example SQUADRA_TMP=/tmp")
+            self.assertEqual(len(self.store.events()), events)
+            self.assertEqual(list(self.root.glob("sq-*")), [])
+        self.assertFalse(marker.exists())
+        # The declared checks refuse the same placement before any check is recorded.
+        (self.repo / precheck.NAME).write_text(json.dumps({"schema": 1, "total_seconds": 20, "checks": [
+            {"name": "env", "argv": [sys.executable, "-c", "pass"], "timeout_seconds": 10}]}))
+        self.git("add", precheck.NAME); self.git("-c", "commit.gpgsign=false", "commit", "-qm", "declare checks")
+        os.environ.pop("SQUADRA_TMP")
+        self.assertEqual(self.cli("prove", "--actor", "A", "--task", "T", "--", sys.executable, "-c", "pass")[0], 0)
+        os.environ["SQUADRA_TMP"] = str(alias)
+        runs = self.store.state()["runs"]
+        with self.assertRaisesRegex(Error, "^private_temp_refused: .* is inside the registry "):
+            precheck.run(self.store, "A", self.store.state()["tasks"]["T"])
+        self.assertEqual(self.store.state()["runs"], runs)
+
+    # PT1, PT5
+    def test_cleanup_reopens_folders_nobody_may_list_and_never_follows_a_link(self):
+        outside = self.base / "outside"; outside.mkdir(); outside.chmod(0o500)
+        self.addCleanup(outside.chmod, 0o700)
+        os.environ["OUTSIDE"] = str(outside)
+        result = execute(self.store, "A", "T", argv=[sys.executable, "-c", CLOSED])
+        run = self.store.state()["runs"][result["id"]]
+        self.assertEqual((run["status"], run["native_rc"], run["temp_removed"]), ("passed", 0, True),
+                         run.get("temp_error"))
+        self.assertNotIn("temp_error", run)
+        self.assertFalse(os.path.lexists(run["temp"]))
+        self.assertEqual(stat.S_IMODE(outside.stat().st_mode), 0o500, "the link's target keeps its mode")
 
     # PT2
     def test_a_safe_short_squadra_tmp_is_used(self):

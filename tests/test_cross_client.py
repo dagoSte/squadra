@@ -1,6 +1,7 @@
 """Codex writes and Claude reads, Claude writes and Codex reads: the read that counts comes from the other model."""
 import sys
 import unittest
+from unittest.mock import patch
 
 from test_review_pool_gate_refusals import Fixture  # first: its support import puts scripts/ on the path
 from registry import Error
@@ -126,6 +127,54 @@ class CrossClient(Fixture, unittest.TestCase):
                              ({"cross_client": True, "reviewer": "R2", "owner": "B"}, "same_client_reader")):
             with self.assertRaisesRegex(Error, code):
                 self.full_task("F", **fields)
+
+    # PT6: light work read at a release gate takes the gate's reader as the read that counts.
+    def test_a_gate_reader_of_the_authors_client_cannot_cover_new_light_work(self):
+        self.closed_at_gate("L", cross_client=True)  # written by A (Codex) under the rule
+        self.gate_delivered("G", reviewer="X")  # the gate's own Claude -> Codex read is fine
+        before = len(self.store.events())
+        with self.assertRaisesRegex(Error, "^gate_covers_invalid: L was written by codex and the gate reader X is "
+                                           "codex too; the read that counts comes from another client"):
+            self.gate_read("G", reviewer="X", covers=["L"])
+        self.assertEqual(len(self.store.events()), before)
+        self.gate_read("G", reviewer="X")
+        rc, err = self.run_cli("close", "--actor", "C", "--task", "G")
+        self.assertIn("gate_read_missing: L", err)
+        # A deferral still lets the gate close; a Claude-read gate then covers L.
+        self.assertEqual(self.run_cli("decision", "--actor", "C", "--defer-read", "L", "--gate", "G",
+                                      "--reason", "Codex-only gate; the next gate is read by Claude")[0], 0)
+        self.assertEqual(self.run_cli("close", "--actor", "C", "--task", "G")[0], 0)
+        self.assertNotIn("gate_read", self.store.state()["tasks"]["L"])
+        self.gate_delivered("G2")
+        self.gate_read("G2", covers=["L"])
+        self.assertEqual(self.run_cli("close", "--actor", "C", "--task", "G2")[0], 0)
+        read = self.store.state()["tasks"]["L"]["gate_read"]
+        self.assertEqual((read["gate"], read["reviewer"]), ("G2", "R"))
+
+    # PT6
+    def test_check_and_close_refuse_a_same_client_gate_read_that_reached_the_record(self):
+        self.closed_at_gate("L", cross_client=True)
+        self.gate_delivered("G", reviewer="X")
+        with patch("registry.gate_same_client", return_value=None):  # as a writer without the rule records it
+            self.gate_read("G", reviewer="X", covers=["L"])
+        for command in ("check", "close"):
+            rc, err = self.run_cli(command, "--actor", "C", "--task", "G")
+            self.assertEqual(rc, 1, command)
+            self.assertIn("cross_client_read_missing: L was written by codex and the gate reader X is codex too; the "
+                          "read that counts comes from another client", err)
+        with self.assertRaisesRegex(Error, "^cross_client_read_missing: L "):
+            self.store.append("close", "C", {"task": "G"})
+        self.assertEqual(self.store.state()["tasks"]["G"]["status"], "reviewed")
+
+    # PT6
+    def test_older_and_reasoned_light_work_keeps_its_gate_read(self):
+        self.closed_at_gate("OLD")  # recorded before the upgrade: no marker
+        self.closed_at_gate("WHY", path="docs/why.md", cross_client=True, same_client_reason="Only Codex is open")
+        self.gate_delivered("G", reviewer="X")
+        self.gate_read("G", reviewer="X", covers=["OLD", "WHY"])
+        self.assertEqual(self.run_cli("close", "--actor", "C", "--task", "G")[0], 0)
+        self.assertEqual({t: self.store.state()["tasks"][t]["gate_read"]["reviewer"] for t in ("OLD", "WHY")},
+                         {"OLD": "X", "WHY": "X"})
 
 
 if __name__ == "__main__":
