@@ -49,7 +49,8 @@ class ShortOutput(unittest.TestCase):
         self.assertEqual(text.count('- ack ·'), 5)
 
     def test_full_status_keeps_every_previous_line(self):
-        expected = registry.table(self.store.state(), read_at=self.at, events=self.store.events())
+        # status shows the composition advice (D-STATUS-PIN); every other line stays as it was.
+        expected = registry.table(self.store.state(), read_at=self.at, events=self.store.events(), advice=True)
         self.assertEqual(self.cli('status', '--all'), expected + '\n')
         self.assertIn('- ack · INFO-29 ·', expected)
         self.assertEqual(expected.count('- ack ·'), 38)

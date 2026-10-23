@@ -4,6 +4,7 @@ import io
 import json
 import os
 from pathlib import Path
+import shutil
 import stat
 import sys
 import tempfile
@@ -188,7 +189,9 @@ class PrivateTemp(unittest.TestCase):
 
     # PT2, PT5
     def test_a_too_long_squadra_tmp_is_refused_with_its_length(self):
-        long = self.base / ("l" * 60); long.mkdir(mode=0o700)
+        # Under /tmp, so that length is the only reason wherever the suite runs.
+        short = Path(tempfile.mkdtemp(prefix="q", dir="/tmp")); self.addCleanup(shutil.rmtree, short)
+        long = short / ("l" * 60); long.mkdir(mode=0o700)
         os.environ["SQUADRA_TMP"] = str(long)
         events = len(self.store.events())
         with self.assertRaisesRegex(Error, r"private_temp_refused: the run did not start; .*sq-XXXXXXXX is \d+ "
