@@ -645,8 +645,8 @@
     },
     {
       "label": "squadra 3.10.3",
-      "registry_py_sha256": "66e67bd7176711cf5382b4cc054d48f2811ee41c242bc17efaba275831e63219",
-      "source_commit": "74382e145ec5276e3147c71e168d6c2c5c3dbebc",
+      "registry_py_sha256": "2506ef98103eb5b3a654e2a0b68dffbfa406295823d0722208c524d04f9409e5",
+      "source_commit": "10fd823a2ab14a1896dde8ebea0c24956240bc3c",
       "kinds": [
         "ack",
         "agent",
