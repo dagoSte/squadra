@@ -165,6 +165,33 @@ class PrivateTemp(unittest.TestCase):
             self.assertFalse(os.path.lexists(turn["temp"]))
             self.assertFalse((Path(turn["folder"]) / "home").exists())
 
+    # PT1, PT2
+    def test_an_offline_benchmark_for_a_registry_refuses_a_temp_inside_it(self):
+        # A short private registry under /tmp, so that being inside it is the only reason.
+        short = Path(tempfile.mkdtemp(prefix="r", dir="/tmp")); self.addCleanup(shutil.rmtree, short)
+        self.use_registry(short / "reg")
+        alias = Path(tempfile.mkdtemp(prefix="k", dir="/tmp")); alias.rmdir()
+        alias.symlink_to(self.root, target_is_directory=True); self.addCleanup(alias.unlink)
+        manifest = Path(benchmark.example(self.base / "example")["manifest"])
+        value = json.loads(manifest.read_text()); value["arms"] = value["arms"][:1]; value["cases"] = value["cases"][-1:]
+        manifest.write_text(json.dumps(value))
+        for place in (str(self.root), str(alias)):
+            os.environ["SQUADRA_TMP"] = place
+            output = self.base / ("bench-" + Path(place).name)
+            with self.assertRaises(Error) as refused:
+                benchmark.run(manifest, output, store=self.store)
+            self.assertEqual(str(refused.exception), "private_temp_refused: the run did not start; " + place +
+                             "/sq-XXXXXXXX is inside the registry " + str(self.store.root) + ". Fix: set SQUADRA_TMP to a "
+                             "short private folder, for example SQUADRA_TMP=/tmp")
+            self.assertFalse(output.exists(), "refused before any turn")
+            self.assertEqual(list(self.root.glob("sq-*")), [])
+        # A short private folder outside the registry is still a valid override.
+        mine = Path(tempfile.mkdtemp(prefix="q", dir="/tmp")); self.addCleanup(os.rmdir, mine)
+        os.environ["SQUADRA_TMP"] = str(mine)
+        result = benchmark.run(manifest, self.base / "bench-outside", store=self.store)
+        self.assertEqual(result["status"], "completed")
+        self.assertEqual([(Path(t["temp"]).parent, t["temp_removed"]) for t in result["turns"]], [(mine, True)])
+
     # PT2, PT5
     def test_an_unsafe_squadra_tmp_is_refused_before_anything_is_recorded(self):
         marker = self.base / "ran"
