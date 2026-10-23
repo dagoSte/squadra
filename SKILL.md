@@ -57,7 +57,8 @@ run by any CLI command.
   windows counted, the coordinator's left out, the source named). One client only: open a
   window of the other model. An imbalance such as 2 Claude + 1 Codex: the lone Codex window
   reads everything, so give it a build lane or open another Codex window. Balanced: pair
-  each builder with a reader of the other model. It is advice: it assigns and refuses nothing.
+  each builder with a reader of the other model, in the final block the planned reader of
+  its delta. It is advice: it assigns and refuses nothing.
 - While coordinating, use `ping --all` and forward the messages; the recipient's ACK
   is the answer. `settings` configures `alive` (default 300 seconds). Time is computed
   at read time. `ping --sweep`, run by the coordinator, records stand-by for expired
@@ -92,7 +93,8 @@ while there is independent work to give it.
   to it. `task --reviewer` refuses a reader of a Claude or Codex owner's own client and
   names both, unless `--same-client-reason` records why; `check` and `close` need an
   accepted current read from the other client or that reason. Tasks recorded before
-  3.10.3, and manual or Cursor authors, are not judged by it.
+  3.10.4, and manual or Cursor authors, are not judged by it. A final-read task whose
+  reader shares its owner's model names its paired read of the other model in that reason.
 - The coordinator builds only the integration and the release. Lanes go to the
   builders, chosen with `squadra balance`, so the coordinator keeps its context for mail,
   routing and seams. When no other builder is available, the coordinator may build a
@@ -137,10 +139,11 @@ declared but not recorded is written as such.
   fixes, coordinator commits and merge resolutions, with the readers for each delta.
   Freeze the integration as `<milestone>-rcN`; a Claude reader and a Codex reader
   together cover every delta and the seams, split by author so neither reads its own
-  work. One fix round follows on branches from that candidate, then one re-read block
-  covers only the fix deltas, again by non-authors. The read tasks supersede the lanes
-  and fixes they cover; proof, handoff ACKs, independence and spent budgets remain.
-  Only grave findings block. Record unresolved non-grave findings in one deferral
+  work; for each delta the read by the other model than its author is the one that
+  counts (Rule 1). One fix round follows on branches from that candidate, then one
+  re-read block covers only the fix deltas, again by non-authors. The read tasks
+  supersede the lanes and fixes they cover; proof, handoff ACKs, independence and
+  spent budgets remain. Only grave findings block. Record unresolved non-grave findings in one deferral
   decision; at the next milestone's kickoff create each carry-over task with its
   owner, acceptance check and source finding. Runtime/native proofs must bind the
   exact release-head sources. A coordinator may delegate its non-author read to a

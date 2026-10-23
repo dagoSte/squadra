@@ -628,7 +628,7 @@ def dispatch(a, store):
             task["contract"] = contract(task)
         if a.supersedes is not None:
             task["supersedes"] = a.supersedes
-        # Tasks recorded from 3.10.3 on carry the cross-client rule; older tasks are never re-judged.
+        # Tasks recorded from 3.10.4 on carry the cross-client rule; older tasks are never re-judged.
         task["cross_client"] = True
         if a.same_client_reason is not None:
             task["same_client_reason"] = a.same_client_reason
