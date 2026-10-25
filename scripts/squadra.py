@@ -480,7 +480,7 @@ def parser():
     a = sub.add_parser("resource"); a.add_argument("action", choices=["acquire", "release", "status"])
     a.add_argument("--actor"); a.add_argument("--name", required=True); a.add_argument("--reason")
     a.add_argument('--task', help='Open task owning this reservation or wait')
-    a.add_argument("--wait", type=float, help="Acquire only: wait in FIFO order up to SECONDS (0 joins without sleeping)", metavar="SECONDS")
+    a.add_argument("--wait", type=float, help="Acquire only: wait in FIFO order up to SECONDS (0 tries the resource once, allowing up to 250 ms per queue mutex lock)", metavar="SECONDS")
     for command in ["pause", "resume", "decision"]:
         a = sub.add_parser(command); a.add_argument("--actor", required=True); a.add_argument("--reason", required=True)
         if command == "decision":

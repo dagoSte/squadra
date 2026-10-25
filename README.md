@@ -791,6 +791,12 @@ The coordinator may declare `task --route light` for a bounded, reversible chang
 
 </details>
 
+Frozen candidates and quarantines are read-only. Before deleting an owned retired
+registry, checkpoint or quarantine, run `chmod -R u+w /path/to/retired-tree`, then
+remove that tree. Prefer recorded `candidate retire` for a closed source cache;
+manual deletion of an active cache degrades candidate integrity. See
+[recovery cleanup](references/recovery.md#removing-read-only-copies).
+
 <a id="commands"></a>
 ## Squadra commands
 

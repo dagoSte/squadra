@@ -793,6 +793,13 @@ Il coordinatore può dichiarare `task --route light` per una modifica delimitata
 
 </details>
 
+Le copie congelate e le quarantene sono in sola lettura. Prima di eliminare un
+registro ritirato, checkpoint o quarantena di tua proprieta, esegui
+`chmod -R u+w /percorso/albero-ritirato`, poi elimina quell'albero. Per una copia
+chiusa preferisci `candidate retire`, che registra il ritiro; cancellare una copia
+attiva degrada l'integrita del candidato. Vedi la
+[pulizia nel recupero](references/recovery.md#removing-read-only-copies).
+
 <a id="commands"></a>
 ## Comandi di squadra
 

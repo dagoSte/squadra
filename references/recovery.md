@@ -454,3 +454,24 @@ Every screenshot exists in both languages:
 - **A pause** blocks new work, reviews, runs and deliveries and keeps consultation and recovery, while a checkpoint alone pauses nothing. Stop only the processes you own; resume only on the owner's word, after reconciling processes and state. Other squads are never migrated or resumed.
 
 Always write through the CLI, never into the generated files. `export` regenerates complete state, event and mail/history projections; `status` and `inbox` read current work and messages without rewriting those exports. `doctor` checks the complete chain and artifacts and reports pending ACKs or uncertain runs; the [verification table](#registry-verification) distinguishes this from ordinary reads. Integrity is not proof that claims are true, nor cryptographic authentication of identities. `legacy --actor coord --path /old/packet` imports records as **historical, unverified copies**, never touching the originals, creating tasks or ACKs, or granting acceptance.
+
+
+<a id="removing-read-only-copies"></a>
+
+## Removing read-only copies
+
+Frozen candidate repositories and quarantined damage have read-only files and
+directories. Ordinary recursive removal can therefore fail for both a registry
+and a checkpoint. After confirming the tree is retired and belongs to you, restore
+owner write permissions before removing it:
+
+```text
+chmod -R u+w /path/to/retired-registry-or-checkpoint-or-quarantine
+```
+
+Then remove only that tree. Do not change permissions or remove a source still
+needed by an active task. Use the recorded `candidate retire` operation for a
+closed/superseded healthy source cache. Quarantine is retained evidence; archive
+what is needed before manual deletion. This recipe also applies to throwaway
+synthetic test registries and checkpoints. It does not record a retention event;
+manual removal of an active candidate is reported as missing by doctor/checkpoint.

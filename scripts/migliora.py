@@ -158,7 +158,7 @@ def commit(repo, rule_id, expected_sha, base_head):
         raise Error('Git index is busy; retry after its writer finishes') from exc
     os.close(fd)
     try:
-        with tempfile.TemporaryDirectory(prefix='squadra-rule-index-') as folder:
+        with tempfile.TemporaryDirectory(prefix='squadra-rule-index-', dir=index.parent) as folder:
             private = Path(folder) / 'index'
             env = os.environ | {'GIT_INDEX_FILE': str(private)}
             def run(*args):
@@ -167,18 +167,21 @@ def commit(repo, rule_id, expected_sha, base_head):
                 return result.stdout
             run('read-tree', base_head)
             run('add', '--', 'AGENTS.md')
-            done = run_process(['git', 'commit', '-m', 'Improve development workflow: ' + rule_id],
-                               repo, env, COMMIT_SECONDS)
+            mismatch = []
+            done = subprocess.CompletedProcess([], None, b'', b'')
+            done.timed_out = False
+            try:
+                done = run_process(['git', 'commit', '-m', 'Improve development workflow: ' + rule_id],
+                                   repo, env, COMMIT_SECONDS)
+            except Exception as exc:
+                mismatch.append('Commit execution error: ' + str(exc))
             actual = git(repo, 'rev-parse', 'HEAD').decode().strip()
             changed = actual != base_head
-            files = git(repo, 'diff', '--name-only', '-z', base_head, actual).decode().split('\0')[:-1] if changed else []
-            mismatch = []
-            if changed:
-                instruction = subprocess.run(['git', 'show', 'HEAD:AGENTS.md'], cwd=repo, capture_output=True)
-                if (files != ['AGENTS.md'] or git(repo, 'rev-parse', 'HEAD^').decode().strip() != base_head or
-                        instruction.returncode != 0 or digest(instruction.stdout) != expected_sha):
-                    mismatch.append('Git committed unexpected files, bytes or base')
-                # The real index remains locked and untouched by hooks. Preserve preexisting staged entries.
+            files = []
+            index_reconciled = not changed
+
+            def reconcile_index():
+                # Hooks used a private index; preserve real entries that were already staged.
                 if index.exists():
                     shutil.copyfile(index, private)
                 else:
@@ -192,15 +195,41 @@ def commit(repo, rule_id, expected_sha, base_head):
                         clean = entry.split(b'\t')[0].split()[:2] == before.split(b'\t')[0].split()[::2]
                     if clean:
                         run('reset', '-q', actual, '--', name)
-                os.replace(private, index)
-                target = Path(repo) / 'AGENTS.md'
-                if not target.is_file() or target.is_symlink() or digest(target.read_bytes()) != expected_sha:
-                    mismatch.append('Working instruction changed during commit')
+                try:
+                    os.replace(private, index)
+                except OSError as exc:
+                    # Both paths are beside the real index. Retain the error even if rename recovers.
+                    mismatch.append('Index replacement recovered with same-filesystem rename: ' + str(exc))
+                    os.rename(private, index)
+
+            if changed:
+                try:
+                    files = git(repo, 'diff', '--name-only', '-z', base_head, actual).decode().split('\0')[:-1]
+                    reconcile_index()
+                    index_reconciled = True
+                    instruction = subprocess.run(['git', 'show', 'HEAD:AGENTS.md'], cwd=repo, capture_output=True)
+                    if (files != ['AGENTS.md'] or git(repo, 'rev-parse', 'HEAD^').decode().strip() != base_head or
+                            instruction.returncode != 0 or digest(instruction.stdout) != expected_sha):
+                        mismatch.append('Git committed unexpected files, bytes or base')
+                    target = Path(repo) / 'AGENTS.md'
+                    if not target.is_file() or target.is_symlink() or digest(target.read_bytes()) != expected_sha:
+                        mismatch.append('Working instruction changed during commit')
+                except Exception as exc:
+                    mismatch.append('Post-commit error: ' + str(exc))
+                    if not index_reconciled:
+                        try:
+                            files = git(repo, 'diff', '--name-only', '-z', base_head, actual).decode().split('\0')[:-1]
+                            reconcile_index()
+                            index_reconciled = True
+                        except Exception as recovery:
+                            mismatch.append('Index recovery failed: ' + str(recovery))
             status = 'reconcile' if mismatch or (changed and (done.timed_out or done.returncode != 0)) else (
                      'committed' if changed else 'timeout' if done.timed_out else 'refused')
             return {'commit': actual if changed else None, 'files': files, 'committed': changed,
                     'applied': status == 'committed', 'status': status, 'mismatch': mismatch,
-                    'native_rc': done.returncode, 'stdout_bytes': done.stdout, 'stderr_bytes': done.stderr}
+                    'index_reconciled': index_reconciled, 'native_rc': done.returncode,
+                    'stdout_bytes': done.stdout, 'stderr_bytes': done.stderr}
+
     finally:
         lock.unlink(missing_ok=True)
 
@@ -229,6 +258,8 @@ def finish(store, actor, task_id, path):
                     if o.get('task') == task_id and o.get('migliora', {}).get('rule') == rule['id']), None)
     require(pending is not None, 'No prepared migliora rule')
     if pending.get('committed'):
+        require(pending.get('applied') is True, 'Migliora commit needs reconciliation; actual commit ' +
+                str(pending.get('commit')) + '; inspect the recorded mismatch before continuing')
         return {**pending, 'already_committed': True}
     require(pending.get('sha256') and pending.get('base_head') and
             pending.get('check', {}).get('status') == 'passed', 'No successfully checked instruction to commit')

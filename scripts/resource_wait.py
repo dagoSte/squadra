@@ -14,6 +14,7 @@ import uuid
 from registry import Store, Error, require
 
 POLL_SECONDS = 0.2
+ZERO_WAIT_MUTEX_SECONDS = 0.25
 RESERVED = 'Resource already reserved; expiry is not release'
 QUEUE_BUSY = 'Resource queue mutex busy; wait deadline expired'
 TICKET = re.compile(r'[0-9]{20}-[0-9a-f]{32}\.ticket\Z')
@@ -129,7 +130,7 @@ def queue_lock(fd, deadline):
             break
         except BlockingIOError:
             require(time.monotonic() < deadline, QUEUE_BUSY)
-            time.sleep(min(POLL_SECONDS, max(0, deadline - time.monotonic())))
+            time.sleep(min(0.005, max(0, deadline - time.monotonic())))
     try:
         yield
     finally:
@@ -141,6 +142,8 @@ def acquire(store, actor, name, reason, seconds, *, task=None):
     require(math.isfinite(seconds) and seconds >= 0, '--wait requires finite nonnegative seconds')
     import fcntl
     deadline = time.monotonic() + seconds
+    def mutex_deadline():
+        return time.monotonic() + ZERO_WAIT_MUTEX_SECONDS if seconds == 0 else deadline
     store.release_views()
     initial = resource_state(store.root, name, actor, task)
     holder = initial['holder']
@@ -151,7 +154,7 @@ def acquire(store, actor, name, reason, seconds, *, task=None):
     with queue_folder(store.root, name) as folder:
         try:
             mutex = queue_file(folder, 'mutex')
-            with queue_lock(mutex, deadline):
+            with queue_lock(mutex, mutex_deadline()):
                 live = live_tickets(folder)
                 number = int(live[-1].split('-', 1)[0]) + 1 if live else 1
                 require(number < 10**20, 'Resource queue exhausted')
@@ -171,7 +174,7 @@ def acquire(store, actor, name, reason, seconds, *, task=None):
             first = seconds == 0
             while first or time.monotonic() < deadline:
                 first = False
-                with queue_lock(mutex, deadline):
+                with queue_lock(mutex, mutex_deadline()):
                     live = live_tickets(folder)
                     if live and live[0] == ticket and resource_state(store.root, name, actor, task)['holder'] is None:
                         previous_timeout = store.db.execute('PRAGMA busy_timeout').fetchone()[0]

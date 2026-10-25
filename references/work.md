@@ -1142,9 +1142,13 @@ squadra standby --actor coord --agent builder --resume --reason "Availability co
 waits up to one hour, in arrival order among callers using `--wait`. The command
 prints the holder and initial queue position once, polls every 0.2 seconds without
 journal or projection writes, and reserves only after an actual release. A timeout
-records one refusal; a dead waiter does not block the line. `--wait 0` joins the
-line without sleeping, and a holder (including an alias of its identity) refuses
-immediately. Without `--wait`, immediate acquisition/refusal is unchanged; older
+records one refusal; a dead waiter does not block the line. `--wait 0` tries the
+resource once without waiting for a holder or passing earlier waiters. Its queue
+bookkeeping tolerates up to 250 ms per mutex acquisition (two acquisitions), so
+a brief concurrent `resource status` does not cause an immediate refusal. Positive
+waits retain their single total deadline. A caller already holding the resource
+(including an alias of its identity) refuses immediately. Without `--wait`, immediate
+acquisition/refusal is unchanged; older
 or immediate callers do not join the line and may win a reservation race.
 
 Waiting requires POSIX locks and a private queue for one OS user: 0700 directories
