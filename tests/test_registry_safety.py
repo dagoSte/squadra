@@ -97,27 +97,32 @@ class RegistrySafety(unittest.TestCase):
         self.assertEqual(rc, 1)
         self.assertEqual(self.inventory(root), before)
 
-    def test_committed_message_survives_table_failure_without_diagnostic(self):
+    def test_committed_message_returns_receipt_without_rendering_table_or_diagnostic(self):
         before = len(self.store.events())
-        with patch.object(squadra, 'table', side_effect=RuntimeError('synthetic render failure')):
+        with patch.object(squadra, 'table', side_effect=RuntimeError('synthetic render failure')) as render:
             rc, out, err = self.send()
+        render.assert_not_called()
         self.assertEqual(rc, 0, err)
         events = self.store.events()[before:]
         self.assertEqual([e['kind'] for e in events], ['message'])
         first, _ = json.JSONDecoder().raw_decode(out)
         self.assertEqual(first['id'], events[0]['data']['id'])
-        original_result = {'id': first['id'], 'to': 'R', 'body': 'Private synthetic message\n', 'reply_to': None}
+        original_result = {'id': first['id'], 'to': 'R', 'saved': True, 'ack_required': True}
         self.assertTrue(out.startswith(json.dumps(original_result, ensure_ascii=False, indent=2) + '\n'))
+        self.assertEqual(events[0]['data']['body'], 'Private synthetic message\n')
         self.assertIn('committed', err.lower())
-        self.assertIn('do not retry', err.lower())
+        self.assertNotIn('do not retry', err.lower())
 
     def test_committed_message_survives_publication_failure(self):
         before = len(self.store.events())
         with patch.object(Store, 'publish', side_effect=OSError('synthetic projection failure')):
             rc, out, err = self.send()
         self.assertEqual(rc, 0, err)
-        self.assertEqual([e['kind'] for e in self.store.events()[before:]], ['message'])
-        self.assertIn('Private synthetic message', out)
+        events = self.store.events()[before:]
+        self.assertEqual([e['kind'] for e in events], ['message'])
+        self.assertEqual(events[0]['data']['body'], 'Private synthetic message\n')
+        self.assertEqual(json.loads(out)['id'], events[0]['data']['id'])
+        self.assertTrue(json.loads(out)['saved'])
         self.assertIn('committed', err.lower())
 
     def test_committed_start_survives_ancillary_forecast_failure(self):
