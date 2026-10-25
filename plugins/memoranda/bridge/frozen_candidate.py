@@ -8,7 +8,7 @@ import shutil
 import subprocess
 import tempfile
 
-from registry import Error, canonical, digest, git, require, snapshot
+from registry import Error, canonical, digest, git, git_probe, require, snapshot
 
 
 def repository(task, root):
@@ -154,8 +154,7 @@ def retain_base(store, task, repo):
     if task.get('route') != 'light':
         return
     base = task['base']
-    if subprocess.run(['git', '-C', str(repo), 'cat-file', '-e', base + '^{tree}'],
-                      capture_output=True, timeout=30).returncode == 0:
+    if git_probe('-C', str(repo), 'cat-file', '-e', base + '^{tree}').returncode == 0:
         return
     extra = 2 * tree_bytes(task['repo'], [base]) + 16 * 1024 * 1024
     max_copy, max_total = limits(store)
