@@ -231,8 +231,7 @@ an accepted review does not grant a new authorization to publish.
    with `--message ID` and the whole history with `--all`.
    Every window without a native queue, including every Claude window and the
    coordinator, arms `inbox --follow` for all its agent names on joining/resuming
-   (include `coord` for the coordinator). Re-arm on expiry with `--since` and the
-   highest event on a complete consumed line; an empty resumed watch stays quiet.
+   (include `coord` for the coordinator). Re-arm on expiry with the same recipients and the automatic saved cursor; use `--since` only for an explicit replay. On restart a pending row lists mail still needing ACK; it does not trigger `--until-first`.
    Use Claude Code Monitor, a background command with `--until-first` (no 30-minute
    limit; it wakes the window when mail arrives), or an actively watched background
    process, as shown in
@@ -445,7 +444,8 @@ reconcile before proceeding: do not claim a save that did not succeed.
 
 ## Built-in skills: errata, rasoio and migliora
 
-These activate at their documented moments within the authorized project scope.
+These activate by themselves at their documented moments within the authorized
+project scope; follow the guides without asking again for work already authorized.
 Errata and rasoio retain their activation events; migliora records applied remedies
 and commits in task outputs, while its inspections are computed on demand.
 

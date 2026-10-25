@@ -215,7 +215,9 @@ class Workflow(unittest.TestCase):
         self.delivered()
         for verdict in ["changes-required", "accepted"]:
             self.assertEqual(self.cli("review", "--actor", "R", "--task", "T", "--verdict", verdict, "--report", str(self.report)), 0)
+        self.report.write_text("A distinct third review must still stop at the original budget.\n")
         self.assertEqual(self.cli("review", "--actor", "R", "--task", "T", "--verdict", "accepted", "--report", str(self.report)), 1)
+        self.assertEqual(self.store.state()["tasks"]["T"]["rounds"]["code"], 2)
 
     def test_changed_plan_invalidates_approval(self):
         self.assertEqual(self.cli("plan", "--actor", "C", "--task", "T", "--file", str(self.scope)), 0)

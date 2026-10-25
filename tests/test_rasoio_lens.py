@@ -101,8 +101,8 @@ class Guides(unittest.TestCase):
 
     def test_skill_says_when_the_built_in_skills_activate(self):
         skill = (ROOT / "SKILL.md").read_text()
-        self.assertIn("## Built-in skills: errata and rasoio", skill)
-        section = skill.split("## Built-in skills: errata and rasoio", 1)[1].split("\n## ", 1)[0]
+        self.assertIn("## Built-in skills: errata, rasoio and migliora", skill)
+        section = skill.split("## Built-in skills: errata, rasoio and migliora", 1)[1].split("\n## ", 1)[0]
         for needed in ("by themselves", "without asking", "`brief --task` and `start`", "lesson.recall",
                        "`squadra lesson`", "lesson --ineffective", "review --lens rasoio --net-lines N",
                        "never\n  changes a verdict"):

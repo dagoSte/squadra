@@ -184,6 +184,9 @@ def save(store, destination, repos=None, includes=None, temporary=False, declare
                 report = {"event_count": len(events), "event_head": events[-1]["hash"] if events else '0'*64}
             finally: check.close()
         scrubbed = report.pop("scrubbed", None)
+        candidates = report.pop("candidates", None)
+        if candidates is not None:
+            manifest["candidates"] = candidates
         manifest["registry"] = report
         if scrubbed:
             manifest["scrubbed"] = scrubbed

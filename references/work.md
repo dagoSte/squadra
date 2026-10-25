@@ -549,7 +549,7 @@ squadra --root /shared/registry inbox --agent claude-build --agent claude-review
 
 Use `--cursor-file PATH` to choose a private cursor file, `--since EVENT` to override
 its starting point or `--no-cursor` to track the cursor manually. The saved cursor
-binds the registry path, recipients and the event hash. A foreign or changed history
+binds the registry path, recipients and the event hash. A foreign cursor or mismatched recorded hash anchor
 is refused. Each batch is saved only after its output was flushed; interruption
 before that point may repeat a message. No cursor proves consumption or an ACK.
 
@@ -557,7 +557,7 @@ On the first run, pending mail is shown oldest first, at most ten in the first
 batch with a `more` line for the remainder. The saved position never skips mail
 that was not printed; subsequent polls or a restarted follower drain that remainder.
 On resume it prints new matching mail, including messages sent between watches.
-An empty resumed watch stays quiet. Message lines carry `kind: "message"`, creation
+On restart a `pending` row lists the count and IDs still needing ACK, including previously printed mail. This row does not wake `--until-first`; only a new message does. Message lines carry `kind: "message"`, creation
 `event`, sender, recipient, task, ID, `info`, `ack_needed`, a bounded preview and the
 root-bound `ack_command`. Read full content with `inbox --agent NAME --message ID`,
 then explicitly ACK when required.
@@ -566,7 +566,8 @@ The follower polls every two seconds, releases views before sleeping and verifie
 new events from its last hash anchor. It has no periodic output ticks. SIGINT,
 SIGTERM and a timeout exit 0; a registry/cursor error exits nonzero without a journal
 diagnostic. `--since` and `--timeout` require `--follow`; `--all` and `--message`
-do not apply to it. A stopped follower is not proof of an empty mailbox: Monitor or
+do not apply to it. A stopped follower is not proof of an empty mailbox; status cannot tell whether it
+is still running: Monitor or
 an actively watched background process must wake the window, which re-arms after
 restart or compaction. Redirection alone does not wake an agent. Stop only your own
 processes. The follower saves no ACKs or transport receipts.
@@ -1230,8 +1231,9 @@ Reassignment preserves the delivery, native proofs and spent budgets and replace
 only its reader/packet. The new reader ACKs its exact handoff. A live or uncertain
 native reader must be reconciled first. Previous handoffs leave the pending queue;
 old readers cannot record a verdict. A recorded verdict needs an explicit review
-amendment, never a transfer that silently replaces it. Identical verdict retries
-return their receipt without another round; `review --amend RECEIPT` explicitly
+amendment, never a transfer that silently replaces it. New-policy verdict retries
+return their receipt without another round; legacy CLI reviews retain their record
+shape and stable event IDs prevent repeated submissions. For new-policy tasks, `review --amend RECEIPT` explicitly
 amends the current verdict within the original budget.
 
 Resource status shows reservations and locked FIFO tickets, never inferred process
@@ -1245,3 +1247,44 @@ append an instruction in `AGENTS.md`, check it and create a local pathspec commi
 with `--defer-commit` and a later explicit `migliora commit` when a required review
 must happen between them. It preserves other staged work and native hooks. It never
 publishes, pushes or approves project memory proposals.
+
+
+## Frozen source storage and recovery
+
+Each new delivery retains the working-tree bytes plus Git objects reachable from only
+its commit (shallow depth 1), without ignored dependencies or older history. Default
+limits are 512 MiB per copy and 2 GiB total, including damaged copies and staging.
+A conservative estimate is checked before fetching and actual bytes before sealing;
+concurrent deliveries share a storage lock. A checkpoint can require up to one
+additional total quota. Save packages also retain their separately documented repository bundles.
+
+`squadra candidate status` reports retained bytes and per-delivery availability.
+`doctor` reports journal integrity separately from `candidate_integrity`; a damaged
+or missing source cache degrades the latter. Checkpoint/save/export preserve the
+journal and artifacts even when a source cache is unavailable; the checkpoint report
+and save manifest list omitted copies. Their historical proof is not a restored source.
+Review and close still refuse unavailable or changed candidates, naming task, SHA and paths.
+
+All mutations below require the coordinator and a recorded `--reason`:
+
+```text
+squadra candidate repair --actor COORD --task TASK --reason "Recover reader pollution"
+squadra candidate retire --actor COORD --task CLOSED_TASK --reason "Retention after closure"
+squadra candidate limits --actor COORD --max-copy-mib 1024 --max-total-mib 4096 --reason "Larger project"
+```
+
+Repair requires the original checkout to match the exact proved snapshot; it preserves
+the damaged folder as `candidates/damaged-*` and rematerializes in read-only mode.
+If those original bytes are gone, restore them or create a newly proved delivery.
+Retirement requires every task referencing the source to be closed or superseded.
+It records removal, preserves the journal/proofs, and makes doctor/checkpoint agree on
+`retired`. No cache is silently collected. Quarantine remains evidence and counts toward
+quota; archive the registry if that evidence fills storage. Quotas may be explicitly
+raised (up to 100 GiB total) before delivering a larger project. A successful repair
+receipt contains `phase: completed`; an interrupted attempt may retain only `phase: started`.
+
+Delivery and close notes remain in the journal/state and delivery packet; the compact
+`stato.md` table does not display the closure note. Read the task state for its full text.
+Claude plugin paths are explicit (`./` and `./migliora`), following the
+[official manifest contract](https://code.claude.com/docs/en/plugins-reference#fields).
+Manifest guards verify both paths; client discovery is a separate integration check.

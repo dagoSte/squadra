@@ -36,8 +36,9 @@ class Follower:
 
     The first poll reads a verified view. A later poll on a changed head decodes only the events
     after the last verified head, whose hash anchors their chain, and opens a view only for named mail."""
-    def __init__(self, store, agents, since=None):
+    def __init__(self, store, agents, since=None, *, pending_on_start=False):
         self.store, self.agents = store, tuple(dict.fromkeys(agents))
+        self.pending_on_start = pending_on_start
         self.since, self.cursor, self.head = since, since or 0, None
         self.first, self.printed, self.anchor = True, False, None
 
@@ -72,6 +73,11 @@ class Follower:
                         if m['to'] in self.agents and orders[key] > self.cursor]
             keys = sorted(keys, key=lambda key: orders[key])
             rows = []
+            if self.first and not backlog and self.pending_on_start:
+                pending = [k for k, m in state['messages'].items() if m['to'] in self.agents and
+                           m.get('info') is not True and m.get('ack') is None and not m.get('replaced_by')]
+                rows.append({'kind': 'pending', 'event': self.cursor, 'count': len(pending),
+                             'ids': pending, 'text': f'{len(pending)} messages still wait for your ACK'})
             if backlog:
                 rows.append({'kind': 'pending', 'event': 0, 'count': len(keys),
                              'text': f'{len(keys)} messages wait for your ACK'})
@@ -82,7 +88,7 @@ class Follower:
                 inbox = command(self.store.root, self.agents)
                 rows.append({'kind': 'more', 'event': rows[-1]['event'], 'count': rest,
                              'inbox_command': inbox, 'text': f'{rest} more: {inbox}'})
-            if backlog or keys:
+            if backlog or keys or (self.first and self.pending_on_start):
                 rows.append({'kind': 'cursor', 'event': end})
             return tip, end, rows, self.anchor_at(end)
         finally:
@@ -163,9 +169,11 @@ def follow(root, agents, timeout=None, since=None, *, until_first=False, cursor_
     try:
         store = Store(root, read_only=True)
         path = Path(cursor_file).absolute() if cursor_file else cursor_path(root, agents)
+        resumed = False
         if persist and since is None:
             since = load_cursor(path, store, agents)
-        follower = Follower(store, agents, since)
+            resumed = since is not None
+        follower = Follower(store, agents, since, pending_on_start=resumed)
         while True:
             if deadline is not None and time.monotonic() >= deadline:
                 break

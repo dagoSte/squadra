@@ -798,7 +798,7 @@ Il coordinatore può dichiarare `task --route light` per una modifica delimitata
 
 Non serve scrivere questi comandi: **il modo consigliato è chiedere alla finestra in parole semplici**, come nella colonna *Oppure chiedi* e nei [prompt di esempio](#prompts); il comando lo esegue la finestra. I comandi sono quello che eseguono le finestre, e quello che puoi scrivere tu per controllare.
 
-Ogni comando, raggruppato per scopo: **53 sottocomandi**, più `--version`. Usa `squadra <comando> --help` per le opzioni; i comandi del registro accettano `--root` o `SQUADRA_ROOT`. «Solo il coordinatore» segna ciò che solo il coordinatore può registrare: `task`, `route`, `supersede`, `reassign`, `brief`, `close`, `ask`, `decision`, `settings`, `pause`, `resume`, `save`, `standby`, `ping --all`, `ping --sweep`, e la ricevuta che `restore-check` scrive nel registro vivo. Senza installare, gli stessi comandi girano come `python3 -B scripts/squadra.py <comando>`.
+Ogni comando, raggruppato per scopo: **54 sottocomandi**, più `--version`. Usa `squadra <comando> --help` per le opzioni; i comandi del registro accettano `--root` o `SQUADRA_ROOT`. «Solo il coordinatore» segna ciò che solo il coordinatore può registrare: `task`, `route`, `supersede`, `reassign`, `brief`, `close`, `ask`, `decision`, `settings`, `pause`, `resume`, `save`, `standby`, `ping --all`, `ping --sweep`, e la ricevuta che `restore-check` scrive nel registro vivo. Senza installare, gli stessi comandi girano come `python3 -B scripts/squadra.py <comando>`.
 
 <details>
 <summary><strong>Tutti i 53 comandi con i loro prompt, raggruppati per scopo</strong></summary>
@@ -822,18 +822,19 @@ Ogni comando, raggruppato per scopo: **53 sottocomandi**, più `--version`. Usa 
 | `task` | Solo il coordinatore: assegna un incarico: responsabile, lettore, checkout, perimetro, prova, requisiti, dipendenze; `--supersedes` sostituisce un incarico aperto. | Al coordinatore: «Affida "Servizio di rotazione delle chiavi" alla finestra costruttrice, con la finestra revisora come lettore indipendente e l'intera suite di test come prova.» |
 | `route` | Solo coordinatore: promuove con `--full`, conservando base/storia/budget; nuove prova e lettura. | Al coordinatore: «T3 non è più una piccola modifica: passalo al percorso completo.» |
 | `supersede` | Solo il coordinatore: registra dopo che un incarico esistente e più recente sostituisce uno aperto, con lo stesso effetto di `--supersedes`. | Al coordinatore: «T7 sostituisce T5: registralo, conservando la storia di T5.» |
-| `reassign` | Solo il coordinatore: cambia il lettore sulla stessa consegna, conservando prove e budget; serve un nuovo ACK. | «Affida la stessa consegna a un altro lettore libero.» |
+| `reassign` | Solo il coordinatore: cambia il lettore sulla stessa consegna, conservando prove e budget; serve un nuovo ACK. `--same-client-reason` motiva il passaggio allo stesso client; passando a un altro client la vecchia motivazione viene tolta. | «Affida la stessa consegna a un altro lettore libero.» |
 | `brief` | Solo il coordinatore: descrive in parole semplici il progetto (`brief --project`) o un incarico (`brief --task ID`), da un file UTF-8 di al massimo 8192 byte. | Al coordinatore: «Scrivi in parole semplici il briefing di T1: perché esiste, per chi è e quando sarà finito.» |
 | `plan` | Registra un piano prima della costruzione, da far leggere a un non autore. | «Scrivi il piano di T1 e fallo leggere a un non autore prima di costruire.» |
 | `start` | Segna che un incarico confermato è in costruzione. | «Conferma l'incarico e comincia a costruirlo.» |
-| `resource` | Riserva o rilascia un gate, una porta o un database condivisi (`acquire`, `release`). | «Prima di lanciare il gate riserva il database di test, e rilascialo quando hai finito.» |
+| `candidate` | Esamina copie congelate (`status`); il coordinatore registra recupero (`repair`), ritiro di copie chiuse (`retire`) o quote MiB (`limits`). | “Mostra lo spazio, recupera la consegna esatta o ritira una copia chiusa.” |
+| `resource` | Riserva o rilascia un gate, una porta o un database condivisi (`acquire`, `release`, `status` in sola lettura con titolare e coda). | «Prima di lanciare il gate riserva il database di test, e rilascialo quando hai finito.» |
 
 ### Messaggi
 
 | Comando | Cosa fa | Oppure chiedi |
 |---|---|---|
 | `send` | Scrive un messaggio a una finestra, eventualmente su un incarico o in risposta a un altro; `--info` indica un avviso che non chiede ACK (non con `--to-new`). | «Scrivi al costruttore che le vecchie chiavi devono restare leggibili per un mese.» |
-| `inbox` | Legge i messaggi che aspettano ancora il tuo ACK e gli ultimi 10 (`--all` li mostra tutti, `--message ID` ne apre uno per intero); `--follow [--since SEQ]` segue in sola lettura i nomi indicati con più `--agent` e riprende senza ripetere i messaggi precedenti; `--until-first` esce al primo messaggio, per un comando in background che risveglia la sua finestra. | «Leggi i tuoi messaggi; tieni d'occhio la posta di tutti i nomi di questa finestra, occupati dei nuovi messaggi e riavvia l'ascolto dall'ultimo cursore quando scade.» |
+| `inbox` | Legge i messaggi che aspettano ancora il tuo ACK e gli ultimi 10 (`--all` li mostra tutti, `--message ID` ne apre uno per intero); `--follow [--since SEQ]` segue in sola lettura i nomi indicati con più `--agent` e segnala le ACK ancora attese e riprende senza ripetere i messaggi precedenti; `--until-first` esce al primo messaggio, per un comando in background che risveglia la sua finestra. | «Leggi i tuoi messaggi; tieni d'occhio la posta di tutti i nomi di questa finestra, occupati dei nuovi messaggi e riavvia l'ascolto dall'ultimo cursore quando scade.» |
 | `ack` | Conferma un messaggio ricevuto davvero; può farlo solo il destinatario. | «Conferma i messaggi che hai letto davvero.» |
 | `transport` | Consegna un messaggio a mano o tramite la coda di Codex (per un posto registrato con `--session`), e ne registra l'esito. | «Il revisore non ha visto il mio messaggio: prepara la consegna manuale e registra che l'inoltro è ancora da fare.» |
 

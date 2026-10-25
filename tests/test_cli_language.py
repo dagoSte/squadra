@@ -159,9 +159,11 @@ class Language(unittest.TestCase):
         for name, lines in EXPECTED[lang].items():
             for line in lines:
                 self.assertIn(line, views[name], (lang, name))
-        for write in ("pause", "ask", "send"):
+        for write in ("pause", "ask"):
             for line in ECHO[lang]:
                 self.assertIn(line, views[write], (lang, write))
+        receipt = json.JSONDecoder().raw_decode(views['send'])[0]
+        self.assertEqual(receipt, {'id': 'M1', 'to': 'A', 'saved': True, 'ack_required': True})
         self.assertTrue(views["status"].startswith(views["board"].rstrip() + "\n"))
         for line in PROJECTION[lang]:
             self.assertIn(line, views["projection"], lang)

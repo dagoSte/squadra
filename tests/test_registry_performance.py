@@ -172,7 +172,7 @@ class RegistryPerformance(unittest.TestCase):
 
     def test_an_ordinary_write_shares_attention_with_its_printed_summary(self):
         with patch.object(registry, 'attention', wraps=registry.attention) as calls:
-            rc, out, err = self.cli('send', '--actor', 'C', '--to', 'A', '--body-file', str(self.report))
+            rc, out, err = self.cli('resource', 'acquire', '--actor', 'C', '--name', 'synthetic-summary', '--reason', 'Verify the shared summary')
             self.assertEqual(rc, 0, err)
             self.assertEqual(calls.call_count, 1)
         self.assertIn('Prossimo passo', out)

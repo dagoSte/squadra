@@ -9,7 +9,7 @@ import unittest
 from unittest.mock import patch
 
 import test_board as support
-from registry import Store, attention
+from registry import Store, Error, attention, canonical, digest
 from squadra import main
 
 
@@ -36,6 +36,7 @@ class Improvements(unittest.TestCase):
         (self.repo / 'value.txt').write_text('Next task\n')
         self.review()
         self.cli('check', '--actor', 'C', '--task', 'T')
+        (frozen / 'value.txt').chmod(0o644)  # Explicitly simulate external damage to the read-only cache.
         (frozen / 'value.txt').write_text('Tampered\n')
         self.assertIn('Frozen candidate', self.refuse('close', '--actor', 'C', '--task', 'T'))
 
@@ -138,6 +139,40 @@ class Improvements(unittest.TestCase):
         self.task(); self.start(); self.deliver()
         self.assertIn('reviewer', self.refuse('reassign', '--actor', 'C', '--task', 'T', '--reviewer', 'A', '--reason', 'Invalid'))
 
+    def test_store_transfer_cannot_remove_the_approved_plan(self):
+        from source_manifests import transform_packet
+        self.task(); self.start()
+        self.cli('plan', '--actor', 'A', '--task', 'T', '--file', str(self.plan))
+        self.review(stage='plan'); self.deliver()
+        store = Store(self.root)
+        try:
+            old = store.task('T')['delivery']
+            packet = transform_packet(old['packet_data'], store.resolve_snapshot)
+            packet.update(plan=None, reviewer='Other', reassignment={
+                'previous': old['handoff'], 'previous_pool': [], 'reason': 'Reader occupied'})
+            packet.pop('pool', None)
+            packet = transform_packet(packet, store.compact_snapshot)
+            handoff = 'review-' + digest(canonical(packet).encode())
+            artifact = store.artifact_bytes((canonical(packet) + '\n').encode(), 'packet.json', 'synthetic transfer')
+            data = {'task': 'T', 'reviewer': 'Other', 'reason': 'Reader occupied', 'previous': old['handoff'],
+                    'previous_pool': [], 'packet_data': packet, 'packet': artifact, 'handoff': handoff}
+            before = store.view()['event_count']
+            with self.assertRaisesRegex(Error, 'complete delivery contract'):
+                store.append('reassign', 'C', data)
+            self.assertEqual(store.view()['event_count'], before)
+        finally:
+            store.close()
+
+    def test_store_new_delivery_requires_its_frozen_source(self):
+        self.task(); self.start(); self.deliver()
+        store = Store(self.root)
+        try:
+            data = dict(store.task('T')['delivery']); data.pop('frozen')
+            with self.assertRaisesRegex(Error, 'Frozen delivery required'):
+                store.append('deliver', 'A', data)
+        finally:
+            store.close()
+
     def test_send_is_short_and_resource_status_does_not_write(self):
         text = self.base / 'mail.txt'; text.write_text('A short notice')
         out = self.cli('send', '--actor', 'C', '--to', 'R', '--body-file', str(text))
@@ -151,6 +186,17 @@ class Improvements(unittest.TestCase):
         self.cli('resource', 'acquire', '--actor', 'A', '--name', 'port', '--reason', 'Other work', '--task', 'OtherTask')
         self.cli('supersede', '--actor', 'C', '--task', 'Old', '--by', 'New', '--reason', 'Replacement')
         self.assertIn('port', self.state()['resources'])
+
+    def test_task_reservation_by_another_actor_still_blocks_supersession(self):
+        self.task('Old'); self.task('New')
+        self.cli('resource', 'acquire', '--actor', 'R', '--name', 'port', '--reason', 'Old read', '--task', 'Old')
+        self.assertIn('reservation', self.refuse('supersede', '--actor', 'C', '--task', 'Old', '--by', 'New', '--reason', 'Replacement'))
+        self.assertIn('port', self.state()['resources'])
+
+    def test_waiting_resource_acquisition_accepts_task_scope(self):
+        self.task(); self.start()
+        self.cli('resource', 'acquire', '--actor', 'A', '--name', 'cpu-heavy', '--reason', 'Scoped proof', '--wait', '0', '--task', 'T')
+        self.assertEqual(self.state()['resources']['cpu-heavy']['task'], 'T')
 
     def test_cursor_survives_restart_without_acknowledging_mail(self):
         body = self.base / 'mail.txt'; body.write_text('First')
@@ -171,6 +217,7 @@ class Improvements(unittest.TestCase):
         store = Store(self.root)
         try:
             with queue_folder(self.root, 'cpu-heavy') as folder:
+                os.close(queue_file(folder, 'mutex'))  # Production queue creates its mutex before any ticket.
                 name = '00000000000000000001-' + 'a' * 32 + '.ticket'
                 fd = queue_file(folder, name, exclusive=True)
                 try:
@@ -220,6 +267,8 @@ class Improvements(unittest.TestCase):
         head = self.state()['tasks']['T']['base']
         self.assertIn('check failed', self.refuse('migliora', 'apply', '--actor', 'A', '--task', 'T', '--rule-file', str(rule)))
         self.assertFalse((self.repo / 'AGENTS.md').exists())
+        check = self.state()['outputs'][-1]['migliora']['check']
+        self.assertEqual((check['status'], check['native_rc']), ('failed', 3))
         import subprocess
         self.assertEqual(subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=self.repo).decode().strip(), head)
 
@@ -241,6 +290,29 @@ class Improvements(unittest.TestCase):
         hook.write_text('#!/bin/sh\nexit 0\n')
         self.cli('migliora', 'commit', '--actor', 'A', '--task', 'T', '--rule-file', str(rule))
         self.assertTrue(self.state()['outputs'][-1]['migliora']['committed'])
+
+    def test_migliora_timeout_is_recorded_and_descendants_are_stopped(self):
+        import time
+        marker = self.base / 'descendant-finished'
+        child = 'import time; from pathlib import Path; time.sleep(5); Path(' + repr(str(marker)) + ').write_text("unexpected")'
+        parent = 'import subprocess,sys,time; subprocess.Popen([sys.executable,"-c",' + repr(child) + ']); time.sleep(20)'
+        rule = self.rule([sys.executable, '-c', parent])
+        started = time.monotonic()
+        self.assertIn('timeout', self.refuse('migliora', 'apply', '--actor', 'A', '--task', 'T', '--rule-file', str(rule), '--timeout', '1'))
+        self.assertLess(time.monotonic() - started, 10)
+        self.assertFalse((self.repo / 'AGENTS.md').exists())
+        self.assertEqual(self.state()['outputs'][-1]['migliora']['check']['status'], 'timeout')
+        time.sleep(5)
+        self.assertFalse(marker.exists(), 'the owned descendant cannot continue after timeout')
+
+    def test_migliora_commit_timeout_retains_the_prepared_rule_without_retry(self):
+        rule = self.rule()
+        hook = self.repo / '.git/hooks/pre-commit'
+        hook.write_text('#!/bin/sh\nsleep 20\n'); hook.chmod(0o755)
+        with patch('migliora.COMMIT_SECONDS', 1):
+            self.assertIn('timed out', self.refuse('migliora', 'apply', '--actor', 'A', '--task', 'T', '--rule-file', str(rule)))
+        self.assertTrue((self.repo / 'AGENTS.md').is_file())
+        self.assertFalse(self.state()['outputs'][-1]['migliora']['committed'])
 
 
 if __name__ == '__main__':

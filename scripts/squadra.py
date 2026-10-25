@@ -373,7 +373,7 @@ def parser():
     a.add_argument("--scope-file", required=True)
     proof = a.add_mutually_exclusive_group()
     proof.add_argument("--proof-file", help="JSON argv, not a shell string")
-    proof.add_argument("--proof", nargs=argparse.REMAINDER, help="Agreed proof argv; place last")
+    proof.add_argument("--proof", nargs=argparse.REMAINDER, help="Agreed proof argv; place last, use --proof -- argv to pass task-named options")
     a.add_argument("--expected", type=int); a.add_argument("--full-gate", action="store_true")
     a.add_argument("--depends", action="append", default=[])
     a.add_argument("--reviewer", action="append", help="Reader; repeat for a pool of 2-4 where the first ACK takes the read")
@@ -397,6 +397,11 @@ def parser():
     a = sub.add_parser('reassign', help='Change the reader of the same delivery, keeping proofs and budgets')
     a.add_argument('--actor', required=True); a.add_argument('--task', required=True)
     a.add_argument('--reviewer', required=True); a.add_argument('--reason', required=True)
+    a.add_argument('--same-client-reason', help='Reason for a new same-client reader; cross-client transfers clear the old reason')
+    a = sub.add_parser('candidate', help='Inspect, explicitly repair or retire frozen source caches')
+    a.add_argument('action', choices=['status', 'repair', 'retire', 'limits'])
+    a.add_argument('--actor'); a.add_argument('--task'); a.add_argument('--reason')
+    a.add_argument('--max-copy-mib', type=int); a.add_argument('--max-total-mib', type=int)
     a = sub.add_parser('migliora', help='Inspect development friction or apply and commit a checked project rule')
     a.add_argument('action', choices=['inspect', 'apply', 'commit'])
     a.add_argument('--task'); a.add_argument('--actor'); a.add_argument('--rule-file')
@@ -607,7 +612,7 @@ def dispatch(a, store):
     if isinstance(getattr(a, 'actor', None), str) and not waiting:
         known_id(state['agents'], actor, 'agent')
     task_id = getattr(a, 'task', None)
-    if isinstance(task_id, str) and command != 'supersede':
+    if isinstance(task_id, str) and command != 'supersede' and not waiting:
         known_id(state['tasks'], task_id, 'task')
     message_id = getattr(a, 'message', None)
     if command in {'ack', 'transport'}:
@@ -631,6 +636,13 @@ def dispatch(a, store):
         store.append("agent", a.id, {"id": a.id, "identity": a.identity, "role": a.role, "client": a.client,
                     "model": a.model, "session": a.session, "repo": str(Path(a.repo).resolve(strict=True)), "skills": skills})
     elif command == "task":
+        if a.proof:
+            if a.proof[0] == '--':
+                a.proof = a.proof[1:]
+            else:
+                options = {flag for action in parser()._subparsers._group_actions[0].choices['task']._actions for flag in action.option_strings}
+                require(not any(arg.split('=', 1)[0] in options for arg in a.proof),
+                        'Task option inside --proof argv; put task options first or use --proof -- argv')
         base = snapshot(a.repo, store.root)
         proof = json.loads(Path(a.proof_file).read_text()) if a.proof_file else a.proof
         require(proof is None or (isinstance(proof, list) and proof and all(isinstance(x, str) and x for x in proof)), "Proof file must contain a nonempty argv array")
@@ -681,22 +693,41 @@ def dispatch(a, store):
         old = task.get('delivery', {})
         if task.get('reviewer') == a.reviewer and task.get('reassignments', [{}])[-1].get('reason') == a.reason:
             return {'handoff': old.get('handoff'), 'already_reassigned': True}
+        same_reason = a.same_client_reason
+        if task.get('cross_client'):
+            from registry import same_client_readers
+            if not same_client_readers(state, task['owner'], [a.reviewer]):
+                require(same_reason is None, 'Cross-client transfer does not need --same-client-reason')
         packet = transform_packet(old.get('packet_data', {}), store.resolve_snapshot)
         packet.pop('pool', None)
         packet.update(reviewer=a.reviewer, reassignment={'previous': old.get('handoff'),
                       'previous_pool': old.get('handoffs', []), 'reason': a.reason})
+        if task.get('cross_client'):
+            packet['reassignment']['same_client_reason'] = same_reason
         packet = transform_packet(packet, store.compact_snapshot)
         handoff = 'review-' + digest(canonical(packet).encode())
         artifact = store.artifact_bytes((canonical(packet) + '\n').encode(), handoff + '.json', 'generated-handoff:' + handoff)
         data = {'task': a.task, 'reviewer': a.reviewer, 'reason': a.reason,
                 'previous': old.get('handoff'), 'previous_pool': old.get('handoffs', []),
                 'packet': artifact, 'packet_data': packet, 'handoff': handoff}
+        if task.get('cross_client'):
+            data['same_client_reason'] = same_reason
+        notifications = []
+        former = {state['messages'][h]['to'] for h in [old.get('handoff'), *old.get('handoffs', [])] if h in state['messages']} - {a.reviewer}
+        for recipient in sorted(former):
+            mid = handoff + '-replaced-' + recipient
+            notifications.append(('message', actor, {'id': mid, 'to': recipient, 'info': True, 'related_task': a.task,
+                                  'body': 'Your read was reassigned to ' + a.reviewer + '. Previous handoff is replaced: ' + a.reason}, mid))
         bindings(store, a.task, require_review=False)
         store.batch([('reassign', actor, data, 'reassign:' + handoff),
                      ('message', actor, {'id': handoff, 'to': a.reviewer, 'related_task': a.task,
                       'body': 'Read reassigned on the same proved candidate. ACK this exact handoff.\n' +
-                              canonical(packet)}, handoff)])
+                              canonical(packet)}, handoff), *notifications])
         return {'handoff': handoff, 'proof_reused': True, 'snapshot': task['candidate']['sha256']}
+    elif command == 'candidate':
+        import frozen_candidate
+        require(a.action == 'status' or (a.actor and (a.task or a.action == 'limits')), 'Candidate mutation requires --actor and --task')
+        return frozen_candidate.manage(store, actor, a.task, a.action, a.reason, a.max_copy_mib, a.max_total_mib)
     elif command == 'migliora':
         import migliora
         if a.action == 'inspect':
@@ -823,24 +854,32 @@ def dispatch(a, store):
         else:
             current = bindings(store, a.task, require_review=False)
             binding = current["sha256"]
+        modern = task.get('delivery_policy') == 'frozen-v1'
+        require(modern or a.amend is None, 'Legacy intentional rereads use a new report within the existing budget')
         lens = {k: v for k, v in (("lens", a.lens), ("net_lines", a.net_lines)) if v is not None}
         data = {"task": a.task, "stage": a.stage, "verdict": a.verdict,
-                     "binding": binding, "covers": a.covers, "report": store.artifact(a.report), **extra,
-                     **({"gate_covers": a.gate_covers} if a.gate_covers else {}),
-                     **({"contract": task["contract"]} if task.get("contract") else {}),
-                     **fix_review_fields(task), **lens,
-                     'handoff': review_handoff(state, task, actor),
-                     **({'amends': a.amend} if a.amend else {})}
-        data['request'] = review_request(actor, data)
-        prior = next((r for r in task['reviews'] if r.get('request') == data['request']), None)
-        if prior:
-            return {'receipt': prior['request'], 'already_recorded': True}
-        event = store.append('review', actor, data, data['request'])
-        result = {'receipt': event, 'already_recorded': False}
+                "binding": binding, "covers": a.covers, "report": store.artifact(a.report), **extra,
+                **({"gate_covers": a.gate_covers} if a.gate_covers else {}),
+                **({"contract": task["contract"]} if task.get("contract") else {}),
+                **fix_review_fields(task), **lens}
+        handoff = review_handoff(state, task, actor)
+        if modern:
+            data.update(handoff=handoff, **({'amends': a.amend} if a.amend else {}))
+        request = review_request(actor, {**data, 'handoff': handoff})
+        if modern:
+            data['request'] = request
+            prior = next((r for r in task['reviews'] if r.get('request') == request), None)
+            if prior:
+                return {'receipt': prior['request'], 'already_recorded': True}
+        before = store.commit_count
+        event = store.append('review', actor, data, request)
+        result = {'receipt': event, 'already_recorded': store.commit_count == before}
         if a.stage == "code" and a.verdict == "changes-required":
             from errata import hint
             result['errata'] = hint(a.task, seq_of(store, event), actor, "code read asked for changes")
-        return result
+            if not modern:
+                return {'errata': result['errata']}
+        return result if modern else None
     elif command == "output":
         output = {"task": a.task, "text": Path(a.file).read_text(), "next": a.next,
                   "artifacts": [store.artifact(f) for f in a.artifact]}
@@ -1061,7 +1100,11 @@ def dispatch(a, store):
                          'scope': ['anchor', 'suffix', 'demanded cache values'],
                          'not_verified': ['earlier events', 'untouched leaves', 'all artifacts', 'replay-root equality']}
                         if a.quick else {'verification': 'full', 'integrity': 'passed'})
-        return {**compatibility, **git_warning, **verification, "events": count, "cache": checked["cache"], "unknown_running": [r["id"] for r in state["runs"].values() if r["status"] in {"running", "cleanup-unknown"}],
+        from frozen_candidate import inventory
+        candidates = inventory(store) if not a.quick else None
+        return {**compatibility, **git_warning, **verification,
+                'candidate_integrity': 'not_checked' if a.quick else 'degraded' if any(r['status'] in {'missing', 'damaged'} for r in candidates) else 'passed',
+                'candidates': candidates, "events": count, "cache": checked["cache"], "unknown_running": [r["id"] for r in state["runs"].values() if r["status"] in {"running", "cleanup-unknown"}],
                 "abandoned": [{"id": r["id"], "native_rc": None, "results": "none",
                                "legacy": r["abandonment"]["legacy"], "reason": r["abandonment"]["reason"]}
                               for r in state["runs"].values() if r["status"] == "abandoned"],
@@ -1239,7 +1282,7 @@ def main(argv=None):
             print(json.dumps(result, ensure_ascii=False, indent=2))
             return 0
         read_only = (a.command in {'status', 'inbox', 'check', 'doctor', 'dash'} or
-                     (a.command == 'resource' and a.action == 'status') or
+                     (a.command in {'resource', 'candidate'} and a.action == 'status') or
                      (a.command == 'migliora' and a.action == 'inspect') or
                      (a.command == 'lesson' and a.list))
         if a.command == 'init':

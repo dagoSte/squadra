@@ -366,6 +366,8 @@ def apply(state, event):
                 state['messages'][handoff]['replaced_by'] = d['handoff']
         task.setdefault('reassignments', []).append({**d, 'utc': event['utc'], 'event': event['id']})
         task.update(reviewer=d['reviewer'], pool=None, status='delivered', status_utc=event['utc'])
+        if task.get('cross_client'):
+            task['same_client_reason'] = d.get('same_client_reason')
         task['delivery'] = {**task['delivery'], 'handoff': d['handoff'],
                             'packet': d['packet'], 'packet_data': d['packet_data']}
         task['delivery'].pop('handoffs', None)
@@ -1345,9 +1347,10 @@ def validate_supersession(state, d):
                   if r.get("task") == old and r["status"] in {"running", "cleanup-unknown"})
     require(not runs, "Reconcile first: run " + ", ".join(runs) + " of " + old + " is running or its stop is unverified")
     identity = state["agents"].get(task["owner"], {}).get("identity")
-    held = sorted(name for name, r in state["resources"].items()
-                  if r["owner"] == task["owner"] or (identity and state["agents"].get(r["owner"], {}).get("identity") == identity))
-    held = [name for name in held if state['resources'][name].get('task') in (None, old)]
+    held = sorted(name for name, r in state['resources'].items()
+                  if r.get('task') == old or (r.get('task') is None and
+                     (r['owner'] == task['owner'] or
+                      (identity and state['agents'].get(r['owner'], {}).get('identity') == identity))))
     require(not held, "Reconcile first: reservation " + ", ".join(held) + " is held by the owner of " + old)
     asks = sorted(a["id"] for a in state["asks"].values() if a.get("task") == old and a["status"] == "open")
     require(not asks, "Reconcile first: open question " + ", ".join(asks) + " about " + old + " needs an answer or a withdrawal")
@@ -1782,21 +1785,48 @@ def validate(state, kind, actor, d, stored_packet=None):
                 'Author cannot independently review own changes')
         require(reader['id'] != task.get('reviewer'), 'Reviewer is already assigned')
         if task.get('cross_client'):
-            validate_cross_client(state, {**task, 'reviewer': reader['id'], 'pool': None})
+            validate_cross_client(state, {**task, 'reviewer': reader['id'], 'pool': None,
+                                         'same_client_reason': d.get('same_client_reason')})
         require(not any(r.get('task') == task['id'] and r.get('mode') == 'read' and
                         r['status'] in {'running', 'cleanup-unknown'} for r in state['runs'].values()),
                 'Reconcile active reader before reassignment')
         require(d.get('previous') == task.get('delivery', {}).get('handoff') and
                 d.get('previous_pool', []) == task.get('delivery', {}).get('handoffs', []),
                 'Delivery changed before reassignment')
-        from source_manifests import transform_packet
+        from source_manifests import transform_packet, resolve
         packet = d.get('packet_data', {})
-        require(packet.get('candidate') == task.get('candidate') and packet.get('reviewer') == reader['id'] and
-                packet.get('scope') == task['scope'] and packet.get('proofs') == current_proofs(task, task['candidate']),
-                'Reassignment must preserve exact candidate, scope and proofs')
+        expected = transform_packet(task['delivery'].get('packet_data', {}),
+                                    lambda value: resolve(value, Path(state['root']) / 'artifacts'))
+        expected.pop('pool', None)
+        expected.update(reviewer=reader['id'], reassignment={'previous': d.get('previous'),
+                        'previous_pool': d.get('previous_pool', []), 'reason': d['reason']})
+        if task.get('cross_client'):
+            expected['reassignment']['same_client_reason'] = d.get('same_client_reason')
+        require(packet == expected and packet.get('proofs') == current_proofs(task, task['candidate']),
+                'Reassignment must preserve the complete delivery contract and proofs')
+        raw_packet = stored_packet if stored_packet is not None else packet
+        require(d.get('packet', {}).get('sha256') == digest((canonical(raw_packet) + '\n').encode()),
+                'Reassignment artifact must contain its exact packet')
         require(d.get('handoff') not in state['messages'] and
                 d.get('handoff') == 'review-' + digest(canonical(stored_packet if stored_packet is not None else packet).encode()),
                 'Reassignment handoff must bind its packet')
+    if kind == 'output' and d.get('candidate_action'):
+        require(coordinator, 'Candidate storage actions require coordinator')
+        action = d['candidate_action']
+        require(action.get('action') in {'limits', 'repair', 'retire'} and
+                isinstance(action.get('reason'), str) and bool(action['reason'].strip()), 'Invalid candidate storage receipt')
+        if action['action'] == 'limits':
+            require(type(action.get('max_copy_bytes')) is int and type(action.get('max_total_bytes')) is int and
+                    1024 * 1024 <= action['max_copy_bytes'] <= action['max_total_bytes'] <= 102400 * 1024 * 1024,
+                    'Invalid frozen storage limits')
+        else:
+            task = state['tasks'].get(d.get('task'), {})
+            require(action.get('sha256') == task.get('delivery', {}).get('frozen', {}).get('sha256') and action.get('sha256'),
+                    'Candidate action must name its delivered source')
+            if action['action'] == 'retire':
+                require(not any(t.get('delivery', {}).get('frozen', {}).get('sha256') == action['sha256'] and
+                                t['status'] != 'done' and not t.get('superseded_by') for t in state['tasks'].values()),
+                        'Candidate still needed by active tasks')
     if kind == "route":
         require(d.get("task") in state["tasks"], "Unknown task")
         from light_route import promotion
@@ -1929,6 +1959,12 @@ def validate(state, kind, actor, d, stored_packet=None):
         if kind == "plan":
             require(coordinator or actor == task["owner"], "Plan owner/coordinator required")
         if kind == "deliver":
+            if task.get('delivery_policy') == 'frozen-v1':
+                from frozen_candidate import current as frozen_current
+                require(d.get('frozen', {}).get('sha256') == d['snapshot']['sha256'],
+                        'Frozen delivery required for this task')
+                require(frozen_current({**task, 'delivery': d}, state.get('root')) == d['snapshot'],
+                        'Frozen delivery differs from the proved source')
             handoffs = d.get("handoffs", []) + ([d["handoff"]] if d.get("handoff") else [])
             require(not any(state["messages"].get(h, {}).get("info") is True for h in handoffs),
                     "Information cannot be a review handoff")
@@ -3069,11 +3105,6 @@ class Store:
             return sha in scrubbed
         def walk(value):
             if isinstance(value, dict):
-                if value.get('frozen') and value.get('snapshot'):
-                    from frozen_candidate import current as frozen_current
-                    delivered = self.resolve_snapshot(value['snapshot'])
-                    require(frozen_current({'repo': delivered['repo'], 'delivery': value}, self.root) == delivered,
-                            'Missing or changed frozen candidate')
                 if {"sha256", "name", "bytes", "original"} <= value.keys():
                     path = self.root / "artifacts" / value["sha256"]
                     if os.path.lexists(path) or not excused(value["sha256"]):
@@ -3192,7 +3223,9 @@ class Store:
         except (OSError, CheckpointError) as exc:
             raise Error("Checkpoint file copy refused: " + str(exc)) from exc
         from frozen_candidate import checkpoint as copy_candidates
-        copy_candidates(self, destination)
+        candidates = copy_candidates(self, destination)
+        if report is not None:
+            report['candidates'] = candidates
         check = Store(destination)
         try:
             checked = check.audit()

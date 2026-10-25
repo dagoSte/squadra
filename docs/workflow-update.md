@@ -26,7 +26,7 @@ manual `--since` and `--no-cursor` remain available. Unprinted backlog is not sk
 
 Migliora inspects evidence at task close. The agent applies it within the authorized
 project scope. The instruction helper manages only `AGENTS.md`, runs the declared
-check and makes a local pathspec commit after required project review. It preserves
+check and makes a local commit through an isolated Git index after required project review. It preserves
 foreign staged work and native hooks. It never publishes or approves memory proposals.
 
 New frozen-task and reassignment events use hash format 3; subsequent events retain

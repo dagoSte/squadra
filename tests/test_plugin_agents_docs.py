@@ -41,8 +41,8 @@ class PluginAgentDocs(unittest.TestCase):
                     self.assertIn(clause, rule)
         for folder in ('scripts', 'assets'):
             for path in (ROOT / folder).rglob('*'):
-                # D-STORE-AGENTS-EXCEPTION: the explicit installer validates/copies inert instructions.
-                if path.is_file() and path != ROOT / 'scripts/plugin_store.py':
+                # The installer copies inert plugin instructions; migliora manages only project instructions.
+                if path.is_file() and path not in {ROOT / 'scripts/plugin_store.py', ROOT / 'scripts/migliora.py'}:
                     with self.subTest(runtime=str(path.relative_to(ROOT))):
                         self.assertNotIn(b'AGENTS.md', path.read_bytes())
 

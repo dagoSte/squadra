@@ -24,7 +24,7 @@ class CacheUnavailable(Error):
     pass
 
 
-def resource_state(root, name, actor):
+def resource_state(root, name, actor, task=None):
     """Demand only authenticated leaves, close the read transaction before returning."""
     from registry_cache import load, plain
     from registry_radix import IntegrityError
@@ -39,6 +39,9 @@ def resource_state(root, name, actor):
                 raise CacheUnavailable('Resource wait needs a current cache; run an ordinary write first')
             state = tree.root
             require(actor in state['agents'], 'Unknown agent: ' + actor)
+            if task is not None:
+                require(task in state['tasks'] and state['tasks'][task]['status'] != 'done' and
+                        not state['tasks'][task].get('superseded_by'), 'Resource task must be open')
             holder = plain(state['resources'].get(name))
             return {'holder': holder, 'lang': state['workspace'].get('lang', 'it'),
                     'identity': state['agents'][actor]['identity'],
@@ -139,7 +142,7 @@ def acquire(store, actor, name, reason, seconds, *, task=None):
     import fcntl
     deadline = time.monotonic() + seconds
     store.release_views()
-    initial = resource_state(store.root, name, actor)
+    initial = resource_state(store.root, name, actor, task)
     holder = initial['holder']
     require(not holder or initial['identity'] != initial['holder_identity'],
             RESERVED + ('; holder: ' + holder['owner'] if holder else ''))
@@ -170,7 +173,7 @@ def acquire(store, actor, name, reason, seconds, *, task=None):
                 first = False
                 with queue_lock(mutex, deadline):
                     live = live_tickets(folder)
-                    if live and live[0] == ticket and resource_state(store.root, name, actor)['holder'] is None:
+                    if live and live[0] == ticket and resource_state(store.root, name, actor, task)['holder'] is None:
                         previous_timeout = store.db.execute('PRAGMA busy_timeout').fetchone()[0]
                         remaining = max(0, deadline - time.monotonic())
                         timeout_ms = min(previous_timeout, math.ceil(min(remaining, previous_timeout / 1000) * 1000))
@@ -222,6 +225,13 @@ def status(store, name):
             fd = os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=fd)
             descriptors.append(fd)
             private(os.fstat(fd), directory=True)
+        try:
+            mutex = os.open('mutex', os.O_RDONLY | os.O_NOFOLLOW, dir_fd=fd)
+        except FileNotFoundError:
+            return result
+        descriptors.append(mutex)
+        private(os.fstat(mutex))
+        fcntl.flock(mutex, fcntl.LOCK_SH)
         for ticket in sorted(os.listdir(fd)):
             if not TICKET.fullmatch(ticket):
                 continue

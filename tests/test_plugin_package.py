@@ -38,14 +38,16 @@ class PluginPackage(unittest.TestCase):
                 self.assertEqual(data["repository"], REPOSITORY)
                 self.assertEqual(data["homepage"], REPOSITORY)
 
-    def test_claude_marketplace_and_implicit_root_skill(self):
+    def test_claude_marketplace_and_explicit_skills(self):
         data = self.document(".claude-plugin/marketplace.json")
         self.assertEqual(data["name"], "squadra")
         self.assertEqual(data["owner"], {"name": AUTHOR})
         self.assertIsInstance(data["description"], str)
         self.assertTrue(data["description"].strip())
         self.assertEqual(data["plugins"], [{"name": "squadra", "source": "."}])
-        self.assertNotIn("skills", self.document(".claude-plugin/plugin.json"))
+        self.assertEqual(self.document(".claude-plugin/plugin.json")["skills"], ["./", "./migliora"])
+        for relative in (".", "migliora"):
+            self.assertTrue((ROOT / relative / "SKILL.md").is_file())
         self.assertTrue((ROOT / "SKILL.md").is_file())
         self.assertFalse((ROOT / "skills").exists())
 

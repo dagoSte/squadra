@@ -1,7 +1,7 @@
 {
   "name": "squadra",
   "version": "3.11.0",
-  "description": "Your coding agents, one team — and proof for every step. The most complete team skill for Claude Code, Codex and Cursor.",
+  "description": "Your coding agents, one team \u2014 and proof for every step. The most complete team skill for Claude Code, Codex and Cursor.",
   "author": {
     "name": "Stefano D'Agostino"
   },
@@ -9,5 +9,9 @@
   "repository": "https://github.com/dagoSte/squadra",
   "homepage": "https://github.com/dagoSte/squadra",
   "icon": "./assets/squadra-icon.png",
-  "privacyPolicyUrl": "https://github.com/dagoSte/squadra/blob/main/PRIVACY.md"
+  "privacyPolicyUrl": "https://github.com/dagoSte/squadra/blob/main/PRIVACY.md",
+  "skills": [
+    "./",
+    "./migliora"
+  ]
 }

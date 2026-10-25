@@ -796,7 +796,7 @@ The coordinator may declare `task --route light` for a bounded, reversible chang
 
 You do not have to type these commands: **asking your window in plain words is the recommended way**, as in the *Or just ask* column and the [example prompts](#prompts), and the window runs the command for you. The commands are what the windows run, and what you can type yourself to check.
 
-Every command, grouped by purpose: **53 subcommands**, plus `--version`. Use `squadra <command> --help` for the flags; registry commands accept `--root` or `SQUADRA_ROOT`. «Coordinator only» marks what only the coordinator can record: `task`, `route`, `supersede`, `reassign`, `brief`, `close`, `ask`, `decision`, `settings`, `pause`, `resume`, `save`, `standby`, `ping --all`, `ping --sweep`, and the receipt that `restore-check` writes into the live registry. Without installing, the same commands run as `python3 -B scripts/squadra.py <command>`.
+Every command, grouped by purpose: **54 subcommands**, plus `--version`. Use `squadra <command> --help` for the flags; registry commands accept `--root` or `SQUADRA_ROOT`. «Coordinator only» marks what only the coordinator can record: `task`, `route`, `supersede`, `reassign`, `brief`, `close`, `ask`, `decision`, `settings`, `pause`, `resume`, `save`, `standby`, `ping --all`, `ping --sweep`, and the receipt that `restore-check` writes into the live registry. Without installing, the same commands run as `python3 -B scripts/squadra.py <command>`.
 
 <details>
 <summary><strong>All 53 commands and their prompts, grouped by purpose</strong></summary>
@@ -820,18 +820,19 @@ Every command, grouped by purpose: **53 subcommands**, plus `--version`. Use `sq
 | `task` | Coordinator only: assign a task: owner, reviewer, checkout, scope, proof, requirements, dependencies; `--supersedes` replaces an open task. | To the coordinator: “Assign ‘Key rotation service’ to the builder window, with the reviewer window as independent reader and the whole test suite as proof.” |
 | `route` | Coordinator only: promote with `--full`, keeping the base/history/budgets; new proof and read. | To the coordinator: “T3 is no longer a small change: move it to the full route.” |
 | `supersede` | Coordinator only: record afterwards that an existing, later task replaces an open one, with the same effect as `--supersedes`. | To the coordinator: “T7 replaces T5: record it, keeping the history of T5.” |
-| `reassign` | Coordinator only: change the reader on the same delivery, preserving proofs and budgets; needs a new ACK. | “Give this same delivery to another free reader.” |
+| `reassign` | Coordinator only: change the reader on the same delivery, preserving proofs and budgets; needs a new ACK. `--same-client-reason` records a same-client transfer; switching clients clears the old reason. | “Give this same delivery to another free reader.” |
 | `brief` | Coordinator only: describe the project (`brief --project`) or a task (`brief --task ID`) in plain words, from a UTF-8 file of at most 8192 bytes. | To the coordinator: “Write a plain-words brief of T1: why it exists, for whom, and when it is finished.” |
 | `plan` | Record a plan before building, to be read by a non-author. | “Write your plan for T1 and have a non-author read it before you build.” |
 | `start` | Mark a confirmed task as being built. | “Confirm your assignment and start building it.” |
-| `resource` | Reserve or release a shared gate, port or database (`acquire`, `release`). | “Reserve the test database before you run the gate, and release it when you are done.” |
+| `candidate` | Inspect frozen copies (`status`); coordinator records recovery (`repair`), closed-copy retention (`retire`) or MiB quotas (`limits`). | “Show storage, recover the exact delivery, or retire a closed copy.” |
+| `resource` | Reserve or release a shared gate, port or database (`acquire`, `release`, read-only `status` with holder and queue). | “Reserve the test database before you run the gate, and release it when you are done.” |
 
 ### Messages
 
 | Command | What it does | Or just ask |
 |---|---|---|
 | `send` | Write a message to a window, optionally about a task or in reply to another; `--info` marks a notice that needs no ACK (not with `--to-new`). | “Tell the builder that the old keys must stay readable for a month.” |
-| `inbox` | Read the messages still waiting for your ACK plus the latest 10 (`--all` for every message, `--message ID` for one in full); `--follow [--since SEQ]` watches repeated `--agent` names read-only and resumes without replaying older mail; `--until-first` exits after the first mail, for a background command that wakes its window. | “Read your messages; keep watching mail for all this window's names, act on arrivals and re-arm with the last cursor when the watch expires.” |
+| `inbox` | Read the messages still waiting for your ACK plus the latest 10 (`--all` for every message, `--message ID` for one in full); `--follow [--since SEQ]` watches repeated `--agent` names read-only and resumes without replaying older mail; `--until-first` exits after the first mail, for a background command that wakes its window. | “Read your messages; keep watching mail for all this window's names, act on arrivals and re-arm using the saved cursor when the watch expires.” |
 | `ack` | Confirm a message you actually received; only the recipient can do it. | “Confirm the messages you have actually read.” |
 | `transport` | Deliver a message by hand or through the Codex queue (for a seat registered with `--session`), and record the outcome. | “The reviewer has not seen my message: prepare the manual handoff and record that it still has to be forwarded.” |
 

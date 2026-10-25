@@ -29,7 +29,7 @@ class Pool(Fixture, unittest.TestCase):
         self.assertEqual(self.registered("S")["reviewer"], "R")
         self.assertEqual(set(self.registered("S")), {"id", "title", "owner", "repo", "base", "scope", "proof",
                                                      "expected", "full_gate", "depends", "reviewer", "requirements",
-                                                     "cross_client"})
+                                                     "cross_client", "delivery_policy"})
         self.assertIs(self.registered("S")["cross_client"], True)
         for size, members in ((2, ["R3", "R"]), (3, ["R2", "R", "R3"]), (4, ["R", "R2", "R3", "C"])):
             name = "P" + str(size)
@@ -492,9 +492,8 @@ class Views(Fixture, unittest.TestCase):
 
 class Compatibility(Fixture, unittest.TestCase):
     def test_single_reviewer_lifecycle_keeps_its_record_shape(self):
-        self.assertEqual(self.run_cli("task", "--actor", "C", "--id", "S", "--title", "Single", "--owner", "A",
-                                      "--repo", str(self.repo), "--scope-file", str(self.scope), "--reviewer", "R")[0], 0)
-        self.ack("S"); self.proved("S")
+        self.full_task("S", reviewer="R", cross_client=True)
+        self.proved("S")
         before = len(self.store.events())
         self.assertEqual(self.run_cli("deliver", "--actor", "A", "--task", "S")[0], 0)
         handoff = self.store.state()["tasks"]["S"]["delivery"]["handoff"]

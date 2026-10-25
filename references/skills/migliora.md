@@ -19,6 +19,11 @@ Check existing rules for overlap and conflicts. Never weaken required tests, cha
 requirements, amend another agent's work or override a project mandate automatically.
 No actionable evidence means no change, which is a successful outcome.
 
+When used standalone in a project without a Squadra registry, use that project's
+existing logs, tests and decisions as evidence and its ordinary write/check/commit
+workflow. Do not initialize a team registry solely for this skill. The helper below
+is optional for projects already using Squadra.
+
 ## Applying a project instruction
 
 The deterministic helper appends a managed block to `AGENTS.md`, preserving existing
@@ -68,3 +73,5 @@ from an estimate, and include maintenance cost. Do not invent a saving.
 Automatic activation is an instruction to the participating agent, like errata and
 rasoio. It is not a hidden daemon or a promise that every coding client invokes the
 skill. Project startup instructions can explicitly request it for other clients.
+
+Git hooks run against an isolated index. Refused/failed commits leave owned rule bytes unstaged. A hook-created commit with unexpected files is recorded with its actual hash, files, mismatch and logs, then requires reconciliation; it is never silently retried. Unrelated staged entries are preserved.

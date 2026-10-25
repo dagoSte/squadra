@@ -7,8 +7,8 @@ description: Improve a project's development workflow from observed failures, re
 
 Answer in the user's language. This skill is bundled with Squadra and also works
 when the user names it directly. Resolve this directory's real location; the
-bundled CLI is `../../scripts/squadra.py` and the detailed workflow is
-[the migliora guide](../../references/skills/migliora.md). Read that guide.
+bundled CLI is `../scripts/squadra.py` and the detailed workflow is
+[the migliora guide](../references/skills/migliora.md). Read that guide.
 
 Read the project's operating instructions and recall its lessons. Look for concrete
 failures, repeated proof runs, waits and manual steps in the current task's evidence.
