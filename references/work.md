@@ -1255,9 +1255,12 @@ publishes, pushes or approves project memory proposals.
 
 ## Frozen source storage and recovery
 
-Each new delivery retains the working-tree bytes plus Git objects reachable from only
-its commit (shallow depth 1), without ignored dependencies or older history. Default
-limits are 512 MiB per copy and 2 GiB total, including damaged copies and staging.
+Each new delivery retains the working-tree bytes and Git objects for its delivered
+commit (shallow depth 1), plus the light task base commit/tree/blobs when needed.
+Both roots count toward the storage quota; other history and ignored dependencies
+are excluded. A shared candidate can retain an additional light base without
+changing its read-only checkout bytes. Default limits are 512 MiB per copy and
+2 GiB total, including damaged copies and staging.
 A conservative estimate is checked before fetching and actual bytes before sealing;
 concurrent deliveries share a storage lock. A checkpoint can require up to one
 additional total quota. Save packages also retain their separately documented repository bundles.

@@ -135,6 +135,46 @@ def freeze(store, task, candidate):
         return _freeze(store, task, candidate)
 
 
+def tree_bytes(repo, revisions):
+    return sum(int(row.split(b'\t', 1)[0].split()[-1]) for revision in set(revisions) for row in
+               git(repo, 'ls-tree', '-rlz', revision).split(b'\0')
+               if row and row.split(b'\t', 1)[0].split()[-1].isdigit())
+
+
+def fetch(repo, source, revisions):
+    result = subprocess.run(['git', '-C', str(repo), '-c', 'core.hooksPath=/dev/null',
+                             '-c', 'gc.auto=0', '-c', 'maintenance.auto=false',
+                             'fetch', '--quiet', '--depth=1', '--no-tags', '--no-write-fetch-head', '--',
+                             Path(source).resolve().as_uri(), *dict.fromkeys(revisions)],
+                            capture_output=True, timeout=120)
+    require(result.returncode == 0, 'Cannot fetch the delivered commit or required light base')
+
+
+def retain_base(store, task, repo):
+    if task.get('route') != 'light':
+        return
+    base = task['base']
+    if subprocess.run(['git', '-C', str(repo), 'cat-file', '-e', base + '^{tree}'],
+                      capture_output=True, timeout=30).returncode == 0:
+        return
+    extra = 2 * tree_bytes(task['repo'], [base]) + 16 * 1024 * 1024
+    max_copy, max_total = limits(store)
+    require(size(repo.parent) + extra <= max_copy and size(store.root / 'candidates') + extra <= max_total,
+            'Frozen storage limit for light base; retire closed copies or ask the coordinator for higher candidate limits')
+    metadata = repo / '.git'
+    require(metadata.is_dir() and not metadata.is_symlink(), 'Frozen Git metadata must be a directory')
+    try:
+        # Git adds immutable objects and atomically updates shallow metadata; checkout bytes stay sealed.
+        for parent, dirs, _ in os.walk(metadata, followlinks=False):
+            Path(parent).chmod(0o755)
+            require(all(not (Path(parent) / name).is_symlink() for name in dirs), 'Linked frozen Git directory')
+        fetch(repo, task['repo'], [base])
+        require(size(repo.parent) <= max_copy and size(store.root / 'candidates') <= max_total,
+                'Frozen storage limit exceeded while retaining light base')
+    finally:
+        readonly(metadata)
+
+
 def _freeze(store, task, candidate):
     parent = store.root / 'candidates'
     parent.mkdir(mode=0o700, exist_ok=True)
@@ -144,9 +184,13 @@ def _freeze(store, task, candidate):
     if destination.exists():
         require(current({**task, 'delivery': {'frozen': record}}, store.root) == candidate,
                 'Existing frozen candidate differs')
+        retain_base(store, task, destination / 'repo')
+        require(measured(task, destination / 'repo') == candidate, 'Frozen checkout changed while retaining light base')
         return record
-    base_bytes = sum(int(row.split(b'\t', 1)[0].split()[-1]) for row in
-                     git(task['repo'], 'ls-tree', '-rlz', candidate['head']).split(b'\0') if row and row.split(b'\t', 1)[0].split()[-1].isdigit())
+    revisions = [candidate['head']]
+    if task.get('route') == 'light':
+        revisions.append(task['base'])
+    base_bytes = tree_bytes(task['repo'], revisions)
     working_bytes = sum((Path(task['repo']) / row['path']).lstat().st_size for row in candidate['files']
                         if row['kind'] != 'deleted')
     max_copy, max_total = limits(store)
@@ -157,15 +201,18 @@ def _freeze(store, task, candidate):
     try:
         copied = stage / 'repo'
         git(store.root, 'init', '--quiet', str(copied))
-        result = subprocess.run(['git', '-C', str(copied), '-c', 'core.hooksPath=/dev/null',
-                                 'fetch', '--quiet', '--depth=1', '--no-tags', '--',
-                                 Path(task['repo']).resolve().as_uri(), candidate['head']],
-                                capture_output=True, timeout=120)
-        require(result.returncode == 0, 'Cannot fetch the delivered Git commit')
+        fetch(copied, task['repo'], revisions)
         result = subprocess.run(['git', '-C', str(copied), '-c', 'core.hooksPath=/dev/null',
                                  'checkout', '--quiet', '--detach', candidate['head']],
                                 capture_output=True, timeout=120)
         require(result.returncode == 0, 'Cannot check out the delivered Git head')
+        listed = {row['path'] for row in candidate['files']}
+        removed = [path for path in git(copied, 'ls-files', '-z').split(b'\0') if path and os.fsdecode(path) not in listed]
+        if removed:
+            result = subprocess.run(['git', '-C', str(copied), '-c', 'core.hooksPath=/dev/null',
+                                     '--literal-pathspecs', 'rm', '--quiet', '--force', '--pathspec-from-file=-', '--pathspec-file-nul'],
+                                    input=b'\0'.join(removed) + b'\0', capture_output=True, timeout=30)
+            require(result.returncode == 0, 'Cannot remove checkout paths absent from the proved snapshot')
         for row in candidate['files']:
             relative = Path(row['path'])
             require(not relative.is_absolute() and '..' not in relative.parts and '.git' not in relative.parts,
@@ -183,6 +230,20 @@ def _freeze(store, task, candidate):
             else:
                 shutil.copyfile(source, target, follow_symlinks=False)
                 target.chmod(0o755 if row['executable'] else 0o644)
+        tracked = {os.fsdecode(path) for path in git(copied, 'ls-files', '-z').split(b'\0') if path}
+        added = [os.fsencode(row['path']) for row in candidate['files'] if row['kind'] != 'deleted' and row['path'] not in tracked]
+        if added:
+            result = subprocess.run(['git', '-C', str(copied), '-c', 'core.hooksPath=/dev/null',
+                                     '--literal-pathspecs', 'add', '--intent-to-add', '--force', '--pathspec-from-file=-', '--pathspec-file-nul'],
+                                    input=b'\0'.join(added) + b'\0', capture_output=True, timeout=30)
+            require(result.returncode == 0, 'Cannot retain added snapshot paths in the frozen index')
+        missing = [row['path'] for row in candidate['files'] if row['kind'] == 'deleted' and row['path'] not in tracked]
+        if missing:
+            empty = subprocess.run(['git', '-C', str(copied), 'hash-object', '-w', '--stdin'],
+                                   input=b'', capture_output=True, timeout=30)
+            require(empty.returncode == 0, 'Cannot create empty frozen index placeholder')
+            for path in missing:
+                git(copied, 'update-index', '--add', '--cacheinfo', '100644', empty.stdout.decode().strip(), path)
         require(snapshot(task['repo'], store.root) == candidate, 'Source changed while freezing delivery')
         require(measured(task, copied) == candidate,
                 'Frozen copy does not match the proved source')
