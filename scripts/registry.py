@@ -2070,7 +2070,8 @@ def validate(state, kind, actor, d, stored_packet=None):
                     "Exact candidate independent review still pending")
             cross_client_read(state, task, task.get("candidate"))
             if task.get("release_gate") is True:
-                gate_checks(state, task, __import__('frozen_candidate').current(task, state.get('root')))
+                from frozen_candidate import current as frozen_current
+                gate_checks(state, task, frozen_current(task, state.get('root')))
         if task.get("route") == "light" or task.get("contract"):
             from light_route import validate_event
             validate_event(state, kind, task, d)

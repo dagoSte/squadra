@@ -228,7 +228,8 @@ def validate_event(state, kind, task, data):
         require(delivery.get("handoff") or (delivery.get("handoffs") and pool_claim(state, task)),
                 "Exact delivery handoff required before read")
         from registry import candidate_checks
-        candidate_checks(task, __import__('frozen_candidate').current(task, state.get('root')), require_review=False)
+        from frozen_candidate import current as frozen_current
+        candidate_checks(task, frozen_current(task, state.get('root')), require_review=False)
     if kind == "run.start" and data["mode"] == "proof":
         require(data.get("before") == snapshot(task["repo"]), "Proof source changed before start")
         require(data.get("argv") == task["proof"] and data.get("expected_rc") == 0,
