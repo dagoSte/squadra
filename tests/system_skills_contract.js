@@ -19,9 +19,9 @@ const tests={
  async directory(){
   const app=await setup();await app.select();
   assert.equal(app.doc.getElementById('skills-links').children[0].getAttribute('aria-current'),'page');
-  assert.deepEqual(all(app.content,e=>e.getAttribute('data-skill')).map(e=>e.getAttribute('data-skill')),['errata','previsione','rasoio','bilanciamento']);
-  assert.equal(all(app.content,e=>hasClass(e,'sq-skill-spark')).length,2,'read-only forecasts have no invented sparkline');
-  assert.equal(all(app.content,e=>e.textContent==='squadra built-in').length,4);
+  assert.deepEqual(all(app.content,e=>e.getAttribute('data-skill')).map(e=>e.getAttribute('data-skill')),['errata','previsione','rasoio','bilanciamento','migliora']);
+  assert.equal(all(app.content,e=>hasClass(e,'sq-skill-spark')).length,3,'read-only forecasts have no invented sparkline');
+  assert.equal(all(app.content,e=>e.textContent==='squadra built-in').length,5);
   assert.match(text(app.content),/Calcolata su richiesta/);
   for(const row of all(app.content,e=>e.getAttribute('data-skill'))){assert.ok(one(row,e=>e.tag==='h3'));assert.ok(all(row,e=>e.tag==='p').length>=2)}
   app.find('skills:range:day').onclick();await settle();assert.equal(app.find('skills:range:day').getAttribute('aria-selected'),'true');
@@ -48,7 +48,7 @@ const tests={
   app.find('skills:back').onclick();await settle();assert.equal(key(app.doc.activeElement),'skills:search');unique(app,'skill detail');
  },
  async sidebarBack(){
-  const ids=['errata','previsione','rasoio','bilanciamento'];
+  const ids=['errata','previsione','rasoio','bilanciamento','migliora'];
   for(const language of ['it-IT','en-US'])for(const phone of [false,true]){
    const app=await setup({language,phone});await app.select();
    for(const id of ids){

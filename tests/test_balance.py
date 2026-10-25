@@ -521,7 +521,7 @@ class Catalogue(unittest.TestCase):
     def test_fourth_system_skill_on_demand_with_its_files_and_audit_cap(self):
         import system_skills as skills
         values = skills.catalogue([], {'tasks': {}}, read_at=AT)['skills']
-        self.assertEqual([s['id'] for s in values], ['errata', 'previsione', 'rasoio', 'bilanciamento'])
+        self.assertEqual([s['id'] for s in values], ['errata', 'previsione', 'rasoio', 'bilanciamento', 'migliora'])
         row = values[3]
         self.assertEqual((row['mode'], row['total'], row['daily'], row['first'], row['last']), ('on_demand', None, None, None, None))
         self.assertEqual(row['command'], 'squadra balance --task TASK')

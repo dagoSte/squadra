@@ -375,7 +375,7 @@ class Audits(unittest.TestCase):
 class Activity(unittest.TestCase):
     def test_empty_and_unrecorded_are_distinct(self):
         values = skills.catalogue([], {'tasks': {}}, read_at=NOW)['skills']
-        self.assertEqual([s['total'] for s in values], [0, None, 0, None])
+        self.assertEqual([s['total'] for s in values], [0, None, 0, None, 0])
         self.assertEqual(values[0]['daily'], [0] * 56)
         self.assertIsNone(values[1]['daily']); self.assertIsNone(values[1]['first'])
 
