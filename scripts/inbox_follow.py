@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import json
+import os
+from pathlib import Path
 import shlex
 import signal
 import sqlite3
@@ -19,7 +21,7 @@ def command(root, agents, *extra):
 
 
 def message_line(root, message, event):
-    needed = message.get('info') is not True and message.get('ack') is None
+    needed = message.get('info') is not True and message.get('ack') is None and not message.get('replaced_by')
     first = message['body'][:160].splitlines()
     return {'kind': 'message', 'event': event, 'from': message['from'],
             'to': message['to'], 'task': message.get('task') or message.get('related_task'),
@@ -122,19 +124,62 @@ class Follower:
         self.head, self.cursor, self.first, self.anchor = tip, end, False, anchor
 
 
-def follow(root, agents, timeout=None, since=None, *, until_first=False):
+def cursor_path(root, agents):
+    from registry import canonical, digest
+    key = digest(canonical({'root': str(Path(root).resolve()), 'agents': sorted(set(agents))}).encode())
+    return Path(os.environ.get('XDG_STATE_HOME', str(Path.home() / '.local/state'))) / 'squadra/inbox' / (key + '.json')
+
+
+def load_cursor(path, store, agents):
+    if not path.exists():
+        return None
+    require(not path.is_symlink() and path.stat().st_size < 8192, 'Invalid inbox cursor file')
+    saved = json.loads(path.read_text())
+    require(saved.get('root') == str(store.root) and saved.get('agents') == sorted(set(agents)),
+            'Inbox cursor belongs to another registry or recipient')
+    seq = saved.get('event')
+    require(type(seq) is int and seq >= 0, 'Invalid inbox cursor event')
+    row = store.db.execute('SELECT hash FROM events WHERE seq=?', (seq,)).fetchone()
+    require((row['hash'] if row else '0' * 64 if seq == 0 else None) == saved.get('hash'),
+            'Inbox cursor does not match this registry history')
+    return seq
+
+
+def save_cursor(path, follower, agents):
+    from registry import atomic, canonical
+    path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    require(not path.is_symlink(), 'Inbox cursor cannot be a symlink')
+    seq, sha = follower.anchor_at(follower.cursor)
+    value = {'root': str(follower.store.root), 'agents': sorted(set(agents)), 'event': seq, 'hash': sha}
+    atomic(path, (canonical(value) + '\n').encode())
+    path.chmod(0o600)
+
+
+def follow(root, agents, timeout=None, since=None, *, until_first=False, cursor_file=None, persist=True):
     """Follow until the timeout, a signal or, with until_first, the end of the first batch that showed mail."""
     deadline = time.monotonic() + timeout if timeout is not None else None
     store = None
     previous = signal.signal(signal.SIGTERM, _interrupt)
     try:
         store = Store(root, read_only=True)
+        path = Path(cursor_file).absolute() if cursor_file else cursor_path(root, agents)
+        if persist and since is None:
+            since = load_cursor(path, store, agents)
         follower = Follower(store, agents, since)
         while True:
             if deadline is not None and time.monotonic() >= deadline:
                 break
             started = time.monotonic()
-            follower.emit(follower.poll())
+            batch = follower.poll()
+            follower.emit(batch)
+            if persist and batch is not None:
+                # A bounded initial backlog must not skip messages that were not emitted.
+                more = next((row for row in batch[2] if row['kind'] == 'more'), None)
+                if more:
+                    follower.cursor = more['event']
+                    follower.anchor = follower.anchor_at(follower.cursor)
+                    follower.head = None
+                save_cursor(path, follower, agents)
             if until_first and follower.printed:
                 return 0
             delay = max(0, 2 - (time.monotonic() - started))

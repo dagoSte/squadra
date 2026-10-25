@@ -56,7 +56,11 @@ def supported(repo):
 
 def record_file(path, root):
     rel = str(path.relative_to(root))
-    require(".git" not in Path(rel).parts, "Git internals cannot be explicitly included")
+    parts = Path(rel).parts
+    frozen_git = (len(parts) >= 6 and parts[:2] == ('registry', 'candidates') and
+                  len(parts[2]) == 64 and all(c in '0123456789abcdef' for c in parts[2]) and
+                  parts[3:5] == ('repo', '.git'))
+    require('.git' not in parts or frozen_git, "Git internals cannot be explicitly included")
     if path.is_symlink():
         target = os.readlink(path)
         require(not Path(target).is_absolute() and inside(path.resolve(), root), "Escaping or absolute symlink refused: " + rel)
@@ -243,7 +247,7 @@ def restore_check(package, destination):
     result = {"status": "failed", "utc": now(), "package": str(package), "repositories": [],
               "authority": "Historical only; reconcile paths/candidates/permissions before explicit resume"}
     try:
-        shutil.copytree(package / "registry", target / "registry")
+        shutil.copytree(package / "registry", target / "registry", symlinks=True)
         store = Store(target / "registry")
         try:
             checked = store.audit()

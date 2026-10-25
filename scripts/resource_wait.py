@@ -2,6 +2,7 @@
 from contextlib import contextmanager
 import errno
 import hashlib
+import json
 import math
 import os
 import re
@@ -132,7 +133,7 @@ def queue_lock(fd, deadline):
         fcntl.flock(fd, fcntl.LOCK_UN)
 
 
-def acquire(store, actor, name, reason, seconds):
+def acquire(store, actor, name, reason, seconds, *, task=None):
     require(os.name == 'posix', '--wait is supported on POSIX only; Windows must use immediate resource acquisition')
     require(math.isfinite(seconds) and seconds >= 0, '--wait requires finite nonnegative seconds')
     import fcntl
@@ -154,6 +155,8 @@ def acquire(store, actor, name, reason, seconds):
                 ticket = f'{number:020d}-{uuid.uuid4().hex}.ticket'
                 ticket_fd = queue_file(folder, ticket, exclusive=True)
                 fcntl.flock(ticket_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                os.write(ticket_fd, json.dumps({'actor': actor, 'task': task, 'reason': reason,
+                                               'since': time.time(), 'pid': os.getpid()}).encode())
                 position = len(live) + 1
             who = holder['owner'] if holder else ('a prior waiter' if position > 1 else 'free')
             if initial['lang'] == 'en':
@@ -173,7 +176,8 @@ def acquire(store, actor, name, reason, seconds):
                         timeout_ms = min(previous_timeout, math.ceil(min(remaining, previous_timeout / 1000) * 1000))
                         store.db.execute('PRAGMA busy_timeout=' + str(timeout_ms))
                         try:
-                            store.append('resource.acquire', actor, {'name': name, 'reason': reason})
+                            store.append('resource.acquire', actor, {'name': name, 'reason': reason,
+                                         **({'task': task} if task else {})})
                             return
                         except Error as exc:
                             if str(exc) != RESERVED:
@@ -199,3 +203,48 @@ def acquire(store, actor, name, reason, seconds):
                         fcntl.flock(mutex, fcntl.LOCK_UN)
             if mutex is not None:
                 os.close(mutex)
+
+
+def status(store, name):
+    """Observe held reservations and locked queue tickets; never clean up or reserve."""
+    import fcntl
+    from registry import plain
+    result = {'name': name, 'holder': plain(store.view()['resources'].get(name)),
+              'waiting': [], 'process_observation': 'reservations and live wait tickets; holder process not inferred'}
+    path = store.root / 'resource-waits' / hashlib.sha256(name.encode()).hexdigest()
+    if not path.exists():
+        return result
+    descriptors = []
+    try:
+        fd = os.open(store.root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+        descriptors.append(fd)
+        for part in ('resource-waits', hashlib.sha256(name.encode()).hexdigest()):
+            fd = os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=fd)
+            descriptors.append(fd)
+            private(os.fstat(fd), directory=True)
+        for ticket in sorted(os.listdir(fd)):
+            if not TICKET.fullmatch(ticket):
+                continue
+            try:
+                leaf = os.open(ticket, os.O_RDONLY | os.O_NOFOLLOW, dir_fd=fd)
+            except FileNotFoundError:
+                continue
+            try:
+                private(os.fstat(leaf))
+                try:
+                    fcntl.flock(leaf, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                except BlockingIOError:
+                    body = os.read(leaf, 8193)
+                    try:
+                        data = json.loads(body)
+                        if not isinstance(data, dict):
+                            raise ValueError('Invalid ticket metadata')
+                    except (ValueError, UnicodeError):
+                        data = {'actor': None, 'metadata': 'unavailable; older or starting waiter'}
+                    result['waiting'].append({**data, 'position': len(result['waiting']) + 1})
+            finally:
+                os.close(leaf)
+        return result
+    finally:
+        for fd in reversed(descriptors):
+            os.close(fd)

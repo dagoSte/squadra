@@ -52,6 +52,9 @@ def _install(source, home, backup):
                (home / ".claude/skills/squadra", "claude-squadra"),
                (home / ".cursor/skills/squadra", "cursor-squadra"),
                (home / ".local/bin/squadra", "launcher")]
+    if (version / 'skills/migliora/SKILL.md').is_file():
+        targets.extend((home / client / 'skills/migliora', client.lstrip('.') + '-migliora')
+                       for client in ('.codex', '.claude', '.cursor'))
     changed = []
     result = {"source": str(source), "commit": sha, "version": str(version), "started": now(),
               "backup": str(backup), "hashes": hashes, "targets": []}
@@ -67,7 +70,8 @@ def _install(source, home, backup):
                 body = "#!/bin/sh\nexec " + shlex.quote(sys.executable) + " -B " + shlex.quote(str(version / "scripts/squadra.py")) + ' "$@"\n'
                 atomic(target, body.encode()); target.chmod(0o755)
             else:
-                target.symlink_to(version, target_is_directory=True)
+                target.symlink_to(version / 'skills/migliora' if label.endswith('-migliora') else version,
+                                  target_is_directory=True)
             result["targets"].append({"path": str(target), "old": str(old) if existed else None})
         result.update(status="installed", ended=now(), live_protocol="Existing sessions retain their read version; no assignments or refs migrated")
         atomic(backup / "INSTALL.json", (json.dumps(result, indent=2) + "\n").encode())

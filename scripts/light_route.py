@@ -106,11 +106,18 @@ def line_counts(before, after, folder):
     return int(added), int(deleted)
 
 
-def measure(task, candidate=None):
+def measure(task, candidate=None, root=None):
     check_contract(task)
     try:
-        repo = Path(task["repo"])
-        before = snapshot(repo)
+        frozen = task.get('delivery', {}).get('frozen')
+        use_frozen = frozen and candidate is not None and candidate.get('sha256') == frozen['sha256']
+        from frozen_candidate import repository as frozen_repository
+        repo = frozen_repository(task, root or Path(frozen['repo']).parents[2]) if use_frozen else Path(task['repo'])
+        physical = snapshot(repo)
+        before = dict(physical)
+        if use_frozen:
+            before['repo'] = task['repo']
+            before['sha256'] = digest(canonical({k: before[k] for k in ('repo', 'head', 'files')}).encode())
         if candidate is not None and candidate != before:
             refuse("light_unmeasurable", "candidate changed")
         tree, base = base_files(repo, task["base"])
@@ -151,7 +158,7 @@ def measure(task, candidate=None):
                     refuse("light_protected_path", name)
                 added, deleted = line_counts(old, new, folder)
                 changes.append({"path": name, "added": added, "deleted": deleted})
-        if snapshot(repo) != before:
+        if snapshot(repo) != physical:
             refuse("light_unmeasurable", "unstable source")
         lines = sum(row["added"] + row["deleted"] for row in changes)
         if not changes:
@@ -221,7 +228,7 @@ def validate_event(state, kind, task, data):
         require(delivery.get("handoff") or (delivery.get("handoffs") and pool_claim(state, task)),
                 "Exact delivery handoff required before read")
         from registry import candidate_checks
-        candidate_checks(task, snapshot(task["repo"]), require_review=False)
+        candidate_checks(task, __import__('frozen_candidate').current(task, state.get('root')), require_review=False)
     if kind == "run.start" and data["mode"] == "proof":
         require(data.get("before") == snapshot(task["repo"]), "Proof source changed before start")
         require(data.get("argv") == task["proof"] and data.get("expected_rc") == 0,
@@ -229,9 +236,10 @@ def validate_event(state, kind, task, data):
         if task["route"] == "light":
             require(data.get("light") == measure(task, data.get("before")), "Light proof measurement changed")
     if kind in {"deliver", "review", "close"}:
-        current = snapshot(task["repo"])
+        from frozen_candidate import current as delivered_current
+        current = snapshot(task['repo']) if kind == 'deliver' else delivered_current(task, state.get('root'))
         if task["route"] == "light":
-            measured = measure(task, current)
+            measured = measure(task, current, root=state.get('root'))
             if kind == "deliver":
                 # A read-at-gate delivery has no reader, so no packet: only its own measurement.
                 require(data.get("light") == measured and (read_at_gate(task) or

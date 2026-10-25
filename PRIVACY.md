@@ -23,6 +23,8 @@ Do not include passwords, API keys or unnecessary personal data in messages,
 prompts, artifacts or command output. Recorded artifacts cannot be selectively
 edited through the dashboard.
 
+New CLI task deliveries also store a private copy of the proved source and Git history under `candidates/`. Inbox followers save local resume cursors under the user state folder, separately from message acknowledgements. Migliora may append project instructions to `AGENTS.md` and create a local commit after its checks; it does not upload or push them.
+
 Dashboard plugins live under `~/.squadra/plugins/<name>/` in the HOME of the
 user running Squadra. Their folders can hold manifests, panel data and saved
 action requests. The Store creates managed plugin folders with `0700`.

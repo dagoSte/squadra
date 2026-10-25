@@ -20,7 +20,7 @@ import unicodedata
 import weakref
 
 
-VERSION = "3.10.4"
+VERSION = "3.11.0"
 WAIT_SECONDS = {"ack": 900, "delivered": 3600, "reviewed": 1800, "heartbeat": 1800, "alive": 300,
                 "to-forward": 120, "plan": 3600}
 MESSAGE_WAIT_KEYS = {"to-forward", "plan"}
@@ -359,6 +359,17 @@ def apply(state, event):
     elif kind == "supersede":
         # Record replacement after the new task has already been created.
         state["tasks"][d["task"]].update(superseded_by=d["by"], superseded_utc=event["utc"])
+    elif kind == "reassign":
+        task = state['tasks'][d['task']]
+        for handoff in [d.get('previous'), *d.get('previous_pool', [])]:
+            if handoff in state['messages']:
+                state['messages'][handoff]['replaced_by'] = d['handoff']
+        task.setdefault('reassignments', []).append({**d, 'utc': event['utc'], 'event': event['id']})
+        task.update(reviewer=d['reviewer'], pool=None, status='delivered', status_utc=event['utc'])
+        task['delivery'] = {**task['delivery'], 'handoff': d['handoff'],
+                            'packet': d['packet'], 'packet_data': d['packet_data']}
+        task['delivery'].pop('handoffs', None)
+        task.pop('claim', None)
     elif kind == "brief":
         record = {"text": d["text"], "artifact": d["artifact"], "actor": event["actor"], "utc": event["utc"]}
         if d.get("project"):
@@ -405,6 +416,8 @@ def apply(state, event):
         task = state["tasks"][d["task"]]
         task["status"] = "done"
         task["status_utc"] = event["utc"]
+        if d.get('note'):
+            task['close_note'] = d['note']
         if task.get("release_gate") is True:
             read = last_code_read(task)
             for other in state["tasks"].values():
@@ -499,7 +512,7 @@ def pending_messages(state, recipient=None):
     if index is not None:
         from registry_current import pending_rows
         return pending_rows(index, state, recipient)
-    return (m for m in state["messages"].values() if not m["ack"] and m.get("info") is not True and
+    return (m for m in state["messages"].values() if not m["ack"] and m.get("info") is not True and not m.get("replaced_by") and
             (recipient is None or m["to"] == recipient))
 
 
@@ -1179,6 +1192,22 @@ def candidate_checks(task, current, require_review=True, delivering=False):
                 reviews[-1]["binding"] == current["sha256"] and contract_matches(task, reviews[-1]),
                 "Independent current code review pending")
         require(ids <= set(reviews[-1].get("covers", [])), "Requirement lacks independent current review")
+        if reviews[-1].get('request'):
+            delivery = task.get('delivery', {})
+            handoffs = delivery.get('handoffs', []) + ([delivery['handoff']] if delivery.get('handoff') else [None])
+            require(reviews[-1].get('handoff') in handoffs, 'Independent review belongs to an older handoff')
+
+
+def review_handoff(state, task, actor):
+    delivery = task.get('delivery', {})
+    return delivery.get('handoff') or next((h for h in delivery.get('handoffs', [])
+                                         if state['messages'].get(h, {}).get('to') == actor), None)
+
+
+def review_request(actor, data):
+    identity = {k: v for k, v in data.items() if k != 'request'}
+    identity['report'] = data['report']['sha256']
+    return 'review-request:' + digest(canonical({'actor': actor, **identity}).encode())
 
 
 def check_pool(state, d):
@@ -1318,6 +1347,7 @@ def validate_supersession(state, d):
     identity = state["agents"].get(task["owner"], {}).get("identity")
     held = sorted(name for name, r in state["resources"].items()
                   if r["owner"] == task["owner"] or (identity and state["agents"].get(r["owner"], {}).get("identity") == identity))
+    held = [name for name in held if state['resources'][name].get('task') in (None, old)]
     require(not held, "Reconcile first: reservation " + ", ".join(held) + " is held by the owner of " + old)
     asks = sorted(a["id"] for a in state["asks"].values() if a.get("task") == old and a["status"] == "open")
     require(not asks, "Reconcile first: open question " + ", ".join(asks) + " about " + old + " needs an answer or a withdrawal")
@@ -1716,7 +1746,7 @@ def validate(state, kind, actor, d, stored_packet=None):
                     "review", "close", "output", "run.start", "run.end", "run.cancel", "run.progress", "run.abandon",
                     "resource.acquire", "resource.release", "pause", "resume", "legacy", "decision", "ask", "diagnostic",
                     "settings", "save", "restore.check", "restore.freeze", "challenge", "benchmark", "brief",
-                    "availability", "supersede", "route", "fix",
+                    "availability", "supersede", "reassign", "route", "fix",
                     "lesson", "lesson.retire", "lesson.recall", "lesson.ineffective"},
             "Unknown event kind")
     if kind == "init":
@@ -1738,8 +1768,35 @@ def validate(state, kind, actor, d, stored_packet=None):
     require(actor in state["agents"], "Unknown agent: " + actor)
     coordinator = state["agents"][actor]["role"] == "coordinator"
     if kind in {"task", "close", "pause", "resume", "decision", "ask", "settings", "save", "restore.check", "brief",
-                "availability", "supersede", "route", "fix"}:
+                "availability", "supersede", "reassign", "route", "fix"}:
         require(coordinator, "Coordinator role required")
+    if kind == 'reassign':
+        task = state['tasks'].get(d.get('task'))
+        require(task is not None and task['status'] == 'delivered' and not task.get('superseded_by'),
+                'Reassign requires a current delivered task without a recorded verdict')
+        require(isinstance(d.get('reason'), str) and bool(d['reason'].strip()), 'Reassign reason required')
+        reader = state['agents'].get(d.get('reviewer'))
+        require(reader is not None and reader['role'] in {'reviewer', 'coordinator'} and
+                not standby(state, reader['id']), 'Available registered reviewer required')
+        require(reader['identity'] not in {state['agents'][a]['identity'] for a in task['authors']},
+                'Author cannot independently review own changes')
+        require(reader['id'] != task.get('reviewer'), 'Reviewer is already assigned')
+        if task.get('cross_client'):
+            validate_cross_client(state, {**task, 'reviewer': reader['id'], 'pool': None})
+        require(not any(r.get('task') == task['id'] and r.get('mode') == 'read' and
+                        r['status'] in {'running', 'cleanup-unknown'} for r in state['runs'].values()),
+                'Reconcile active reader before reassignment')
+        require(d.get('previous') == task.get('delivery', {}).get('handoff') and
+                d.get('previous_pool', []) == task.get('delivery', {}).get('handoffs', []),
+                'Delivery changed before reassignment')
+        from source_manifests import transform_packet
+        packet = d.get('packet_data', {})
+        require(packet.get('candidate') == task.get('candidate') and packet.get('reviewer') == reader['id'] and
+                packet.get('scope') == task['scope'] and packet.get('proofs') == current_proofs(task, task['candidate']),
+                'Reassignment must preserve exact candidate, scope and proofs')
+        require(d.get('handoff') not in state['messages'] and
+                d.get('handoff') == 'review-' + digest(canonical(stored_packet if stored_packet is not None else packet).encode()),
+                'Reassignment handoff must bind its packet')
     if kind == "route":
         require(d.get("task") in state["tasks"], "Unknown task")
         from light_route import promotion
@@ -1931,7 +1988,18 @@ def validate(state, kind, actor, d, stored_packet=None):
                         "A whole gate is already running, including under the same owner")
             if 'shared_proof' in d:
                 validate_shared_start(state, actor, d)
+        if kind in {'review', 'close'} and task.get('delivery', {}).get('frozen'):
+            from frozen_candidate import current as frozen_current
+            require(frozen_current(task, state.get('root')) == task['candidate'], 'Frozen candidate differs')
         if kind == "review":
+            if d.get('request'):
+                require(d.get('handoff') == review_handoff(state, task, actor), 'Review belongs to an older handoff')
+                prior = [r for r in task['reviews'] if r['reviewer'] == actor and r['stage'] == d['stage'] and
+                         r['binding'] == d['binding'] and r.get('handoff') == d.get('handoff')]
+                require(not prior or d.get('amends') == prior[-1].get('request'),
+                        'review_already_recorded: use --amend with the last review receipt')
+                require(not d.get('amends') or (prior and d['amends'] == prior[-1].get('request')),
+                        'Review amendment must name the current review receipt')
             if 'findings' in d:
                 validate_findings(d['findings'])
             if 'net_lines' in d:
@@ -1966,7 +2034,7 @@ def validate(state, kind, actor, d, stored_packet=None):
                     "Exact candidate independent review still pending")
             cross_client_read(state, task, task.get("candidate"))
             if task.get("release_gate") is True:
-                gate_checks(state, task, snapshot(task["repo"], state.get("root")))
+                gate_checks(state, task, __import__('frozen_candidate').current(task, state.get('root')))
         if task.get("route") == "light" or task.get("contract"):
             from light_route import validate_event
             validate_event(state, kind, task, d)
@@ -2061,6 +2129,9 @@ def validate(state, kind, actor, d, stored_packet=None):
                         require(run.get("light") == measure(task, d["after"]), "Light proof measurement changed")
     if kind == "resource.acquire":
         require(d["name"] not in state["resources"], "Resource already reserved; expiry is not release")
+        if d.get('task') is not None:
+            require(d['task'] in state['tasks'] and state['tasks'][d['task']]['status'] != 'done' and
+                    not state['tasks'][d['task']].get('superseded_by'), 'Resource task must be open')
     if kind == "resource.release":
         require(state["resources"].get(d["name"], {}).get("owner") == actor, "Only resource owner can release")
 
@@ -2451,9 +2522,9 @@ class Store:
         event = {k: row[k] for k in ["id", "utc", "kind", "actor", "previous"]}
         event["data"] = json.loads(row["data"])
         version = row['hash_format'] if 'hash_format' in row.keys() else None
-        require(version in (None, 2), "Unsupported event hash format")
-        if version == 2:
-            event['format'] = 2
+        require(version in (None, 2, 3), "Unsupported event hash format")
+        if version is not None:
+            event['format'] = version
         require(digest(canonical(event).encode()) == row["hash"],
                 "Event integrity failure at sequence " + str(row["seq"]))
         return {**event, "hash": row["hash"], "seq": row["seq"]}
@@ -2869,6 +2940,10 @@ class Store:
             saved = []
             appended = []
             for kind, actor, data, event_id in operations:
+                if kind == 'review' and state['tasks'].get(data.get('task'), {}).get('delivery_policy') == 'frozen-v1':
+                    data = {**data, 'handoff': data.get('handoff', review_handoff(state, state['tasks'][data['task']], actor))}
+                    data['request'] = data.get('request') or review_request(actor, data)
+                    event_id = event_id or data['request']
                 event_id = event_id or uuid.uuid4().hex
                 from source_manifests import transform_event, transform_packet
                 data = json.loads(canonical(transform_event(kind, data, self.compact_snapshot)))
@@ -2881,9 +2956,9 @@ class Store:
                     continue
                 from source_manifests import transform_event, transform_packet
                 checked_data = transform_event(kind, data, self.resolve_snapshot)
-                if kind == 'deliver' and 'packet_data' in checked_data:
+                if kind in {'deliver', 'reassign'} and 'packet_data' in checked_data:
                     checked_data = {**checked_data, 'packet_data': transform_packet(checked_data['packet_data'], self.resolve_snapshot)}
-                if kind in {'run.start', 'run.end', 'deliver', 'review', 'close', 'challenge'}:
+                if kind in {'run.start', 'run.end', 'deliver', 'reassign', 'review', 'close', 'challenge'}:
                     target = self.resolved(state)
                 elif kind == 'availability' and data.get('ping'):
                     # A sweep re-checks that its ping is due, and only a delivered ping can be due.
@@ -2891,7 +2966,7 @@ class Store:
                     target = wait_view(state, wait_facts(self.decode_event(row) for row in rows))
                 else:
                     target = state
-                validate(target, kind, actor, checked_data, stored_packet=data.get("packet_data") if kind == "deliver" else None)
+                validate(target, kind, actor, checked_data, stored_packet=data.get("packet_data") if kind in {"deliver", "reassign"} else None)
                 if kind == "run.abandon":
                     validate_abandonment_files(self, state["runs"][data["id"]], data)
                 if kind == "run.end" and data.get("reconciled") is not None:
@@ -2902,9 +2977,12 @@ class Store:
                 data = json.loads(canonical(transform_event(kind, data, self.compact_snapshot)))
                 event = {"id": event_id, "utc": now(), "kind": kind, "actor": actor,
                          "data": data, "previous": previous, "format": 2}
+                if (kind == 'reassign' or (kind == 'task' and data.get('delivery_policy') == 'frozen-v1') or
+                        self.db.execute('SELECT 1 FROM events WHERE hash_format=3 LIMIT 1').fetchone() is not None):
+                    event['format'] = 3
                 # A restore of a package with no new-format event keeps the envelope the saving version can read.
                 if kind == "restore.freeze" and self.db.execute(
-                        "SELECT 1 FROM events WHERE hash_format=2 LIMIT 1").fetchone() is None:
+                        "SELECT 1 FROM events WHERE hash_format IN (2,3) LIMIT 1").fetchone() is None:
                     del event["format"]
                 h = digest(canonical(event).encode())
                 cursor = self.db.execute("INSERT INTO events(id,utc,kind,actor,data,previous,hash,hash_format) VALUES(?,?,?,?,?,?,?,?)",
@@ -2991,6 +3069,11 @@ class Store:
             return sha in scrubbed
         def walk(value):
             if isinstance(value, dict):
+                if value.get('frozen') and value.get('snapshot'):
+                    from frozen_candidate import current as frozen_current
+                    delivered = self.resolve_snapshot(value['snapshot'])
+                    require(frozen_current({'repo': delivered['repo'], 'delivery': value}, self.root) == delivered,
+                            'Missing or changed frozen candidate')
                 if {"sha256", "name", "bytes", "original"} <= value.keys():
                     path = self.root / "artifacts" / value["sha256"]
                     if os.path.lexists(path) or not excused(value["sha256"]):
@@ -3108,6 +3191,8 @@ class Store:
                                                        skip_lease_locks=name == "run-leases")
         except (OSError, CheckpointError) as exc:
             raise Error("Checkpoint file copy refused: " + str(exc)) from exc
+        from frozen_candidate import checkpoint as copy_candidates
+        copy_candidates(self, destination)
         check = Store(destination)
         try:
             checked = check.audit()
@@ -3125,8 +3210,8 @@ class Store:
                 verify_tree(destination / name, manifest["files"])
         except (OSError, CheckpointError) as exc:
             raise Error("Checkpoint file verification refused: " + str(exc)) from exc
-        hashes = {str(f.relative_to(destination)): digest(f.read_bytes()) for f in destination.rglob("*")
-                  if f.is_file() and f.name not in {"registry.sqlite3-wal", "registry.sqlite3-shm"}}
+        hashes = {str(f.relative_to(destination)): digest(os.fsencode(os.readlink(f)) if f.is_symlink() else f.read_bytes()) for f in destination.rglob("*")
+                  if (f.is_file() or f.is_symlink()) and f.name not in {"registry.sqlite3-wal", "registry.sqlite3-shm"}}
         atomic(destination / "CHECKSUMS.json", (canonical(hashes) + "\n").encode())
         return str(destination)
 

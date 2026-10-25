@@ -526,90 +526,51 @@ without the owner's authorization. Shared mail is enough across mixed clients.
 
 ## Following mail without a native queue
 
-Every Claude window and every other window without a native queue, including
-the coordinator, starts a read-only follower when joining or resuming. Name all
-of that window's roles with repeated `--agent`; the coordinator includes `coord`.
-Re-arm when it expires, with `--since` equal to the highest event number on a
-complete JSON line already consumed. An empty resumed watch prints nothing.
+Every Claude window and every other window without a native queue, including the
+coordinator, starts a follower when joining or resuming. Name all its roles with
+repeated `--agent`; the coordinator includes `coord`. The follower leaves the journal
+and its projections read-only and saves its cursor separately under
+`$XDG_STATE_HOME/squadra/inbox` (default `~/.local/state/squadra/inbox`). Re-arm the
+same command without manually copying an event number.
 
-In Claude Code, arm **Monitor** with these fields (the monitor's limit must be
-longer than the command's timeout):
+In Claude Code, arm **Monitor** with a timeout longer than the command's timeout:
 
 ```json
 {"command":"squadra --root /shared/registry inbox --agent claude-build --agent claude-review --follow --timeout 1740","description":"mail for claude-build, claude-review","timeout_ms":1800000}
 ```
 
-Each new stdout line is mail to read and act on in that window. When the monitor
-ends, re-arm the same command with `--since 123` if 123 is the highest complete
-event consumed. The coordinator uses its own names, for example `--agent coord
---agent coord-build`. A shorter `--timeout 600` needs `timeout_ms: 660000`; Monitor's
-default 300000 would end that follower early. These are timeout pairs, not a claim
-that Monitor is available in every client.
-
-In Claude Code the same follower also runs as a background command, which has no
-30-minute limit: run it with the Bash tool's `run_in_background` and `--until-first`.
-The command exits 0 after the first batch that shows mail, ending with its `cursor`
-line, and Claude Code wakes the window when it exits. Read the mail, then start it
-again with `--since` set to that cursor:
+A background Bash command with `run_in_background` and `--until-first` has no
+30-minute limit: it exits after the first batch that shows mail and wakes the window.
+Read the full mail and acknowledge it, then re-arm the same command:
 
 ```sh
-squadra --root /shared/registry inbox --agent claude-build --agent claude-review --follow --until-first --since 123
+squadra --root /shared/registry inbox --agent claude-build --agent claude-review --follow --until-first
 ```
 
-Without `--since` the first run prints the waiting backlog, so it ends at once while
-mail waits for your ACK; with `--since` it waits for new mail only. Add `--timeout`
-only if the window should also wake after that many seconds without mail.
+Use `--cursor-file PATH` to choose a private cursor file, `--since EVENT` to override
+its starting point or `--no-cursor` to track the cursor manually. The saved cursor
+binds the registry path, recipients and the event hash. A foreign or changed history
+is refused. Each batch is saved only after its output was flushed; interruption
+before that point may repeat a message. No cursor proves consumption or an ACK.
 
-**A follower that is not running looks like an empty inbox, and status cannot tell
-them apart.** The follower writes nothing by design, so the registry holds no trace
-that it runs. Recording one would take a periodic event in the hash chain: a new
-kind of event, which this release line does not add so that 3.10.1 windows keep
-sharing the registry, and a history that grows every few seconds. A lock file
-outside the chain would be seen only on the same machine and would end the
-follower's no-write guarantee. So the window itself keeps watch: Monitor tells it
-when it ends, a background command wakes it when it exits, and after a restart,
-`/clear` or compaction the window arms its follower again at once, with `--since`.
+On the first run, pending mail is shown oldest first, at most ten in the first
+batch with a `more` line for the remainder. The saved position never skips mail
+that was not printed; subsequent polls or a restarted follower drain that remainder.
+On resume it prints new matching mail, including messages sent between watches.
+An empty resumed watch stays quiet. Message lines carry `kind: "message"`, creation
+`event`, sender, recipient, task, ID, `info`, `ack_needed`, a bounded preview and the
+root-bound `ack_command`. Read full content with `inbox --agent NAME --message ID`,
+then explicitly ACK when required.
 
-Without Monitor, start a background process and keep an active watcher on its
-output; redirection alone does not wake an agent:
+The follower polls every two seconds, releases views before sleeping and verifies
+new events from its last hash anchor. It has no periodic output ticks. SIGINT,
+SIGTERM and a timeout exit 0; a registry/cursor error exits nonzero without a journal
+diagnostic. `--since` and `--timeout` require `--follow`; `--all` and `--message`
+do not apply to it. A stopped follower is not proof of an empty mailbox: Monitor or
+an actively watched background process must wake the window, which re-arms after
+restart or compaction. Redirection alone does not wake an agent. Stop only your own
+processes. The follower saves no ACKs or transport receipts.
 
-```sh
-squadra --root /shared/registry inbox --agent builder --agent reader --follow --timeout 1740 > /evidence/mail.jsonl 2> /evidence/mail.err &
-squadra_mail_pid=$!
-tail -f /evidence/mail.jsonl
-# After stopping the output watcher, stop only this follower if still running:
-kill -INT "$squadra_mail_pid"
-wait "$squadra_mail_pid"
-```
-
-Without `--since`, startup prints the shared ACK-wait count, at most ten oldest
-messages, and an ordinary inbox command for any remainder. With `--since`, it
-first prints every matching message above that event, including mail sent in
-the gap before re-arming, then follows live mail. It does not replay older mail.
-Each message line has `kind: "message"`, its creation `event`, sender, recipient,
-task, message ID, `info`, `ack_needed`, a first-line preview capped at 160 characters,
-and the exact root-bound `ack_command` (null if no ACK is needed). The other kinds
-are `pending`, `more` and `cursor`; a cursor advances only after a complete batch.
-There are no periodic output ticks. Read the full message with
-`inbox --agent NAME --message ID` when needed, then explicitly ACK it if
-required. Never treat a preview, a cursor, manual transport or a running
-follower as an ACK or a delivery confirmation.
-
-The command reads only, checks for changes every two seconds and releases its
-views before sleeping. Idle polls read the last sequence/hash; they do not audit
-unchanged history. Startup reads one verified view. After it, a changed head
-decodes only the events after the last verified head, checking their hash chain
-from that head, and opens a verified view only when they carry mail for the
-named agents, so a poll costs the new events, not the mailbox history. A
-timeout or SIGINT/SIGTERM exits 0; a registry error exits nonzero without
-writing a diagnostic event. Omit `--timeout` to follow until interrupted.
-In-progress verification/IO can outlast a short timeout. `--since` must be
-nonnegative and no higher than this registry's head; `--since` and `--timeout`
-require `--follow`, and `--all` and `--message` do not apply to it. No files,
-ACKs or transport receipts are saved by the follower.
-
-<a id="da-ricordare-at-close"></a>
-<a id="da-ricordare-alla-chiusura--worth-remembering-at-close"></a>
 ## Worth remembering at close
 
 An optional declaration by the closing agent, without changing the `output`
@@ -666,10 +627,12 @@ returns that ID. The recipient ACKs it before the code review or `read` turn.
 The message names the commit only when the working tree equals it; otherwise it names
 the working-tree snapshot and the uncommitted or untracked paths the commit lacks.
 A new fingerprint requires a new handoff and ACK. **Reader evidence lives outside the
-candidate tree**: a report, log or probe a reader writes into the builder's checkout after
-delivery changes the fingerprint, and `review`, `check` and `close` refuse with «Candidate
-drift», naming the paths added, removed or changed since the delivery (up to 20, then a
-count) and a moved HEAD. Repeating the same packet does
+candidate tree**. New CLI tasks copy the exact proved source, including relevant
+uncommitted and untracked files, into the registry at delivery. The builder may then
+continue; `review`, `check` and `close` measure the frozen copy and refuse tampering.
+Legacy tasks continue measuring their live checkout and refuse candidate drift.
+Ignored dependencies still need their own evidence. Checkpoint and save include the
+frozen candidates; restored readers resolve them relative to the restored registry. Repeating the same packet does
 not duplicate events. New proofs change the packet and require a new message/ACK,
 even when returning to an earlier candidate. Without `--reviewer`, the manual
 protocol remains.
@@ -1145,7 +1108,7 @@ A project brief starts with its goal; `## Steps` and `## Glossary` (or `## Passi
 - **Options and budgets:** `--depends T0` (prerequisites closed independently first), `--expected N` (recognized test count), `--full-gate` (a gate-labelled proof); none of them proves a suite complete, so agree the real command with the project. By default three plan reads, two code reads and three build attempts in the optional runner (`init --plan-rounds/--review-rounds`); acceptance binds to the latest plan bytes; exhausted budgets need an explicit disposition, never a reset. Small changes get proportionate checks.
 - **`prove`** keeps the native status, duration, output and before/after fingerprints of tracked and non-ignored files; ignored dependencies need their own evidence. **`deliver`** needs a passing proof on the exact current source, freezes an immutable packet, returns a `review-…` ID and never invokes a model.
 - **`review`** records `accepted`, `changes-required` or `blocked`. `probe` records independent tests and negative controls (`--expected-rc 1`; a matched negative is not a product pass); mutants go in isolated copies. `--covers` records coverage, not test adequacy, which the reader judges.
-- **`check`** binds candidate, plan, proof, artifacts and coverage again before `close`. A source change voids the old proof and review. `advance` reconciles a delivered handoff without building, approving or waking clients; without `--reviewer` the manual review protocol applies.
+- **`check`** binds candidate, plan, proof, artifacts and coverage again before `close`. For new CLI tasks the delivered frozen source binds the proof and review; changing that copy invalidates both. Legacy tasks retain live-source binding. `advance` reconciles a delivered handoff without building, approving or waking clients; without `--reviewer` the manual review protocol applies.
 
 `--reply-to` answers; `--to-new waiting-reader` creates an expected recipient, not an identity: register the real seat before its ACK. `transport --via manual` returns a pending handoff instruction and records `delivered: null` (unconfirmed), and success with `--via codex-queue` means queued, not read or awake. Every codex-queue attempt is recorded: one that did not deliver keeps `delivered: false` (or `null` after a timeout) with its `stage`, and the command exits 1. The coordinator relays any message a sandboxed window could not deliver (`transport --actor <coordinator> --message <ID> --via codex-queue`, or `--via manual`), recorded with `relayed_by`; only the recipient's ACK ends it. A Codex window keeps the registry folder among its writable roots (`codex --add-dir <registry>`). The protocol authorizes no external messaging. Save **one substantive output per completed step**: a result, decision, blocker or handoff that adds information (omit `--task` for area-wide coordination). Its declared next step is not evidence that anything happened. Routine progress comes from the registry, so no manual "ready" messages and no retelling of an existing proof; real ACKs, decisions, pauses and receipts stay required.
 
@@ -1247,3 +1210,38 @@ or task story is opened. Details are bound to the registry head, so an older rep
 cannot overwrite newer state; a failed read offers retry. The full task/run JSON
 remains available from the technical-data control. Usage and, after integration,
 Balance poll independently because session data can change without registry events.
+
+
+## Reader transfer, resource inspection and workflow improvements (3.11)
+
+Upgrade every window before the first new task or transfer: these events use hash
+format 3, which old clients refuse. Existing histories are not rewritten.
+
+```text
+squadra reassign --actor coord --task T1 --reviewer reader2 --reason "Reader occupied"
+squadra resource status --name cpu-heavy
+squadra resource acquire --actor builder --name port-8000 --task T1 --reason "T1 preview"
+squadra task ... --proof python3 -B -m unittest tests.test_feature
+squadra deliver --actor builder --task T1 --note "Check the deletion case too"
+squadra close --actor coord --task T1 --note "Frozen candidate accepted"
+```
+
+Reassignment preserves the delivery, native proofs and spent budgets and replaces
+only its reader/packet. The new reader ACKs its exact handoff. A live or uncertain
+native reader must be reconciled first. Previous handoffs leave the pending queue;
+old readers cannot record a verdict. A recorded verdict needs an explicit review
+amendment, never a transfer that silently replaces it. Identical verdict retries
+return their receipt without another round; `review --amend RECEIPT` explicitly
+amends the current verdict within the original budget.
+
+Resource status shows reservations and locked FIFO tickets, never inferred process
+presence. Stale tickets are omitted without cleanup. Task-scoped reservations stop
+unrelated work from blocking supersession; legacy reservations remain conservative.
+`send` returns the message receipt without the project table; use `status` for it.
+
+At close, apply [migliora](skills/migliora.md) to evidenced friction. It adds no rule
+without a trigger, evidence, real check and retirement condition. The helper can
+append an instruction in `AGENTS.md`, check it and create a local pathspec commit,
+with `--defer-commit` and a later explicit `migliora commit` when a required review
+must happen between them. It preserves other staged work and native hooks. It never
+publishes, pushes or approves project memory proposals.

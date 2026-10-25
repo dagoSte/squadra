@@ -4,6 +4,6 @@
   "price": "free",
   "mcp": true,
   "source": "https://github.com/dagoSte/squadra/tree/main/plugins/sentry",
-  "accepted_version": "0.1.6",
-  "review_date": "2026-10-23"
+  "accepted_version": "0.1.7",
+  "review_date": "2026-10-25"
 }

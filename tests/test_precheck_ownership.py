@@ -130,7 +130,8 @@ class PrecheckOwnership(unittest.TestCase):
                 "  if any((p.stat().st_dev,p.stat().st_ino)==(st.st_dev,st.st_ino) "
                 f"for p in Path({str(self.root / 'run-leases')!r}).glob('*.lock')): held.append(fd)\n"
                 " except OSError: pass\n"
-                f"Path({str(ready)!r}).write_text(json.dumps(held))\n"
+                f"Path({str(ready)!r} + '-tmp').write_text(json.dumps(held))\n"
+                f"Path({str(ready)!r} + '-tmp').replace({str(ready)!r})\n"
                 "until=time.monotonic()+8\n"
                 f"while not Path({str(release)!r}).exists() and time.monotonic()<until: time.sleep(.01)\n")
         command = support.py(code)

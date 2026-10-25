@@ -135,7 +135,8 @@ def selftest_table(result, lang):
 def bindings(store, task_id, require_review=True):
     state = store.resolved()
     task = state["tasks"][task_id]
-    current = snapshot(task["repo"], store.root)
+    from frozen_candidate import current as delivered_current
+    current = delivered_current(task, store.root)
     require_candidate(task, current, "deliver/prove the new exact source")
     store.verify_artifacts(task)
     plan = task.get("plan")
@@ -147,7 +148,7 @@ def bindings(store, task_id, require_review=True):
         from light_route import check_contract, measure
         check_contract(task)
         if task["route"] == "light":
-            measure(task, current)
+            measure(task, current, root=store.root)
     candidate_checks(task, current, require_review and not read_at_gate(task))
     if require_review:
         cross_client_read(state, task, current)
@@ -230,7 +231,7 @@ def candidate_line(current, task_id):
             " uncommitted or untracked paths: " + ", ".join(changed[:10]) + (", ..." if len(changed) > 10 else "") + ".")
 
 
-def deliver(store, actor, task_id, reconcile=False):
+def deliver(store, actor, task_id, reconcile=False, note=None):
     state = store.resolved(); task = state["tasks"][task_id]
     require(actor == task["owner"] or (reconcile and state["agents"][actor]["role"] == "coordinator"),
             "Assigned owner required for delivery")
@@ -245,6 +246,11 @@ def deliver(store, actor, task_id, reconcile=False):
 
     operations = []
     data = {"task": task_id, "snapshot": current}
+    if note:
+        data['note'] = note
+    if task.get('delivery_policy') == 'frozen-v1':
+        from frozen_candidate import freeze
+        data['frozen'] = freeze(store, task, current)
     if task.get("fix"):
         from fix_challenge import binding, disposition
         data.update(fix_binding=binding(task), fix_disposition=disposition(task))
@@ -261,6 +267,10 @@ def deliver(store, actor, task_id, reconcile=False):
                   "scope": task["scope"], "plan": task.get("plan"), "requirements": task.get("requirements", []),
                   "proofs": current_proofs(task, current),
                   "instructions": "ACK this exact message, read frozen candidate in an isolated copy, record independent verdict and limitations; never publish or edit the candidate."}
+        if data.get('frozen'):
+            packet['frozen'] = data['frozen']
+        if note:
+            packet['note'] = note
         shared_notes = ["Shared proof run " + proof['id'] + " from task " + proof['shared_from'] +
                         "; this additional-task read requires a build whose prove --help lists --also."
                         for proof in packet['proofs'] if proof.get('shared_from')]
@@ -360,7 +370,10 @@ def parser():
     a.add_argument("--reason", required=True); a.add_argument("--resume", action="store_true", help="Record return to active")
     a = sub.add_parser("task"); a.add_argument("--id", required=True); a.add_argument("--title", required=True)
     a.add_argument("--actor", required=True); a.add_argument("--owner", required=True); a.add_argument("--repo", required=True)
-    a.add_argument("--scope-file", required=True); a.add_argument("--proof-file", help="JSON argv, not a shell string")
+    a.add_argument("--scope-file", required=True)
+    proof = a.add_mutually_exclusive_group()
+    proof.add_argument("--proof-file", help="JSON argv, not a shell string")
+    proof.add_argument("--proof", nargs=argparse.REMAINDER, help="Agreed proof argv; place last")
     a.add_argument("--expected", type=int); a.add_argument("--full-gate", action="store_true")
     a.add_argument("--depends", action="append", default=[])
     a.add_argument("--reviewer", action="append", help="Reader; repeat for a pool of 2-4 where the first ACK takes the read")
@@ -381,6 +394,14 @@ def parser():
     a = sub.add_parser("supersede", help="Coordinator records that an existing later task replaces an open one; history stays")
     a.add_argument("--actor", required=True); a.add_argument("--task", required=True, help="Open task being replaced")
     a.add_argument("--by", required=True, help="Existing task recorded after it"); a.add_argument("--reason", required=True)
+    a = sub.add_parser('reassign', help='Change the reader of the same delivery, keeping proofs and budgets')
+    a.add_argument('--actor', required=True); a.add_argument('--task', required=True)
+    a.add_argument('--reviewer', required=True); a.add_argument('--reason', required=True)
+    a = sub.add_parser('migliora', help='Inspect development friction or apply and commit a checked project rule')
+    a.add_argument('action', choices=['inspect', 'apply', 'commit'])
+    a.add_argument('--task'); a.add_argument('--actor'); a.add_argument('--rule-file')
+    a.add_argument('--defer-commit', action='store_true', help='Prepare a rule for a required independent review')
+    a.add_argument('--timeout', type=int, default=120)
     a = sub.add_parser("brief"); a.add_argument("--actor", required=True)
     target = a.add_mutually_exclusive_group(required=True)
     target.add_argument("--task"); target.add_argument("--project", action="store_true")
@@ -399,16 +420,21 @@ def parser():
     a.add_argument("--since", type=int, help="Resume following after this event number, including the re-arm gap")
     a.add_argument("--until-first", action="store_true",
                    help="Exit after the first batch that shows mail, for a background command that wakes its window")
+    a.add_argument('--cursor-file', help='Persistent local cursor; default is under the user state folder')
+    a.add_argument('--no-cursor', action='store_true', help='Follow without saving a resume cursor')
     a = sub.add_parser("ack"); a.add_argument("--actor", required=True); a.add_argument("--message", required=True)
     a = sub.add_parser("transport"); a.add_argument("--actor", required=True); a.add_argument("--message", required=True)
     a.add_argument("--via", choices=["codex-queue", "manual"], required=True)
     a = sub.add_parser("plan"); a.add_argument("--actor", required=True); a.add_argument("--task", required=True); a.add_argument("--file", required=True)
     for command in ["start", "deliver", "advance", "check", "close"]:
         a = sub.add_parser(command); a.add_argument("--actor", required=True); a.add_argument("--task", required=True)
+        if command in {'deliver', 'close'}:
+            a.add_argument('--note', help='A note retained with this delivery or closure')
     a = sub.add_parser("review"); a.add_argument("--actor", required=True); a.add_argument("--task", required=True)
     a.add_argument("--stage", choices=["plan", "code"], default="code")
     a.add_argument("--verdict", choices=["accepted", "changes-required", "blocked"], required=True)
     a.add_argument("--report", required=True)
+    a.add_argument('--amend', help='Explicitly replace this recorded review request; consumes a review round')
     a.add_argument("--findings-file", help="Optional bounded JSON observations (severity and one-line title)")
     a.add_argument("--covers", action="append", default=[])
     a.add_argument("--lens", choices=["rasoio"], help="Optional lean-code lens (references/skills/rasoio.md)")
@@ -446,8 +472,9 @@ def parser():
     form.add_argument("--reconcile", action="store_true",
                       help="Starter ends an orphan that left a receipt or output: from the receipt, else interrupted with its logs")
     a.add_argument("--reason"); a.add_argument("--evidence", help="Explicit squadra-run-abandon/1 observation JSON")
-    a = sub.add_parser("resource"); a.add_argument("action", choices=["acquire", "release"])
-    a.add_argument("--actor", required=True); a.add_argument("--name", required=True); a.add_argument("--reason", required=True)
+    a = sub.add_parser("resource"); a.add_argument("action", choices=["acquire", "release", "status"])
+    a.add_argument("--actor"); a.add_argument("--name", required=True); a.add_argument("--reason")
+    a.add_argument('--task', help='Open task owning this reservation or wait')
     a.add_argument("--wait", type=float, help="Acquire only: wait in FIFO order up to SECONDS (0 joins without sleeping)", metavar="SECONDS")
     for command in ["pause", "resume", "decision"]:
         a = sub.add_parser(command); a.add_argument("--actor", required=True); a.add_argument("--reason", required=True)
@@ -605,13 +632,14 @@ def dispatch(a, store):
                     "model": a.model, "session": a.session, "repo": str(Path(a.repo).resolve(strict=True)), "skills": skills})
     elif command == "task":
         base = snapshot(a.repo, store.root)
-        proof = json.loads(Path(a.proof_file).read_text()) if a.proof_file else None
+        proof = json.loads(Path(a.proof_file).read_text()) if a.proof_file else a.proof
         require(proof is None or (isinstance(proof, list) and proof and all(isinstance(x, str) and x for x in proof)), "Proof file must contain a nonempty argv array")
         task = {"id": a.id, "title": a.title, "owner": a.owner, "repo": base["repo"], "base": base["head"],
                 "scope": store.artifact(a.scope_file), "proof": proof, "expected": a.expected,
                 "full_gate": a.full_gate, "depends": a.depends,
                 "reviewer": a.reviewer[0] if a.reviewer and len(a.reviewer) == 1 else None,
-                "requirements": json.loads(Path(a.requirements_file).read_text()) if a.requirements_file else []}
+                "requirements": json.loads(Path(a.requirements_file).read_text()) if a.requirements_file else [],
+                'delivery_policy': 'frozen-v1'}
         if a.reviewer and len(a.reviewer) > 1:
             task["pool"] = a.reviewer
         if a.read_at_gate:
@@ -647,6 +675,36 @@ def dispatch(a, store):
         store.append("route", actor, data)
     elif command == "supersede":
         store.append("supersede", actor, {"task": a.task, "by": a.by, "reason": a.reason})
+    elif command == 'reassign':
+        from source_manifests import transform_packet
+        task = store.task(a.task, state)
+        old = task.get('delivery', {})
+        if task.get('reviewer') == a.reviewer and task.get('reassignments', [{}])[-1].get('reason') == a.reason:
+            return {'handoff': old.get('handoff'), 'already_reassigned': True}
+        packet = transform_packet(old.get('packet_data', {}), store.resolve_snapshot)
+        packet.pop('pool', None)
+        packet.update(reviewer=a.reviewer, reassignment={'previous': old.get('handoff'),
+                      'previous_pool': old.get('handoffs', []), 'reason': a.reason})
+        packet = transform_packet(packet, store.compact_snapshot)
+        handoff = 'review-' + digest(canonical(packet).encode())
+        artifact = store.artifact_bytes((canonical(packet) + '\n').encode(), handoff + '.json', 'generated-handoff:' + handoff)
+        data = {'task': a.task, 'reviewer': a.reviewer, 'reason': a.reason,
+                'previous': old.get('handoff'), 'previous_pool': old.get('handoffs', []),
+                'packet': artifact, 'packet_data': packet, 'handoff': handoff}
+        bindings(store, a.task, require_review=False)
+        store.batch([('reassign', actor, data, 'reassign:' + handoff),
+                     ('message', actor, {'id': handoff, 'to': a.reviewer, 'related_task': a.task,
+                      'body': 'Read reassigned on the same proved candidate. ACK this exact handoff.\n' +
+                              canonical(packet)}, handoff)])
+        return {'handoff': handoff, 'proof_reused': True, 'snapshot': task['candidate']['sha256']}
+    elif command == 'migliora':
+        import migliora
+        if a.action == 'inspect':
+            return migliora.inspect(store, a.task)
+        require(a.actor and a.task and a.rule_file, 'Migliora apply/commit requires --actor, --task and --rule-file')
+        if a.action == 'commit':
+            return migliora.finish(store, actor, a.task, a.rule_file)
+        return migliora.apply(store, actor, a.task, a.rule_file, defer_commit=a.defer_commit, timeout=a.timeout)
     elif command == "send":
         data = {"id": a.id or uuid.uuid4().hex, "to": a.to or a.to_new, "body": Path(a.body_file).read_text(), "reply_to": a.reply_to}
         if a.info:
@@ -658,7 +716,7 @@ def dispatch(a, store):
             require(a.task in state["tasks"], "Unknown task")
             data["related_task"] = a.task
         store.append("message", actor, data)
-        return data
+        return {'id': data['id'], 'to': data['to'], 'saved': True, 'ack_required': not a.info}
     elif command == "inbox":
         return inbox(state, a.agent, a.all, a.message)
     elif command == "ack":
@@ -739,20 +797,23 @@ def dispatch(a, store):
     elif command == "start":
         return recall(store, state, actor, a.task, "start", ("start", actor, {"task": a.task}, None))
     elif command in {"deliver", "advance"}:
-        return deliver(store, actor, a.task, reconcile=command == "advance")
+        return deliver(store, actor, a.task, reconcile=command == "advance", note=getattr(a, 'note', None))
     elif command in {"check", "close"}:
         if command == 'close' and state['tasks'][a.task].get('release_gate') is True:
             store.audit()
         current = bindings(store, a.task)
         result = {"task": a.task, "verified": True, "snapshot": current["sha256"], "publication_authorized": False}
         if command == "close":
-            event = store.append("close", actor, {"task": a.task})
+            event = store.append("close", actor, {"task": a.task, **({'note': a.note} if a.note else {})})
+            from migliora import inspect as inspect_friction
+            result['migliora'] = inspect_friction(store, a.task)
             if state["tasks"][a.task].get("fix"):
                 from errata import hint
                 result["errata"] = hint(a.task, seq_of(store, event), actor, "defect fix closed")
         return result
     elif command == "review":
         from reads import load_findings
+        from registry import review_handoff, review_request
         extra = {'findings': load_findings(a.findings_file)} if a.findings_file is not None else {}
         task = store.task(a.task, state)
         if a.stage == "plan":
@@ -763,14 +824,23 @@ def dispatch(a, store):
             current = bindings(store, a.task, require_review=False)
             binding = current["sha256"]
         lens = {k: v for k, v in (("lens", a.lens), ("net_lines", a.net_lines)) if v is not None}
-        event = store.append("review", actor, {"task": a.task, "stage": a.stage, "verdict": a.verdict,
+        data = {"task": a.task, "stage": a.stage, "verdict": a.verdict,
                      "binding": binding, "covers": a.covers, "report": store.artifact(a.report), **extra,
                      **({"gate_covers": a.gate_covers} if a.gate_covers else {}),
                      **({"contract": task["contract"]} if task.get("contract") else {}),
-                     **fix_review_fields(task), **lens})
+                     **fix_review_fields(task), **lens,
+                     'handoff': review_handoff(state, task, actor),
+                     **({'amends': a.amend} if a.amend else {})}
+        data['request'] = review_request(actor, data)
+        prior = next((r for r in task['reviews'] if r.get('request') == data['request']), None)
+        if prior:
+            return {'receipt': prior['request'], 'already_recorded': True}
+        event = store.append('review', actor, data, data['request'])
+        result = {'receipt': event, 'already_recorded': False}
         if a.stage == "code" and a.verdict == "changes-required":
             from errata import hint
-            return {"errata": hint(a.task, seq_of(store, event), actor, "code read asked for changes")}
+            result['errata'] = hint(a.task, seq_of(store, event), actor, "code read asked for changes")
+        return result
     elif command == "output":
         output = {"task": a.task, "text": Path(a.file).read_text(), "next": a.next,
                   "artifacts": [store.artifact(f) for f in a.artifact]}
@@ -839,15 +909,20 @@ def dispatch(a, store):
             require(not a.reason and not a.evidence, "--reason and --evidence require --abandon")
             store.append("run.cancel", actor, {"id": a.run})
     elif command == "resource":
+        if a.action == 'status':
+            from resource_wait import status
+            return status(store, a.name)
+        require(a.actor and a.reason, 'Resource acquire/release requires --actor and --reason')
         require(a.wait is None or a.action == 'acquire', '--wait applies only to resource acquire')
         if waiting:
             from resource_wait import acquire, CacheUnavailable
             try:
-                acquire(store, actor, a.name, a.reason, a.wait)
+                acquire(store, actor, a.name, a.reason, a.wait, task=a.task)
             except CacheUnavailable as exc:
                 raise InputRefusal(str(exc)) from exc
         else:
-            store.append("resource." + a.action, actor, {"name": a.name, "reason": a.reason})
+            store.append("resource." + a.action, actor, {"name": a.name, "reason": a.reason,
+                         **({'task': a.task} if a.task else {})})
     elif command == "ask":
         store.append("ask", actor, {"id": a.id, "question": a.question,
                      "options": json.loads(Path(a.options_file).read_text()), "recommended": a.recommended,
@@ -973,7 +1048,10 @@ def dispatch(a, store):
         columns = {row[1] for row in store.db.execute('PRAGMA table_info(events)')}
         modern = ('hash_format' in columns and
                   store.db.execute('SELECT 1 FROM events WHERE hash_format=2 LIMIT 1').fetchone() is not None)
-        compatibility = ({"compatibility": "This registry requires Squadra 3.10.1 or later."} if modern else {})
+        workflow3 = ('hash_format' in columns and
+                     store.db.execute('SELECT 1 FROM events WHERE hash_format=3 LIMIT 1').fetchone() is not None)
+        compatibility = ({'compatibility': 'This registry requires Squadra 3.11.0 or later.'} if workflow3 else
+                         {"compatibility": "This registry requires Squadra 3.10.1 or later."} if modern else {})
         from registry import git_probe
         tracked = git_probe('-C', str(store.root), '--literal-pathspecs', 'ls-files', '--error-unmatch', '--', 'registry.sqlite3')
         git_warning = ({'git_warning': 'Registry is tracked by Git; remove it from the index with git rm --cached -r '
@@ -1039,14 +1117,15 @@ def main(argv=None):
         root = workspace_path(a.root)
         if a.command == "inbox":
             import math
-            require(a.follow or (a.timeout is None and a.since is None and not a.until_first),
+            require(a.follow or (a.timeout is None and a.since is None and not a.until_first and a.cursor_file is None and not a.no_cursor),
                     '--timeout, --since and --until-first require --follow')
             require(a.timeout is None or (math.isfinite(a.timeout) and a.timeout > 0), 'Positive finite --timeout required')
             require(a.since is None or a.since >= 0, 'Nonnegative --since required')
             require(not a.follow or not (a.all or a.message is not None), '--all and --message do not apply to --follow')
             if a.follow:
                 from inbox_follow import follow
-                return follow(workspace_path(a.root), a.agent, a.timeout, a.since, until_first=a.until_first)
+                return follow(workspace_path(a.root), a.agent, a.timeout, a.since, until_first=a.until_first,
+                              cursor_file=a.cursor_file, persist=not a.no_cursor)
         if a.command == "context":
             import context_brief
             store = Store(workspace_path(a.root), read_only=True)
@@ -1160,6 +1239,8 @@ def main(argv=None):
             print(json.dumps(result, ensure_ascii=False, indent=2))
             return 0
         read_only = (a.command in {'status', 'inbox', 'check', 'doctor', 'dash'} or
+                     (a.command == 'resource' and a.action == 'status') or
+                     (a.command == 'migliora' and a.action == 'inspect') or
                      (a.command == 'lesson' and a.list))
         if a.command == 'init':
             validate_init(a, root)
@@ -1208,7 +1289,7 @@ def main(argv=None):
                         state, attention_value = context
                     else:
                         attention_value = None
-                if a.command not in {"inbox", "doctor"}:
+                if a.command not in {"inbox", "doctor", "send", "migliora"} and not (a.command == "resource" and a.action == "status"):
                     from registry import current_index
                     if current_index(state) is None and not events:
                         events = store.events()

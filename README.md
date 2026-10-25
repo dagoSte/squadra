@@ -13,7 +13,7 @@ Coordinate Claude Code, Codex and Cursor with shared tasks, independent reviews 
 
 **Free and open source** — MIT licence, no account, everything runs on your machine.
 
-**Version 3.10.4** · Python 3.12+ · macOS / POSIX
+**Version 3.11.0** · Python 3.12+ · macOS / POSIX
 
 **English** · [Italiano](README.it.md) · [Privacy](PRIVACY.md)
 
@@ -132,6 +132,8 @@ squadra --version
 ```
 
 Every release raises the version number, except a refresh that adds to a release under the same number, as 3.10.2 did on 17 October 2026. Plugins installed from the Store keep their version until `squadra plugin install <name>` runs again from the new release ([Plugins bundled in your release](#plugin-store)). Open windows keep the version they read until they restart, and a running squad keeps its protocol until you switch it explicitly.
+
+**Updating to 3.11.0:** upgrade every window and reinstall bundled plugins before creating new tasks or reassigning reads. New tasks use frozen delivery and journal format 3; older clients refuse it. Historical tasks retain their previous behavior. The installer also adds the `migliora` skill.
 
 **Updating from 3.10.3 or 3.10.2 to 3.10.4: the registry stays as it is.**
 - **Windows can move one at a time.** 3.10.2, 3.10.3 and 3.10.4 windows share the same registry; nothing is converted.
@@ -405,7 +407,7 @@ Views: **Summary**, **Windows**, **Tasks**, **Mail**, **Communications**, **Deci
 
 ![The Balance page: one piece of advice, the rules it checks with today's values, and each window's load and quota](docs/images/dashboard-balance-en.png)
 
-**System skills** lists the four built-in skills ([errata](references/skills/errata.md), [previsione](references/skills/previsione.md), [rasoio](references/skills/rasoio.md), [bilanciamento](references/skills/bilanciamento.md)), with what each does, its recorded activity and the security scan result for its files.
+**System skills** lists the five built-in skills ([errata](references/skills/errata.md), [previsione](references/skills/previsione.md), [rasoio](references/skills/rasoio.md), [bilanciamento](references/skills/bilanciamento.md), [migliora](references/skills/migliora.md)), with what each does, its recorded activity and the security scan result for its files.
 
 ![The System skills page: each built-in skill with what it does and its recorded activations](docs/images/dashboard-system-skills-en.png)
 
@@ -503,7 +505,7 @@ The sections below keep the full working examples. Open the topic you need; the 
 | Follow a task from assignment to closure | [Task workflow](#workflow) |
 | Trace an instruction or record a decision | [Briefs, messages and decisions](#decision-reference) |
 | Save work or resume a session | [Checkpoints and recovery](#checkpoints) |
-| Look up a command or its plain-language prompt | [All 51 commands](#commands) |
+| Look up a command or its plain-language prompt | [All 53 commands](#commands) |
 
 [Skill](SKILL.md) · [Setup](references/start.md) · [Work/proof/review](references/work.md) · [Native runners](references/runtime.md) · [Recovery/context handover](references/recovery.md) · [Challenges/benchmark](references/benchmark.md) · [Plugins](references/plugins.md) · [Plugin authoring](references/plugin-authoring.md)
 
@@ -794,10 +796,10 @@ The coordinator may declare `task --route light` for a bounded, reversible chang
 
 You do not have to type these commands: **asking your window in plain words is the recommended way**, as in the *Or just ask* column and the [example prompts](#prompts), and the window runs the command for you. The commands are what the windows run, and what you can type yourself to check.
 
-Every command, grouped by purpose: **51 subcommands**, plus `--version`. Use `squadra <command> --help` for the flags; registry commands accept `--root` or `SQUADRA_ROOT`. «Coordinator only» marks what only the coordinator can record: `task`, `route`, `supersede`, `brief`, `close`, `ask`, `decision`, `settings`, `pause`, `resume`, `save`, `standby`, `ping --all`, `ping --sweep`, and the receipt that `restore-check` writes into the live registry. Without installing, the same commands run as `python3 -B scripts/squadra.py <command>`.
+Every command, grouped by purpose: **53 subcommands**, plus `--version`. Use `squadra <command> --help` for the flags; registry commands accept `--root` or `SQUADRA_ROOT`. «Coordinator only» marks what only the coordinator can record: `task`, `route`, `supersede`, `reassign`, `brief`, `close`, `ask`, `decision`, `settings`, `pause`, `resume`, `save`, `standby`, `ping --all`, `ping --sweep`, and the receipt that `restore-check` writes into the live registry. Without installing, the same commands run as `python3 -B scripts/squadra.py <command>`.
 
 <details>
-<summary><strong>All 51 commands and their prompts, grouped by purpose</strong></summary>
+<summary><strong>All 53 commands and their prompts, grouped by purpose</strong></summary>
 
 ### Start and team
 
@@ -818,6 +820,7 @@ Every command, grouped by purpose: **51 subcommands**, plus `--version`. Use `sq
 | `task` | Coordinator only: assign a task: owner, reviewer, checkout, scope, proof, requirements, dependencies; `--supersedes` replaces an open task. | To the coordinator: “Assign ‘Key rotation service’ to the builder window, with the reviewer window as independent reader and the whole test suite as proof.” |
 | `route` | Coordinator only: promote with `--full`, keeping the base/history/budgets; new proof and read. | To the coordinator: “T3 is no longer a small change: move it to the full route.” |
 | `supersede` | Coordinator only: record afterwards that an existing, later task replaces an open one, with the same effect as `--supersedes`. | To the coordinator: “T7 replaces T5: record it, keeping the history of T5.” |
+| `reassign` | Coordinator only: change the reader on the same delivery, preserving proofs and budgets; needs a new ACK. | “Give this same delivery to another free reader.” |
 | `brief` | Coordinator only: describe the project (`brief --project`) or a task (`brief --task ID`) in plain words, from a UTF-8 file of at most 8192 bytes. | To the coordinator: “Write a plain-words brief of T1: why it exists, for whom, and when it is finished.” |
 | `plan` | Record a plan before building, to be read by a non-author. | “Write your plan for T1 and have a non-author read it before you build.” |
 | `start` | Mark a confirmed task as being built. | “Confirm your assignment and start building it.” |
@@ -841,6 +844,7 @@ Every command, grouped by purpose: **51 subcommands**, plus `--version`. Use `sq
 | `deliver` | Hand over an immutable packet of the proven candidate to its reviewer. | “Deliver the proven candidate to its reviewer.” |
 | `advance` | Reconcile a handoff that was already delivered, without building or approving. | “T1 was already delivered: reconcile the handoff, without building or approving anything.” |
 | `review` | Record a non-author verdict on a plan or on the code: accepted, changes required or blocked. | To the reviewer: “Read the frozen candidate of T1 and record your verdict.” |
+| `migliora` | Inspect friction; apply and check a project rule and create its local commit. | “Remove repeated steps demonstrated by the evidence.” |
 | `check` | Check that proof, review and candidate still match. | “Check that the proof, the review and the candidate of T1 still match.” |
 | `close` | Coordinator only: record the end of a checked task. | To the coordinator: “Close T1 if its check passes, then show me the progress table.” |
 | `challenge` | Prove a declared fix fails without the change, or run a standalone three-input oracle. | “Show that the fix in T2 matters: its test must fail without the change.” |
@@ -919,6 +923,18 @@ Static, behavioral and dependency checks, excluding `tests/`. Passing means no H
 <a id="news"></a>
 ## What's new
 
+**3.11.0 — frozen delivery, reader transfers and migliora**
+
+- **Builders can continue after delivery.** A copy of the proved candidate stays in the registry, including uncommitted changes.
+- **Change readers without rerunning the proof.** `reassign` preserves candidate, proofs and budgets and requires the new ACK.
+- **Clearer mail and resources.** The inbox cursor is saved; `resource status` shows the holder and queue. Reservations can name their task.
+- **Shorter commands.** Identical verdict retries do not duplicate reads; delivery and close take notes, task proofs accept direct argv, and `send` returns a short receipt.
+- **Migliora.** An automatic skill for demonstrated friction: scoped rules, a check and local commits of owned files after the project’s required reviews.
+- Plugins: memoranda 1.0.9, Playwright 1.0.10, Sentry 0.1.7.
+
+<details>
+<summary><strong>Earlier versions</strong></summary>
+
 **3.10.4 — a short private temporary folder for proofs, and Claude and Codex read each other's work**
 
 - **A short private temporary folder for proofs.** Proofs, quick checks, `selftest` and offline benchmarks keep their temporary files in a short private folder outside the registry, so a project kept under a shared folder such as MAMP's `htdocs` no longer fails on temporary paths that are too long or that others can write.
@@ -926,9 +942,6 @@ Static, behavioral and dependency checks, excluding `tests/`. Passing means no H
 - **Two models that check each other.** Codex writes and Claude reads, Claude writes and Codex reads: a reader of the same model is refused unless you record why. In the final block, the read that counts for each change is the one by the other model.
 - **Advice on splitting your windows.** The coordinator tells you how to split your windows between the two models, for example that with 2 Claude windows and 1 Codex window the Codex window would read everything.
 - Plugins: memoranda 1.0.8, Playwright 1.0.9, Sentry 0.1.6.
-
-<details>
-<summary><strong>Earlier versions</strong></summary>
 
 **3.10.3**
 

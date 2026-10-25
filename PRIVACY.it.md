@@ -24,6 +24,8 @@ il contenuto. Non inserire password, chiavi API o dati personali non necessari
 in messaggi, prompt, allegati o output dei comandi. La dashboard non permette
 di modificare selettivamente gli allegati registrati.
 
+Le consegne dei nuovi incarichi conservano anche una copia privata dei sorgenti verificati e della storia Git in `candidates/`. I lettori della posta salvano i cursori locali nella cartella di stato dell’utente, separati dalle conferme dei messaggi. Migliora può aggiungere istruzioni ad `AGENTS.md` e creare un commit locale dopo le verifiche; non le carica né esegue push.
+
 I plugin della dashboard si trovano in `~/.squadra/plugins/<name>/`, nella HOME
 dell'utente che esegue Squadra. Le cartelle possono contenere manifesti, dati
 del pannello e richieste di azione salvate. Lo Store crea le cartelle dei

@@ -15,7 +15,8 @@ POLICY = {'name': 'balanced', 'behavioral': True, 'osv': True, 'fail_on_severity
 COMMON_FILES = ('SKILL.md', 'scripts/registry.py', 'scripts/squadra.py', 'scripts/dashboard.py',
                 'scripts/system_skills.py', 'assets/dashboard.html')
 DEPENDENCIES = {'errata': ('scripts/errata.py',), 'rasoio': (), 'previsione': ('scripts/forecast.py',),
-                'bilanciamento': ('scripts/balance.py', 'scripts/forecast.py', 'scripts/usage.py')}
+                'bilanciamento': ('scripts/balance.py', 'scripts/forecast.py', 'scripts/usage.py'),
+                'migliora': ('scripts/migliora.py',)}
 ON_DEMAND = frozenset({'previsione', 'bilanciamento'})
 CATALOGUE = (
     {'id': 'errata', 'tag': {'it': 'Esperienza', 'en': 'Experience'},
@@ -46,6 +47,13 @@ CATALOGUE = (
      'records': {'it': 'Non registra attivazioni: calcola i suggerimenti al momento.', 'en': 'Records no activations: computes the advice on demand.'},
      'limits': {'it': 'La quota di Claude è solo una stima rispetto a un riferimento che dichiari tu. Un dato mancante non vale zero e un autore non viene mai proposto come lettore.', 'en': 'Claude quota is only an estimate against a reference you declare. Missing data is never zero, and an author is never suggested as reader.'},
      'command': 'squadra balance --task TASK', 'prompt': {'it': 'Quali finestre sono più libere per questo incarico e chi può leggerlo in modo indipendente?', 'en': 'Which windows are freest for this task, and who can read it independently?'}},
+    {'id': 'migliora', 'tag': {'it': 'Metodo', 'en': 'Workflow'},
+     'description': {'it': 'Corregge attriti osservati nello sviluppo e verifica le regole utili.', 'en': 'Remedies observed development friction and checks useful project rules.'},
+     'trigger': {'it': 'Alla chiusura di un incarico, dopo errori ripetuti o su richiesta.', 'en': 'When a task closes, after repeated failures or on request.'},
+     'action': {'it': 'L’agente legge le prove, applica una regola circoscritta, la verifica e crea un commit locale quando i controlli richiesti sono conclusi.', 'en': 'The agent reads the evidence, applies a scoped rule, checks it and creates a local commit when required checks are complete.'},
+     'records': {'it': 'Conta gli interventi e i commit registrati negli output; le semplici analisi non sono contate.', 'en': 'Counts interventions and commits recorded in outputs; inspections are not counted.'},
+     'limits': {'it': 'Conserva i mandati e le modifiche altrui. Non pubblica e non approva memorie.', 'en': 'Preserves mandates and others’ changes. Never publishes or approves memories.'},
+     'command': 'squadra migliora inspect --task TASK', 'prompt': {'it': 'Correggi gli attriti dimostrati di questo progetto con migliora.', 'en': 'Use migliora to remedy demonstrated development friction in this project.'}},
 )
 
 
@@ -136,7 +144,8 @@ def catalogue(events, state, root=ROOT, read_at=None):
         for event in events if skill not in ON_DEMAND else []:
             kind, data = event['kind'], event['data']
             if not ((skill == 'errata' and kind in ('lesson', 'lesson.retire', 'lesson.recall', 'lesson.ineffective'))
-                    or (skill == 'rasoio' and kind == 'review' and data.get('lens') == 'rasoio')):
+                    or (skill == 'rasoio' and kind == 'review' and data.get('lens') == 'rasoio')
+                    or (skill == 'migliora' and kind == 'output' and data.get('migliora'))):
                 continue
             at = instant(event['utc'])
             if at is None or at > stamp:

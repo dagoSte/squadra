@@ -49,7 +49,7 @@ def _message(indexes, state, name, order, *, created):
         if message.get("ping"):
             indexes["recipient_ping"][recipient] = {"id": name, "order": order}
     pending = indexes["pending_by_recipient"].setdefault(recipient, {})
-    if message.get("ack") is None and message.get("info") is not True:
+    if message.get("ack") is None and message.get("info") is not True and not message.get("replaced_by"):
         indexes["pending_messages"][name] = name
         pending[name] = name
     else:
@@ -159,10 +159,15 @@ def advance(indexes, state, event):
         _task(indexes, state, data["id"])
         if data.get("supersedes") is not None:
             _task(indexes, state, data["supersedes"])
+    elif kind == 'reassign':
+        _task(indexes, state, data['task'])
+        for name in [data.get('previous'), *data.get('previous_pool', [])]:
+            if name in state['messages']:
+                _message(indexes, state, name, order, created=False)
     elif kind == "supersede":
         _task(indexes, state, data["task"])
         _task(indexes, state, data["by"])
-    elif kind in {"start", "close", "plan", "deliver", "review", "route", "fix"}:
+    elif kind in {"start", "close", "plan", "deliver", "review", "route", "fix", "reassign"}:
         name = data["task"]
         _task(indexes, state, name)
         timing = indexes["task_timings"].get(name)

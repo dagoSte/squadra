@@ -73,7 +73,7 @@ class RoutesAndPage(unittest.TestCase):
                 self.assertEqual(code, 200)
                 self.assertIn("default-src 'none'", headers['Content-Security-Policy'])
                 if route.endswith('skills'):
-                    self.assertEqual([s['id'] for s in body['skills']], ['errata', 'previsione', 'rasoio', 'bilanciamento'])
+                    self.assertEqual([s['id'] for s in body['skills']], ['errata', 'previsione', 'rasoio', 'bilanciamento', 'migliora'])
                 else:
                     self.assertEqual(body['task'], 'T')
         self.assertEqual(self.request('/api/forecast', **{'X-Squadra-Record': 'unknown'})[0], 409)

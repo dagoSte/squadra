@@ -266,7 +266,11 @@ def _execute_owned(store, actor, task_id, argv, mode, prompt, timeout, gate, exe
         from registry import digest
         path = Path(task["plan"]["original"])
         require(path.is_file() and digest(path.read_bytes()) == task["plan"]["sha256"], "Original plan changed; re-register/review it")
-    before = snapshot(task["repo"], store.root)
+    read_frozen = mode == 'read' and stage == 'code' and task.get('delivery', {}).get('frozen')
+    from frozen_candidate import current as delivered_current
+    from frozen_candidate import repository as frozen_repository
+    working_repo = str(frozen_repository(task, store.root)) if read_frozen else task['repo']
+    before = delivered_current(task, store.root) if read_frozen else snapshot(task['repo'], store.root)
     # A passed precheck binds the proof to the exact bytes it checked, before any record or process.
     require(checked is None or before == checked,
             "precheck_failed: source changed after the checks (checked " + str((checked or {}).get("sha256", ""))[:12] +
@@ -298,7 +302,7 @@ def _execute_owned(store, actor, task_id, argv, mode, prompt, timeout, gate, exe
                       "Report changed files, meaningful tests and any denied operation.\n" + prompt)
         argv = cli_command(agent["client"], mode, folder, agent.get("model") or None, executable)
         if agent["client"] == "codex" and mode == "read":
-            config = Path(task["repo"]) / ".codex/config.toml"
+            config = Path(working_repo) / ".codex/config.toml"
             require(not config.exists(), "Review repo contains Codex config; inspect in a clean isolated copy without external MCP configuration")
     else:
         require(argv and all(isinstance(x, str) and x for x in argv), "Proof requires an argv list")
@@ -345,7 +349,7 @@ def _execute_owned(store, actor, task_id, argv, mode, prompt, timeout, gate, exe
             atomic(lease_metadata, canonical({"run": run_id, "phase": "launching", "pgid": None}).encode())
             if os.name != "nt":
                 options["pass_fds"] = (lease_fd,)
-            proc = subprocess.Popen(argv, cwd=task["repo"], env=env, stdout=stdout, stderr=stderr,
+            proc = subprocess.Popen(argv, cwd=working_repo, env=env, stdout=stdout, stderr=stderr,
                                     stdin=stdin if prompt is not None else subprocess.DEVNULL, **options)
             atomic(lease_metadata, canonical({"run": run_id, "phase": "spawned", "pgid": proc.pid}).encode())
             while proc.poll() is None:
@@ -363,7 +367,7 @@ def _execute_owned(store, actor, task_id, argv, mode, prompt, timeout, gate, exe
                     last_heartbeat = time.monotonic()
                 time.sleep(0.1)
             result["native_rc"] = proc.wait()
-        after = snapshot(task["repo"], store.root)
+        after = delivered_current(task, store.root) if read_frozen else snapshot(task["repo"], store.root)
         result["after"] = after
         if result["status"] not in {"interrupted", "timeout"}:
             require(result["native_rc"] == expected_rc, "Native command exit differs from expected result")

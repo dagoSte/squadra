@@ -237,7 +237,7 @@ an accepted review does not grant a new authorization to publish.
    limit; it wakes the window when mail arrives), or an actively watched background
    process, as shown in
    [following mail](references/work.md#following-mail-without-a-native-queue).
-   Status cannot show a follower that stopped: the window re-arms it itself.
+   A saved cursor is not an ACK. Status cannot show a follower that stopped: the window re-arms it itself.
    Following never confirms a message: read it and explicitly ACK when required.
 2. For a new squad choose a durable folder outside `/tmp`. Use
    `references/start.md` to initialize it and register windows/skills/versions.
@@ -254,6 +254,14 @@ The installed command is `squadra`. Without the launcher use
 `python3 <skill-folder>/scripts/squadra.py`, also for the `squadra …` instructions the CLI
 prints: the `/plugin` install puts no launcher on PATH. Do not guess user paths.
 `--root` and `SQUADRA_ROOT` select the same registry for every window.
+New 3.11 tasks and reader transfers use journal format 3. Upgrade every reader and
+writer before their first use; old clients refuse that format rather than applying
+old delivery rules. A transfer changes only the reader: `reassign --task ID
+--reviewer READER --reason ...`, with a fresh ACK and the same proofs and budget.
+`resource status --name cpu-heavy` shows the reservation and live queue tickets;
+`resource acquire --task ID` scopes a reservation. Never infer a running process from
+its reservation. Identical verdict retries return the same receipt; `review --amend
+RECEIPT` explicitly revises a verdict and consumes the normal round budget.
 
 ## Work, verification and limits
 
@@ -342,7 +350,9 @@ For the dashboard plugins' data and declared settings read [folders, schemas and
   this metadata, so no mixed-version enforcement claim or automatic migration.
 - The builder runs `prove` on frozen code and delivers with `deliver`. The command
   keeps argv, stdout/stderr, the native result and the fingerprint of tracked and
-  untracked sources. A later change invalidates the proof and the review. Choose the
+  untracked sources. Before delivery a source change invalidates the proof. New CLI
+  tasks materialize the proved source at delivery; review and close bind that copy,
+  so the builder can continue. Historical tasks retain their live-source bindings. Choose the
   reviewer with `task --reviewer`: `deliver` atomically saves an immutable packet
   and a message bound to the candidate. The real ACK of that message is required; `advance`
   reconciles the handoff without building, approving or invoking a model.
@@ -433,10 +443,11 @@ reconcile before proceeding: do not claim a save that did not succeed.
 
 `squadra board [--lang it|en]` shows the tables by window, work and state, also at the top of `status` and of the `stato.md` written by `squadra export`.
 
-## Built-in skills: errata and rasoio
+## Built-in skills: errata, rasoio and migliora
 
-Both activate by themselves at fixed moments; the agent follows the guide without asking
-the owner, and every activation leaves a registry event.
+These activate at their documented moments within the authorized project scope.
+Errata and rasoio retain their activation events; migliora records applied remedies
+and commits in task outputs, while its inspections are computed on demand.
 
 - **errata** ([guide](references/skills/errata.md)). At `brief --task` and `start` the
   CLI shows the matching lessons and records a `lesson.recall`: read them and apply them.
@@ -449,6 +460,14 @@ the owner, and every activation leaves a registry event.
   changes code, not only prose, applies the lens: `review --lens rasoio --net-lines N`,
   with the guide's tags and its closing net figure. The lens adds observations; it never
   changes a verdict, check or close rule.
+
+- **migliora** ([guide](references/skills/migliora.md)). At task close, after repeated
+  failures or on request, inspect observed friction. Prefer a tool remedy to an added
+  rule. Apply only evidence-backed scoped changes, verify them and automatically
+  commit owned changes after the project's required checks and independent reviews.
+  `migliora apply` manages a block in `AGENTS.md`; `--defer-commit` prepares it for a
+  required read, and `migliora commit` commits the checked bytes afterwards. No rule
+  without a trigger and retirement condition, no implicit push or memory approval.
 
 ## Dashboard, stop and continuity
 

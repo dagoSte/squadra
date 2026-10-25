@@ -13,7 +13,7 @@ Coordina Claude Code, Codex e Cursor con incarichi condivisi, revisioni indipend
 
 **Gratuita e open source** — licenza MIT, nessun account, tutto gira sul tuo computer.
 
-**Versione 3.10.4** · Python 3.12+ · macOS / POSIX
+**Versione 3.11.0** · Python 3.12+ · macOS / POSIX
 
 [English](README.md) · **Italiano** · [Privacy](PRIVACY.it.md)
 
@@ -163,6 +163,8 @@ La prima finestra che scrive su un registro precedente o spostato costruisce la 
 **Requisiti:** Python 3.12+, Git e la libreria standard di Python. **Node.js** esegue i controlli JavaScript della dashboard nella suite di test e in `selftest`: senza Node quei controlli falliscono, non vengono mai saltati. Un browser per la dashboard; la CLI di Codex o di Claude solo per i runner nativi. L'ambiente di processi provato è macOS/POSIX; il controllo dei processi su Windows e il ripristino con submodule, LFS o checkout sparsi non sono qualificati.
 
 </details>
+
+**Aggiornamento alla 3.11.0:** aggiorna tutte le finestre e reinstalla i plugin prima di creare nuovi incarichi o riassegnare letture. I nuovi incarichi usano consegne congelate e il formato 3 del giornale; i client precedenti lo rifiutano. Gli incarichi storici mantengono il comportamento precedente. Il programma di installazione aggiunge anche la skill `migliora`.
 
 <a id="first-steps"></a>
 ## Primi passi
@@ -407,7 +409,7 @@ Viste: **Quadro**, **Finestre**, **Incarichi**, **Posta**, **Comunicazioni**, **
 
 ![La pagina Bilanciamento: un consiglio, le regole che controlla con i valori di oggi, e carico e quota di ogni finestra](docs/images/dashboard-balance-it.png)
 
-**Skill di sistema** elenca le quattro skill incluse ([errata](references/skills/errata.md), [previsione](references/skills/previsione.md), [rasoio](references/skills/rasoio.md), [bilanciamento](references/skills/bilanciamento.md), in inglese), con cosa fa ognuna, la sua attività registrata e l'esito del controllo di sicurezza sui suoi file.
+**Skill di sistema** elenca le cinque skill incluse ([errata](references/skills/errata.md), [previsione](references/skills/previsione.md), [rasoio](references/skills/rasoio.md), [bilanciamento](references/skills/bilanciamento.md), [migliora](references/skills/migliora.md), in inglese), con cosa fa ognuna, la sua attività registrata e l'esito del controllo di sicurezza sui suoi file.
 
 ![La pagina Skill di sistema: ogni skill inclusa con cosa fa e le attivazioni registrate](docs/images/dashboard-system-skills-it.png)
 
@@ -505,7 +507,7 @@ Le sezioni seguenti conservano gli esempi operativi completi. Apri l’argomento
 | Seguire un incarico dall’assegnazione alla chiusura | [Flusso di lavoro](#workflow) |
 | Ricostruire un’istruzione o registrare una decisione | [Briefing, messaggi e decisioni](#decision-reference) |
 | Salvare il lavoro o riprendere una sessione | [Checkpoint e ripristino](#checkpoints) |
-| Cercare un comando o il suo prompt in parole semplici | [Tutti i 51 comandi](#commands) |
+| Cercare un comando o il suo prompt in parole semplici | [Tutti i 53 comandi](#commands) |
 
 [Skill](SKILL.md) · [Avvio](references/start.md) · [Lavoro/prova/lettura](references/work.md) · [Runner nativi](references/runtime.md) · [Ripristino/passaggio di contesto](references/recovery.md) · [Sfide/confronto](references/benchmark.md) · [Plugin](references/plugins.md) · [Creare un plugin](references/plugin-authoring.md)
 
@@ -796,10 +798,10 @@ Il coordinatore può dichiarare `task --route light` per una modifica delimitata
 
 Non serve scrivere questi comandi: **il modo consigliato è chiedere alla finestra in parole semplici**, come nella colonna *Oppure chiedi* e nei [prompt di esempio](#prompts); il comando lo esegue la finestra. I comandi sono quello che eseguono le finestre, e quello che puoi scrivere tu per controllare.
 
-Ogni comando, raggruppato per scopo: **51 sottocomandi**, più `--version`. Usa `squadra <comando> --help` per le opzioni; i comandi del registro accettano `--root` o `SQUADRA_ROOT`. «Solo il coordinatore» segna ciò che solo il coordinatore può registrare: `task`, `route`, `supersede`, `brief`, `close`, `ask`, `decision`, `settings`, `pause`, `resume`, `save`, `standby`, `ping --all`, `ping --sweep`, e la ricevuta che `restore-check` scrive nel registro vivo. Senza installare, gli stessi comandi girano come `python3 -B scripts/squadra.py <comando>`.
+Ogni comando, raggruppato per scopo: **53 sottocomandi**, più `--version`. Usa `squadra <comando> --help` per le opzioni; i comandi del registro accettano `--root` o `SQUADRA_ROOT`. «Solo il coordinatore» segna ciò che solo il coordinatore può registrare: `task`, `route`, `supersede`, `reassign`, `brief`, `close`, `ask`, `decision`, `settings`, `pause`, `resume`, `save`, `standby`, `ping --all`, `ping --sweep`, e la ricevuta che `restore-check` scrive nel registro vivo. Senza installare, gli stessi comandi girano come `python3 -B scripts/squadra.py <comando>`.
 
 <details>
-<summary><strong>Tutti i 51 comandi con i loro prompt, raggruppati per scopo</strong></summary>
+<summary><strong>Tutti i 53 comandi con i loro prompt, raggruppati per scopo</strong></summary>
 
 ### Avvio e squadra
 
@@ -820,6 +822,7 @@ Ogni comando, raggruppato per scopo: **51 sottocomandi**, più `--version`. Usa 
 | `task` | Solo il coordinatore: assegna un incarico: responsabile, lettore, checkout, perimetro, prova, requisiti, dipendenze; `--supersedes` sostituisce un incarico aperto. | Al coordinatore: «Affida "Servizio di rotazione delle chiavi" alla finestra costruttrice, con la finestra revisora come lettore indipendente e l'intera suite di test come prova.» |
 | `route` | Solo coordinatore: promuove con `--full`, conservando base/storia/budget; nuove prova e lettura. | Al coordinatore: «T3 non è più una piccola modifica: passalo al percorso completo.» |
 | `supersede` | Solo il coordinatore: registra dopo che un incarico esistente e più recente sostituisce uno aperto, con lo stesso effetto di `--supersedes`. | Al coordinatore: «T7 sostituisce T5: registralo, conservando la storia di T5.» |
+| `reassign` | Solo il coordinatore: cambia il lettore sulla stessa consegna, conservando prove e budget; serve un nuovo ACK. | «Affida la stessa consegna a un altro lettore libero.» |
 | `brief` | Solo il coordinatore: descrive in parole semplici il progetto (`brief --project`) o un incarico (`brief --task ID`), da un file UTF-8 di al massimo 8192 byte. | Al coordinatore: «Scrivi in parole semplici il briefing di T1: perché esiste, per chi è e quando sarà finito.» |
 | `plan` | Registra un piano prima della costruzione, da far leggere a un non autore. | «Scrivi il piano di T1 e fallo leggere a un non autore prima di costruire.» |
 | `start` | Segna che un incarico confermato è in costruzione. | «Conferma l'incarico e comincia a costruirlo.» |
@@ -843,6 +846,7 @@ Ogni comando, raggruppato per scopo: **51 sottocomandi**, più `--version`. Usa 
 | `deliver` | Consegna al lettore un pacchetto immutabile del candidato provato. | «Consegna al revisore il candidato provato.» |
 | `advance` | Riconcilia un passaggio già consegnato, senza costruire né approvare. | «T1 è già stato consegnato: riconcilia il passaggio, senza costruire né approvare nulla.» |
 | `review` | Registra il verdetto di un non autore su un piano o sul codice: accettato, correzioni richieste o bloccato. | Al revisore: «Leggi il candidato congelato di T1 e registra il tuo verdetto.» |
+| `migliora` | Analizza gli attriti; applica e verifica una regola del progetto e crea il suo commit locale. | «Elimina i passaggi ripetuti dimostrati dalle prove.» |
 | `check` | Controlla che prova, lettura e candidato corrispondano ancora. | «Controlla che prova, lettura e candidato di T1 corrispondano ancora.» |
 | `close` | Solo il coordinatore: registra la fine di un incarico controllato. | Al coordinatore: «Chiudi T1 se il controllo passa, poi mostrami la tabella dell'avanzamento.» |
 | `challenge` | Dimostra che un fix dichiarato fallisce senza la modifica, oppure esegue la sonda autonoma a tre input. | «Dimostra che il fix di T2 serve: il suo test deve fallire senza la modifica.» |
@@ -921,6 +925,18 @@ Controlli statici, comportamentali e delle dipendenze, con `tests/` esclusa. Il 
 <a id="news"></a>
 ## Novità
 
+**3.11.0 — consegne congelate, letture riassegnabili e migliora**
+
+- **Il costruttore può continuare dopo la consegna.** La copia del candidato verificato resta nel registro e contiene anche le modifiche non committate.
+- **Cambia lettore senza rifare la prova.** `reassign` conserva candidato, prove e budget, richiedendo il nuovo ACK.
+- **Posta e risorse più leggibili.** Il cursore della posta si salva; `resource status` mostra titolare e coda. Le prenotazioni possono indicare l’incarico.
+- **Comandi più brevi.** Verdetti identici senza duplicati, note a consegna e chiusura, prova dichiarabile con argomenti diretti e risposta breve di `send`.
+- **Migliora.** Una skill automatica per gli attriti dimostrati: regole circoscritte, verifica e commit locale dei propri file dopo le letture richieste dal progetto.
+- Plugin: memoranda 1.0.9, Playwright 1.0.10, Sentry 0.1.7.
+
+<details>
+<summary><strong>Versioni precedenti</strong></summary>
+
 **3.10.4 — le prove in una cartella temporanea privata dal percorso corto, e Claude e Codex rileggono l'uno il lavoro dell'altro**
 
 - **Le prove in una cartella temporanea privata dal percorso corto.** Le prove, i controlli rapidi, `selftest` e i benchmark offline tengono i file temporanei in una cartella privata dal percorso corto, fuori dal registro, così un progetto tenuto in una cartella condivisa come `htdocs` di MAMP non fallisce più per percorsi temporanei troppo lunghi o scrivibili da altri.
@@ -928,9 +944,6 @@ Controlli statici, comportamentali e delle dipendenze, con `tests/` esclusa. Il 
 - **Due modelli che si controllano a vicenda.** Se scrive Codex rilegge Claude, e viceversa: un lettore dello stesso modello viene rifiutato, a meno che tu non registri il motivo. Nel blocco finale, per ogni modifica conta la lettura dell'altro modello.
 - **Un consiglio su come dividere le finestre.** Il coordinatore ti dice come dividere le finestre tra i due modelli, per esempio che con 2 finestre Claude e 1 Codex la finestra Codex rileggerebbe tutto.
 - Plugin: memoranda 1.0.8, Playwright 1.0.9, Sentry 0.1.6.
-
-<details>
-<summary><strong>Versioni precedenti</strong></summary>
 
 **3.10.3**
 
