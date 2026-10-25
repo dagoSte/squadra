@@ -99,10 +99,10 @@ const tests={
  },
  async failureAndZero(){
   const app=await setup();app.reply=async()=>{throw Error('offline')};await app.select();assert.match(text(app.content),/non sono disponibili/);assert.ok(app.find('skills:retry'));
-  app.reply=async()=>clone(app.data);app.find('skills:retry').onclick();await settle();assert.equal(all(app.content,e=>e.getAttribute('data-skill')).length,4);
+  app.reply=async()=>clone(app.data);app.find('skills:retry').onclick();await settle();assert.equal(all(app.content,e=>e.getAttribute('data-skill')).length,5);
   for(const s of app.data.skills)if(s.mode==='recorded'){s.total=0;s.last_24h=0;s.daily=Array(56).fill(0);s.first=null;s.last=null;s.recent=[]}
   await app.refresh();const paths=all(app.content,e=>e.tag==='path'&&e.getAttribute('d')?.startsWith('M1.00,38.00'));
-  assert.equal(paths.length,2);for(const p of paths)assert.equal((p.getAttribute('d').match(/,38.00/g)||[]).length,56,'flat real zero');
+  assert.equal(paths.length,3);for(const p of paths)assert.equal((p.getAttribute('d').match(/,38.00/g)||[]).length,56,'flat real zero');
   await app.open('errata');assert.match(text(app.content),/Nessuna attivazione registrata/);
  }
 };

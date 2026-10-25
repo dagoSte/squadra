@@ -7,7 +7,7 @@ release verdict. Do not implement fixes or approve your own remedies.
 
 ## Source and candidate
 
-- Repository: `/Applications/MAMP/htdocs/memoranda-hosted/.hosted-dev/recovery/squadra-3.10.4-integrate/source`
+- Repository: `the Squadra source checkout supplied by the owner`
 - Work branch: `improve-workflow-3.11.0`
 - Released baseline: `cebb9b40c793944efcdac972253a89f6aec46eab` (3.10.4).
 - Scope decision: `docs/workflow-update.md` and the owner's instructions in this session.

@@ -4152,7 +4152,7 @@ function skillOpen(id){document.activeElement?.blur?.();skillsUI.selected=id;ski
 async function skillsFetch(){
  if(tab!=='SystemSkills'||document.hidden===true||skillsUI.running)return;
  skillsUI.running=true;skillsUI.error=false;skillsUI.attempt=state;
- try{const data=await(await api('/api/skills')).json();if(!Array.isArray(data.skills)||data.skills.length!==4)throw Error('skills response');skillsUI.data=data}
+ try{const data=await(await api('/api/skills')).json();if(!Array.isArray(data.skills)||data.skills.length!==5)throw Error('skills response');skillsUI.data=data}
  catch(e){skillsUI.error=true}
  finally{skillsUI.running=false;if(tab==='SystemSkills')render()}
 }
