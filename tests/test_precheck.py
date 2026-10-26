@@ -250,6 +250,7 @@ class Precheck(unittest.TestCase):
         self.assertEqual(spawned, [])
         self.assertFalse(marker.exists())
         self.assertEqual([r["status"] for r in self.runs("precheck")], ["interrupted"])
+        self.declare([check("only", command, 10)], total=10)
         with patch("precheck.subprocess.Popen", popen):
             checked, summary = precheck.run(self.store, "A", self.get())
         self.assertEqual(summary["checks"][0]["status"], "passed")
