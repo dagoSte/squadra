@@ -36,6 +36,11 @@ SCRUB_NOTE = ("Scrubbed artifacts were removed on purpose by a coordinator decis
               "registry until it updates.")
 
 TASK_STATUSES = ("waiting-ack", "ready", "working", "delivered", "changes-required", "reviewed", "done")
+# The fields a task event declares; status, authors, reads, proofs, gate reads and the rest are recorded by the
+# reducer from their own events, so a declaration never presets them (M-8).
+TASK_FIELDS = frozenset({"id", "title", "owner", "repo", "base", "scope", "proof", "expected", "full_gate", "depends",
+                         "reviewer", "pool", "requirements", "delivery_policy", "read_at_gate", "release_gate", "route",
+                         "light_policy", "contract", "fix", "supersedes", "cross_client", "same_client_reason"})
 NEXT_STEPS = {
     "waiting-ack": "ACK dell'esecutore",
     "ready": "Avvio dell'esecutore",
@@ -272,6 +277,11 @@ def decision_id(data, seq):
 def read_at_gate(task):
     """A light task registered to be read at a release gate instead of on its own."""
     return task.get("read_at_gate") is True and task.get("route") == "light"
+
+
+def format3_started(state):
+    """Whether the state shows journal format 3 begun: a frozen-delivery task and a reassignment are always written in it."""
+    return any(t.get("delivery_policy") == "frozen-v1" or t.get("reassignments") for t in state["tasks"].values())
 
 
 def gate_pending(task):
@@ -1915,6 +1925,12 @@ def validate(state, kind, actor, d, stored_packet=None):
     if kind in {"start", "deliver", "run.start", "resource.acquire", "review"}:
         require(not state["paused"], "Workspace paused; explicit coordinator resume required")
     if kind == "task":
+        unknown = sorted(set(d) - TASK_FIELDS)
+        require(not unknown, "task_field_unknown: " + ", ".join(unknown) + "; a task declaration never presets "
+                "what its own events record")
+        # From journal format 3 on, new tasks use frozen delivery, as README's update note says (L-19).
+        require(d.get("delivery_policy") in (("frozen-v1",) if format3_started(state) else (None, "frozen-v1")),
+                "delivery_policy_required: a task recorded in journal format 3 declares delivery_policy frozen-v1")
         require(d["id"] not in state["tasks"], "Task ID already exists")
         require(d["owner"] in state["agents"], "Task owner not registered")
         require(not standby(state, d["owner"]), "Task owner is in stand-by; coordinator must record return first")
