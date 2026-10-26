@@ -1094,8 +1094,17 @@ def effective_proof(task, run, entry):
 
 
 def current_proofs(task, current):
-    return [p for p in task["proofs"] if p["status"] == "passed" and p["after"] == current
-            and contract_matches(task, p)]
+    """Passed proofs of the current bytes that no later failed proof of the same bytes contradicts (L-22).
+
+    Later is the later recorded end when both runs carry one, and the later position in the record otherwise."""
+    same = [(position, p) for position, p in enumerate(task["proofs"])
+            if p.get("after") == current and contract_matches(task, p)]
+    failed = [entry for entry in same if entry[1]["status"] == "failed"]
+
+    def later(one, other):
+        (i, a), (j, b) = one, other
+        return (a["ended"], i) > (b["ended"], j) if a.get("ended") and b.get("ended") else i > j
+    return [p for position, p in same if p["status"] == "passed" and not any(later(f, (position, p)) for f in failed)]
 
 
 DRIFT_PATHS = 20
@@ -2010,12 +2019,11 @@ def validate(state, kind, actor, d, stored_packet=None):
             if task.get("pool"):
                 held = [member for member in task["pool"] if standby(state, member)]
                 require(len(held) < len(task["pool"]), "Reviewer is in stand-by; no new review handoff: " + ", ".join(held))
-            require(any(p["status"] == "passed" and p["after"]["sha256"] == d["snapshot"]["sha256"]
-                        and contract_matches(task, p) and (not task.get("full_gate") or p.get("gate"))
-                        for p in task["proofs"]), "No passing proof on this exact source")
-            require({r["id"] for r in task.get("requirements", [])} <=
-                    {c for p in task["proofs"] if p["status"] == "passed" and p["after"] == d["snapshot"] and contract_matches(task, p)
-                     for c in p.get("covers", [])}, "Requirement lacks native current proof")
+            # The proofs check and close count, so a later failure on these bytes is named here too (L-22).
+            proofs = current_proofs(task, d["snapshot"])
+            require(any(not task.get("full_gate") or p.get("gate") for p in proofs), "No passing proof on this exact source")
+            require({r["id"] for r in task.get("requirements", [])} <= {c for p in proofs for c in p.get("covers", [])},
+                    "Requirement lacks native current proof")
             if task.get("reviewer") or task.get("pool"):
                 packet = d.get("packet_data", {})
                 require(packet.get("candidate") == d["snapshot"] and packet.get("scope") == task["scope"] and
@@ -2032,8 +2040,7 @@ def validate(state, kind, actor, d, stored_packet=None):
                     require(d.get("handoff") == key and "handoffs" not in d,
                             "handoff_unbound: a delivery to " + str(task["reviewer"]) + " names the handoff "
                             "review-<digest of its packet>")
-                require(packet.get("proofs") == [p for p in task["proofs"] if p["status"] == "passed" and
-                        p["after"] == d["snapshot"] and contract_matches(task, p)], "Handoff proofs changed during delivery")
+                require(packet.get("proofs") == proofs, "Handoff proofs changed during delivery")
         if kind == "run.start":
             require(d["id"] not in state["runs"], "Run ID already exists; do not replay")
             require(task["status"] != "waiting-ack", "Assignment has no recipient ACK")
@@ -2110,6 +2117,7 @@ def validate(state, kind, actor, d, stored_packet=None):
             require(task["status"] == "reviewed" or (read_at_gate(task) and task["status"] == "delivered"),
                     "Exact candidate independent review still pending")
             require_plan(task)
+            require(bool(current_proofs(task, task.get("candidate"))), "No complete native proof on current candidate")
             cross_client_read(state, task, task.get("candidate"))
             if task.get("release_gate") is True:
                 from frozen_candidate import current as frozen_current
