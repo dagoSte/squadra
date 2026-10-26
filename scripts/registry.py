@@ -1189,8 +1189,11 @@ def cross_client_read(state, task, current):
     authors = cross_client_judged(state, task)
     if not authors or read_at_gate(task):
         return
+    # A read its reader amended is withdrawn: only the amendment speaks for that reader (L-20).
+    withdrawn = {r["amends"] for r in task["reviews"] if r.get("amends")}
     readers = {state["agents"][r["reviewer"]]["client"] for r in task["reviews"]
-               if r["stage"] == "code" and r["verdict"] == "accepted" and r["binding"] == (current or {}).get("sha256")}
+               if r["stage"] == "code" and r["verdict"] == "accepted" and r["binding"] == (current or {}).get("sha256")
+               and not (r.get("request") and r["request"] in withdrawn)}
     require(bool(readers - authors), "cross_client_read_missing: " + task["id"] + " was written by " +
             "/".join(sorted(authors)) + " and its accepted current reads come from " +
             ("/".join(sorted(readers)) or "no reader") + "; " + CROSS_CLIENT_RULE)
