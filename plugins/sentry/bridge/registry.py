@@ -36,6 +36,11 @@ SCRUB_NOTE = ("Scrubbed artifacts were removed on purpose by a coordinator decis
               "registry until it updates.")
 
 TASK_STATUSES = ("waiting-ack", "ready", "working", "delivered", "changes-required", "reviewed", "done")
+# The fields a task event declares; status, authors, reads, proofs, gate reads and the rest are recorded by the
+# reducer from their own events, so a declaration never presets them (M-8).
+TASK_FIELDS = frozenset({"id", "title", "owner", "repo", "base", "scope", "proof", "expected", "full_gate", "depends",
+                         "reviewer", "pool", "requirements", "delivery_policy", "read_at_gate", "release_gate", "route",
+                         "light_policy", "contract", "fix", "supersedes", "cross_client", "same_client_reason"})
 NEXT_STEPS = {
     "waiting-ack": "ACK dell'esecutore",
     "ready": "Avvio dell'esecutore",
@@ -272,6 +277,11 @@ def decision_id(data, seq):
 def read_at_gate(task):
     """A light task registered to be read at a release gate instead of on its own."""
     return task.get("read_at_gate") is True and task.get("route") == "light"
+
+
+def format3_started(state):
+    """Whether the state shows journal format 3 begun: a frozen-delivery task and a reassignment are always written in it."""
+    return any(t.get("delivery_policy") == "frozen-v1" or t.get("reassignments") for t in state["tasks"].values())
 
 
 def gate_pending(task):
@@ -618,6 +628,13 @@ def return_ping(state, agent):
 def current_plan_review(task):
     review = next((r for r in reversed(task["reviews"]) if r["stage"] == "plan"), None)
     return review if review and review["binding"] == task.get("plan", {}).get("sha256") else None
+
+
+def require_plan(task):
+    """A registered plan's latest read accepts its current bytes before a code read or a close, as the CLI checks (M-9)."""
+    if task.get("plan"):
+        review = current_plan_review(task)
+        require(review is not None and review["verdict"] == "accepted", "Current plan review pending")
 
 
 def next_step(task):
@@ -1077,8 +1094,17 @@ def effective_proof(task, run, entry):
 
 
 def current_proofs(task, current):
-    return [p for p in task["proofs"] if p["status"] == "passed" and p["after"] == current
-            and contract_matches(task, p)]
+    """Passed proofs of the current bytes that no later failed proof of the same bytes contradicts (L-22).
+
+    Later is the later recorded end when both runs carry one, and the later position in the record otherwise."""
+    same = [(position, p) for position, p in enumerate(task["proofs"])
+            if p.get("after") == current and contract_matches(task, p)]
+    failed = [entry for entry in same if entry[1]["status"] == "failed"]
+
+    def later(one, other):
+        (i, a), (j, b) = one, other
+        return (a["ended"], i) > (b["ended"], j) if a.get("ended") and b.get("ended") else i > j
+    return [p for position, p in same if p["status"] == "passed" and not any(later(f, (position, p)) for f in failed)]
 
 
 DRIFT_PATHS = 20
@@ -1172,8 +1198,11 @@ def cross_client_read(state, task, current):
     authors = cross_client_judged(state, task)
     if not authors or read_at_gate(task):
         return
+    # A read its reader amended is withdrawn: only the amendment speaks for that reader (L-20).
+    withdrawn = {r["amends"] for r in task["reviews"] if r.get("amends")}
     readers = {state["agents"][r["reviewer"]]["client"] for r in task["reviews"]
-               if r["stage"] == "code" and r["verdict"] == "accepted" and r["binding"] == (current or {}).get("sha256")}
+               if r["stage"] == "code" and r["verdict"] == "accepted" and r["binding"] == (current or {}).get("sha256")
+               and not (r.get("request") and r["request"] in withdrawn)}
     require(bool(readers - authors), "cross_client_read_missing: " + task["id"] + " was written by " +
             "/".join(sorted(authors)) + " and its accepted current reads come from " +
             ("/".join(sorted(readers)) or "no reader") + "; " + CROSS_CLIENT_RULE)
@@ -1196,7 +1225,8 @@ def candidate_checks(task, current, require_review=True, delivering=False):
         require(ids <= set(reviews[-1].get("covers", [])), "Requirement lacks independent current review")
         if reviews[-1].get('request'):
             delivery = task.get('delivery', {})
-            handoffs = delivery.get('handoffs', []) + ([delivery['handoff']] if delivery.get('handoff') else [None])
+            # A review with no handoff counts only on a delivery with none, which has no configured reader (H-5).
+            handoffs = [h for h in [*delivery.get('handoffs', []), delivery.get('handoff')] if h] or [None]
             require(reviews[-1].get('handoff') in handoffs, 'Independent review belongs to an older handoff')
 
 
@@ -1225,6 +1255,16 @@ def check_pool(state, d):
                    "in stand-by" if standby(state, member) else
                    "author alias is not independent" if agent["identity"] == owner else None)
         require(problem is None, "review_pool_member: " + str(member) + ": " + str(problem))
+
+
+def require_handoff(state, task, actor, action):
+    """Only the configured reader, after its own ACK of the delivery's handoff about this task, reads it (H-5)."""
+    require(actor == task.get("reviewer"), "Configured reviewer must ACK exact handoff before " + action)
+    handoff = task.get("delivery", {}).get("handoff")
+    message = state["messages"].get(handoff) if isinstance(handoff, str) else None
+    require(message is not None and message["to"] == actor and message.get("related_task") == task["id"],
+            "handoff_missing: " + task["id"] + " was delivered without a handoff message to " + actor)
+    require((message["ack"] or {}).get("agent") == actor, "Configured reviewer must ACK exact handoff before " + action)
 
 
 def require_claim(state, task, actor, action):
@@ -1744,6 +1784,20 @@ def task_progress(events):
     return result
 
 
+# A refusal receipt the CLI writes: its command and error, when it happened, and the task it named.
+DIAGNOSTIC_RECEIPT = frozenset({"command", "error", "utc", "task"})
+
+
+def validate_diagnostic(actor, d):
+    """A diagnostic is the tool's own receipt; one that names a command or task, and so enters a task's story,
+    keeps the CLI's fields (L-24)."""
+    require(actor == "system", "diagnostic_invalid: a diagnostic is the tool's receipt, recorded as system")
+    if "command" in d or "task" in d:
+        require(set(d) <= DIAGNOSTIC_RECEIPT and isinstance(d.get("command"), str) and isinstance(d.get("error"), str)
+                and all(isinstance(d[k], str) for k in ("utc", "task") if k in d),
+                "diagnostic_invalid: a refusal receipt carries its command and error, and possibly utc and task, as text")
+
+
 def validate(state, kind, actor, d, stored_packet=None):
     require(kind in {"init", "agent", "task", "ack", "message", "transport", "plan", "start", "deliver",
                     "review", "close", "output", "run.start", "run.end", "run.cancel", "run.progress", "run.abandon",
@@ -1761,6 +1815,7 @@ def validate(state, kind, actor, d, stored_packet=None):
                 "Recovery freeze is a tool receipt, not an agent authorization")
         return
     if kind == "diagnostic":
+        validate_diagnostic(actor, d)
         return
     if kind == "agent":
         require("availability" not in d, "Availability requires a recorded coordinator action")
@@ -1901,9 +1956,16 @@ def validate(state, kind, actor, d, stored_packet=None):
             require(not any(isinstance(x.get("scrub"), Mapping) and x["scrub"].get("sha256") == scrub["sha256"]
                             for x in state["decisions"]), "Artifact already scrubbed by an earlier decision")
         validate_decision_links(state, d)
-    if kind in {"start", "deliver", "run.start", "resource.acquire", "review"}:
+    # A pause holds close on every route, not only on the light one (L-23).
+    if kind in {"start", "deliver", "run.start", "resource.acquire", "review", "close"}:
         require(not state["paused"], "Workspace paused; explicit coordinator resume required")
     if kind == "task":
+        unknown = sorted(set(d) - TASK_FIELDS)
+        require(not unknown, "task_field_unknown: " + ", ".join(unknown) + "; a task declaration never presets "
+                "what its own events record")
+        # From journal format 3 on, new tasks use frozen delivery, as README's update note says (L-19).
+        require(d.get("delivery_policy") in (("frozen-v1",) if format3_started(state) else (None, "frozen-v1")),
+                "delivery_policy_required: a task recorded in journal format 3 declares delivery_policy frozen-v1")
         require(d["id"] not in state["tasks"], "Task ID already exists")
         require(d["owner"] in state["agents"], "Task owner not registered")
         require(not standby(state, d["owner"]), "Task owner is in stand-by; coordinator must record return first")
@@ -1950,6 +2012,10 @@ def validate(state, kind, actor, d, stored_packet=None):
         if kind in {"run.start", "review"}:
             require(set(d.get("covers", [])) <= {r["id"] for r in task.get("requirements", [])}, "Unknown covered requirement")
         require(task["status"] != "done" or kind == "output", "Task already closed")
+        if kind in {"start", "deliver", "close"}:
+            # A superseded task leaves the board and the waits, so its replacement carries the work (L-25).
+            require(not task.get("superseded_by"), "Task " + task["id"] + " is superseded by " +
+                    str(task.get("superseded_by")) + "; its replacement carries the work")
         if kind in {"start", "deliver"}:
             require(actor == task["owner"], "Only assigned owner can start/deliver")
             require(task["status"] != "waiting-ack", "Assignment has no recipient ACK")
@@ -1973,25 +2039,28 @@ def validate(state, kind, actor, d, stored_packet=None):
             if task.get("pool"):
                 held = [member for member in task["pool"] if standby(state, member)]
                 require(len(held) < len(task["pool"]), "Reviewer is in stand-by; no new review handoff: " + ", ".join(held))
-            require(any(p["status"] == "passed" and p["after"]["sha256"] == d["snapshot"]["sha256"]
-                        and contract_matches(task, p) and (not task.get("full_gate") or p.get("gate"))
-                        for p in task["proofs"]), "No passing proof on this exact source")
-            require({r["id"] for r in task.get("requirements", [])} <=
-                    {c for p in task["proofs"] if p["status"] == "passed" and p["after"] == d["snapshot"] and contract_matches(task, p)
-                     for c in p.get("covers", [])}, "Requirement lacks native current proof")
+            # The proofs check and close count, so a later failure on these bytes is named here too (L-22).
+            proofs = current_proofs(task, d["snapshot"])
+            require(any(not task.get("full_gate") or p.get("gate") for p in proofs), "No passing proof on this exact source")
+            require({r["id"] for r in task.get("requirements", [])} <= {c for p in proofs for c in p.get("covers", [])},
+                    "Requirement lacks native current proof")
             if task.get("reviewer") or task.get("pool"):
                 packet = d.get("packet_data", {})
                 require(packet.get("candidate") == d["snapshot"] and packet.get("scope") == task["scope"] and
                         packet.get("plan") == task.get("plan") and packet.get("reviewer") == task["reviewer"] and
                         packet.get("pool") == task.get("pool"),
                         "Handoff packet changed during delivery")
+                key = "review-" + digest(canonical(stored_packet if stored_packet is not None else packet).encode())
                 if task.get("pool"):
                     # One handoff per active member, each named after this exact packet; stand-by members get none.
-                    key = "review-" + digest(canonical(stored_packet if stored_packet is not None else packet).encode()) + "-"
-                    require(d.get("handoffs") == [key + member for member in active_pool(state, task)],
-                            "Pool handoffs must name every active member for this exact packet")
-                require(packet.get("proofs") == [p for p in task["proofs"] if p["status"] == "passed" and
-                        p["after"] == d["snapshot"] and contract_matches(task, p)], "Handoff proofs changed during delivery")
+                    require(d.get("handoffs") == [key + "-" + member for member in active_pool(state, task)] and
+                            "handoff" not in d, "Pool handoffs must name every active member for this exact packet")
+                else:
+                    # The single reader's handoff is named after this exact packet too, so new bytes need a new ACK (H-5).
+                    require(d.get("handoff") == key and "handoffs" not in d,
+                            "handoff_unbound: a delivery to " + str(task["reviewer"]) + " names the handoff "
+                            "review-<digest of its packet>")
+                require(packet.get("proofs") == proofs, "Handoff proofs changed during delivery")
         if kind == "run.start":
             require(d["id"] not in state["runs"], "Run ID already exists; do not replay")
             require(task["status"] != "waiting-ack", "Assignment has no recipient ACK")
@@ -2011,11 +2080,10 @@ def validate(state, kind, actor, d, stored_packet=None):
                 stage = d.get("stage", "code")
                 require(run_count(state, d["task"], "read", stage) < state["workspace"]["limits"][stage],
                         "Independent CLI read budget exhausted")
-                handoff = task.get("delivery", {}).get("handoff")
-                if handoff and stage == "code":
-                    require(actor == task["reviewer"] and state["messages"][handoff]["ack"] is not None,
-                            "Configured reviewer must ACK exact handoff before read")
-                elif task.get("delivery", {}).get("handoffs") and stage == "code":
+                delivery = task.get("delivery", {})
+                if (task.get("reviewer") or delivery.get("handoff")) and stage == "code":
+                    require_handoff(state, task, actor, "read")
+                elif delivery.get("handoffs") and stage == "code":
                     require_claim(state, task, actor, "read")
             if d.get("gate"):
                 require(state["resources"].get("gate", {}).get("owner") == actor,
@@ -2054,11 +2122,11 @@ def validate(state, kind, actor, d, stored_packet=None):
             else:
                 require(task.get("candidate", {}).get("sha256") == d["binding"], "Review refers to another candidate")
                 require(task["status"] in {"delivered", "reviewed", "changes-required"}, "No delivered candidate")
-                handoff = task.get("delivery", {}).get("handoff")
-                if handoff:
-                    require(actor == task["reviewer"] and state["messages"][handoff]["ack"] is not None,
-                            "Configured reviewer must ACK exact handoff before review")
-                elif task.get("delivery", {}).get("handoffs"):
+                require_plan(task)
+                delivery = task.get("delivery", {})
+                if task.get("reviewer") or delivery.get("handoff"):
+                    require_handoff(state, task, actor, "review")
+                elif delivery.get("handoffs"):
                     require_claim(state, task, actor, "review")
                 if d["verdict"] == "accepted":
                     require(set(d.get("covers", [])) == {r["id"] for r in task.get("requirements", [])},
@@ -2068,6 +2136,8 @@ def validate(state, kind, actor, d, stored_packet=None):
         if kind == "close":
             require(task["status"] == "reviewed" or (read_at_gate(task) and task["status"] == "delivered"),
                     "Exact candidate independent review still pending")
+            require_plan(task)
+            require(bool(current_proofs(task, task.get("candidate"))), "No complete native proof on current candidate")
             cross_client_read(state, task, task.get("candidate"))
             if task.get("release_gate") is True:
                 from frozen_candidate import current as frozen_current
@@ -2079,6 +2149,14 @@ def validate(state, kind, actor, d, stored_packet=None):
         require(d["message"] in state["messages"], "Unknown message")
         require(state["messages"][d["message"]]["to"] == actor, "ACK must come from actual recipient seat")
         require(state["messages"][d["message"]]["ack"] is None, "Message already acknowledged")
+        name = state["messages"][d["message"]].get("task")
+        if name:
+            # The reducer readies the task of any acknowledged message carrying task, as recorded history
+            # replays; so only its owner's ACK of the task's own assignment, before it closes, is recorded (G-1).
+            assigned = state["tasks"].get(name)
+            require(d["message"] == "assign-" + name and assigned is not None and actor == assigned["owner"] and
+                    assigned["status"] != "done",
+                    "assignment_ack_invalid: " + d["message"] + " is not the assignment of an open task to " + actor)
         siblings = state["messages"][d["message"]].get("pool") or []
         winner = next((state["messages"][m]["ack"]["agent"] for m in siblings
                        if m != d["message"] and state["messages"].get(m, {}).get("ack")), None)
@@ -2096,10 +2174,20 @@ def validate(state, kind, actor, d, stored_packet=None):
         require(d["to"] not in state["agents"] if d.get("awaited") else d["to"] in state["agents"],
                 "Awaited recipient already registered" if d.get("awaited") else "Recipient not registered")
         require(d["id"] not in state["messages"], "Message ID already exists")
+        if "task" in d:
+            # task marks the assignment, whose owner's ACK readies the task; any other link is related_task (G-1).
+            assigned = state["tasks"].get(d["task"]) if isinstance(d["task"], str) else None
+            require(coordinator and assigned is not None and d["id"] == "assign-" + d["task"] and
+                    d["to"] == assigned["owner"] and assigned["status"] == "waiting-ack",
+                    "assignment_invalid: only the coordinator's assign-<task> message to the owner of a task waiting "
+                    "for its ACK carries task; other messages about a task name it as related_task")
         if d.get("pool") is not None:
             related = state["tasks"].get(d.get("related_task"), {})
             require(d["pool"] == related.get("delivery", {}).get("handoffs") and d["id"] in d["pool"],
                     "Pool handoff must belong to the current pool delivery")
+            # A slot is review-<packet digest>-<member>: its message goes to that member only (H-5).
+            require(d["id"][len("review-") + 64 + 1:] == d["to"] and d["to"] in (related.get("pool") or []),
+                    "pool_slot_invalid: the pool handoff " + d["id"] + " is addressed to the member its name carries")
         if d.get("ping"):
             require(d["ping"] is True and not d.get("awaited") and not d.get("task") and not d.get("related_task"),
                     "Ping is a registered presence challenge, not an assignment")
@@ -3014,7 +3102,9 @@ class Store:
                 data = json.loads(canonical(transform_event(kind, data, self.compact_snapshot)))
                 event = {"id": event_id, "utc": now(), "kind": kind, "actor": actor,
                          "data": data, "previous": previous, "format": 2}
+                # Only 3.11 folds a close note, so a note is written in the format older readers refuse (M-10).
                 if (kind == 'reassign' or (kind == 'task' and data.get('delivery_policy') == 'frozen-v1') or
+                        (kind == 'close' and data.get('note')) or
                         self.db.execute('SELECT 1 FROM events WHERE hash_format=3 LIMIT 1').fetchone() is not None):
                     event['format'] = 3
                 # A restore of a package with no new-format event keeps the envelope the saving version can read.
