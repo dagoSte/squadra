@@ -214,8 +214,9 @@ candidate repositories, including their Git objects. Candidate copying shares th
 delivery/repair/retirement storage lock; its metadata comes from that exact database
 backup. Damaged, missing and retired caches are named in the report, rather than
 presented as recovered source. Quarantined `candidates/damaged-*` directories stay on
-the original machine and are not copied. A candidate file rejected by the secret filters refuses
-the checkpoint, naming its SHA and path; it is never silently copied or called excluded.
+the original machine and are not copied. A candidate rejected by the content or
+changed-file name checks below refuses the checkpoint, naming its SHA and path;
+it is never silently copied or called excluded.
 Checksums cover the copied files. The copy does not depend on live registry files
 remaining in place. Runtime files under `runs/`, queue tickets and local dashboard or
 transport sidecars are not copied: process/abandonment evidence must be reconciled
@@ -248,11 +249,18 @@ source checkout, a tracked template ending in
 content only: a `PRIVATE KEY` header in any of the three versions still refuses it.
 Frozen candidates are checked too: freeze/delivery refuses flagged untracked or
 changed working-tree files; unchanged tracked content already committed at HEAD is
-left for the save/checkpoint check. A frozen template receives the name-only exemption
+left for the save/checkpoint content check. When copying a retained candidate,
+filename filters apply only to untracked or changed working-tree rows against its
+delivered HEAD. An unchanged committed candidate file such as `deploy/credentials.py`
+can therefore be copied by checkpoint/save. Saving that live tracked source path
+still requires `--allow-name` for its name-only refusal.
+A frozen template receives the name-only exemption
 only when its path belongs to the delivered HEAD: commit a staged-only or untracked
-`.env.example` before delivery, or leave it untracked and ignored. Save/checkpoint refuses any retained candidate
-whose exported files fail the filters, naming the candidate SHA and file. It does
-not copy a flagged candidate file behind an exclusion receipt.
+`.env.example` before delivery, or leave it untracked and ignored. At save/checkpoint,
+private-key headers in every HEAD, index and regular working-tree version are refused,
+including unchanged committed files. A content match or a name match in a changed or
+untracked candidate row refuses the copy, naming the candidate SHA and file; it is
+never copied behind an exclusion receipt.
 These filters do not find every secret: **there is no secret scan of earlier Git
 history, `refs/stash` or registry artifacts**. The all-refs bundle can therefore carry
 older or stashed unchecked content, including files captured by `git stash -u`.
