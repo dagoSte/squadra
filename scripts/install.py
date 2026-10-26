@@ -1,4 +1,4 @@
-"""Install one frozen local version, preserving both old skill trees and launcher."""
+"""Install one frozen local version, preserving the old skill trees and launcher; --undo puts them back."""
 import argparse
 import json
 import os
@@ -85,13 +85,60 @@ def _install(source, home, backup):
     return result
 
 
+TARGETS = ('.codex/skills/squadra', '.claude/skills/squadra', '.cursor/skills/squadra', '.local/bin/squadra',
+           '.codex/skills/migliora', '.claude/skills/migliora', '.cursor/skills/migliora')
+
+
+def written(target, version):
+    """Whether target is still the link or the launcher that the installation of version wrote."""
+    if target.is_symlink():
+        return os.readlink(target) in (str(version), str(version / 'migliora'))
+    if target.parent.name == 'bin' and target.is_file():
+        body = target.read_bytes()
+        return body.startswith(b'#!/bin/sh\nexec ') and body.endswith(
+            (' -B ' + shlex.quote(str(version / 'scripts/squadra.py')) + ' "$@"\n').encode())
+    return False
+
+
+def undo(backup):
+    """Undo one installation from its INSTALL.json: remove each link or launcher it wrote and put back what it
+    moved into the backup. A target changed since then is kept, and its predecessor stays in the backup."""
+    backup = Path(backup).resolve()
+    record = json.loads((backup / "INSTALL.json").read_text())
+    refusal = "Not an installation record: " + str(backup / "INSTALL.json")
+    require(isinstance(record, dict) and record.get("status") == "installed" and isinstance(record.get("version"), str)
+            and isinstance(record.get("targets"), list), refusal)
+    version = Path(record["version"])
+    rows = []
+    for row in reversed(record["targets"]):
+        require(isinstance(row, dict) and set(row) == {"path", "old"} and isinstance(row["path"], str)
+                and any(row["path"].endswith("/" + suffix) for suffix in TARGETS)
+                and (row["old"] is None or isinstance(row["old"], str) and Path(row["old"]).parent == backup), refusal)
+        target, old = Path(row["path"]), row["old"] and Path(row["old"])
+        if os.path.lexists(target) and not written(target, version):
+            status = "kept"
+        else:
+            if os.path.lexists(target):
+                target.unlink()
+            if old and os.path.lexists(old):
+                shutil.move(str(old), str(target)); status = "restored"
+            else:
+                status = "missing" if old else "removed"
+        rows.append({"path": row["path"], "old": row["old"], "status": status})
+    rows.reverse()
+    return {"backup": str(backup), "version": str(version), "targets": rows,
+            "backup_needed": any(r["old"] and os.path.lexists(r["old"]) for r in rows)}
+
+
 if __name__ == "__main__":
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--source", default=str(Path(__file__).resolve().parents[1]))
     p.add_argument("--home", default=str(Path.home()))
-    p.add_argument("--backup", required=True)
+    mode = p.add_mutually_exclusive_group(required=True)
+    mode.add_argument("--backup", help="new folder that receives what the installation replaces")
+    mode.add_argument("--undo", metavar="BACKUP", help="undo the installation recorded in this backup folder")
     a = p.parse_args()
     try:
-        print(json.dumps(install(a.source, a.home, a.backup), indent=2))
-    except (Error, OSError) as exc:
+        print(json.dumps(undo(a.undo) if a.undo else install(a.source, a.home, a.backup), indent=2))
+    except (Error, OSError, ValueError) as exc:
         print(str(exc), file=sys.stderr); raise SystemExit(1)

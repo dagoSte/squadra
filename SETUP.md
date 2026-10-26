@@ -130,8 +130,8 @@ gets both the plugin and the standalone installer.
 
 | # | Command | What it changes | How to undo it |
 |---|---|---|---|
-| 1 | `git clone https://github.com/dagoSte/squadra.git "$HOME/.local/src/squadra"` | A new folder with the repository, kept for later updates | Delete `~/.local/src/squadra` |
-| 2 | `python3 -B "$HOME/.local/src/squadra/scripts/install.py" --backup "$HOME/.local/state/squadra/install-backup-<UTC time>"` | Copies this version to `~/.local/share/squadra/versions/<commit>`; links `~/.claude/skills/squadra`, `~/.codex/skills/squadra` and `~/.cursor/skills/squadra` to it; writes the `squadra` command at `~/.local/bin/squadra`; records every path in the backup folder's `INSTALL.json` | Remove the three links and `~/.local/bin/squadra`, then delete `~/.local/share/squadra/versions/<commit>` and the backup folder |
+| 1 | `git clone https://github.com/dagoSte/squadra.git "$HOME/.local/src/squadra"` | A new folder with the repository, kept for later updates | After undoing row 2, which runs from it: delete `~/.local/src/squadra` |
+| 2 | `python3 -B "$HOME/.local/src/squadra/scripts/install.py" --backup "$HOME/.local/state/squadra/install-backup-<UTC time>"` | Copies this version to `~/.local/share/squadra/versions/<commit>`; links `~/.claude/skills/squadra`, `~/.codex/skills/squadra` and `~/.cursor/skills/squadra` to it, and `~/.claude/skills/migliora`, `~/.codex/skills/migliora` and `~/.cursor/skills/migliora` to its `migliora` skill; writes the `squadra` command at `~/.local/bin/squadra`. Anything already at one of these seven paths, such as your own `migliora` skill, is moved into the backup folder; every path is recorded in its `INSTALL.json` | `python3 -B "$HOME/.local/src/squadra/scripts/install.py" --undo "$HOME/.local/state/squadra/install-backup-<UTC time>"` removes the links and the command this installation wrote and moves back what they replaced; a path changed since is left as it is. Delete the backup folder only if the undo printed `"backup_needed": false`, then delete `~/.local/share/squadra/versions/<commit>` |
 
 ## Step 3 — Install
 
