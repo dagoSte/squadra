@@ -333,7 +333,7 @@ For the dashboard plugins' data and declared settings read [folders, schemas and
   the counter. A budget decision must be explicit and recorded; a narrow corrective
   reread also consumes the same budget, and no new cycle starts.
 - For a small, reversible change after the same triage, the coordinator may declare
-  `task --route light`: **light-v1, at most 80 added+deleted lines in 4 files, P2**.
+  `task --route light`: **light-v1, at most 80 added+deleted lines in 4 files and 16 KiB of changed lines, P2**.
   All operational scripts, security, instruction and normative contract paths stay
   protected; unknown paths refuse. Counts include tests/docs from the original
   clean base, not the latest commit. No plan read, agreed targeted proof, one code

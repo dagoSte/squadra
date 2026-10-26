@@ -1016,7 +1016,7 @@ def shared_record(state, task_id, also, before, argv, gate, expected_rc, covers)
             check_contract(task)
             entry['contract'] = task['contract']
             if task['route'] == 'light':
-                entry['light'] = measure(task, before)
+                entry['light'] = measure(task, before, root=state.get('root'))
         entries.append(entry)
     return {'v': 1, 'primary_binding': entries[0]['binding'], 'tasks': entries[1:]}, entries[0]['covers']
 
@@ -2174,7 +2174,8 @@ def validate(state, kind, actor, d, stored_packet=None):
                     from light_route import check_contract, measure
                     check_contract(task)
                     if task["route"] == "light":
-                        require(run.get("light") == measure(task, d["after"]), "Light proof measurement changed")
+                        require(run.get("light") == measure(task, d["after"], root=state.get("root")),
+                                "Light proof measurement changed")
     if kind == "resource.acquire":
         require(d["name"] not in state["resources"], "Resource already reserved; expiry is not release")
         if d.get('task') is not None:

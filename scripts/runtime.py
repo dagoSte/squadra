@@ -303,7 +303,7 @@ def _execute_owned(store, actor, task_id, argv, mode, prompt, timeout, gate, exe
         check_contract(task)
         route_record["contract"] = task["contract"]
         if mode == "proof" and task["route"] == "light":
-            route_record["light"] = measure(task, before)
+            route_record["light"] = measure(task, before, root=store.root)
     shared = None
     if also:
         require(mode == 'proof', 'Only proof runs may serve additional tasks')

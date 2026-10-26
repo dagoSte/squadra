@@ -283,7 +283,7 @@ def deliver(store, actor, task_id, reconcile=False, note=None):
         from light_route import check_contract, measure
         check_contract(task)
         if task["route"] == "light":
-            data["light"] = measure(task, current)
+            data["light"] = measure(task, current, root=store.root)
     reader = task.get("reviewer")
     if reader or task.get("pool"):
         packet = {"task": task_id, "candidate": current, "base": task["base"],

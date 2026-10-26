@@ -830,15 +830,17 @@ of an already active squad.
 After the same question-based triage, the coordinator may use `task --route light`.
 The task must start at a clean Git base, with a nonempty scope, requirements,
 configured independent reader and exact proof argv. These form an immutable
-contract under **light-v1: 80 added plus deleted lines, 4 files, profile P2**.
-Equality is allowed; 81 lines or 5 files refuse. Tests, documentation, comments and
+contract under **light-v1: 80 added plus deleted lines, 4 files, profile P2**, and at most
+16 KiB (16,384 bytes) of added plus deleted lines, so one long line counts by its size.
+Equality is allowed; 81 lines, 5 files or 16,385 bytes refuse. Tests, documentation, comments and
 whitespace count. Git raw Myers diff counts renames as deletion plus addition,
 without textconv, external diff or whitespace exemptions. Intermediate commits do
 not change the original base. There is no flag to enlarge these limits.
 
-P2 permits README.md/README.it.md, Markdown under docs/ or references/,
-tests/** and assets/dashboard.html, except the following protected names:
-all scripts/**, plugins/**, assets/vendor/**, client/CI directories
+P2 permits README.md/README.it.md, Markdown under docs/ or references/ and
+tests/**, except the following protected names:
+all scripts/**, plugins/**, assets/vendor/**, assets/dashboard.html (the dashboard page
+holds the dashboard token and calls its write routes), client/CI directories
 (.github, .agents, .codex, .claude, .cursor, .claude-plugin, .codex-plugin),
 .gitignore/.gitattributes/.gitmodules, VERSION, pyproject.toml, requirements*.txt,
 *.lock, package-lock.json, pnpm-lock.yaml, yarn.lock, Makefile, package*.json,
@@ -852,17 +854,15 @@ changes, unavailable bases, unstable snapshots and no-op changes require full.
 No plan or plan read on light; use the agreed targeted proof and one code-read
 round. ACKs, non-author identity, native proof on unchanged exact bytes and the
 same contract, requirement covers, dependencies, pauses, resources and budgets
-remain. Required browser or other domain evidence remains too. The refreshed
-status example changed 23 added/deleted lines in two files including its test:
-`["python3","-B","-m","unittest","discover","-s","tests","-p","test_dashboard_loading.py","-v"]`
-would run its six targeted tests, but would not replace the required browser
-measurement. Release final reads and the owner's explicit typed publication
+remain. Required browser or other domain evidence remains too. A fix to the
+dashboard page, however small, takes the full route with its browser measurement,
+because the page is protected. Release final reads and the owner's explicit typed publication
 permission never relax. No minification to qualify, and no path/size threshold
 replaces judgment about security or irreversible impact.
 
 The central validator remeasures before a proof process, at deliver, check and
 close, also for direct Store events; packets retain the verified measurement.
-Refusals use `light_lines_exceeded`, `light_files_exceeded`,
+Refusals use `light_lines_exceeded`, `light_bytes_exceeded`, `light_files_exceeded`,
 `light_protected_path`, `light_unmeasurable`, `light_empty_change`,
 `light_contract_required`, `light_policy_unsupported`,
 `light_plan_requires_full` or `light_read_round_exhausted`, with a native nonzero
@@ -1198,11 +1198,11 @@ fixes keep the requirement. The normal proof and independent review still apply.
 Old tasks keep working; frozen squads require an explicit upgrade of every writer,
 with no mixed-version enforcement. See the [complete example and limits](work.md#defect-fixes-show-that-the-regression-detects-the-original).
 
-The coordinator may declare `task --route light` for a bounded, reversible change after the usual questions. Policy **light-v1 / P2** allows at most **80 added plus deleted lines in four files**, counted from the original clean Git base, including tests and documents. Replacing one line counts as two; commits during the task do not reset the count. Binary files, symlinks, type/mode changes, missing bases, unstable snapshots and empty changes refuse. No compression to qualify.
+The coordinator may declare `task --route light` for a bounded, reversible change after the usual questions. Policy **light-v1 / P2** allows at most **80 added plus deleted lines in four files** and 16 KiB of changed lines, counted from the original clean Git base, including tests and documents. Replacing one line counts as two; commits during the task do not reset the count. Binary files, symlinks, type/mode changes, missing bases, unstable snapshots and empty changes refuse. No compression to qualify.
 
-P2 admits descriptive Markdown under docs/references, README EN/IT, tests and `assets/dashboard.html`. All scripts, plugin bundles, client/CI/build/dependency files, instruction files and normative contracts stay protected; unknown paths are protected too. The exact exclusions are in [the workflow](work.md#light-route). A security impact or required whole gate still takes the full route: size and paths never grant permission.
+P2 admits descriptive Markdown under docs/references, README EN/IT and tests. All scripts, plugin bundles, the dashboard page (`assets/dashboard.html`, which holds the dashboard token), client/CI/build/dependency files, instruction files and normative contracts stay protected; unknown paths are protected too. The exact exclusions are in [the workflow](work.md#light-route). A security impact or required whole gate still takes the full route: size and paths never grant permission.
 
-The light route skips a plan read and uses the agreed targeted proof instead of a whole suite; it allows one code-read round. A non-author reader, assignment/handoff ACKs, exact source and contract bindings, native results, explicit requirement coverage, pauses, reservations, budgets and required evidence remain. Release final reads and the owner's typed publication permission do not change. Example: the steady refresh fix changed **23 added/deleted lines in two files** including its test; it could use the six loading-contract tests, while its required browser measurement remains.
+The light route skips a plan read and uses the agreed targeted proof instead of a whole suite; it allows one code-read round. A non-author reader, assignment/handoff ACKs, exact source and contract bindings, native results, explicit requirement coverage, pauses, reservations, budgets and required evidence remain. Release final reads and the owner's typed publication permission do not change. Example: a wording fix of **12 added/deleted lines in README.md and README.it.md** can use the agreed targeted test of those two files; a fix to the dashboard page cannot, because the page is protected.
 
 The registry remeasures before a proof process, on delivery, check and close, including direct Store writes. An excess or protected path refuses with a `light_*` code and “Full route required”; a second light read is refused too. Only the coordinator can promote with `route --full --scope-file ... --proof-file ... --reason ...` (and `--full-gate` or `--expected` when required). Promotion keeps the base, authors, history and spent counters, invalidates old proof/read bindings, and has no reverse. It cannot reset an exhausted budget.
 

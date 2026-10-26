@@ -787,7 +787,7 @@ The other ordinary reads above do not reverify earlier events, untouched cache l
 
 #### Small changes: the light route
 
-The coordinator may declare `task --route light` for a bounded, reversible change: at most **80 added plus deleted lines in four files** (policy **light-v1 / P2**), counted from the original clean Git base. Scripts, plugin bundles, instruction files and normative contracts stay protected, and a security impact or a required whole gate still takes the full route. The light route skips the plan read and uses the agreed targeted proof; a non-author read, the bindings and the budgets remain. Only the coordinator can promote a task to the full route, and promotion never resets a budget. See [the light route](references/work.md#light-route) and [the details](references/work.md#readme-protocol-details).
+The coordinator may declare `task --route light` for a bounded, reversible change: at most **80 added plus deleted lines in four files**, and 16 KiB of changed lines (policy **light-v1 / P2**), counted from the original clean Git base. Scripts, plugin bundles, the dashboard page, instruction files and normative contracts stay protected, and a security impact or a required whole gate still takes the full route. The light route skips the plan read and uses the agreed targeted proof; a non-author read, the bindings and the budgets remain. Only the coordinator can promote a task to the full route, and promotion never resets a budget. See [the light route](references/work.md#light-route) and [the details](references/work.md#readme-protocol-details).
 
 </details>
 
