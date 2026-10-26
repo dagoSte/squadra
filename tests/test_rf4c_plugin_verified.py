@@ -76,8 +76,9 @@ class Verified(unittest.TestCase):
         for name in ('SKILL.md', 'references/plugins.md'):
             with self.subTest(doc=name):
                 text = (ROOT / name).read_text()
-                self.assertTrue('`instructions: valid`' in text and '`files: verified`' in text, 'verdicts named')
-                self.assertIsNone(re.search(r'Only a regular file owned by the user, not group- or other-writable and not a symlink counts', text))
+                rule = ' '.join(text.split('$HOME/.squadra/plugins/<name>/AGENTS.md', 1)[1].split('\n\n', 1)[0].split())
+                self.assertTrue('only while `squadra plugin list` reports that plugin with `instructions: valid` and '
+                                '`files: verified`' in rule, 'the rule depends on the listed verdicts')
 
 
 if __name__ == '__main__':
