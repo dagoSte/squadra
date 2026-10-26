@@ -17,7 +17,7 @@ import registry
 from registry import attention, waits, table, pending_ack_ids
 import test_squadra as support
 import test_dashboard_transfer as transfer
-from test_msg_waits import as_codex, STAMP
+from test_msg_waits import codex_seats, STAMP
 from test_usage_page import state_fixture
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -39,8 +39,8 @@ class StandbyWaits(unittest.TestCase):
     cli = support.Workflow.cli
 
     def setUp(self):
-        support.Workflow.setUp(self)
-        as_codex(self.store, 'R')
+        with codex_seats('R'):
+            support.Workflow.setUp(self)
         for name in ('M1', 'M2', 'M3'):
             with patch('registry.now', return_value=STAMP):
                 self.store.append('message', 'C', {'id': name, 'to': 'R', 'body': 'Please read'})

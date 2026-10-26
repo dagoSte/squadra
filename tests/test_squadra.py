@@ -357,9 +357,11 @@ class Workflow(unittest.TestCase):
             "else: print(json.dumps({'type':'result','subtype':'success','session_id':session,'structured_output':reply}))\n")
         executable.chmod(0o700)
         for client in ["codex", "claude"]:
-            agent = self.store.state()["agents"]["R"]
-            self.store.append("agent", "R", agent | {"client": client})
-            result = execute(self.store, "R", "T", mode="read", prompt="x" * 100000,
+            # A seat's client is fixed, so each client reads from its own seat.
+            seat = "R-" + client
+            self.store.append("agent", seat, {"id": seat, "role": "reviewer", "identity": "outside-" + client,
+                              "client": client, "repo": str(self.repo), "skills": [], "session": ""})
+            result = execute(self.store, seat, "T", mode="read", prompt="x" * 100000,
                              executable=str(executable), timeout=10)
             self.assertEqual(result["status"], "passed")
             self.assertEqual(result["response"]["verdict"], "changes-required")

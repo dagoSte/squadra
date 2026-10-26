@@ -102,26 +102,6 @@ class ReviewFixes(unittest.TestCase):
         finally:
             store.close()
 
-    def test_transfer_recomputes_same_client_reason_in_both_directions(self):
-        store = Store(self.root)
-        try:
-            for actor, client in [('A', 'codex'), ('R', 'codex'), ('Other', 'claude')]:
-                data = dict(store.view()['agents'][actor]); data['client'] = client
-                store.append('agent', actor, data)
-        finally:
-            store.close()
-        self.cli('task', '--actor', 'C', '--id', 'T', '--title', 'Cross-client transfer', '--owner', 'A',
-                 '--repo', str(self.repo), '--scope-file', str(self.scope), '--proof-file', str(self.proof),
-                 '--reviewer', 'R', '--same-client-reason', 'Independent Claude temporarily unavailable')
-        self.start(); self.deliver()
-        self.cli('reassign', '--actor', 'C', '--task', 'T', '--reviewer', 'Other', '--reason', 'Claude available')
-        self.assertIsNone(self.state()['tasks']['T'].get('same_client_reason'))
-        self.assertTrue(any(m['to'] == 'R' and m.get('info') and 'reassigned' in m['body'] for m in self.state()['messages'].values()))
-        self.assertIn('--same-client-reason', self.refuse('reassign', '--actor', 'C', '--task', 'T', '--reviewer', 'R', '--reason', 'Claude occupied'))
-        self.cli('reassign', '--actor', 'C', '--task', 'T', '--reviewer', 'R', '--reason', 'Claude occupied',
-                 '--same-client-reason', 'Only available independent reader')
-        self.assertEqual(self.state()['tasks']['T']['same_client_reason'], 'Only available independent reader')
-
     def test_refused_commit_never_stages_own_rule(self):
         rule = self.rule()
         (self.repo / 'foreign.txt').write_text('Other seat')
@@ -170,3 +150,36 @@ class ReviewFixes(unittest.TestCase):
             '--owner', 'A', '--repo', str(self.repo), '--scope-file', str(self.scope), '--proof',
             sys.executable, '-c', 'pass', '--reviewer', 'R'))
         self.assertNotIn('T', self.state()['tasks'])
+
+
+class ClientTransfer(unittest.TestCase):
+    """A reader transfer between clients; each seat is registered once with its final client."""
+    cli = improved.Improvements.cli
+    refuse = improved.Improvements.refuse
+    state = improved.Improvements.state
+    start = improved.Improvements.start
+    deliver = improved.Improvements.deliver
+
+    def setUp(self):
+        original, clients = Store.append, {'A': 'codex', 'R': 'codex', 'Other': 'claude'}
+
+        def append(store, kind, actor, data, event_id=None):
+            if kind == 'agent' and data.get('id') in clients:
+                data = {**data, 'client': clients[data['id']]}
+            return original(store, kind, actor, data, event_id)
+
+        with patch.object(Store, 'append', append):
+            improved.Improvements.setUp(self)
+
+    def test_transfer_recomputes_same_client_reason_in_both_directions(self):
+        self.cli('task', '--actor', 'C', '--id', 'T', '--title', 'Cross-client transfer', '--owner', 'A',
+                 '--repo', str(self.repo), '--scope-file', str(self.scope), '--proof-file', str(self.proof),
+                 '--reviewer', 'R', '--same-client-reason', 'Independent Claude temporarily unavailable')
+        self.start(); self.deliver()
+        self.cli('reassign', '--actor', 'C', '--task', 'T', '--reviewer', 'Other', '--reason', 'Claude available')
+        self.assertIsNone(self.state()['tasks']['T'].get('same_client_reason'))
+        self.assertTrue(any(m['to'] == 'R' and m.get('info') and 'reassigned' in m['body'] for m in self.state()['messages'].values()))
+        self.assertIn('--same-client-reason', self.refuse('reassign', '--actor', 'C', '--task', 'T', '--reviewer', 'R', '--reason', 'Claude occupied'))
+        self.cli('reassign', '--actor', 'C', '--task', 'T', '--reviewer', 'R', '--reason', 'Claude occupied',
+                 '--same-client-reason', 'Only available independent reader')
+        self.assertEqual(self.state()['tasks']['T']['same_client_reason'], 'Only available independent reader')

@@ -1762,11 +1762,16 @@ def validate(state, kind, actor, d, stored_packet=None):
         return
     if kind == "diagnostic":
         return
+    if kind in {"agent", "task"}:
+        require(all(isinstance(v, str) and control_free(v) for v in (d.get("id"), *([d["title"]] if d.get("title") is not None else []))),
+                "name_invalid: seat and task IDs and task titles cannot contain control, format or line-separator characters")
     if kind == "agent":
         require("availability" not in d, "Availability requires a recorded coordinator action")
         old = state["agents"].get(d["id"])
-        require(not old or (old["identity"] == d["identity"] and old["role"] == d["role"]),
-                "Agent identity/role cannot be rewritten; register a new seat")
+        # The client decides which reads count under the cross-client rule, so it is as fixed as identity and role.
+        require(not old or (old["identity"] == d["identity"] and old["role"] == d["role"] and
+                            old.get("client") == d.get("client")),
+                "Agent identity/role/client cannot be rewritten; register a new seat")
         return
     require(actor in state["agents"], "Unknown agent: " + actor)
     coordinator = state["agents"][actor]["role"] == "coordinator"
@@ -3250,6 +3255,17 @@ class Store:
         return str(destination)
 
 
+def control_free(text):
+    """Text that prints as written: no Unicode control, format or line/paragraph separator character."""
+    return not any(unicodedata.category(c).startswith("C") or c in "\u2028\u2029" for c in text)
+
+
+def printable(text):
+    """Terminal output: every control, format or separator character except the newline prints as its escape."""
+    return "\n".join(line if line.isprintable() else "".join(
+        c if control_free(c) else c.encode("unicode_escape").decode("ascii") for c in line) for line in text.split("\n"))
+
+
 def cell(value):
     return str(value).replace("|", "\\|").replace("\n", " ")
 
@@ -3342,7 +3358,7 @@ def board(state, lang=None, read_at=None, events=(), *, live=True):
     if unread:
         lines.append(f"Closed without a read, to be read at the gate: {unread}" if en
                      else f"Chiusi senza lettura, da leggere al gate: {unread}")
-    return "\n".join(lines)
+    return printable("\n".join(lines))
 
 
 def step_text(step, en):
@@ -3585,7 +3601,7 @@ def table(state, read_at=None, events=(), *, compact=False, lang=None, attention
         if len(steps) > 5:
             lines.append((str(len(steps) - 5) + ' more steps: squadra status --all.') if en
                          else ('Altri ' + str(len(steps) - 5) + ' passi: squadra status --all.'))
-        return "\n".join(lines)
+        return printable("\n".join(lines))
     lines += ["", "Next step per task:" if en else "Prossimo passo per incarico:"]
     lines += ["- " + item["task"] + ": " + step_text(item, en) for item in view["next_steps"]]
     if view["superseded"]:
@@ -3646,4 +3662,4 @@ def table(state, read_at=None, events=(), *, compact=False, lang=None, attention
     else:
         lines += ["", f"Messaggi senza ACK: {pending}. Riserve attive: {len(state['resources'])}.",
                   "Registrazione e heartbeat non dimostrano esecuzione, accettazione o risveglio del client."]
-    return "\n".join(lines)
+    return printable("\n".join(lines))
