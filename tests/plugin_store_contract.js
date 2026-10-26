@@ -102,8 +102,11 @@ const tests={
   app.run("setLanguage('en')");await settle();delete p.installation_error;
   p.managed=true;p.receipt={state:'upgrading',version:'0.5.0',release:{version:'3.0.0',id:'a'.repeat(64)}};await app.reload();
   assert.match(text(app.content),/Installation incomplete.*Installed version: 0.5.0.*Receipt release: 3.0.0.*different release/);
-  p.receipt={state:'complete',version:p.about.version,release:clone(app.data.release)};await app.reload();
+  p.receipt={state:'complete',version:p.about.version,release:clone(app.data.release)};p.files='verified';p.modified=[];p.instructions='valid';await app.reload();
   assert.match(text(app.content),/Installation complete/);assert.doesNotMatch(text(app.content),/different release/);
+  p.files='modified';p.modified=['AGENTS.md'];p.instructions='modified';await app.reload();
+  assert.match(text(app.content),/Installed files differ from what the Store wrote: AGENTS\.md/);assert.doesNotMatch(text(app.content),/Installation complete/);
+  p.files='verified';p.modified=[];p.instructions='valid';
   p.installation_error='unsafe_permissions';await app.reload();assert.match(text(app.content),/Local status could not be verified \(unsafe_permissions\)/);
   app.run("setLanguage('it')");await settle();assert.match(text(app.content),/Installato.*Installazione completa.*Versione installata.*Release della ricevuta.*Stato locale non verificabile/);
  },

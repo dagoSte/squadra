@@ -19,7 +19,8 @@ ENTRIES, FILES, DEPTH = 128, 256, 8
 FILE_BYTES, BUNDLE_BYTES, RECEIPT_BYTES = 4 * 1024**2, 32 * 1024**2, 2 * 1024**2
 RECEIPT, LOCK = '.store-receipt.json', '.store.lock'
 RESERVED = {'settings.json', 'secrets', 'actions', 'panels', '.settings.lock', RECEIPT, LOCK}
-DISCOVERY = {'skill.md', '.claude-plugin', '.codex-plugin', '.agents', '.mcp.json'}
+# Names a client loads as a skill, agent, hook, rule or MCP configuration; AGENTS.md is the plugin's own only at its root.
+DISCOVERY = {'skill.md', '.claude-plugin', '.codex-plugin', '.agents', '.mcp.json', '.claude', '.cursor', '.codex', 'claude.md'}
 
 
 def canonical(value):
@@ -42,6 +43,7 @@ def relative(name):
         component(part)
         p.require(part.casefold() not in DISCOVERY, 'invalid_bundle')
     p.require(parts[0].casefold() not in RESERVED, 'invalid_bundle')
+    p.require(not any(part.casefold() == 'agents.md' for part in parts[1:]), 'invalid_bundle')
     return parts
 
 
@@ -69,6 +71,16 @@ def opened(parent, name):
         return p._open(parent, name, directory=True)
     except p.Refused as exc:
         raise Named(exc.code, name if parent is None else where(parent, name)) from None
+
+
+def read_file(parent, name, limit, check=None):
+    """Read one regular file; a link or special file in its place is refused by name, like a folder."""
+    try:
+        return p._read_bytes(parent, name, limit, check)
+    except p.Refused as exc:
+        if exc.code in ('symlink', 'not_regular'):
+            raise Named(exc.code, where(parent, name)) from None
+        raise
 
 
 def checked(fd, private=False):
@@ -173,7 +185,7 @@ def bundle(root, name):
                         walk(child, path + '/')
                 else:
                     p.require(len(bodies) < FILES, 'too_large')
-                    bodies[path] = p._read_bytes(fd, entry.name, FILE_BYTES)
+                    bodies[path] = read_file(fd, entry.name, FILE_BYTES)
                     size += len(bodies[path])
                     p.require(size <= BUNDLE_BYTES, 'too_large')
 
@@ -249,6 +261,24 @@ def receipt(fd, name):
         raise Named('unmanaged_installation', where(fd)) from None
 
 
+def verify(fd, record):
+    """Hash every managed file against its receipt. AGENTS.md gets its own verdict, the one agents follow:
+    valid (the bytes the Store wrote, in a private regular file), modified, unsafe or absent."""
+    modified, instructions = [], 'absent'
+    for path in sorted(set(record['files']) | set(record['old'])):
+        allowed = {record['files'].get(path)} | ({record['old'].get(path)} if record['state'] == 'upgrading' else set())
+        try:
+            actual = file_hash(fd, path)
+        except p.Refused:
+            actual = 'unsafe'
+        if actual not in allowed:
+            modified.append(path)
+        if path == 'AGENTS.md':
+            instructions = ('absent' if actual is None else 'unsafe' if actual == 'unsafe'
+                            else 'valid' if actual in allowed else 'modified')
+    return {'files': 'modified' if modified else 'verified', 'modified': modified, 'instructions': instructions}
+
+
 def installed(root, name):
     try:
         with directory(root, name, private=True) as fd:
@@ -256,7 +286,8 @@ def installed(root, name):
                 record = receipt(fd, name)
             except p.Refused as exc:
                 return {'installed': True, 'managed': False, 'installation_error': exc.code}
-            return {'installed': True, 'managed': True, 'receipt': {k: record[k] for k in ('state', 'release', 'version')}}
+            return {'installed': True, 'managed': True, 'receipt': {k: record[k] for k in ('state', 'release', 'version')},
+                    **verify(fd, record)}
     except p.Refused as exc:
         if exc.code == 'not_found':
             return {'installed': False, 'managed': False}
@@ -340,7 +371,7 @@ def install_lock(root):
 def file_hash(fd, path):
     try:
         with parent_for(fd, path) as (parent, name):
-            return digest(p._read_bytes(parent, name, FILE_BYTES, settings.private))
+            return digest(read_file(parent, name, FILE_BYTES, settings.private))
     except p.Refused as exc:
         if exc.code == 'not_found':
             return None

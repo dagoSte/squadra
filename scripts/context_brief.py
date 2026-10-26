@@ -3,7 +3,7 @@ from copy import deepcopy
 from datetime import datetime
 import json
 
-from registry import Error, contract_matches, plain, proof_binding
+from registry import Error, contract_matches, pending_messages, plain, proof_binding
 
 DEFAULT_CHARS = 8000
 MIN_CHARS = 4000
@@ -70,9 +70,10 @@ def build(state, task_id, revision, *, registry_root=None, max_chars=DEFAULT_CHA
         'limits': plain(workspace.get('limits', {})),
         'dependencies': [pick(state['tasks'][name], ('id', 'status', 'superseded_by'))
                          for name in task.get('depends', [])],
+        # The registry's own definition: information and replaced messages wait for no ACK.
         'pending_acks': [pick(m, ('id', 'to', 'task', 'related_task'))
-                         for m in state['messages'].values()
-                         if not m.get('ack') and task_id in (m.get('task'), m.get('related_task'))],
+                         for m in pending_messages(state)
+                         if task_id in (m.get('task'), m.get('related_task'))],
         'resources': [{'name': name, **pick(value, ('owner', 'task', 'units', 'capacity'))}
                       for name, value in sorted(state.get('resources', {}).items())],
         'open_questions': [pick(q, ('id', 'task', 'status')) for q in state.get('asks', {}).values()

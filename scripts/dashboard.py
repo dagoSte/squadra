@@ -2,12 +2,15 @@
 from __future__ import annotations
 
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+import html
 import json
 import os
 from pathlib import Path
 import re
 import secrets
+import shutil
 import sqlite3
+import tempfile
 import threading
 import time
 from datetime import datetime, timezone
@@ -920,16 +923,40 @@ def make_server(root, port=0):
     return server, token
 
 
+def launch(url):
+    """Open the browser on a 0600 redirect page in a private 0700 folder.
+
+    A launcher's argv (/usr/bin/open, xdg-open, the browser itself) is visible to other local users,
+    so it carries only the page's path; the token stays in the page. Returns the folder to remove."""
+    folder = Path(tempfile.mkdtemp(prefix='squadra-dash-'))
+    try:
+        page = folder / 'open.html'
+        fd = os.open(page, os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, 'O_NOFOLLOW', 0), 0o600)
+        with os.fdopen(fd, 'w', encoding='utf-8') as out:
+            out.write('<!doctype html><meta charset="utf-8"><meta name="referrer" content="no-referrer">'
+                      f'<meta http-equiv="refresh" content="0;url={html.escape(url)}"><title>Squadra dash</title>'
+                      '<script>location.replace(' + json.dumps(url).replace('<', '\\u003c').replace('>', '\\u003e')
+                      .replace('&', '\\u0026') + ')</script>\n')
+        webbrowser.open(page.as_uri())
+    except BaseException:
+        shutil.rmtree(folder, ignore_errors=True)
+        raise
+    return folder
+
+
 def serve(root, port=0, open_browser=False):
     server, token = make_server(root, port)
     url = f"http://127.0.0.1:{server.server_port}/#{token}"
     print("Squadra dash: " + url, flush=True)
     print("Dashboard locale in sola lettura, salvo impostazioni e selezioni dei plugin. Ctrl-C chiude la dashboard, non le finestre.", flush=True)
-    if open_browser:
-        webbrowser.open(url)
+    folder = None
     try:
+        if open_browser:
+            folder = launch(url)
         server.serve_forever(poll_interval=0.25)
     except KeyboardInterrupt:
         pass
     finally:
         server.server_close()
+        if folder is not None:
+            shutil.rmtree(folder, ignore_errors=True)

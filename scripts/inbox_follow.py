@@ -140,7 +140,13 @@ def load_cursor(path, store, agents):
     if not path.exists():
         return None
     require(not path.is_symlink() and path.stat().st_size < 8192, 'Invalid inbox cursor file')
-    saved = json.loads(path.read_text())
+    try:
+        saved = json.loads(path.read_bytes().decode('utf-8'))
+    except (UnicodeError, ValueError, RecursionError):
+        saved = None
+    # The shape save_cursor writes; anything else is one plain refusal, not a traceback.
+    require(isinstance(saved, dict) and isinstance(saved.get('root'), str) and isinstance(saved.get('agents'), list)
+            and isinstance(saved.get('hash'), str), 'Invalid inbox cursor file')
     require(saved.get('root') == str(store.root) and saved.get('agents') == sorted(set(agents)),
             'Inbox cursor belongs to another registry or recipient')
     seq = saved.get('event')

@@ -243,10 +243,12 @@ def validate_event(state, kind, actor, data):
         require(data.get('fix_disposition') == disposition(task) and
                 task.get('delivery', {}).get('fix_disposition') == disposition(task), 'fix_redelivery_required')
         if data['verdict'] == 'accepted':
-            evidence(task, snapshot(task['repo']), root)
+            from frozen_candidate import current as delivered
+            evidence(task, delivered(task, root), root)
     if kind == 'close':
+        from frozen_candidate import current as delivered
         from registry import candidate_checks
-        current = snapshot(task['repo'])
+        current = delivered(task, root)
         # A read-at-gate fix closes without its own read only on its matched challenge.
         gate_exception(task)
         candidate_checks(task, current, require_review=not read_at_gate(task))

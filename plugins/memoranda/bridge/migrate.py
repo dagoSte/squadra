@@ -22,9 +22,14 @@ class LinkedComponent(p.Refused):
         self.component = component
 
 
-def directory(path):
-    """Follow protected system aliases only before entering a user-controlled tree."""
+def directory(path, home=None):
+    """Follow protected system aliases only before entering a user-controlled tree. As in the Store, home itself
+    may be a link: a path below it is walked from home's real location, and no link below home is followed."""
     path = Path(path).absolute()
+    if home is not None:
+        home = Path(home).absolute()
+        if path == home or home in path.parents:
+            path = Path(os.path.realpath(home)) / path.relative_to(home)
     fd = os.open(path.anchor, os.O_RDONLY | os.O_DIRECTORY)
     pending = list(path.parts[1:])
     system, links = True, 0
@@ -65,9 +70,9 @@ def directory(path):
 def migrate(home, old_plugin, old_data):
     """Idempotent only for identical inputs; a partial import blocks all bridge commands."""
     with ExitStack() as stack:
-        source = directory(old_plugin)
+        source = directory(old_plugin, home)
         stack.callback(os.close, source)
-        data = directory(old_data)
+        data = directory(old_data, home)
         stack.callback(os.close, data)
         parent, fields = stack.enter_context(files.installed(home, 'memoranda'))
         stack.enter_context(files.locked(parent, write=True))

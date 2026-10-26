@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import fnmatch
 import re
+import shlex
 import unicodedata
 
 from registry import require
@@ -13,8 +14,8 @@ TEXT_MAX = 1000
 REASON_MAX = 500
 TRIGGER_MAX = 10
 LESSON_ID = re.compile(r"L\d{4,}")
-TEMPLATE = ('squadra lesson --actor {actor} --task {task} --source-event {event} '
-            '--text "<what to do differently next time>" --path "<glob>" --word "<word>"')
+# The agent replaces these placeholders; every word taken from the registry is shell-quoted.
+PLACEHOLDERS = ' --text "<what to do differently next time>" --path "<glob>" --word "<word>"'
 
 
 def _text(value, maximum, code):
@@ -133,7 +134,8 @@ def next_id(state):
 def hint(task, event, responsible, reason):
     """Ask the agent who saw the red to record the lesson; the text is the agent's to write."""
     return {"record_lesson": True, "task": task, "source_event": event, "responsible": responsible, "reason": reason,
-            "command": TEMPLATE.format(actor=responsible, task=task, event=event)}
+            "command": shlex.join(["squadra", "lesson", "--actor", str(responsible), "--task", str(task),
+                                   "--source-event", str(event)]) + PLACEHOLDERS}
 
 
 def listing(state):

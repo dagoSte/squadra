@@ -475,7 +475,9 @@ plugin and fixed code; that null does not prove absence.
 <a id="agent-instructions"></a>
 ### Agent instructions
 
-An installed plugin may ship `$HOME/.squadra/plugins/<name>/AGENTS.md` with instructions for agents. The coordinator window reads it at start and resume and runs only the commands it specifies, within existing permissions: the producer after a close to update the panel, the consumer when the dashboard shows a pending request, then reports the outcome. Only a regular file owned by the user, not group- or other-writable and not a symlink counts. Without a valid file, the request stays pending and the coordinator says so. The dashboard never reads, writes or runs this file; executing a request depends on the plugin supplying it. This file never widens permissions and never authorizes installation, push, publication or decisions reserved for the user; for anything beyond running that plugin’s producer or consumer, stop and report.
+An installed plugin may ship `$HOME/.squadra/plugins/<name>/AGENTS.md` with instructions for agents. The coordinator window reads it at start and resume and runs only the commands it specifies, within existing permissions: the producer after a close to update the panel, the consumer when the dashboard shows a pending request, then reports the outcome. Only a regular file owned by the user, not group- or other-writable and not a symlink counts, and only while `squadra plugin list` reports that plugin with `instructions: valid` and `files: verified`. Without a valid file, the request stays pending and the coordinator says so. The dashboard never reads, writes or runs this file; executing a request depends on the plugin supplying it. This file never widens permissions and never authorizes installation, push, publication or decisions reserved for the user; for anything beyond running that plugin’s producer or consumer, stop and report.
+
+What the rule guarantees: `plugin list` hashes every file the Store installed against `.store-receipt.json` before it reports the installation, so an AGENTS.md or a program changed after installation, by an edit, another process or a broken copy, is reported as `modified` and is not followed. `instructions` is `valid` (the installed bytes, in a regular 0600 file with one link), `modified`, `unsafe` (a symlink, another mode or owner, or a second hard link) or `absent`. What it does not guarantee: the receipt lives in the same folder, so someone who controls your account can rewrite the file and its receipt together; a verdict is also a snapshot, so list again after any change. An unmanaged folder has no receipt and no verdict, so its AGENTS.md never counts.
 
 ### Files and consumer protocol
 
@@ -579,15 +581,21 @@ UTF-8 file at most 64 KiB. Relative path components use ASCII letters, digits,
 period, underscore or hyphen, up to 128 characters; no traversal, case-colliding
 names, symlinks or special files. Root `settings.json`, `secrets/`, `actions/`,
 `panels/`, `.settings.lock`, `.store-receipt.json` and `.store.lock` are reserved.
-`SKILL.md`, `.claude-plugin`, `.codex-plugin`, `.agents` and `.mcp.json` are refused
-at every depth, including case variants: a data plugin must not become another
-client skill, agent, hook or MCP configuration through client discovery.
+`SKILL.md`, `CLAUDE.md`, `.claude`, `.claude-plugin`, `.codex`, `.codex-plugin`,
+`.cursor`, `.agents` and `.mcp.json` are refused at every depth, and so is an
+`AGENTS.md` below the plugin root, including case variants: a data plugin must not
+become another client skill, agent, hook, rule or MCP configuration through client
+discovery. The root `AGENTS.md` is the plugin's own [agent instructions](#agent-instructions).
 
 ### List, install and recover
 
 `squadra plugin list` is read-only. It returns JSON with the running release,
 valid plugins, installed/managed status, receipt release/version/state, and
 bounded refusal codes. A folder may be installed but unmanaged or incomplete.
+For a managed folder it hashes every receipted file and adds `files`
+(`verified` or `modified`), the `modified` paths and the
+[`instructions`](#agent-instructions) verdict; the Store page calls an
+installation complete only when its files are verified.
 A release ID is the SHA-256 of the named hashes of scripts/squadra.py,
 registry.py, plugins.py and plugin_store.py; it is a code fingerprint, not a
 Git commit or an authenticity signature. Both release version and ID are shown.
