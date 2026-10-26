@@ -77,8 +77,9 @@ FINDINGS_BYTES = 16 * 1024
 SEVERITIES = ('grave', 'minor', 'info')
 # SQLite's write-ahead log is cut back to this size once its frames are in the database file.
 WAL_LIMIT = 64 * 1024 * 1024
-# After a commit the writer never waits for readers: a held log is left for a later commit or doctor --repair.
-TRIM_BUSY_MS = 0
+# After a commit the writer waits at most this long for other readers; a log still held waits for a later
+# commit or doctor --repair.
+TRIM_BUSY_MS = 200
 BUSY_MS = 30000
 
 
@@ -2468,6 +2469,7 @@ class Store:
         # The live file identity whose private copy audit() reads; only the dashboard's background audit sets it.
         self._audit_copy = None
         self._views = []
+        self._trim_due = False
         self._integrity_failed = False
         self._cache_mismatch = False
         self._summary_context = None
@@ -2543,6 +2545,8 @@ class Store:
             self.release_views()
         except BaseException as exc:
             failure = exc
+        if self._trim_due and not self.read_only:
+            self._trim_wal()
         self._summary_context = self._wait_memo = None
         try:
             self.db.close()
@@ -2560,7 +2564,13 @@ class Store:
             self.db.execute("PRAGMA busy_timeout=%d" % BUSY_MS)
 
     def _trim_wal(self):
-        """After a commit, an oversized write-ahead log is copied back and emptied if no reader holds it."""
+        """After a commit, an oversized write-ahead log is copied back and emptied if no reader holds it.
+
+        This Store's own open views would hold it, so while they are open the trim waits for close()."""
+        if self._views:
+            self._trim_due = True
+            return
+        self._trim_due = False
         try:
             if os.stat(str(self.path) + "-wal").st_size > WAL_LIMIT:
                 self.compact_wal(TRIM_BUSY_MS)
