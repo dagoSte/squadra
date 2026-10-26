@@ -1941,7 +1941,8 @@ def validate(state, kind, actor, d, stored_packet=None):
             require(not any(isinstance(x.get("scrub"), Mapping) and x["scrub"].get("sha256") == scrub["sha256"]
                             for x in state["decisions"]), "Artifact already scrubbed by an earlier decision")
         validate_decision_links(state, d)
-    if kind in {"start", "deliver", "run.start", "resource.acquire", "review"}:
+    # A pause holds close on every route, not only on the light one (L-23).
+    if kind in {"start", "deliver", "run.start", "resource.acquire", "review", "close"}:
         require(not state["paused"], "Workspace paused; explicit coordinator resume required")
     if kind == "task":
         unknown = sorted(set(d) - TASK_FIELDS)
@@ -1996,6 +1997,10 @@ def validate(state, kind, actor, d, stored_packet=None):
         if kind in {"run.start", "review"}:
             require(set(d.get("covers", [])) <= {r["id"] for r in task.get("requirements", [])}, "Unknown covered requirement")
         require(task["status"] != "done" or kind == "output", "Task already closed")
+        if kind in {"start", "deliver", "close"}:
+            # A superseded task leaves the board and the waits, so its replacement carries the work (L-25).
+            require(not task.get("superseded_by"), "Task " + task["id"] + " is superseded by " +
+                    str(task.get("superseded_by")) + "; its replacement carries the work")
         if kind in {"start", "deliver"}:
             require(actor == task["owner"], "Only assigned owner can start/deliver")
             require(task["status"] != "waiting-ack", "Assignment has no recipient ACK")
