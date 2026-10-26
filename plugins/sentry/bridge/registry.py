@@ -151,7 +151,7 @@ def atomic(path, data):
         temporary.unlink(missing_ok=True)
 
 
-def git_process(repo, *args, timeout=30, input=None, local_only=False, env=None):
+def git_process(repo, *args, timeout=30, input=None, local_only=False, env=None, stdout=None):
     """Run internal Git with configured hooks, monitors, filters and diff programs disabled."""
     import time
     started = time.monotonic()
@@ -189,8 +189,9 @@ def git_process(repo, *args, timeout=30, input=None, local_only=False, env=None)
                 variable = 'SQUADRA_GIT_FILTER_REQUIRED' if name == 'required' else 'SQUADRA_GIT_FILTER_PROGRAM'
                 overrides.append('--config-env=' + os.fsdecode(driver) + '.' + name + '=' + variable)
     remaining = None if timeout is None else max(0.001, timeout - (time.monotonic() - started))
+    output = {'capture_output': True} if stdout is None else {'stdout': stdout, 'stderr': subprocess.PIPE}
     return subprocess.run([*prefix, *arguments[:command], *overrides, *arguments[command:]],
-                          cwd=repo, input=input, env=environment, capture_output=True, timeout=remaining)
+                          cwd=repo, input=input, env=environment, timeout=remaining, **output)
 
 
 def git(repo, *args, timeout=30):
@@ -209,6 +210,61 @@ def git_probe(*args, timeout=30):
         return git_process(None, *args, timeout=timeout)
     except subprocess.TimeoutExpired:
         raise Error("git timed out after " + str(timeout) + " s") from None
+
+
+def git_object_format(repo):
+    value = git(repo, 'rev-parse', '--show-object-format').strip()
+    require(value in (b'sha1', b'sha256'), 'Unsupported Git object format')
+    return value.decode('ascii')
+
+
+def git_blob_id(body, fmt):
+    require(isinstance(body, bytes), 'Git blob body must be bytes')
+    require(fmt in ('sha1', 'sha256'), 'Unsupported Git object format')
+    value = hashlib.new(fmt)
+    value.update(b'blob ' + str(len(body)).encode('ascii') + b'\0')
+    value.update(body)
+    return value.hexdigest()
+
+
+def git_blobs(repo, oids):
+    """Read distinct blobs in input order, spooling batch output and retaining one body at a time."""
+    requested, seen = [], set()
+    for oid in oids:
+        require(isinstance(oid, str) and re.fullmatch(r'(?:[0-9a-fA-F]{40}|[0-9a-fA-F]{64})', oid),
+                'Invalid Git blob object ID')
+        oid = oid.lower()
+        if oid not in seen:
+            requested.append(oid)
+            seen.add(oid)
+    if not requested:
+        return
+    with tempfile.TemporaryFile() as output:
+        try:
+            result = git_process(repo, 'cat-file', '--batch',
+                                 input=''.join(oid + '\n' for oid in requested).encode('ascii'), stdout=output)
+        except subprocess.TimeoutExpired:
+            raise Error('Git blob batch timed out') from None
+        require(result.returncode == 0, 'Cannot read Git blobs: ' + result.stderr.decode(errors='replace').strip())
+        length = output.seek(0, os.SEEK_END)
+        output.seek(0)
+        for oid in requested:
+            header = output.readline(128)
+            require(header.endswith(b'\n'), 'Missing or oversized Git blob header: ' + oid)
+            fields = header[:-1].split(b' ')
+            require(fields != [oid.encode('ascii'), b'missing'], 'Git blob missing: ' + oid)
+            require(len(fields) == 3 and fields[0] == oid.encode('ascii'), 'Invalid Git blob header or object ID: ' + oid)
+            require(fields[1] == b'blob', 'Git object is not a blob: ' + oid)
+            require(fields[2].isdigit(), 'Invalid Git blob size: ' + oid)
+            size = int(fields[2])
+            require(size + 1 <= length - output.tell(), 'Truncated Git blob body: ' + oid)
+            body = output.read(size)
+            require(len(body) == size and output.read(1) == b'\n', 'Truncated or malformed Git blob body: ' + oid)
+            require(git_blob_id(body, 'sha1' if len(oid) == 40 else 'sha256') == oid,
+                    'Git blob content hash mismatch: ' + oid)
+            yield oid, body
+            del body
+        require(output.read(1) == b'', 'Unexpected trailing Git blob output')
 
 
 def snapshot(repo, exclude=None):

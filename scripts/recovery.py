@@ -11,7 +11,7 @@ import shutil
 import tempfile
 import uuid
 
-from registry import Store, Error, VERSION, atomic, canonical, digest, git, git_process, now, require, snapshot
+from registry import Store, Error, VERSION, atomic, canonical, digest, git, git_blobs, git_process, now, require, snapshot
 
 SECRET_NAMES = (".env*", "*.pem", "*.key", "*.p12", "id_rsa*", "id_ed25519*", ".netrc",
                 "auth.json", ".credentials.json", "credentials*", "*.pfx", "*.ppk", ".git-credentials",
@@ -34,39 +34,86 @@ def private_key(body):
     return KEY_HEADER.search(body) is not None
 
 
-def checked_index(repo):
-    """Check every staged blob before creating a package, and bind the check to that index."""
-    entries = git(repo, "ls-files", "--stage", "-z")
-    checked = digest(entries)
-    clean = set()
+def index_rows(entries):
+    rows = []
     for row in entries.split(b'\0'):
-        if not row:
-            continue
-        metadata, path = row.split(b'\t', 1)
-        mode, sha, _ = metadata.split()
-        if mode == b'160000' or sha in clean:
-            continue
-        require(not private_key(git(repo, "cat-file", "blob", sha.decode('ascii'))),
-                "Tracked secret candidate refused: " + os.fsdecode(path) + "; private-key content in staged (index) blob")
-        clean.add(sha)
-    require(index(repo) == checked, "Index changed during staged private-key check")
-    return checked
+        if row:
+            metadata, path = row.split(b'\t', 1)
+            mode, sha, stage = metadata.decode('ascii').split()
+            rows.append((os.fsdecode(path), mode, sha, stage))
+    return rows
+
+
+def head_rows(repo, revision='HEAD'):
+    rows = {}
+    for row in git(repo, 'ls-tree', '-r', '-z', revision).split(b'\0'):
+        if row:
+            metadata, path = row.split(b'\t', 1)
+            mode, _, sha = metadata.decode('ascii').split()
+            rows[os.fsdecode(path)] = (mode, sha)
+    return rows
+
+
+def blob_facts(repo, oids, links=(), hashes=()):
+    """Keep scan results, link targets and allowance hashes, never a repository's blob bodies."""
+    links, hashes = set(links), set(hashes)
+    return {sha: {'private_key': private_key(body),
+                  'target': os.fsdecode(body) if sha in links else None,
+                  'sha256': digest(body) if sha in hashes else None}
+            for sha, body in git_blobs(repo, oids)}
+
+
+def checked_index(repo, *, details=False, names=()):
+    """Check every staged blob in one batch, bound to the unchanged index."""
+    entries = git(repo, 'ls-files', '--stage', '-z')
+    checked = digest(entries); rows = index_rows(entries)
+    head = git(repo, 'rev-parse', 'HEAD').decode().strip() if details else None
+    heads = head_rows(repo, head) if details else {}
+    names = set(names)
+    links = {sha for _, mode, sha, _ in rows if mode == '120000'} | {
+        sha for mode, sha in heads.values() if mode == '120000'}
+    hashes = {sha for path, _, sha, _ in rows if path in names} | {
+        sha for path, (_, sha) in heads.items() if path in names}
+    facts = blob_facts(repo, [sha for _, mode, sha, _ in rows if mode != '160000'], links, hashes)
+    for path, mode, sha, _ in rows:
+        if mode != '160000':
+            require(not facts[sha]['private_key'], 'Tracked secret candidate refused: ' + path +
+                    '; private-key content in staged (index) blob')
+    require(index(repo) == checked, 'Index changed during staged private-key check')
+    return {'sha256': checked, 'entries': entries, 'rows': rows, 'head': head, 'heads': heads,
+            'facts': facts, 'links': links, 'hashes': hashes} if details else checked
+
+
+def allowed_files(repo, names, *, rows=None, heads=None, facts=None):
+    """Collect exact name allowances using one metadata read and one blob batch."""
+    entries = git(repo, 'ls-files', '--stage', '-z') if rows is None else None
+    rows = index_rows(entries) if rows is None else rows
+    heads = head_rows(repo) if heads is None else heads
+    staged = {path: sha for path, _, sha, stage in rows if stage == '0'}
+    for rel in names:
+        path = repo / rel
+        require(rel in staged and path.is_file() and path.resolve() == path,
+                '--allow-name needs an exact tracked regular file: ' + rel)
+    oids = [sha for rel in names for sha in
+            ([staged[rel], heads[rel][1]] if rel in heads else [staged[rel]])]
+    if facts is None:
+        facts = blob_facts(repo, oids, hashes=oids)
+    result = []
+    for rel in names:
+        body = (repo / rel).read_bytes(); staged_info = facts[staged[rel]]
+        historical = facts[heads[rel][1]] if rel in heads else None
+        require(not staged_info['private_key'], 'Private-key content refused in staged (index) blob: ' + rel)
+        require(not private_key(body) and not (historical and historical['private_key']),
+                'Private-key content refused in HEAD, index or working tree: ' + rel)
+        result.append({'path': rel, 'sha256': digest(body), 'index_sha256': staged_info['sha256'],
+                       'head_sha256': historical['sha256'] if historical else None})
+    if entries is not None:
+        require(index(repo) == digest(entries), 'Index changed during name allowance check')
+    return result
 
 
 def allowed_file(repo, rel):
-    path = repo / rel
-    tracked = git(repo, "ls-files", "-z").split(b'\0')
-    require(os.fsencode(rel) in tracked and path.is_file() and path.resolve() == path,
-            "--allow-name needs an exact tracked regular file: " + rel)
-    body = path.read_bytes()
-    staged = git(repo, "show", ":" + rel)
-    head_files = git(repo, "ls-tree", "-r", "--name-only", "-z", "HEAD").split(b'\0')
-    historical = git(repo, "show", "HEAD:" + rel) if os.fsencode(rel) in head_files else None
-    require(not private_key(staged), "Private-key content refused in staged (index) blob: " + rel)
-    require(not any(private_key(value) for value in (body, historical) if value is not None),
-            "Private-key content refused in HEAD, index or working tree: " + rel)
-    return {"path": rel, "sha256": digest(body), "index_sha256": digest(staged),
-            "head_sha256": digest(historical) if historical is not None else None}
+    return allowed_files(repo, [rel])[0]
 
 
 def save_destination(store, state, destination, repos, temporary):
@@ -95,7 +142,7 @@ def allow_names(store, actor, destination, repos, names, reason, temporary=False
                 not any(c in name for c in '*?[\\'), "--allow-name requires an exact relative path, never a pattern")
     destination, selected = save_destination(store, state, destination, repos, temporary)
     repo = selected[0]
-    files = [allowed_file(repo, name) for name in names]
+    files = allowed_files(repo, names)
     allowance = {"repo": str(repo), "destination": str(destination), "files": files}
     decision = 'save-name-' + uuid.uuid4().hex
     store.append('decision', actor, {'id': decision, 'reason': reason, 'save_name_allowance': allowance})
@@ -113,18 +160,21 @@ def index(repo):
 def repositories(state, explicit):
     names = explicit or [state["workspace"]["project"], *[a["repo"] for a in state["agents"].values()],
                          *[t["repo"] for t in state["tasks"].values()]]
-    result = []
+    result, seen = [], set()
     for name in names:
         path = Path(name).resolve(strict=True)
+        if path in seen:
+            continue
+        seen.add(path)
         root = Path(git(path, "rev-parse", "--show-toplevel").decode().strip()).resolve()
         if root not in result:
             result.append(root)
     return result
 
 
-def supported(repo):
-    require(not git(repo, "ls-files", "--stage").startswith(b"160000 ") and
-            b"\n160000 " not in git(repo, "ls-files", "--stage"), "Submodule checkout not qualified")
+def supported(repo, entries=None):
+    entries = git(repo, 'ls-files', '--stage', '-z') if entries is None else entries
+    require(not any(row.startswith(b'160000 ') for row in entries.split(b'\0')), 'Submodule checkout not qualified')
     config = git_process(repo, "config", "--get", "core.sparseCheckout")
     require(config.stdout.strip().lower() not in {b"true", b"1"}, "Sparse checkout not qualified")
     attributes = git(repo, "ls-files", "--", "**/.gitattributes", ".gitattributes").decode().splitlines()
@@ -199,7 +249,8 @@ def save(store, destination, repos=None, includes=None, temporary=False, declare
                 selected == [Path(allowance['repo'])], "Name allowance belongs to one exact save and repository")
     for value in includes or []:
         require(any(inside(Path(os.path.abspath(value)), r) for r in selected), "Include must belong to a selected repository")
-    checked_indexes = {repo: checked_index(repo) for repo in selected}
+    names = [row['path'] for row in allowance['files']] if allowance else []
+    checked_indexes = {repo: checked_index(repo, details=True, names=names) for repo in selected}
     destination.mkdir(parents=True, mode=0o700)
     manifest = {"schema": 1, "version": VERSION, "utc": now(), "status": "building", "repositories": [],
                 "scope": "explicit partial selection" if repos else "all registered repositories",
@@ -211,35 +262,41 @@ def save(store, destination, repos=None, includes=None, temporary=False, declare
     guards = []
     try:
         for n, repo in enumerate(selected):
-            supported(repo); before = snapshot(repo, store.root); old_index = checked_indexes[repo]
+            checked = checked_indexes[repo]
+            supported(repo, checked['entries']); before = snapshot(repo, store.root); old_index = checked['sha256']
+            require(before['head'] == checked['head'], 'HEAD changed after staged private-key check')
             extra = included_files(repo, includes or [])
             require(not any(inside(p, store.root) for p in extra), "Registry is captured separately, not as a source include")
             extra_before = {str(p.relative_to(repo)): record_file(p, repo) for p in extra}
             guards.append((repo, before, old_index, extra, extra_before))
-            tracked = set(os.fsdecode(p) for p in git(repo, "ls-files", "-z").split(b'\0') if p)
-            head_links = {os.fsdecode(row.split(b'\t',1)[1]): os.fsdecode(git(repo, "show", "HEAD:" + os.fsdecode(row.split(b'\t',1)[1])))
-                          for row in git(repo,"ls-tree","-r","-z","HEAD").split(b'\0') if row.startswith(b"120000 ")}
-            for rel, target in head_links.items():
+            rows, heads, facts = checked['rows'], checked['heads'], checked['facts']
+            tracked = {path for path, _, _, _ in rows}
+            facts.update(blob_facts(repo, [sha for _, sha in heads.values() if sha not in facts],
+                                    checked['links'], checked['hashes']))
+            for rel, (mode, sha) in heads.items():
+                if mode != '120000':
+                    continue
+                target = facts[sha]['target']
                 require(not Path(target).is_absolute() and inside(((repo/rel).parent/target).resolve(),repo),
                         "Escaping or absolute HEAD symlink refused: " + rel)
-            for row in git(repo,"ls-files","--stage","-z").split(b'\0'):
-                if row.startswith(b"120000 "):
-                    rel=os.fsdecode(row.split(b'\t',1)[1]);sha=row.split(b' ',2)[1].decode()
-                    target=os.fsdecode(git(repo,"cat-file","blob",sha))
+            for rel, mode, sha, _ in rows:
+                if mode == '120000':
+                    target = facts[sha]['target']
                     require(not Path(target).is_absolute() and inside(((repo/rel).parent/target).resolve(),repo),
                             "Escaping or absolute index symlink refused: " + rel)
-            head_files = set(os.fsdecode(p) for p in git(repo, "ls-tree", "-r", "--name-only", "-z", "HEAD").split(b'\0') if p)
+            head_files = heads.keys()
             allowed = {row['path']: row for row in allowance['files']} if allowance else {}
             require(allowed.keys() <= tracked, "Allowed tracked files changed before copy")
+            verified = {row['path']: row for row in allowed_files(repo, list(allowed), rows=rows,
+                                                                 heads=heads, facts=facts)}
             for rel in sorted(tracked | head_files):
                 path = repo / rel
                 if path.is_symlink(): record_file(path, repo)
                 body = path.read_bytes() if path.is_file() and not path.is_symlink() else b""
-                historical = git(repo, "show", "HEAD:" + rel) if rel in head_files else b""
                 if rel in allowed:
-                    require(allowed_file(repo, rel) == allowed[rel], "Allowed file changed before copy: " + rel)
+                    require(verified[rel] == allowed[rel], "Allowed file changed before copy: " + rel)
                 else:
-                    require(not secret(path, body, True) and not secret(path, historical, True),
+                    require(not secret(path, body, True) and not (rel in heads and facts[heads[rel][1]]['private_key']),
                             "Tracked secret candidate refused: " + rel +
                             "; for a name-only refusal the coordinator can use save --repo ROOT --allow-name " +
                             rel + " --reason TEXT")

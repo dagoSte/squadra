@@ -198,6 +198,7 @@ ignored ones; an explicit directory includes its files without following symlink
 directories. A missing repo, submodules, sparse checkout, LFS, absolute symlinks or
 links leading outside the repo cause the copy to be refused. Paths through symlinked
 parent directories and case/Unicode-normalization aliases in the index are refused.
+The alias guard applies on every filesystem, including case-sensitive Linux filesystems.
 Git's owner execute bit determines a file's executable mode.
 Use repeated `--repo /clone` only for a selection declared to be **partial**.
 

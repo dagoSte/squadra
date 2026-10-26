@@ -7,7 +7,8 @@ from pathlib import Path
 import shutil
 import tempfile
 
-from registry import Error, canonical, digest, git, git_probe, git_process, plain, require, snapshot
+from registry import (Error, canonical, digest, git, git_probe, git_process, git_blob_id,
+                      git_blobs, git_object_format, plain, require, snapshot)
 
 
 def repository(task, root):
@@ -171,6 +172,7 @@ def validate_candidate(repo, files=None, *, working_only=False, label='Frozen ca
             heads[os.fsdecode(name)] = (mode, sha.decode('ascii'))
     if files is None:
         files = snapshot(repo)['files']
+    object_format = git_object_format(repo) if working_only else None
     for row in files:
         rel = row['path']; path = repo / rel
         require(not Path(rel).is_absolute() and '..' not in Path(rel).parts and
@@ -179,31 +181,39 @@ def validate_candidate(repo, files=None, *, working_only=False, label='Frozen ca
                 label + ' symlinked parent refused: ' + rel)
         if row['kind'] == 'deleted':
             continue
-        record_file(path, repo)
-        body = os.fsencode(os.readlink(path)) if path.is_symlink() else path.read_bytes()
+        if path.is_symlink():
+            record_file(path, repo)
+            body = os.fsencode(os.readlink(path))
+        else:
+            require(path.is_file(), label + ' non-regular file refused: ' + rel)
+            body = path.read_bytes()
         head = heads.get(rel)
         mode = b'120000' if row['kind'] == 'symlink' else b'100755' if row.get('executable') else b'100644'
-        unchanged = head and head[0] == mode and git(repo, 'cat-file', 'blob', head[1]) == body
-        if unchanged and working_only:
+        if working_only and head and head[0] == mode and git_blob_id(body, object_format) == head[1]:
             continue
         require(not secret(path, body, tracked=rel in heads), label + ' secret file refused: ' + rel +
                 ('; commit the template at HEAD or ignore it before delivery' if rel not in heads else ''))
     if working_only:
         return
+    uses = {}
     for rel, (mode, sha) in heads.items():
-        body = git(repo, 'cat-file', 'blob', sha)
-        require(not secret(Path(rel), body, tracked=True), label + ' secret HEAD file refused: ' + rel)
-        if mode == b'120000':
-            target = os.fsdecode(body)
-            require(not Path(target).is_absolute() and inside(((repo / rel).parent / target).resolve(), repo),
-                    label + ' escaping HEAD symlink refused: ' + rel)
+        uses.setdefault(sha, []).append(('HEAD', rel, mode))
     for row in git(repo, 'ls-files', '--stage', '-z').split(b'\0'):
         if row:
             meta, name = row.split(b'\t', 1)
             mode, sha, _ = meta.split()
             if mode != b'160000':
-                require(not private_key(git(repo, 'cat-file', 'blob', sha.decode('ascii'))),
-                        label + ' private-key index blob refused: ' + os.fsdecode(name))
+                uses.setdefault(sha.decode('ascii'), []).append(('index', os.fsdecode(name), mode))
+    for sha, body in git_blobs(repo, uses):
+        for version, rel, mode in uses[sha]:
+            if version == 'HEAD':
+                require(not secret(Path(rel), body, tracked=True), label + ' secret HEAD file refused: ' + rel)
+                if mode == b'120000':
+                    target = os.fsdecode(body)
+                    require(not Path(target).is_absolute() and inside(((repo / rel).parent / target).resolve(), repo),
+                            label + ' escaping HEAD symlink refused: ' + rel)
+            else:
+                require(not private_key(body), label + ' private-key index blob refused: ' + rel)
 
 
 def tree_bytes(repo, revisions):
@@ -311,8 +321,9 @@ def _freeze(store, task, candidate):
         if missing:
             empty = git_process(copied, 'hash-object', '-w', '--stdin', input=b'', timeout=30)
             require(empty.returncode == 0, 'Cannot create empty frozen index placeholder')
-            for path in missing:
-                git(copied, 'update-index', '--add', '--cacheinfo', '100644', empty.stdout.decode().strip(), path)
+            entries = b''.join(b'100644 ' + empty.stdout.strip() + b'\t' + os.fsencode(path) + b'\0' for path in missing)
+            result = git_process(copied, 'update-index', '-z', '--index-info', input=entries)
+            require(result.returncode == 0, 'Cannot retain deleted snapshot paths in the frozen index')
         require(snapshot(task['repo'], store.root) == candidate, 'Source changed while freezing delivery')
         require(measured(task, copied) == candidate,
                 'Frozen copy does not match the proved source')
