@@ -151,7 +151,7 @@ def atomic(path, data):
         temporary.unlink(missing_ok=True)
 
 
-def git_process(repo, *args, timeout=30, input=None, local_only=False):
+def git_process(repo, *args, timeout=30, input=None, local_only=False, env=None):
     """Run internal Git with configured hooks, monitors, filters and diff programs disabled."""
     import time
     started = time.monotonic()
@@ -168,7 +168,10 @@ def git_process(repo, *args, timeout=30, input=None, local_only=False):
                                              '--src-prefix=a/', '--dst-prefix=b/']
     if local_only and command < len(arguments) and arguments[command] in {'fetch', 'clone'}:
         arguments[command + 1:command + 1] = ['--upload-pack=git-upload-pack']
-    environment = dict(os.environ, GIT_ALLOW_PROTOCOL='file') if local_only else None
+    environment = dict(os.environ)
+    environment.update(env or {})
+    if local_only:
+        environment['GIT_ALLOW_PROTOCOL'] = 'file'
     prefix = ['git', '--no-pager', '-c', 'core.fsmonitor=false', '-c', 'core.hooksPath=/dev/null',
               '-c', 'diff.noprefix=false', '-c', 'diff.mnemonicPrefix=false']
     inspected = subprocess.run([*prefix, *arguments[:command], 'config', '--null', '--name-only',
@@ -180,7 +183,6 @@ def git_process(repo, *args, timeout=30, input=None, local_only=False):
     drivers = {key.rsplit(b'.', 1)[0] for key in inspected.stdout.split(b'\0') if key}
     overrides = []
     if drivers:
-        environment = dict(os.environ) if environment is None else environment
         environment.update(SQUADRA_GIT_FILTER_PROGRAM='', SQUADRA_GIT_FILTER_REQUIRED='false')
         for driver in sorted(drivers):
             for name in ('clean', 'smudge', 'process', 'required'):
