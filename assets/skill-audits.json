@@ -11,7 +11,7 @@
         "osv": true,
         "fail_on_severity": "high"
       },
-      "scanned_at": "2026-10-23T18:36:58.021517+00:00",
+      "scanned_at": "2026-10-25T23:59:52.033239+00:00",
       "result": "pass",
       "findings": {
         "critical": 0,
@@ -20,12 +20,12 @@
         "low": 0
       },
       "files": {
-        "SKILL.md": "1e189a1a083d198d12c7e63507558989dcd75e6d7f79519fcb7accddf32c226b",
-        "scripts/registry.py": "76c376f937976baf4ae13f26008f4f9b0826ba6e5952808e323c76532bdc278c",
-        "scripts/squadra.py": "47412e863de198b0b1c551f0a3e2e414c522976621e13bb8e8e420642071ef23",
+        "SKILL.md": "09b8cdf5b749b5f1e424bb4928404e40bb29367aef9dc69edfa379c86aa521e4",
+        "scripts/registry.py": "ac0211b8fcb08f2a6dedb8c82d59e93b87732835b70b1b56b5b1b4c6f590d368",
+        "scripts/squadra.py": "21959f44aef69809773c06497fadaf1793f56d062384a5b1ae3999a7f12883e8",
         "scripts/dashboard.py": "0ad7b57aa68e6013036de31791b841e6c90c999e8e4c7a05a3410a6fa4a163f4",
-        "scripts/system_skills.py": "5b67fad6e8849b29f0e27ad22e3d582b13d6f92e12f9eb088e5c2627f1004e24",
-        "assets/dashboard.html": "47b9c3e6784defbde3aca219ce74597f3ca4ec032ce24d3b0eb42d9ea9774ce4",
+        "scripts/system_skills.py": "616560474dccfc461b35d57b4769e7ebaad0ebcfda5be17cc2faa25d0bdb540c",
+        "assets/dashboard.html": "fec7377ca3bc9ca4014f2d3b4d0dcb1d29bd7140d730017b0e9e2991ccff2fb2",
         "references/skills/errata.md": "2a486d47946b59fd78794ed8978dba19cd6e0550b85093b96e8e79c7ca747272",
         "scripts/errata.py": "0db6699770ad7a6e4dbdf5c50eb1a2144b0b8b242bd358939c33d3d89a93d6fa"
       }
@@ -40,7 +40,7 @@
         "osv": true,
         "fail_on_severity": "high"
       },
-      "scanned_at": "2026-10-23T18:36:58.021517+00:00",
+      "scanned_at": "2026-10-25T23:59:52.033239+00:00",
       "result": "pass",
       "findings": {
         "critical": 0,
@@ -49,12 +49,12 @@
         "low": 0
       },
       "files": {
-        "SKILL.md": "1e189a1a083d198d12c7e63507558989dcd75e6d7f79519fcb7accddf32c226b",
-        "scripts/registry.py": "76c376f937976baf4ae13f26008f4f9b0826ba6e5952808e323c76532bdc278c",
-        "scripts/squadra.py": "47412e863de198b0b1c551f0a3e2e414c522976621e13bb8e8e420642071ef23",
+        "SKILL.md": "09b8cdf5b749b5f1e424bb4928404e40bb29367aef9dc69edfa379c86aa521e4",
+        "scripts/registry.py": "ac0211b8fcb08f2a6dedb8c82d59e93b87732835b70b1b56b5b1b4c6f590d368",
+        "scripts/squadra.py": "21959f44aef69809773c06497fadaf1793f56d062384a5b1ae3999a7f12883e8",
         "scripts/dashboard.py": "0ad7b57aa68e6013036de31791b841e6c90c999e8e4c7a05a3410a6fa4a163f4",
-        "scripts/system_skills.py": "5b67fad6e8849b29f0e27ad22e3d582b13d6f92e12f9eb088e5c2627f1004e24",
-        "assets/dashboard.html": "47b9c3e6784defbde3aca219ce74597f3ca4ec032ce24d3b0eb42d9ea9774ce4",
+        "scripts/system_skills.py": "616560474dccfc461b35d57b4769e7ebaad0ebcfda5be17cc2faa25d0bdb540c",
+        "assets/dashboard.html": "fec7377ca3bc9ca4014f2d3b4d0dcb1d29bd7140d730017b0e9e2991ccff2fb2",
         "references/skills/previsione.md": "c6310aff2a0284c9e75f848b122cf04567a23fde4963586d64e8ae12aa9efdbe",
         "scripts/forecast.py": "0da60890635eae583f09f48973c522c371a5bd1e0037102fe500fe58ecb1aeeb"
       }
@@ -69,7 +69,7 @@
         "osv": true,
         "fail_on_severity": "high"
       },
-      "scanned_at": "2026-10-23T18:36:58.021517+00:00",
+      "scanned_at": "2026-10-25T23:59:52.033239+00:00",
       "result": "pass",
       "findings": {
         "critical": 0,
@@ -78,12 +78,12 @@
         "low": 0
       },
       "files": {
-        "SKILL.md": "1e189a1a083d198d12c7e63507558989dcd75e6d7f79519fcb7accddf32c226b",
-        "scripts/registry.py": "76c376f937976baf4ae13f26008f4f9b0826ba6e5952808e323c76532bdc278c",
-        "scripts/squadra.py": "47412e863de198b0b1c551f0a3e2e414c522976621e13bb8e8e420642071ef23",
+        "SKILL.md": "09b8cdf5b749b5f1e424bb4928404e40bb29367aef9dc69edfa379c86aa521e4",
+        "scripts/registry.py": "ac0211b8fcb08f2a6dedb8c82d59e93b87732835b70b1b56b5b1b4c6f590d368",
+        "scripts/squadra.py": "21959f44aef69809773c06497fadaf1793f56d062384a5b1ae3999a7f12883e8",
         "scripts/dashboard.py": "0ad7b57aa68e6013036de31791b841e6c90c999e8e4c7a05a3410a6fa4a163f4",
-        "scripts/system_skills.py": "5b67fad6e8849b29f0e27ad22e3d582b13d6f92e12f9eb088e5c2627f1004e24",
-        "assets/dashboard.html": "47b9c3e6784defbde3aca219ce74597f3ca4ec032ce24d3b0eb42d9ea9774ce4",
+        "scripts/system_skills.py": "616560474dccfc461b35d57b4769e7ebaad0ebcfda5be17cc2faa25d0bdb540c",
+        "assets/dashboard.html": "fec7377ca3bc9ca4014f2d3b4d0dcb1d29bd7140d730017b0e9e2991ccff2fb2",
         "references/skills/rasoio.md": "cd47402b57aa2ec04f602bb4d71c578f7e404e81bc65552d8c2f079dc88be7df"
       }
     },
@@ -97,7 +97,7 @@
         "osv": true,
         "fail_on_severity": "high"
       },
-      "scanned_at": "2026-10-23T18:36:58.021517+00:00",
+      "scanned_at": "2026-10-25T23:59:52.033239+00:00",
       "result": "pass",
       "findings": {
         "critical": 0,
@@ -106,16 +106,45 @@
         "low": 0
       },
       "files": {
-        "SKILL.md": "1e189a1a083d198d12c7e63507558989dcd75e6d7f79519fcb7accddf32c226b",
-        "scripts/registry.py": "76c376f937976baf4ae13f26008f4f9b0826ba6e5952808e323c76532bdc278c",
-        "scripts/squadra.py": "47412e863de198b0b1c551f0a3e2e414c522976621e13bb8e8e420642071ef23",
+        "SKILL.md": "09b8cdf5b749b5f1e424bb4928404e40bb29367aef9dc69edfa379c86aa521e4",
+        "scripts/registry.py": "ac0211b8fcb08f2a6dedb8c82d59e93b87732835b70b1b56b5b1b4c6f590d368",
+        "scripts/squadra.py": "21959f44aef69809773c06497fadaf1793f56d062384a5b1ae3999a7f12883e8",
         "scripts/dashboard.py": "0ad7b57aa68e6013036de31791b841e6c90c999e8e4c7a05a3410a6fa4a163f4",
-        "scripts/system_skills.py": "5b67fad6e8849b29f0e27ad22e3d582b13d6f92e12f9eb088e5c2627f1004e24",
-        "assets/dashboard.html": "47b9c3e6784defbde3aca219ce74597f3ca4ec032ce24d3b0eb42d9ea9774ce4",
+        "scripts/system_skills.py": "616560474dccfc461b35d57b4769e7ebaad0ebcfda5be17cc2faa25d0bdb540c",
+        "assets/dashboard.html": "fec7377ca3bc9ca4014f2d3b4d0dcb1d29bd7140d730017b0e9e2991ccff2fb2",
         "references/skills/bilanciamento.md": "cede3aae62fcdef6ef7aa2583ee717d14c839ffcb7efacea39f70c39e3371738",
         "scripts/balance.py": "c4076f1924e646d2b88784daf1ed17c7ad7bf65cf0bd8e20a18b4b93308d68e1",
         "scripts/forecast.py": "0da60890635eae583f09f48973c522c371a5bd1e0037102fe500fe58ecb1aeeb",
         "scripts/usage.py": "b4a4e460566d16098c79dfb71700be078086ba6d0050c8398058ae26ce22b185"
+      }
+    },
+    {
+      "skill": "migliora",
+      "scanner": "cisco-ai-skill-scanner",
+      "version": "2.2.2",
+      "policy": {
+        "name": "balanced",
+        "behavioral": true,
+        "osv": true,
+        "fail_on_severity": "high"
+      },
+      "scanned_at": "2026-10-25T23:59:52.033239+00:00",
+      "result": "pass",
+      "findings": {
+        "critical": 0,
+        "high": 0,
+        "medium": 0,
+        "low": 0
+      },
+      "files": {
+        "SKILL.md": "09b8cdf5b749b5f1e424bb4928404e40bb29367aef9dc69edfa379c86aa521e4",
+        "scripts/registry.py": "ac0211b8fcb08f2a6dedb8c82d59e93b87732835b70b1b56b5b1b4c6f590d368",
+        "scripts/squadra.py": "21959f44aef69809773c06497fadaf1793f56d062384a5b1ae3999a7f12883e8",
+        "scripts/dashboard.py": "0ad7b57aa68e6013036de31791b841e6c90c999e8e4c7a05a3410a6fa4a163f4",
+        "scripts/system_skills.py": "616560474dccfc461b35d57b4769e7ebaad0ebcfda5be17cc2faa25d0bdb540c",
+        "assets/dashboard.html": "fec7377ca3bc9ca4014f2d3b4d0dcb1d29bd7140d730017b0e9e2991ccff2fb2",
+        "references/skills/migliora.md": "f8d407c3d47665635c7ba0d7ccffe32c6515f9bf1b5f76f2f11c9ab94c8ebbff",
+        "scripts/migliora.py": "31df23e782aec0b295a884273888cd68bc0d2b0b38b0e741a0739b685c13aeef"
       }
     }
   ]
