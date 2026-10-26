@@ -217,11 +217,17 @@ the registry; keep an explicit copy of any additional external evidence.
 ## Exclusions and destination
 
 Filters cover `.env*`, private keys/certificates, credential names and `PRIVATE KEY`
-headers: untracked matches are excluded and listed; tracked matches or matches at HEAD
-cause the package to be refused, because the bundle carries their history. A tracked
-template ending in `.example`, `.sample`, `.template` or `.dist` (such as `.env.example`)
-is judged by its content only: a `PRIVATE KEY` header still refuses it. This does
-not find every secret: **there is no complete scan of Git history or registry artifacts**.
+headers. For tracked files, names and private-key headers are checked in HEAD, the
+staged index and regular working-tree content. Every staged blob is checked before the package
+folder is created, including binary blobs and files absent from HEAD or the working
+tree. A staged-key refusal names the file and leaves no package. The checked index
+fingerprint must still match when its patch is captured. Name allowances never bypass
+these content checks. For untracked or explicitly included files, names and current
+regular-file content are checked; matches are excluded and listed. A tracked template ending in
+`.example`, `.sample`, `.template` or `.dist` (such as `.env.example`) is judged by its
+content only: a `PRIVATE KEY` header in any of the three versions still refuses it.
+These filters do not find every secret: **there is no scan of earlier Git history
+or registry artifacts for secrets**; the Git bundle can contain older, unchecked content.
 Inspect the data before sharing it.
 
 For a tracked source file refused only by its name, the coordinator may explicitly

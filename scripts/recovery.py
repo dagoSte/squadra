@@ -32,6 +32,25 @@ def private_key(body):
     return any(line.strip().startswith(b"-----BEGIN ") and b"PRIVATE KEY-----" in line for line in body.splitlines())
 
 
+def checked_index(repo):
+    """Check every staged blob before creating a package, and bind the check to that index."""
+    entries = git(repo, "ls-files", "--stage", "-z")
+    checked = digest(entries)
+    clean = set()
+    for row in entries.split(b'\0'):
+        if not row:
+            continue
+        metadata, path = row.split(b'\t', 1)
+        mode, sha, _ = metadata.split()
+        if mode == b'160000' or sha in clean:
+            continue
+        require(not private_key(git(repo, "cat-file", "blob", sha.decode('ascii'))),
+                "Tracked secret candidate refused: " + os.fsdecode(path) + "; private-key content in staged (index) blob")
+        clean.add(sha)
+    require(index(repo) == checked, "Index changed during staged private-key check")
+    return checked
+
+
 def allowed_file(repo, rel):
     path = repo / rel
     tracked = git(repo, "ls-files", "-z").split(b'\0')
@@ -41,7 +60,8 @@ def allowed_file(repo, rel):
     staged = git(repo, "show", ":" + rel)
     head_files = git(repo, "ls-tree", "-r", "--name-only", "-z", "HEAD").split(b'\0')
     historical = git(repo, "show", "HEAD:" + rel) if os.fsencode(rel) in head_files else None
-    require(not any(private_key(value) for value in (body, staged, historical) if value is not None),
+    require(not private_key(staged), "Private-key content refused in staged (index) blob: " + rel)
+    require(not any(private_key(value) for value in (body, historical) if value is not None),
             "Private-key content refused in HEAD, index or working tree: " + rel)
     return {"path": rel, "sha256": digest(body), "index_sha256": digest(staged),
             "head_sha256": digest(historical) if historical is not None else None}
@@ -175,18 +195,19 @@ def save(store, destination, repos=None, includes=None, temporary=False, declare
                 selected == [Path(allowance['repo'])], "Name allowance belongs to one exact save and repository")
     for value in includes or []:
         require(any(inside(Path(os.path.abspath(value)), r) for r in selected), "Include must belong to a selected repository")
+    checked_indexes = {repo: checked_index(repo) for repo in selected}
     destination.mkdir(parents=True, mode=0o700)
     manifest = {"schema": 1, "version": VERSION, "utc": now(), "status": "building", "repositories": [],
                 "scope": "explicit partial selection" if repos else "all registered repositories",
                 "destination": "local checkpoint" if destination.stat().st_dev == store.root.stat().st_dev else "different filesystem, external disk unverified",
                 "declared_offsite": declared_offsite, "offsite_verified": False,
-                "limitations": "Current checkout/HEAD name and private-key-header filters only; no complete Git-history or registry secret scan. No upload. Restored approvals stay historical."}
+                "limitations": "Tracked files: names and private-key headers in HEAD/index blobs and regular working tree content; untracked/include files: names and private-key headers in current regular-file content. No Git history or registry secret scan. No upload. Restored approvals stay historical."}
     if allowance is not None:
         manifest['name_allowance'] = {"decision": name_allowance, **allowance}
     guards = []
     try:
         for n, repo in enumerate(selected):
-            supported(repo); before = snapshot(repo, store.root); old_index = index(repo)
+            supported(repo); before = snapshot(repo, store.root); old_index = checked_indexes[repo]
             extra = included_files(repo, includes or [])
             require(not any(inside(p, store.root) for p in extra), "Registry is captured separately, not as a source include")
             extra_before = {str(p.relative_to(repo)): record_file(p, repo) for p in extra}
@@ -221,7 +242,9 @@ def save(store, destination, repos=None, includes=None, temporary=False, declare
             name = "repo-" + str(n); folder = destination / name; folder.mkdir(mode=0o700)
             git(repo, "bundle", "create", str(folder / "history.bundle"), "--all", "HEAD", timeout=LONG_GIT_SECONDS)
             git(repo, "bundle", "verify", str(folder / "history.bundle"), timeout=LONG_GIT_SECONDS)
-            (folder / "index.patch").write_bytes(git(repo, "diff", "--cached", "--binary", "--no-ext-diff"))
+            staged_patch = git(repo, "diff", "--cached", "--binary", "--no-ext-diff")
+            require(index(repo) == old_index, "Index changed after staged private-key check")
+            (folder / "index.patch").write_bytes(staged_patch)
             (folder / "worktree.patch").write_bytes(git(repo, "diff", "--binary", "--no-ext-diff"))
             untracked = {repo / os.fsdecode(p) for p in git(repo, "ls-files", "--others", "--exclude-standard", "-z").split(b'\0')
                          if p and not inside(repo / os.fsdecode(p), store.root)}
