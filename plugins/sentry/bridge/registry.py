@@ -3157,7 +3157,7 @@ class Store:
                 else:
                     output = next((o for o in reversed(state['outputs']) if o['agent'] == actor), {})
                 lines.append("| " + cell(actor) + " | " + cell(output.get('next', '—')) + " |")
-            atomic(self.root / 'stato.md', ('\n'.join(lines) + '\n').encode())
+            atomic(self.root / 'stato.md', ('\n'.join(map(md_inline, lines)) + '\n').encode())
         return publish(self, summary=summary)
 
     def project(self, with_events=False, audited=False):
@@ -3177,6 +3177,9 @@ class Store:
                 import fcntl
                 fcntl.flock(f, fcntl.LOCK_EX)
             try:
+                # A linked or non-directory posta/ is refused before the first file is written, not after.
+                from registry_projections import _folder
+                _folder(self.root)
                 self.db.execute("BEGIN")
                 events = self.events()
                 state = self.state(events)
@@ -3190,14 +3193,15 @@ class Store:
                 for m in state["messages"].values():
                     ack = m["ack"]["utc"] if m["ack"] else "NOT REQUIRED" if m.get("info") is True else "PENDING"
                     label = "INFO · " if m.get("info") is True else ""
-                    mail.append(f"\n## {m['id']} · {m['from']} → {m['to']} · {label}ACK {ack}\n\n{m['body']}\n")
+                    mail.append(f"\n## {md_inline(m['id'])} · {md_inline(m['from'])} → {md_inline(m['to'])} · {label}ACK {ack}"
+                                f"\n\n{md_block(str(m['body']))}\n")
                 atomic(self.root / "squadra-posta.md", "".join(mail).encode())
                 daily = {}
                 for e in events:
                     day = e["utc"][:10]
                     from registry_projections import render_daily
                     daily.setdefault(day, ["# Squadra — scambi del giorno UTC\n\nProiezione ricostruibile del registro comune; non una seconda fonte.\n"]).append(render_daily(e))
-                folder = self.root / "posta"; folder.mkdir(mode=0o700, exist_ok=True)
+                folder = self.root / "posta"
                 for day, parts in daily.items():
                     atomic(folder / ("exchange-" + day + ".md"), "".join(parts).encode())
                 summary_state = wait_view({**state, 'root': str(self.root)}, wait_facts(events))
@@ -3273,8 +3277,26 @@ def printable(text):
         c if control_free(c) else c.encode("unicode_escape").decode("ascii") for c in line) for line in text.split("\n"))
 
 
+LINE_BREAKS = re.compile(r"\r\n|[\n\r\x0b\x0c\x1c-\x1e\x85\u2028\u2029]")
+# A line a Markdown reader takes as structure: a heading, quote or HTML block, a setext underline, or a fence.
+STRUCTURE = re.compile(r"^ {0,3}(?:[#<>]|(?:=+|-+) *$|`{3}|~{3})", re.M)
+
+
+def md_inline(value):
+    """Registry text inside one Markdown line: line breaks and controls print as escapes."""
+    return printable(LINE_BREAKS.sub(lambda m: m.group().encode("unicode_escape").decode("ascii"), str(value)))
+
+
+def md_block(text):
+    """Free registry text in a Markdown projection: as written, unless a line could open a heading, quote,
+    HTML block or fence, or a control character could break a line; then each line is indented as literal code."""
+    if control_free(text.replace("\n", "")) and not STRUCTURE.search(text):
+        return text
+    return "\n".join("    " + line for line in printable(text).split("\n"))
+
+
 def cell(value):
-    return str(value).replace("|", "\\|").replace("\n", " ")
+    return LINE_BREAKS.sub(" ", str(value).replace("|", "\\|"))
 
 
 def board_times(events):
@@ -3344,7 +3366,7 @@ def board(state, lang=None, read_at=None, events=(), *, live=True):
         (active if started else todo).append(task)
     name = state["workspace"].get("name", "Squadra")
     mode = ("PAUSED" if state["paused"] else "ACTIVE") if en else ("IN PAUSA" if state["paused"] else "OPERATIVO")
-    lines = [f"{name} · {'Registry' if en else 'Registro'} #{state['event_count']} · {mode}", ""]
+    lines = [f"{md_inline(name)} · {'Registry' if en else 'Registro'} #{state['event_count']} · {mode}", ""]
     for heading, rows in zip(("In progress", "To do", "Done") if en else ("In corso", "Da fare", "Fatti"),
                              (active, todo, done[:10])):
         lines += ["## " + heading, "", "| Window | Work | State | Time (approx.) |" if en else "| Finestra | Lavoro | Stato | Tempo (circa) |", "|---|---|---|---|"]
@@ -3608,7 +3630,7 @@ def table(state, read_at=None, events=(), *, compact=False, lang=None, attention
         if len(steps) > 5:
             lines.append((str(len(steps) - 5) + ' more steps: squadra status --all.') if en
                          else ('Altri ' + str(len(steps) - 5) + ' passi: squadra status --all.'))
-        return printable("\n".join(lines))
+        return "\n".join([lines[0], *map(md_inline, lines[1:])])
     lines += ["", "Next step per task:" if en else "Prossimo passo per incarico:"]
     lines += ["- " + item["task"] + ": " + step_text(item, en) for item in view["next_steps"]]
     if view["superseded"]:
@@ -3669,4 +3691,5 @@ def table(state, read_at=None, events=(), *, compact=False, lang=None, attention
     else:
         lines += ["", f"Messaggi senza ACK: {pending}. Riserve attive: {len(state['resources'])}.",
                   "Registrazione e heartbeat non dimostrano esecuzione, accettazione o risveglio del client."]
-    return printable("\n".join(lines))
+    # The board is the first element; every other element is one line, whatever its registry text holds.
+    return "\n".join([lines[0], *map(md_inline, lines[1:])])

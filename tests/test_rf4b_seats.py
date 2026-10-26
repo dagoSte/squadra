@@ -122,7 +122,8 @@ class Names(Fixture):
                 self.assertEqual(rc, 0, err)
                 for raw in ('\x1b', '\x07', '\r', ' '):
                     self.assertNotIn(raw, out)
-                self.assertIn('Fix\\x1b]0;forged-title\\x07\\x1b[2J\\u2028tail', out)
+                # A cell flattens every line break, U+2028 included, to a space, as it does for a newline.
+                self.assertIn('Fix\\x1b]0;forged-title\\x07\\x1b[2J tail', out)
         rc, out, err = self.run_cli('status')
         self.assertIn('W\\x1b]0;forged-title', out)
 
