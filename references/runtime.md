@@ -34,7 +34,8 @@ chosen client's quota; `selftest` uses fake clients only and consumes no quota.
 Codex: JSONL, a read-only sandbox for reviews/workspace-write for builds,
 approval_policy never; reviews ignore user config, require a schema and refuse checkouts
 with `.codex/config.toml` to avoid unexamined project MCPs. Reviews run on a clean copy;
-native authentication is preserved. Claude: JSON, safe-mode reviews, Read/Glob/Grep only,
+native authentication is preserved. Claude: JSON, safe-mode reviews that load user settings only
+(`--setting-sources user`, so a delivered copy's `.claude/settings*.json` never applies), Read/Glob/Grep only,
 empty and strict MCP, dontAsk, no Chrome; builds use acceptEdits without a global permission
 bypass. These profiles are not a security boundary against a hostile user of the same
 account; do not claim they protect every file on disk. The reviewer's shell probes run

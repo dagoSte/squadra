@@ -148,7 +148,8 @@ def cli_command(client, mode, folder, model=None, executable=None):
     if client == "claude":
         args = [executable, "-p", "--output-format", "json", "--permission-prompts", "none"]
         if mode == "read":
-            args += ["--safe-mode", "--strict-mcp-config", "--mcp-config", '{"mcpServers":{}}',
+            # The read runs inside the delivered copy: its .claude/settings*.json are the builder's, so only user settings load.
+            args += ["--setting-sources", "user", "--safe-mode", "--strict-mcp-config", "--mcp-config", '{"mcpServers":{}}',
                      "--tools", "Read,Glob,Grep", "--allowedTools", "Read,Glob,Grep",
                      "--permission-mode", "dontAsk", "--no-chrome", "--json-schema", json.dumps(REVIEW_SCHEMA)]
         else:
