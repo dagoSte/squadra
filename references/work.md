@@ -376,7 +376,10 @@ one inside the registry, even through a link, is refused with the path and the f
 process left unreadable, and never follows a link. Logs, metadata and the lease stay in
 `<registry>/runs/<id>/`; the run record names the private folder and whether it was removed
 when the run ended, whatever its outcome. Claude and Codex turns keep the caller's HOME, where
-the client keeps its sign-in.
+the client keeps its sign-in. Apart from HOME and TMPDIR, every run inherits the caller's
+environment unfiltered, so a credential in an environment variable (an API key, a token)
+reaches the measured process and may appear in its retained, immutable logs: start proofs
+from a shell without secrets the tests must not see.
 
 ### One execution for the two final reads
 

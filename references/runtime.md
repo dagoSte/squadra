@@ -14,8 +14,10 @@ For a `cursor` window, a `read` or `build` turn (and a benchmark arm) stops befo
 snapshot, directory or process is created, with “Squadra does not launch cursor-agent:
 Cursor runs team, user and enterprise hooks unsandboxed. Cursor seats work interactively”.
 Cursor windows work interactively with the squadra CLI under the same rules (a non-author
-reviewer, bound proof); `prove` remains available. Squadra does not read, pass or store
-Cursor credentials. This refusal will be reconsidered only when a Cursor version documents
+reviewer, bound proof); `prove` remains available. Squadra does not read or store Cursor
+credentials and adds none to a process; a proof, probe or quick check inherits the caller's
+environment apart from HOME and TMPDIR, so a credential exported in that shell reaches it
+and may appear in its retained logs. This refusal will be reconsidered only when a Cursor version documents
 a switch that disables all hooks and MCPs, confirmed by a non-author source review and an
 actual capability test.
 
