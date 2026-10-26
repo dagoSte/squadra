@@ -174,10 +174,11 @@ def git_process(repo, *args, timeout=30, input=None, local_only=False, env=None,
                                              '--src-prefix=a/', '--dst-prefix=b/']
     if local_only and command < len(arguments) and arguments[command] in {'fetch', 'clone'}:
         arguments[command + 1:command + 1] = ['--upload-pack=git-upload-pack']
-    environment = dict(os.environ)
-    environment.update(env or {})
+    # The child inherits the environment; only the variables Squadra adds are passed on top of it.
+    extra = dict(env or {})
     if local_only:
-        environment['GIT_ALLOW_PROTOCOL'] = 'file'
+        extra['GIT_ALLOW_PROTOCOL'] = 'file'
+    environment = dict(os.environ, **extra) if extra else None
     prefix = ['git', '--no-pager', '-c', 'core.fsmonitor=false', '-c', 'core.hooksPath=/dev/null',
               '-c', 'diff.noprefix=false', '-c', 'diff.mnemonicPrefix=false']
     inspected = subprocess.run([*prefix, *arguments[:command], 'config', '--null', '--name-only',
@@ -189,7 +190,8 @@ def git_process(repo, *args, timeout=30, input=None, local_only=False, env=None,
     drivers = {key.rsplit(b'.', 1)[0] for key in inspected.stdout.split(b'\0') if key}
     overrides = []
     if drivers:
-        environment.update(SQUADRA_GIT_FILTER_PROGRAM='', SQUADRA_GIT_FILTER_REQUIRED='false')
+        extra.update(SQUADRA_GIT_FILTER_PROGRAM='', SQUADRA_GIT_FILTER_REQUIRED='false')
+        environment = dict(os.environ, **extra)
         for driver in sorted(drivers):
             for name in ('clean', 'smudge', 'process', 'required'):
                 variable = 'SQUADRA_GIT_FILTER_REQUIRED' if name == 'required' else 'SQUADRA_GIT_FILTER_PROGRAM'
