@@ -49,11 +49,14 @@ class DashboardPerformance(unittest.TestCase):
                               'client': 'manual', 'repo': str(self.base), 'skills': [], 'session': ''})
         self.artifact_body = b'Registered dashboard performance evidence.'
         self.artifact = self.store.artifact_bytes(self.artifact_body, 'evidence.txt', 'synthetic')
-        self.store.append('task', 'C', {'id': self.task_id, 'owner': 'A', 'title': 'Inspect the retained source inventory',
-                          'base': 'b' * 40, 'repo': str(self.base), 'depends': [], 'scope': self.artifact,
-                          'proof': None, 'metadata': {'files': ['ordinary metadata must remain']}})
-        self.store.append('message', 'C', {'id': 'ASSIGN', 'to': 'A', 'task': self.task_id, 'body': 'Assigned check'})
-        self.store.append('ack', 'A', {'message': 'ASSIGN'})
+        # Recorded history may hold fields a declaration no longer takes; compaction keeps them.
+        with patch.object(registry, 'TASK_FIELDS', registry.TASK_FIELDS | {'metadata'}):
+            self.store.append('task', 'C', {'id': self.task_id, 'owner': 'A', 'title': 'Inspect the retained source inventory',
+                              'base': 'b' * 40, 'repo': str(self.base), 'depends': [], 'scope': self.artifact,
+                              'proof': None, 'metadata': {'files': ['ordinary metadata must remain']}})
+        self.store.append('message', 'C', {'id': 'assign-' + self.task_id, 'to': 'A', 'task': self.task_id,
+                          'body': 'Assigned check'})
+        self.store.append('ack', 'A', {'message': 'assign-' + self.task_id})
         self.fingerprint = {'head': 'b' * 40, 'sha256': 'c' * 64, 'files': {
             self.source_path: {'sha256': self.source_hash, 'bytes': 321},
             'tests/retained_test.py': {'sha256': 'e' * 64, 'bytes': 123}},

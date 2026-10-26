@@ -13,7 +13,7 @@ from unittest.mock import patch
 from types import SimpleNamespace
 
 import test_squadra as support
-from registry import Error, Store, apply, initial, now, presence, standby, latest_ping, table, waits
+from registry import TASK_FIELDS, Error, Store, apply, initial, now, presence, standby, latest_ping, table, waits
 from squadra import main, deliver, parser
 from census import collect, parse_processes, parse_lsof
 
@@ -169,7 +169,7 @@ class Presence(unittest.TestCase):
         self.assertEqual(before, self.store.events())
 
     def test_new_review_handoff_refused_then_delivered_after_return(self):
-        data = dict(self.store.state()['tasks']['T']) | {'id': 'RTask', 'reviewer': 'R'}
+        data = {k: v for k, v in self.store.state()['tasks']['T'].items() if k in TASK_FIELDS} | {'id': 'RTask', 'reviewer': 'R'}
         self.store.batch([('task', 'C', data, None), ('message', 'C', {'id': 'assign-RTask', 'task': 'RTask', 'to': 'A', 'body': 'Assignment'}, None)])
         self.ack('RTask'); self.proof(task='RTask'); self.hold('R')
         before = self.store.events()

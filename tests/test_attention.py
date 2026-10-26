@@ -28,7 +28,7 @@ class Attention(unittest.TestCase):
                               "client": "manual", "repo": str(self.base), "skills": []})
         self.store.append("task", "C", {"id": "T", "owner": "A", "title": "Fixture", "base": "a" * 40,
                           "repo": str(self.base), "depends": [], "scope": {}, "proof": None})
-        self.store.append("message", "C", {"id": "M", "to": "A", "task": "T", "body": "Assignment"})
+        self.store.append("message", "C", {"id": "assign-T", "to": "A", "task": "T", "body": "Assignment"})
         self.options = [{"id": "A", "label": "Continue", "say": "Continue within scope"},
                         {"id": "B", "label": "Stop", "say": "Stop and save"}]
 
@@ -162,7 +162,7 @@ class Attention(unittest.TestCase):
         self.assertIn("ricevuta presente", next(w for w in view["waiting"] if w["kind"] == "cleanup-unknown")["text"])
 
     def test_transition_timestamps_replayed_from_actual_events(self):
-        self.store.append("ack", "A", {"message": "M"})
+        self.store.append("ack", "A", {"message": "assign-T"})
         self.store.append("start", "A", {"task": "T"})
         event = self.store.events()[-1]
         self.assertEqual(self.store.state()["tasks"]["T"]["status_utc"], event["utc"])
@@ -178,7 +178,7 @@ class Attention(unittest.TestCase):
         self.assertEqual(state["tasks"]["T"]["status_utc"], events_before[-2]["utc"])
         self.assertEqual(self.store.events(), events_before)
         self.assertEqual(state["tasks"]["T"]["base"], "a" * 40)
-        self.assertEqual(state["messages"]["M"]["body"], "Assignment")
+        self.assertEqual(state["messages"]["assign-T"]["body"], "Assignment")
 
     def test_attention_is_pure_and_projection_uses_same_data(self):
         self.ask(); state = self.store.state(); before = copy.deepcopy(state)

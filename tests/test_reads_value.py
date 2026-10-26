@@ -125,8 +125,8 @@ def seed(store, base):
     artifact = store.artifact_bytes(b'Synthetic read report.\n', 'read-report.md', 'synthetic-report')
     store.append('task', 'C', {'id': 'T', 'title': 'Validate the example', 'owner': 'A', 'repo': str(base),
                              'base': 'a'*40, 'scope': artifact, 'proof': None, 'depends': []})
-    store.append('message', 'C', {'id': 'assign', 'to': 'A', 'task': 'T', 'body': 'Synthetic assignment'})
-    store.append('ack', 'A', {'message': 'assign'})
+    store.append('message', 'C', {'id': 'assign-T', 'to': 'A', 'task': 'T', 'body': 'Synthetic assignment'})
+    store.append('ack', 'A', {'message': 'assign-T'})
     store.append('start', 'A', {'task': 'T'})
     store.append('plan', 'A', {'task': 'T', 'artifact': artifact})
     store.append('review', 'R', {'task': 'T', 'stage': 'plan', 'verdict': 'changes-required',

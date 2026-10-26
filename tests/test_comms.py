@@ -290,8 +290,8 @@ class CommsPage(unittest.TestCase):
                      for n in range(55)])
         send = lambda ident, sender, to, **extra: store.append("message", sender, {"id": ident, "to": to,
                                                                                  "body": "Body of " + ident, **extra})
-        send("m-assign", "coord-seat", "builder-seat-a", task="SQ-T1")
-        store.append("ack", "builder-seat-a", {"message": "m-assign"})
+        send("assign-SQ-T1", "coord-seat", "builder-seat-a", task="SQ-T1")
+        store.append("ack", "builder-seat-a", {"message": "assign-SQ-T1"})
         send("m-queued", "coord-seat", "builder-seat-b", related_task="MS-T2")
         store.append("transport", "coord-seat", {"message": "m-queued", "via": "codex-queue", "delivered": True, "native_rc": 0})
         send("m-late", "coord-seat", "review-seat")

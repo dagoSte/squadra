@@ -12,6 +12,7 @@ from urllib.parse import quote
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
 import dashboard
+import registry
 import source_manifests
 from registry import Store, canonical, digest
 import test_dashboard_performance as performance
@@ -62,10 +63,12 @@ class DashboardManifests(unittest.TestCase):
         return {**value, 'sha256': digest(canonical(value).encode())}
 
     def add_task(self, task, run, fingerprint):
-        self.store.append('task', 'C', {'id': task, 'owner': 'A', 'title': 'Check source details',
-                          'base': 'b' * 40, 'repo': str(self.base), 'depends': [], 'scope': self.artifact,
-                          'proof': None, 'metadata': {'files': ['ordinary metadata']}})
-        message = 'assign-' + run
+        # Recorded history may hold fields a declaration no longer takes; compaction keeps them.
+        with patch.object(registry, 'TASK_FIELDS', registry.TASK_FIELDS | {'metadata'}):
+            self.store.append('task', 'C', {'id': task, 'owner': 'A', 'title': 'Check source details',
+                              'base': 'b' * 40, 'repo': str(self.base), 'depends': [], 'scope': self.artifact,
+                              'proof': None, 'metadata': {'files': ['ordinary metadata']}})
+        message = 'assign-' + task
         self.store.append('message', 'C', {'id': message, 'to': 'A', 'task': task, 'body': 'Assigned'})
         self.store.append('ack', 'A', {'message': message})
         self.store.append('run.start', 'A', {'id': run, 'task': task, 'mode': 'proof',

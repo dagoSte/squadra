@@ -21,7 +21,7 @@ class FullExportContract(unittest.TestCase):
         self.assertEqual(json.loads(saved), state)
         self.assertTrue(freshness(self.store)["full_export_current"])
 
-        self.store.append("message", "C", {"id": "later", "to": "A", "task": "T", "body": "Later complete text"})
+        self.store.append("message", "C", {"id": "later", "to": "A", "related_task": "T", "body": "Later complete text"})
         published = self.store.publish()
         self.assertTrue(published["events_current"])
         self.assertFalse(published["full_export_current"])
