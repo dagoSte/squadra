@@ -219,6 +219,18 @@ def test_counts(text):
     return counts
 
 
+def writable_copy(source, target):
+    """A private writable copy of a frozen candidate, so a probe can run without touching the sealed original."""
+    shutil.copytree(source, target, symlinks=True)
+    for parent, _, files in os.walk(target):
+        os.chmod(parent, 0o700)
+        for name in files:
+            path = os.path.join(parent, name)
+            if not os.path.islink(path):
+                os.chmod(path, stat.S_IMODE(os.lstat(path).st_mode) | 0o600)
+    return target
+
+
 def terminate(proc):
     if os.name == "nt":
         if proc.poll() is not None:
@@ -283,11 +295,15 @@ def _execute_owned(store, actor, task_id, argv, mode, prompt, timeout, gate, exe
         from registry import digest
         path = Path(task["plan"]["original"])
         require(path.is_file() and digest(path.read_bytes()) == task["plan"]["sha256"], "Original plan changed; re-register/review it")
-    read_frozen = mode == 'read' and stage == 'code' and task.get('delivery', {}).get('frozen')
+    frozen = task.get('delivery', {}).get('frozen')
+    read_frozen = mode == 'read' and stage == 'code' and frozen
+    # A non-author's probe tests what was delivered: a private writable copy of the frozen candidate, not the live tree.
+    probe_frozen = bool(mode == 'probe' and frozen and agent['identity'] not in
+                        {state['agents'][a]['identity'] for a in task['authors']})
     from frozen_candidate import current as delivered_current
-    from frozen_candidate import repository as frozen_repository
+    from frozen_candidate import measured, repository as frozen_repository
     working_repo = str(frozen_repository(task, store.root)) if read_frozen else task['repo']
-    before = delivered_current(task, store.root) if read_frozen else snapshot(task['repo'], store.root)
+    before = delivered_current(task, store.root) if read_frozen or probe_frozen else snapshot(task['repo'], store.root)
     # A passed precheck binds the proof to the exact bytes it checked, before any record or process.
     require(checked is None or before == checked,
             "precheck_failed: source changed after the checks (checked " + str((checked or {}).get("sha256", ""))[:12] +
@@ -321,6 +337,12 @@ def _execute_owned(store, actor, task_id, argv, mode, prompt, timeout, gate, exe
         if agent["client"] == "codex" and mode == "read":
             config = Path(working_repo) / ".codex/config.toml"
             require(not config.exists(), "Review repo contains Codex config; inspect in a clean isolated copy without external MCP configuration")
+        # Before any record: a client that cannot start spends no read or build budget.
+        try:
+            version = subprocess.run([argv[0], "--version"], capture_output=True, text=True, timeout=15)
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            raise Error("CLI version preflight failed: " + type(exc).__name__ + ": " + str(exc)) from None
+        require(version.returncode == 0, "CLI version preflight failed: " + argv[0] + " --version exited " + str(version.returncode))
     else:
         require(argv and all(isinstance(x, str) and x for x in argv), "Proof requires an argv list")
         require(mode == "probe" or not task.get("proof") or argv == task["proof"], "Proof command differs from agreed task contract")
@@ -328,6 +350,8 @@ def _execute_owned(store, actor, task_id, argv, mode, prompt, timeout, gate, exe
               "before": before, "gate": gate, "timeout": timeout, "folder": str(folder), "stage": stage,
               "expected_rc": expected_rc, "requested_model": agent.get("model"), "covers": covers or [], **route_record}
     record.update(fix_record)
+    if probe_frozen:
+        record["frozen_copy"] = True
     record["lease_version"] = 1
     if shared is not None:
         record['shared_proof'] = shared
@@ -337,6 +361,8 @@ def _execute_owned(store, actor, task_id, argv, mode, prompt, timeout, gate, exe
     try:
         if temp:
             record["temp"] = temp
+        if probe_frozen:
+            working_repo = writable_copy(frozen_repository(task, store.root), Path(temp) / "candidate")
         folder.mkdir(parents=True, mode=0o700, exist_ok=False)
         if mode in {"read", "build"}:
             (folder / "schema.json").write_text(json.dumps(REVIEW_SCHEMA))
@@ -357,8 +383,6 @@ def _execute_owned(store, actor, task_id, argv, mode, prompt, timeout, gate, exe
     last_heartbeat = start
     try:
         if mode in {"read", "build"}:
-            version = subprocess.run([argv[0], "--version"], capture_output=True, text=True, timeout=15)
-            require(version.returncode == 0, "CLI version preflight failed")
             result["cli_version"] = version.stdout.strip()
         (folder / "input.txt").write_text(prompt or "")
         with (folder / "stdout.log").open("wb") as stdout, (folder / "stderr.log").open("wb") as stderr, (folder / "input.txt").open("rb") as stdin:
@@ -384,7 +408,8 @@ def _execute_owned(store, actor, task_id, argv, mode, prompt, timeout, gate, exe
                     last_heartbeat = time.monotonic()
                 time.sleep(0.1)
             result["native_rc"] = proc.wait()
-        after = delivered_current(task, store.root) if read_frozen else snapshot(task["repo"], store.root)
+        after = (delivered_current(task, store.root) if read_frozen else measured(task, working_repo) if probe_frozen
+                 else snapshot(task["repo"], store.root))
         result["after"] = after
         if result["status"] not in {"interrupted", "timeout"}:
             require(result["native_rc"] == expected_rc, "Native command exit differs from expected result")

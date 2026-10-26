@@ -846,8 +846,8 @@ Every command, grouped by purpose: **54 subcommands**, plus `--version`. Use `sq
 
 | Command | What it does | Or just ask |
 |---|---|---|
-| `prove` | Run the agreed proof on the exact frozen files and keep its native result. | “Freeze your change and run the agreed proof on it.” |
-| `probe` | Record an independent test, including a negative control that must fail. | To the reviewer: “Run your own test on the candidate, with a negative control that must fail, and record it.” |
+| `prove` | Run the agreed proof in the builder's checkout on the exact fingerprinted files, before they are frozen, and keep its native result. | “Run the agreed proof on your exact change.” |
+| `probe` | Record an independent test, including a negative control that must fail; a reader's probe of a frozen delivery runs on a private copy of the frozen candidate. | To the reviewer: “Run your own test on the candidate, with a negative control that must fail, and record it.” |
 | `deliver` | Hand over an immutable packet of the proven candidate to its reviewer. | “Deliver the proven candidate to its reviewer.” |
 | `advance` | Reconcile a handoff that was already delivered, without building or approving. | “T1 was already delivered: reconcile the handoff, without building or approving anything.” |
 | `review` | Record a non-author verdict on a plan or on the code: accepted, changes required or blocked. | To the reviewer: “Read the frozen candidate of T1 and record your verdict.” |

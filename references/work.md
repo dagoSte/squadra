@@ -488,7 +488,12 @@ The review records a non-author report bound to the current fingerprint; it does
 not magically run tests. The reviewer may use `probe --actor reader --task T1
 --expected-rc 0 -- argv...` for independent probes, or `--expected-rc 1` for a
 negative control. Expected native 1 is called `matched`, not a passing product
-proof. Do not put mutants in the frozen checkout: use isolated copies and preserve
+proof. A non-author's probe of a frozen delivery runs on a private writable copy of
+the frozen candidate inside the run's temporary folder, bound to the delivered
+fingerprint (`frozen_copy` in the run), so a builder who keeps editing the live tree
+cannot change what it tests; the builder's own probes run in the live checkout.
+`prove` runs in the builder's checkout before the freeze, so git-ignored files there
+can still affect it. Do not put mutants in the frozen checkout: use isolated copies and preserve
 the original probe before modifying it. Report limits, collection, assertions/
 errors/skips, configuration and provenance. Reproduce the original issue on the
 exact remedy.

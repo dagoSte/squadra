@@ -849,8 +849,8 @@ Ogni comando, raggruppato per scopo: **54 sottocomandi**, più `--version`. Usa 
 
 | Comando | Cosa fa | Oppure chiedi |
 |---|---|---|
-| `prove` | Esegue la prova concordata sui file esatti congelati e ne conserva l'esito nativo. | «Congela la modifica ed esegui la prova concordata.» |
-| `probe` | Registra un test indipendente, compreso un controllo negativo che deve fallire. | Al revisore: «Esegui un tuo test sul candidato, con un controllo negativo che deve fallire, e registralo.» |
+| `prove` | Esegue la prova concordata nella copia di lavoro del costruttore, sui file esatti dell'impronta prima che siano congelati, e ne conserva l'esito nativo. | «Esegui la prova concordata sulla tua modifica esatta.» |
+| `probe` | Registra un test indipendente, compreso un controllo negativo che deve fallire; la sonda di un lettore su una consegna congelata gira su una copia privata del candidato congelato. | Al revisore: «Esegui un tuo test sul candidato, con un controllo negativo che deve fallire, e registralo.» |
 | `deliver` | Consegna al lettore un pacchetto immutabile del candidato provato. | «Consegna al revisore il candidato provato.» |
 | `advance` | Riconcilia un passaggio già consegnato, senza costruire né approvare. | «T1 è già stato consegnato: riconcilia il passaggio, senza costruire né approvare nulla.» |
 | `review` | Registra il verdetto di un non autore su un piano o sul codice: accettato, correzioni richieste o bloccato. | Al revisore: «Leggi il candidato congelato di T1 e registra il tuo verdetto.» |
