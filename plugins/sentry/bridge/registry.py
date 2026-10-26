@@ -3397,9 +3397,11 @@ class Store:
                 import fcntl
                 fcntl.flock(f, fcntl.LOCK_EX)
             try:
-                # A linked or non-directory posta/ is refused before the first file is written, not after.
-                from registry_projections import _folder
+                # A linked or non-directory posta/ is refused before the first file is written, not after, and an
+                # export never overwrites the only copy of events a journal rollback lost (JournalRollback).
+                from registry_projections import _folder, _journal_tail
                 _folder(self.root)
+                _journal_tail(self, self.root, None)
                 self.db.execute("BEGIN")
                 events = self.events()
                 state = self.state(events)

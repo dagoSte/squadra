@@ -50,7 +50,9 @@ squadra migliora apply --actor BUILDER --task TASK --rule-file rule.json
 
 Within an already authorized task this applies the instruction, runs its check and
 automatically creates a local Git commit containing only `AGENTS.md`. It preserves
-unrelated staged changes and runs the native Git hooks. No force, hook bypass, push,
+unrelated staged changes and runs the native Git hooks: migliora commits as the project
+would, so the project's hooks run. This commit is the one exception; no other Squadra git
+command runs repository config programs (hooks, fsmonitor, filters). No force, hook bypass, push,
 publication, installation or approval of project memories is implied. Git identity
 and signing must already work. A rejected commit remains reviewable; do not retry
 blindly or disable the rejecting hook.

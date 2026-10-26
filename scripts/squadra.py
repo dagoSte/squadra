@@ -1428,10 +1428,13 @@ def main(argv=None):
                     ranked = balance.calculate(state, events, forecast_task, forecast_result=predicted)
                     print(json.dumps({'balance': balance.compact(ranked, state['workspace'].get('lang', 'it'))},
                                      ensure_ascii=False, indent=2))
-            except Exception:
+            except Exception as exc:
                 if not committed:
                     raise
-                warning('Transport attempt recorded; delivery failed; summary unavailable' if result_rc
+                from registry_projections import JournalRollback
+                # A rollback's message names the lost sequence range and the two ways out.
+                warning(str(exc) if isinstance(exc, JournalRollback) else
+                        'Transport attempt recorded; delivery failed; summary unavailable' if result_rc
                         else 'Command committed; summary unavailable; do not retry')
         return result_rc
     except (Error, OSError, sqlite3.Error, ValueError, KeyError, RuntimeError, TypeError) as exc:

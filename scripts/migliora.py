@@ -8,7 +8,7 @@ import shutil
 import subprocess
 import tempfile
 
-from registry import Error, canonical, digest, git, require
+from registry import Error, canonical, digest, git, git_process, require
 
 START = '<!-- squadra:migliora:start -->'
 END = '<!-- squadra:migliora:end -->'
@@ -164,7 +164,7 @@ def commit(repo, rule_id, expected_sha, base_head):
             private = Path(folder) / 'index'
             env = os.environ | {'GIT_INDEX_FILE': str(private)}
             def run(*args):
-                result = subprocess.run(['git', *args], cwd=repo, env=env, capture_output=True)
+                result = git_process(repo, *args, env={'GIT_INDEX_FILE': str(private)})
                 require(result.returncode == 0, 'Cannot prepare or reconcile private rule index')
                 return result.stdout
             run('read-tree', base_head)
@@ -173,6 +173,8 @@ def commit(repo, rule_id, expected_sha, base_head):
             done = subprocess.CompletedProcess([], None, b'', b'')
             done.timed_out = False
             try:
+                # The one Squadra git command that runs the project's hooks and configuration: migliora commits as the
+                # project would. Every other git call goes through git_process with repository config programs off.
                 done = run_process(['git', 'commit', '-m', 'Improve development workflow: ' + rule_id],
                                    repo, env, COMMIT_SECONDS)
             except Exception as exc:
@@ -203,7 +205,7 @@ def commit(repo, rule_id, expected_sha, base_head):
                     files = git(repo, 'diff', '--name-only', '-z', base_head, actual).decode().split('\0')[:-1]
                     reconcile_index()
                     index_reconciled = True
-                    instruction = subprocess.run(['git', 'show', 'HEAD:AGENTS.md'], cwd=repo, capture_output=True)
+                    instruction = git_process(repo, 'show', 'HEAD:AGENTS.md')
                     if (files != ['AGENTS.md'] or git(repo, 'rev-parse', 'HEAD^').decode().strip() != base_head or
                             instruction.returncode != 0 or digest(instruction.stdout) != expected_sha):
                         mismatch.append('Git committed unexpected files, bytes or base')

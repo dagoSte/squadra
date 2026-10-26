@@ -83,12 +83,12 @@ class CommitRecovery(unittest.TestCase):
 
     def test_post_commit_verification_error_keeps_receipt_and_clean_index(self):
         import migliora
-        rule = self.rule(); self.stage_foreign(); real_run = subprocess.run
-        def fail_verification(argv, *args, **kwargs):
-            if argv == ['git', 'show', 'HEAD:AGENTS.md']:
+        rule = self.rule(); self.stage_foreign(); real_git = migliora.git_process
+        def fail_verification(repo, *args, **kwargs):
+            if args == ('show', 'HEAD:AGENTS.md'):
                 raise OSError(errno.EIO, 'Injected verification failure after commit')
-            return real_run(argv, *args, **kwargs)
-        with patch.object(migliora.subprocess, 'run', side_effect=fail_verification):
+            return real_git(repo, *args, **kwargs)
+        with patch.object(migliora, 'git_process', side_effect=fail_verification):
             self.assertIn('needs reconciliation', self.refuse('migliora', 'apply', '--actor', 'A', '--task', 'T', '--rule-file', str(rule)))
         self.check_partial_receipt()
 
