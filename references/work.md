@@ -652,18 +652,19 @@ Legacy tasks continue measuring their live checkout and refuse candidate drift.
 Ignored dependencies still need their own evidence. Freeze refuses secret-filter
 matches in untracked or changed working-tree rows, absolute/escaping symlinks,
 symlinked parent directories and case/Unicode-normalization aliases in the index.
-Unchanged tracked content already committed at HEAD remains subject to save/checkpoint's
-private-key content checks.
+Unchanged tracked content already committed at HEAD is Git history and is not refused
+later either.
 A frozen template's name-only exemption requires membership in delivered HEAD;
 commit staged-only or untracked templates such as `.env.example` before delivery,
 or leave them untracked and ignored.
-Checkpoint and save include healthy retained frozen candidates. Their filename
-filters apply to untracked or changed working-tree rows against delivered HEAD;
-an unchanged committed candidate path such as `deploy/credentials.py` can be copied.
-Private-key headers in every HEAD, index and regular working-tree version still
-refuse the copy with its SHA and path. A name-filter match in a changed or untracked
-candidate row also refuses it; unavailable caches are reported. Saving that live
-tracked source path still needs `--allow-name` for a name-only refusal.
+Checkpoint and save include healthy retained frozen candidates. They check what a
+candidate adds to its delivered HEAD: untracked or changed working-tree rows by name
+and private-key header, and staged blobs that differ from HEAD by private-key header.
+A match refuses the copy with its SHA and path; unavailable caches are reported.
+Content committed at the delivered HEAD is Git history, like the all-ref bundle: an
+unchanged committed path such as `deploy/credentials.py`, or a committed test fixture
+with a PEM header, can be copied. Saving the live repository still judges its own
+tracked files, and a live name-only refusal still needs `--allow-name`.
 Restored readers resolve candidates relative to the restored registry. Repeating the same packet does
 not duplicate events. New proofs change the packet and require a new message/ACK,
 even when returning to an earlier candidate. Without `--reviewer`, the manual

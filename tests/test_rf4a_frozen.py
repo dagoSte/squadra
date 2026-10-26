@@ -69,7 +69,8 @@ class FrozenPolicy(unittest.TestCase):
             frozen.validate_candidate(Path(result['repo']))
         finally: store.close()
 
-    def test_committed_key_is_allowed_at_freeze_but_refused_at_checkpoint_boundary(self):
+    def test_committed_key_is_history_at_freeze_and_at_checkpoint_boundary(self):
+        # dec-3110-candidate-history: content committed at the delivered HEAD is Git history.
         self.task(); store = Store(self.root); path = self.repo / 'service.json'
         path.write_text(json.dumps({'key': '-' * 5 + 'BEGIN PRIVATE KEY' + '-' * 5 + '\nfake'}))
         subprocess.run(['git', '-C', str(self.repo), 'add', 'service.json'], check=True)
@@ -78,8 +79,7 @@ class FrozenPolicy(unittest.TestCase):
         try:
             task = plain(store.task('T')); candidate = snapshot(self.repo, self.root)
             result = frozen.freeze(store, task, candidate)
-            with self.assertRaisesRegex(Error, 'service.json'):
-                frozen.validate_candidate(Path(result['repo']), label='Frozen candidate ' + candidate['sha256'])
+            frozen.validate_candidate(Path(result['repo']), label='Frozen candidate ' + candidate['sha256'])
         finally: store.close()
 
     def legacy_secret_delivery(self):

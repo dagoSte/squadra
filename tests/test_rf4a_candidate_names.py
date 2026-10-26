@@ -80,23 +80,16 @@ class CandidateNamePolicy(unittest.TestCase):
         finally:
             store.close()
 
-    def test_cached_committed_key_still_refuses_after_live_name_allowance(self):
+    def test_cached_committed_key_is_history_and_checkpoints(self):
+        # dec-3110-candidate-history: content committed at the delivered HEAD is Git history, as in the all-ref bundle.
         sha = self.delivered_file(body=KEY)
-        self.commit_file(body=BENIGN)  # Only the retained delivery still has the synthetic key.
+        self.commit_file(body=BENIGN)
         store = Store(self.root)
         try:
-            checkpoint = self.base / 'checkpoint-key'
-            with self.assertRaisesRegex(Error, sha + r'.*deploy/credentials\.py') as refused:
-                store.checkpoint(checkpoint)
-            self.assertIn('private-key', str(refused.exception))
-            self.assertFalse((checkpoint / 'candidates' / sha / 'repo' / NAME).exists())
-            target = self.base / 'save-key'; allowance = self.allowance(store, target)
-            with self.assertRaisesRegex(Error, sha + r'.*deploy/credentials\.py') as refused:
-                recovery.save(store, target, repos=[str(self.repo)], temporary=True,
-                              name_allowance=allowance)
-            self.assertIn('private-key', str(refused.exception))
-            self.assertFalse((target / 'registry/candidates' / sha / 'repo' / NAME).exists())
-            self.assert_not_saved(target)
+            report = {}; checkpoint = self.base / 'checkpoint-key'
+            store.checkpoint(checkpoint, report=report)
+            self.assertEqual(report['candidates'][0]['status'], 'available')
+            self.assertTrue((checkpoint / 'candidates' / sha / 'repo' / NAME).exists())
         finally:
             store.close()
 
@@ -118,7 +111,7 @@ class CandidateNamePolicy(unittest.TestCase):
                 with self.assertRaisesRegex(Error, r'secret file refused: deploy/credentials\.py'):
                     frozen.validate_candidate(self.repo)
 
-    def test_ordinary_head_index_and_worktree_key_content_stays_refused(self):
+    def test_added_index_and_worktree_key_content_stays_refused_committed_key_is_history(self):
         path = self.repo / 'value.txt'; benign = path.read_bytes()
         path.write_bytes(KEY)
         with self.assertRaisesRegex(Error, r'value\.txt'):
@@ -129,8 +122,7 @@ class CandidateNamePolicy(unittest.TestCase):
         path.write_bytes(KEY)
         self.raw('-c', 'commit.gpgsign=false', 'commit', '-qm', 'Synthetic HEAD key control')
         path.write_bytes(benign)
-        with self.assertRaisesRegex(Error, r'HEAD.*value\.txt'):
-            frozen.validate_candidate(self.repo)
+        frozen.validate_candidate(self.repo)  # the committed key is history; the changed benign row passes
 
     def test_legacy_untracked_name_still_refuses_checkpoint_and_save(self):
         sha = self.legacy_secret_delivery(); store = Store(self.root)

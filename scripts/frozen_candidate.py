@@ -161,7 +161,8 @@ def freeze(store, task, candidate):
 
 
 def validate_candidate(repo, files=None, *, working_only=False, label='Frozen candidate'):
-    """Check the bytes that a frozen checkout or its Git metadata would carry."""
+    """Check what a frozen checkout adds to its delivered HEAD: untracked or changed rows by name and private-key content,
+    staged-only index blobs by content, and every HEAD symlink for confinement. Content committed at HEAD is Git history."""
     from recovery import record_file, secret, private_key, inside
     repo = Path(repo)
     heads = {}
@@ -189,8 +190,6 @@ def validate_candidate(repo, files=None, *, working_only=False, label='Frozen ca
             body = path.read_bytes()
         head = heads.get(rel)
         mode = b'120000' if row['kind'] == 'symlink' else b'100755' if row.get('executable') else b'100644'
-        if not working_only:
-            require(not private_key(body), label + ' private-key working file refused: ' + rel)
         if head and head[0] == mode and git_blob_id(body, object_format) == head[1]:
             continue
         require(not secret(path, body, tracked=rel in heads), label + ' secret file refused: ' + rel +
@@ -209,12 +208,11 @@ def validate_candidate(repo, files=None, *, working_only=False, label='Frozen ca
     for sha, body in git_blobs(repo, uses):
         for version, rel, mode in uses[sha]:
             if version == 'HEAD':
-                require(not private_key(body), label + ' private-key HEAD file refused: ' + rel)
                 if mode == b'120000':
                     target = os.fsdecode(body)
                     require(not Path(target).is_absolute() and inside(((repo / rel).parent / target).resolve(), repo),
                             label + ' escaping HEAD symlink refused: ' + rel)
-            else:
+            elif heads.get(rel, (None, None))[1] != sha:
                 require(not private_key(body), label + ' private-key index blob refused: ' + rel)
 
 
