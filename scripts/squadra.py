@@ -217,13 +217,41 @@ def codex_queue(session, text):
             **bounded("receipt", proc.stdout), **bounded("stderr", proc.stderr)}
 
 
+def blob_ids(repo, current):
+    """Each present snapshot row's mode and Git blob id, from the bytes the row fingerprints; refuses moved bytes."""
+    import hashlib
+    algorithm = git(repo, "rev-parse", "--show-object-format").decode().strip()
+    ids = {}
+    for row in current["files"]:
+        if row["kind"] == "deleted":
+            continue
+        path, blob, fingerprint = Path(repo) / row["path"], hashlib.new(algorithm), hashlib.sha256()
+        if row["kind"] == "symlink":
+            target, mode = os.fsencode(os.readlink(path)), "120000"
+            blob.update(b"blob %d\0" % len(target) + target); fingerprint.update(target)
+        else:
+            mode = "100755" if row["executable"] else "100644"
+            with os.fdopen(os.open(path, os.O_RDONLY | os.O_NOFOLLOW), "rb") as body:
+                blob.update(b"blob %d\0" % os.fstat(body.fileno()).st_size)
+                for chunk in iter(lambda: body.read(1024 * 1024), b""):
+                    blob.update(chunk); fingerprint.update(chunk)
+        require(fingerprint.hexdigest() == row["sha256"], "Source changed after its snapshot: " + row["path"])
+        ids[row["path"]] = (mode, blob.hexdigest())
+    return ids
+
+
 def uncommitted(current):
-    """The snapshot paths its commit lacks: uncommitted changes and untracked files."""
+    """The snapshot paths whose bytes or mode differ from its commit, by blob id: the index's skip-worktree and
+    assume-unchanged flags cannot hide a change."""
     repo = current["repo"]
-    tracked = {os.fsdecode(p) for p in git(repo, "ls-files", "-z").split(b"\0") if p}
-    return sorted({os.fsdecode(p) for p in git(repo, "diff", "--relative", "--no-renames", "--name-only", "-z",
-                                                current["head"]).split(b"\0") if p}
-                  | ({row["path"] for row in current["files"]} - tracked))
+    committed = {}
+    for raw in git(repo, "ls-tree", "-r", "-z", current["head"]).split(b"\0"):
+        if raw:
+            meta, path = raw.split(b"\t", 1)
+            mode, _, oid = meta.decode().split()
+            committed[os.fsdecode(path)] = (mode, oid)
+    present = blob_ids(repo, current)
+    return sorted(path for path in present.keys() | committed.keys() if present.get(path) != committed.get(path))
 
 
 def lacking(current, changed):

@@ -631,8 +631,9 @@ differs from the authors' and, for a Claude or Codex author, whose client is the
 model's (see above). `deliver` saves the candidate, content-addressed packet
 with scope/plan/proofs and `review-...` message in one transaction. The command
 returns that ID. The recipient ACKs it before the code review or `read` turn.
-The message names the commit only when the working tree equals it; otherwise it names
-the working-tree snapshot and the uncommitted or untracked paths the commit lacks.
+The message names the commit only when the working tree equals it byte for byte (compared
+by Git blob id, so skip-worktree or assume-unchanged flags cannot hide a change); otherwise it
+names the working-tree snapshot and the uncommitted or untracked paths the commit lacks.
 For a frozen delivery it names the frozen copy instead (`candidates/<sha>/repo` in the
 registry) and warns that the builder's working tree may differ; a reassigned read says the same.
 A new fingerprint requires a new handoff and ACK. **Reader evidence lives outside the

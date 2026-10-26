@@ -72,7 +72,42 @@ class FrozenHandoffBody(unittest.TestCase):
         task, body = self.body()
         self.check_frozen(task, body)
 
-    def test_legacy_delivery_keeps_the_candidate_line(self):
+    def git(self, *args):
+        import subprocess
+        return subprocess.run(['git', *args], cwd=self.repo, check=True, capture_output=True).stdout.decode()
+
+    def test_a_change_hidden_from_git_status_is_still_named(self):
+        for flag, name in (('--skip-worktree', 'S'), ('--assume-unchanged', 'U')):
+            with self.subTest(flag=flag):
+                self.git('update-index', flag, 'value.txt')
+                (self.repo / 'value.txt').write_text('Hidden ' + name + '\n')
+                self.assertEqual(self.git('status', '--porcelain'), '')
+                self.task(name); self.start(name); self.deliver(name)
+                task, body = self.body(name)
+                first = self.check_frozen(task, body)
+                self.assertIn('NOT commit ' + task['candidate']['head'] + ', which lacks 1 uncommitted or untracked paths: value.txt', first)
+                self.git('update-index', flag.replace('--', '--no-'), 'value.txt')
+                self.git('checkout', '--', 'value.txt')
+
+    def test_deleted_and_mode_changed_paths_are_named(self):
+        (self.repo / 'other.txt').write_text('Committed\n')
+        self.git('add', 'other.txt')
+        self.git('-c', 'user.name=Synthetic', '-c', 'user.email=s@example.invalid', '-c', 'commit.gpgsign=false',
+                 'commit', '-qm', 'second file')
+        (self.repo / 'other.txt').unlink(); (self.repo / 'value.txt').chmod(0o755)
+        self.task(); self.start(); self.deliver()
+        task, body = self.body()
+        self.assertIn('which lacks 2 uncommitted or untracked paths: other.txt, value.txt', self.check_frozen(task, body))
+
+    def test_a_legacy_delivery_names_a_change_hidden_from_git_status(self):
+        self.git('update-index', '--skip-worktree', 'value.txt')
+        (self.repo / 'value.txt').write_text('Hidden change\n')
+        body = self.legacy_body()
+        head = snapshot(self.repo)['head']
+        self.assertNotIn('Read exact candidate ' + head + ' for L.', body)
+        self.assertIn('NOT commit ' + head + ', which lacks 1 uncommitted or untracked paths: value.txt', body)
+
+    def legacy_body(self):
         from registry import Store
         from squadra import deliver
         import runtime, sys
@@ -86,9 +121,12 @@ class FrozenHandoffBody(unittest.TestCase):
             store.append('ack', 'A', {'message': 'assign-L'})
             runtime.execute(store, 'A', 'L', argv=[sys.executable, '-c', 'pass'])
             handoff = deliver(store, 'A', 'L')['handoff']
-            body = store.state()['messages'][handoff]['body']
+            return store.state()['messages'][handoff]['body']
         finally:
             store.close()
+
+    def test_legacy_delivery_keeps_the_candidate_line(self):
+        body = self.legacy_body()
         self.assertTrue(body.startswith('Read exact candidate ' + snapshot(self.repo)['head'] + ' for L.\n'), body)
         self.assertNotIn('frozen copy', body)
 
