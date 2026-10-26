@@ -268,8 +268,10 @@ def promotion(state, task, data):
     require(task.get("route") == "light", "Only one-way light to full promotion is supported")
     require(task["status"] != "done" and not task.get("superseded_by"), "Task already closed or superseded")
     require(not state["paused"], "Workspace paused")
-    require(not any(r["task"] == task["id"] and r["status"] == "running" for r in state["runs"].values()),
-            "Wait for the task's active run before promotion")
+    # A run whose stop is not verified may still be running, so it holds promotion as a running one does (L-26).
+    require(not any(r["task"] == task["id"] and r["status"] in {"running", "cleanup-unknown"}
+                    for r in state["runs"].values()),
+            "Wait for the task's active run before promotion; reconcile a run whose stop is not verified")
     require(isinstance(data.get("reason"), str) and data["reason"].strip(), "Promotion reason required")
     require(isinstance(data.get("scope"), dict) and data["scope"].get("sha256") and data["scope"].get("bytes"),
             "New full scope required")

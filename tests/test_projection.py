@@ -43,7 +43,7 @@ class Projection(unittest.TestCase):
             add_task(self.store, self.base, name)
         self.store.append("ack", "A", {"message": "assign-T"})
         # Use a large payload like a delivery source fingerprint.
-        self.store.append("message", "C", {"id": "big", "to": "A", "task": "U", "body": "x" * 200_000})
+        self.store.append("message", "C", {"id": "big", "to": "A", "related_task": "U", "body": "x" * 200_000})
 
     def test_mail_and_daily_files_keep_their_bytes(self):
         self.store.project()
