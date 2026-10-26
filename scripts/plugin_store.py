@@ -249,6 +249,24 @@ def receipt(fd, name):
         raise Named('unmanaged_installation', where(fd)) from None
 
 
+def verify(fd, record):
+    """Hash every managed file against its receipt. AGENTS.md gets its own verdict, the one agents follow:
+    valid (the bytes the Store wrote, in a private regular file), modified, unsafe or absent."""
+    modified, instructions = [], 'absent'
+    for path in sorted(set(record['files']) | set(record['old'])):
+        allowed = {record['files'].get(path)} | ({record['old'].get(path)} if record['state'] == 'upgrading' else set())
+        try:
+            actual = file_hash(fd, path)
+        except p.Refused:
+            actual = 'unsafe'
+        if actual not in allowed:
+            modified.append(path)
+        if path == 'AGENTS.md':
+            instructions = ('absent' if actual is None else 'unsafe' if actual == 'unsafe'
+                            else 'valid' if actual in allowed else 'modified')
+    return {'files': 'modified' if modified else 'verified', 'modified': modified, 'instructions': instructions}
+
+
 def installed(root, name):
     try:
         with directory(root, name, private=True) as fd:
@@ -256,7 +274,8 @@ def installed(root, name):
                 record = receipt(fd, name)
             except p.Refused as exc:
                 return {'installed': True, 'managed': False, 'installation_error': exc.code}
-            return {'installed': True, 'managed': True, 'receipt': {k: record[k] for k in ('state', 'release', 'version')}}
+            return {'installed': True, 'managed': True, 'receipt': {k: record[k] for k in ('state', 'release', 'version')},
+                    **verify(fd, record)}
     except p.Refused as exc:
         if exc.code == 'not_found':
             return {'installed': False, 'managed': False}

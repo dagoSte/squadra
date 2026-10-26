@@ -3073,6 +3073,7 @@ Object.assign(I18N,{
  'store.unmanaged':{it:'Cartella non gestita dallo Store: non verrà sovrascritta.',en:'Folder not managed by the Store: it will not be overwritten.'},
  'store.complete':{it:'Installazione completa',en:'Installation complete'},
  'store.upgrading':{it:'Installazione incompleta: riprendi lo stesso pacchetto.',en:'Installation incomplete: resume the same bundle.'},
+ 'store.modified':{it:'I file installati non corrispondono a quelli scritti dallo Store: {files}. Finché non coincidono il coordinatore non segue le istruzioni di questo plugin; salva settings.json e secrets/, sposta la cartella e reinstalla.',en:'Installed files differ from what the Store wrote: {files}. Until they match, the coordinator does not follow the instructions of this plugin; save settings.json and secrets/, move the folder aside and install again.'},
  'store.receipt':{it:'Release della ricevuta',en:'Receipt release'},
  'store.installedVersion':{it:'Versione installata',en:'Installed version'},
  'store.drift':{it:'La ricevuta proviene da una release diversa da quella in esecuzione.',en:'The receipt is from a different release than the running one.'},
@@ -3974,7 +3975,7 @@ function storeRender(content){
     card.append(fields);
     const link=pluginHomepage(p.about.homepage);if(link)card.append(control(link,'store:home:'+p.name));
     if(p.receipt){
-     card.append(node('p',tr('store.'+(p.receipt.state==='complete'?'complete':'upgrading'))),node('p',tr('store.installedVersion')+': '+p.receipt.version),node('p',tr('store.receipt')+': '+p.receipt.release.version+' · '+p.receipt.release.id,'sub'));
+     card.append(node('p',tr('store.'+(p.receipt.state!=='complete'?'upgrading':p.files==='verified'?'complete':'modified'),{files:(p.modified||[]).join(', ')})),node('p',tr('store.installedVersion')+': '+p.receipt.version),node('p',tr('store.receipt')+': '+p.receipt.release.version+' · '+p.receipt.release.id,'sub'));
      if(p.receipt.release.id!==data.release.id||p.receipt.release.version!==data.release.version)card.append(node('p',tr('store.drift'),'sub'));
     }else if(p.installed)card.append(node('p',tr('store.unmanaged'),'sub'));
     if(p.installation_error&&p.installation_error!=='unmanaged_installation')card.append(node('p',tr('store.permission',{code:p.installation_error}),'sub'));

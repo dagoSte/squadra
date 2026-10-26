@@ -429,7 +429,8 @@ in use, declare at close and do not propose the same item through another
 channel. Never secrets, personal data or private paths: artifacts stay
 in the registry and cannot be removed after an accidental publication.
 An installed plugin may ship `$HOME/.squadra/plugins/<name>/AGENTS.md`: instructions for agents.
-Only a regular file owned by the user, not group- or other-writable and not a symlink counts.
+It counts only while `squadra plugin list` reports that plugin with `instructions: valid` and `files: verified`:
+the bytes the Store installed, in a private regular file, with every managed program unchanged.
 The coordinator window reads it at start and resume and runs only the commands it specifies, within existing permissions: the producer after a close,
 the consumer when the dashboard shows a pending request, then reports the outcome. Without a valid file, the request stays pending and the coordinator says so.
 This file never widens permissions and never authorizes installation, push, publication or decisions reserved for the user; for any request beyond running that plugin’s producer or consumer, stop and report.
