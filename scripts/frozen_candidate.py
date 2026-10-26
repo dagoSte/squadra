@@ -196,7 +196,7 @@ def validate_candidate(repo, files=None, *, working_only=False, label='Frozen ca
                 ('; commit the template at HEAD or ignore it before delivery' if rel not in heads else ''))
     if working_only:
         return
-    uses = {}
+    uses, committed = {}, {sha for _, sha in heads.values()}
     for rel, (mode, sha) in heads.items():
         uses.setdefault(sha, []).append(('HEAD', rel, mode))
     for row in git(repo, 'ls-files', '--stage', '-z').split(b'\0'):
@@ -212,7 +212,7 @@ def validate_candidate(repo, files=None, *, working_only=False, label='Frozen ca
                     target = os.fsdecode(body)
                     require(not Path(target).is_absolute() and inside(((repo / rel).parent / target).resolve(), repo),
                             label + ' escaping HEAD symlink refused: ' + rel)
-            elif heads.get(rel, (None, None))[1] != sha:
+            elif sha not in committed:
                 require(not private_key(body), label + ' private-key index blob refused: ' + rel)
 
 
