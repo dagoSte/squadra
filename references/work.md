@@ -355,9 +355,11 @@ squadra close --actor coord --task T1
 ```
 
 The argv for `prove` must match the agreed command. `--expected N` on the task
-checks the test count in recognized pytest/unittest summaries; it refuses a
-missing count. Other runners require their own explicit check. `--full-gate`
-requires a gate-labelled proof: first `resource acquire --actor builder --name
+checks the count of executed tests in recognized pytest/unittest summaries; it refuses a
+missing count. Skipped tests never count as executed: `1 passed, 9 skipped` or unittest's
+`OK (skipped=9)` after `Ran 10 tests` executes 1 of 10 and refuses. The receipt records each
+category apart (`passed`, `skipped`, `xfailed`, `xpassed`). Other runners require their own
+explicit check. `--full-gate` requires a gate-labelled proof: first `resource acquire --actor builder --name
 gate --reason ...`, then `prove --gate`, finally `resource release` after the
 terminal receipt. The label does not prove the command is the whole suite:
 the coordinator must agree on the correct command and project reservations.
@@ -1112,7 +1114,7 @@ A project brief starts with its goal; `## Steps` and `## Glossary` (or `## Passi
 - **Readers** are available non-authors chosen with `task --reviewer`, working in parallel on frozen copies, with shared gates, ports and databases reserved. The handoff that `deliver` generates is the go for the assigned read once its recipient ACKs it; the CLI never invokes a client by itself. A corrective read uses the same budget, and no alias or new task resets spent rounds.
 - **Browser and installation steps** need the capability proven first by a probe receipt in the right context (for a browser: a named DevTools connection, timeouts, private resources, owned cleanup). Without it, declare the step **not run**, cite the last valid run and inform the coordinator. **Never hand commands to the owner**, and no capability bypasses execution permissions.
 
-- **Options and budgets:** `--depends T0` (prerequisites closed independently first), `--expected N` (recognized test count), `--full-gate` (a gate-labelled proof); none of them proves a suite complete, so agree the real command with the project. By default three plan reads, two code reads and three build attempts in the optional runner (`init --plan-rounds/--review-rounds`); acceptance binds to the latest plan bytes; exhausted budgets need an explicit disposition, never a reset. Small changes get proportionate checks.
+- **Options and budgets:** `--depends T0` (prerequisites closed independently first), `--expected N` (recognized count of executed tests; skips never count), `--full-gate` (a gate-labelled proof); none of them proves a suite complete, so agree the real command with the project. By default three plan reads, two code reads and three build attempts in the optional runner (`init --plan-rounds/--review-rounds`); acceptance binds to the latest plan bytes; exhausted budgets need an explicit disposition, never a reset. Small changes get proportionate checks.
 - **`prove`** keeps the native status, duration, output and before/after fingerprints of tracked and non-ignored files; ignored dependencies need their own evidence. **`deliver`** needs a passing proof on the exact current source, freezes an immutable packet, returns a `review-…` ID and never invokes a model.
 - **`review`** records `accepted`, `changes-required` or `blocked`. `probe` records independent tests and negative controls (`--expected-rc 1`; a matched negative is not a product pass); mutants go in isolated copies. `--covers` records coverage, not test adequacy, which the reader judges.
 - **`check`** binds candidate, plan, proof, artifacts and coverage again before `close`. For new CLI tasks the delivered frozen source binds the proof and review; changing that copy invalidates both. Legacy tasks retain live-source binding. `advance` reconciles a delivered handoff without building, approving or waking clients; without `--reviewer` the manual review protocol applies.

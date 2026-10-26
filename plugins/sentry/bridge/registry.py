@@ -968,6 +968,16 @@ def shared_coverage(state, task_ids, covers):
     return ids
 
 
+def executed_tests(counts):
+    """Tests a recognized summary reports as run: skipped tests never ran."""
+    return sum(n for name, n in counts.items() if name != 'skipped')
+
+
+def counts_match(counts, expected):
+    """Every agreed test ran and none failed; a skipped test is never counted as executed."""
+    return executed_tests(counts) == expected and not any(counts.get(key) for key in ('failed', 'error', 'errors'))
+
+
 def shared_record(state, task_id, also, before, argv, gate, expected_rc, covers):
     """Bind each served task; this changes no reducer record."""
     require(isinstance(also, (list, tuple)) and also and all(isinstance(name, str) for name in also),
@@ -1066,10 +1076,8 @@ def effective_proof(task, run, entry):
             entry.get('expected') == task.get('expected') and
             set(entry.get('covers', [])) == {r['id'] for r in task.get('requirements', [])}):
         return None
-    if task.get('expected') is not None:
-        counts = run.get('counts', {})
-        if sum(counts.values()) != task['expected'] or any(counts.get(key) for key in ('failed', 'error', 'errors')):
-            return None
+    if task.get('expected') is not None and not counts_match(run.get('counts', {}), task['expected']):
+        return None
     proof = {key: value for key, value in run.items() if key not in SHARED_RUN_FIELDS}
     proof.update(task=task['id'], shared_from=run['task'], covers=entry['covers'])
     proof.update({key: entry[key] for key in SHARED_RUN_FIELDS if key in entry})
@@ -2135,9 +2143,7 @@ def validate(state, kind, actor, d, stored_packet=None):
                 require(d.get('native_rc') == 0 and run.get('expected_rc', 0) == 0 and d.get('after') == run['before'],
                         'Shared proof does not keep its native source binding')
                 if task.get('expected') is not None:
-                    counts = d.get('counts', {})
-                    require(sum(counts.values()) == task['expected'] and
-                            not any(counts.get(key) for key in ('failed', 'error', 'errors')),
+                    require(counts_match(d.get('counts', {}), task['expected']),
                             'Shared proof test counts do not match the agreed collection')
                 require(run['shared_proof']['primary_binding'] == proof_binding(task) and
                         all(item['binding'] == proof_binding(state['tasks'][item['task']])

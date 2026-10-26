@@ -13,8 +13,8 @@ import tempfile
 import time
 import uuid
 
-from registry import (Error, require, snapshot, now, atomic, canonical, run_lease, run_lease_paths,
-                      shared_record, validate)
+from registry import (Error, require, snapshot, now, atomic, canonical, counts_match, executed_tests, run_lease,
+                      run_lease_paths, shared_record, validate)
 
 # A measured process gets HOME and TMPDIR in a private folder outside the registry: Unix socket paths stop
 # near 104 bytes, and a folder others can write lets them swap what the process reads.
@@ -202,6 +202,22 @@ def validate_reply(client, folder, structured=True):
     return {"response": response, "actual_session": session, "usage": usage, "observed_models": models}
 
 
+UNITTEST_CATEGORIES = {"skipped": "skipped", "expected failures": "xfailed", "unexpected successes": "xpassed"}
+
+
+def test_counts(text):
+    """Per-category counts of the last recognized pytest or unittest summary; a skipped test is never a pass."""
+    summaries = [line for line in text.splitlines() if re.search(r"\d+ passed", line)]
+    counts = {name: int(n) for n, name in re.findall(r"(\d+) (passed|failed|skipped|xfailed|xpassed|errors?)", summaries[-1] if summaries else "")}
+    unit = re.findall(r"Ran (\d+) tests? in", text)
+    ok = re.findall(r"^OK(?: \((.*)\))?$", text, re.M)
+    if unit and ok:
+        other = {UNITTEST_CATEGORIES[name]: int(n) for name, n in
+                 re.findall(r"(skipped|expected failures|unexpected successes)=(\d+)", ok[-1])}
+        counts = {"passed": int(unit[-1]) - sum(other.values()), **{k: v for k, v in other.items() if v}}
+    return counts
+
+
 def terminate(proc):
     if os.name == "nt":
         if proc.poll() is not None:
@@ -380,14 +396,11 @@ def _execute_owned(store, actor, task_id, argv, mode, prompt, timeout, gate, exe
                 result.update(validate_reply(agent["client"], folder, structured=False))
             if mode == "proof" and task.get("expected") is not None:
                 text = (folder / "stdout.log").read_text(errors="replace") + (folder / "stderr.log").read_text(errors="replace")
-                summaries = [line for line in text.splitlines() if re.search(r"\d+ passed", line)]
-                counts = {name: int(n) for n, name in re.findall(r"(\d+) (passed|failed|skipped|xfailed|xpassed|errors?)", summaries[-1] if summaries else "")}
-                unit = re.findall(r"Ran (\d+) tests? in", text)
-                if unit and re.search(r"^OK(?: \(.*\))?$", text, re.M):
-                    counts = {"passed": int(unit[-1])}
-                require(sum(counts.values()) == task["expected"] and not counts.get("failed") and
-                        not counts.get("error") and not counts.get("errors"), "Executed test counts do not match agreed collection")
-                result["counts"] = counts
+                counts = result["counts"] = test_counts(text)
+                require(counts_match(counts, task["expected"]),
+                        "Executed test counts do not match agreed collection: executed " + str(executed_tests(counts)) +
+                        " of " + str(task["expected"]) + " agreed (" +
+                        (", ".join(k + " " + str(v) for k, v in sorted(counts.items())) or "no recognized summary") + ")")
             if shared is not None:
                 current = store.resolved()
                 all_covers = [*record['covers'], *[key for entry in shared['tasks'] for key in entry['covers']]]
