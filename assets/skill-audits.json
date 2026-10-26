@@ -11,7 +11,7 @@
         "osv": true,
         "fail_on_severity": "high"
       },
-      "scanned_at": "2026-10-26T13:02:05.674781+00:00",
+      "scanned_at": "2026-10-26T13:22:55.060057+00:00",
       "result": "pass",
       "findings": {
         "critical": 0,
@@ -22,7 +22,7 @@
       "files": {
         "SKILL.md": "9adefcc463cc8f1f56f944455784fe068c9e8722da7ccaac1e75e05ef4fdc4c8",
         "scripts/registry.py": "b11b594a2fdec88b591ce48366a810e51adca36e57d7b11bf220eddae1aebb82",
-        "scripts/squadra.py": "f840830612f68f7f1ac9970e29069f19d1677de2b60023286140eae1bb107266",
+        "scripts/squadra.py": "25dd8e0a92d35abe1a2458d6631fce187fd69f86315e9bf21e240ee35a7efcd2",
         "scripts/dashboard.py": "bd930db9f490cc79e7ab006c74e3bb59a2ff49d43c200eb3e81016d959652695",
         "scripts/system_skills.py": "616560474dccfc461b35d57b4769e7ebaad0ebcfda5be17cc2faa25d0bdb540c",
         "assets/dashboard.html": "2b954085702560374ae324f116da0dc54ca7af797dea7ad1a8081074560c2e8a",
@@ -40,7 +40,7 @@
         "osv": true,
         "fail_on_severity": "high"
       },
-      "scanned_at": "2026-10-26T13:02:05.674781+00:00",
+      "scanned_at": "2026-10-26T13:22:55.060057+00:00",
       "result": "pass",
       "findings": {
         "critical": 0,
@@ -51,7 +51,7 @@
       "files": {
         "SKILL.md": "9adefcc463cc8f1f56f944455784fe068c9e8722da7ccaac1e75e05ef4fdc4c8",
         "scripts/registry.py": "b11b594a2fdec88b591ce48366a810e51adca36e57d7b11bf220eddae1aebb82",
-        "scripts/squadra.py": "f840830612f68f7f1ac9970e29069f19d1677de2b60023286140eae1bb107266",
+        "scripts/squadra.py": "25dd8e0a92d35abe1a2458d6631fce187fd69f86315e9bf21e240ee35a7efcd2",
         "scripts/dashboard.py": "bd930db9f490cc79e7ab006c74e3bb59a2ff49d43c200eb3e81016d959652695",
         "scripts/system_skills.py": "616560474dccfc461b35d57b4769e7ebaad0ebcfda5be17cc2faa25d0bdb540c",
         "assets/dashboard.html": "2b954085702560374ae324f116da0dc54ca7af797dea7ad1a8081074560c2e8a",
@@ -69,7 +69,7 @@
         "osv": true,
         "fail_on_severity": "high"
       },
-      "scanned_at": "2026-10-26T13:02:05.674781+00:00",
+      "scanned_at": "2026-10-26T13:22:55.060057+00:00",
       "result": "pass",
       "findings": {
         "critical": 0,
@@ -80,7 +80,7 @@
       "files": {
         "SKILL.md": "9adefcc463cc8f1f56f944455784fe068c9e8722da7ccaac1e75e05ef4fdc4c8",
         "scripts/registry.py": "b11b594a2fdec88b591ce48366a810e51adca36e57d7b11bf220eddae1aebb82",
-        "scripts/squadra.py": "f840830612f68f7f1ac9970e29069f19d1677de2b60023286140eae1bb107266",
+        "scripts/squadra.py": "25dd8e0a92d35abe1a2458d6631fce187fd69f86315e9bf21e240ee35a7efcd2",
         "scripts/dashboard.py": "bd930db9f490cc79e7ab006c74e3bb59a2ff49d43c200eb3e81016d959652695",
         "scripts/system_skills.py": "616560474dccfc461b35d57b4769e7ebaad0ebcfda5be17cc2faa25d0bdb540c",
         "assets/dashboard.html": "2b954085702560374ae324f116da0dc54ca7af797dea7ad1a8081074560c2e8a",
@@ -97,7 +97,7 @@
         "osv": true,
         "fail_on_severity": "high"
       },
-      "scanned_at": "2026-10-26T13:02:05.674781+00:00",
+      "scanned_at": "2026-10-26T13:22:55.060057+00:00",
       "result": "pass",
       "findings": {
         "critical": 0,
@@ -108,7 +108,7 @@
       "files": {
         "SKILL.md": "9adefcc463cc8f1f56f944455784fe068c9e8722da7ccaac1e75e05ef4fdc4c8",
         "scripts/registry.py": "b11b594a2fdec88b591ce48366a810e51adca36e57d7b11bf220eddae1aebb82",
-        "scripts/squadra.py": "f840830612f68f7f1ac9970e29069f19d1677de2b60023286140eae1bb107266",
+        "scripts/squadra.py": "25dd8e0a92d35abe1a2458d6631fce187fd69f86315e9bf21e240ee35a7efcd2",
         "scripts/dashboard.py": "bd930db9f490cc79e7ab006c74e3bb59a2ff49d43c200eb3e81016d959652695",
         "scripts/system_skills.py": "616560474dccfc461b35d57b4769e7ebaad0ebcfda5be17cc2faa25d0bdb540c",
         "assets/dashboard.html": "2b954085702560374ae324f116da0dc54ca7af797dea7ad1a8081074560c2e8a",
@@ -128,7 +128,7 @@
         "osv": true,
         "fail_on_severity": "high"
       },
-      "scanned_at": "2026-10-26T13:02:05.674781+00:00",
+      "scanned_at": "2026-10-26T13:22:55.060057+00:00",
       "result": "pass",
       "findings": {
         "critical": 0,
@@ -139,7 +139,7 @@
       "files": {
         "SKILL.md": "9adefcc463cc8f1f56f944455784fe068c9e8722da7ccaac1e75e05ef4fdc4c8",
         "scripts/registry.py": "b11b594a2fdec88b591ce48366a810e51adca36e57d7b11bf220eddae1aebb82",
-        "scripts/squadra.py": "f840830612f68f7f1ac9970e29069f19d1677de2b60023286140eae1bb107266",
+        "scripts/squadra.py": "25dd8e0a92d35abe1a2458d6631fce187fd69f86315e9bf21e240ee35a7efcd2",
         "scripts/dashboard.py": "bd930db9f490cc79e7ab006c74e3bb59a2ff49d43c200eb3e81016d959652695",
         "scripts/system_skills.py": "616560474dccfc461b35d57b4769e7ebaad0ebcfda5be17cc2faa25d0bdb540c",
         "assets/dashboard.html": "2b954085702560374ae324f116da0dc54ca7af797dea7ad1a8081074560c2e8a",
