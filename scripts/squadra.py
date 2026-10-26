@@ -401,6 +401,7 @@ def parser():
     a = sub.add_parser('candidate', help='Inspect, explicitly repair or retire frozen source caches')
     a.add_argument('action', choices=['status', 'repair', 'retire', 'limits'])
     a.add_argument('--actor'); a.add_argument('--task'); a.add_argument('--reason')
+    a.add_argument('--sha256', help='Retire a historical delivered candidate by its SHA instead of the current task delivery')
     a.add_argument('--max-copy-mib', type=int); a.add_argument('--max-total-mib', type=int)
     a = sub.add_parser('migliora', help='Inspect development friction or apply and commit a checked project rule')
     a.add_argument('action', choices=['inspect', 'apply', 'commit'])
@@ -729,8 +730,10 @@ def dispatch(a, store):
         return {'handoff': handoff, 'proof_reused': True, 'snapshot': task['candidate']['sha256']}
     elif command == 'candidate':
         import frozen_candidate
-        require(a.action == 'status' or (a.actor and (a.task or a.action == 'limits')), 'Candidate mutation requires --actor and --task')
-        return frozen_candidate.manage(store, actor, a.task, a.action, a.reason, a.max_copy_mib, a.max_total_mib)
+        require(a.action == 'status' or (a.actor and (a.task or a.action == 'limits' or (a.action == 'retire' and a.sha256))),
+                'Candidate mutation requires --actor and --task (or retire --sha256 SHA)')
+        require(not a.sha256 or (a.action == 'retire' and not a.task), '--sha256 is for retire only, instead of --task')
+        return frozen_candidate.manage(store, actor, a.task, a.action, a.reason, a.max_copy_mib, a.max_total_mib, sha256=a.sha256)
     elif command == 'migliora':
         import migliora
         if a.action == 'inspect':

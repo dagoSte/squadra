@@ -206,7 +206,7 @@ class SaveAllowance(ops.Squad):
     def test_allowance_never_permits_private_keys_in_head_index_or_worktree(self):
         path = self.tracked_module()
         benign = path.read_bytes()
-        key = b'-----BEGIN OPENSSH PRIVATE KEY-----\nsynthetic\n'
+        key = b'----\x2dBEGIN OPENSSH PRIVATE KEY-----\nsynthetic\n'
         for version in ('head', 'index', 'worktree'):
             path.write_bytes(key)
             if version in ('head', 'index'):

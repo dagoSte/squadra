@@ -6,16 +6,18 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import shutil
-import subprocess
 import tempfile
 import uuid
 
-from registry import Store, Error, VERSION, atomic, canonical, digest, git, now, require, snapshot
+from registry import Store, Error, VERSION, atomic, canonical, digest, git, git_process, now, require, snapshot
 
 SECRET_NAMES = (".env*", "*.pem", "*.key", "*.p12", "id_rsa*", "id_ed25519*", ".netrc",
-                "auth.json", ".credentials.json", "credentials*")
+                "auth.json", ".credentials.json", "credentials*", "*.pfx", "*.ppk", ".git-credentials",
+                "*.jks", "*.keystore", "id_ecdsa*", "id_dsa*", ".npmrc", ".pypirc")
 TEMPLATE_SUFFIXES = (".example", ".sample", ".template", ".dist")
+KEY_HEADER = re.compile(rb'-{5}BEGIN (?:[A-Z0-9]+ )*PRIVATE KEY(?: BLOCK)?-{5}|PuTTY-User-Key-File-[0-9]+:')
 
 
 class DestinationRefused(Error):
@@ -29,7 +31,7 @@ def secret(path, body=b"", tracked=False):
 
 
 def private_key(body):
-    return any(line.strip().startswith(b"-----BEGIN ") and b"PRIVATE KEY-----" in line for line in body.splitlines())
+    return KEY_HEADER.search(body) is not None
 
 
 def checked_index(repo):
@@ -123,7 +125,7 @@ def repositories(state, explicit):
 def supported(repo):
     require(not git(repo, "ls-files", "--stage").startswith(b"160000 ") and
             b"\n160000 " not in git(repo, "ls-files", "--stage"), "Submodule checkout not qualified")
-    config = subprocess.run(["git", "config", "--get", "core.sparseCheckout"], cwd=repo, capture_output=True)
+    config = git_process(repo, "config", "--get", "core.sparseCheckout")
     require(config.stdout.strip().lower() not in {b"true", b"1"}, "Sparse checkout not qualified")
     attributes = git(repo, "ls-files", "--", "**/.gitattributes", ".gitattributes").decode().splitlines()
     require(not any(b"filter=lfs" in (repo / p).read_bytes() for p in attributes if (repo / p).is_file()),
@@ -136,7 +138,9 @@ def record_file(path, root):
     frozen_git = (len(parts) >= 6 and parts[:2] == ('registry', 'candidates') and
                   len(parts[2]) == 64 and all(c in '0123456789abcdef' for c in parts[2]) and
                   parts[3:5] == ('repo', '.git'))
-    require('.git' not in parts or frozen_git, "Git internals cannot be explicitly included")
+    require(not any(p.lower() == '.git' for p in parts) or frozen_git, "Git internals cannot be explicitly included")
+    require(all(not p.is_symlink() for p in path.parents if p.is_relative_to(root)),
+            "Symlinked parent directory refused: " + rel)
     if path.is_symlink():
         target = os.readlink(path)
         require(not Path(target).is_absolute() and inside(path.resolve(), root), "Escaping or absolute symlink refused: " + rel)
@@ -201,7 +205,7 @@ def save(store, destination, repos=None, includes=None, temporary=False, declare
                 "scope": "explicit partial selection" if repos else "all registered repositories",
                 "destination": "local checkpoint" if destination.stat().st_dev == store.root.stat().st_dev else "different filesystem, external disk unverified",
                 "declared_offsite": declared_offsite, "offsite_verified": False,
-                "limitations": "Tracked files: names and private-key headers in HEAD/index blobs and regular working tree content; untracked/include files: names and private-key headers in current regular-file content. No Git history or registry secret scan. No upload. Restored approvals stay historical."}
+                "limitations": "Tracked files: names and private-key headers anywhere in HEAD/index blobs and regular working-tree content (including JSON-escaped PEM/OpenSSH and armored PGP); untracked/include files: names and those headers in current regular-file content. Retained frozen candidates: HEAD/index/current content checked before copying; a flagged file refuses the package. Candidate template exceptions require delivered HEAD membership. Earlier Git history, other refs including refs/stash, and registry artifacts are not scanned for secrets; the all-ref bundle can contain unchecked history. Runtime runs/ sidecars are not retained by the registry checkpoint. No upload. Restored approvals stay historical."}
     if allowance is not None:
         manifest['name_allowance'] = {"decision": name_allowance, **allowance}
     guards = []
@@ -285,10 +289,14 @@ def save(store, destination, repos=None, includes=None, temporary=False, declare
             require(snapshot(repo, store.root) == before and index(repo) == old_index and
                     {str(p.relative_to(repo)): record_file(p, repo) for p in extra} == extra_before,
                     "Torn source/index snapshot across registered repositories")
-        manifest["status"] = "saved"
         atomic(destination / "MANIFEST.json", (canonical(manifest) + '\n').encode())
-        atomic(destination / "CHECKSUMS.json", (canonical(inventory(destination)) + '\n').encode())
-        return manifest
+        complete = {**manifest, "status": "saved"}
+        complete_body = (canonical(complete) + '\n').encode()
+        checksums = inventory(destination)
+        checksums['MANIFEST.json'].update(bytes=len(complete_body), sha256=digest(complete_body))
+        atomic(destination / "CHECKSUMS.json", (canonical(checksums) + '\n').encode())
+        atomic(destination / "MANIFEST.json", complete_body)
+        return complete
     except BaseException as exc:
         atomic(destination / "FAILED.json", (canonical({"status": "incomplete", "error": str(exc)}) + '\n').encode())
         raise
@@ -299,6 +307,7 @@ def verify_package(folder):
     require((folder / "MANIFEST.json").is_file(),
             "Expected a save package from squadra save, not a registry checkpoint; MANIFEST.json is missing")
     require(not (folder / "CHECKSUMS.json").is_symlink(), "Checksum symlink refused")
+    require((folder / "CHECKSUMS.json").is_file(), "Save package missing regular CHECKSUMS.json")
     expected = json.loads((folder / "CHECKSUMS.json").read_text())
     require(isinstance(expected, dict), "Checksum inventory must be a mapping")
     for rel in expected:
@@ -357,7 +366,9 @@ def restore_check(package, destination):
             name = row["folder"]; require(Path(name).name == name and name.startswith("repo-"), "Invalid repository folder")
             source = package / name; repo = target / name
             bundle = source / "history.bundle"
-            git(package, "clone", "--no-hardlinks", str(bundle), str(repo), timeout=LONG_GIT_SECONDS)
+            clone_result = git_process(package, "clone", "--no-hardlinks", str(bundle), str(repo),
+                                 local_only=True, timeout=LONG_GIT_SECONDS)
+            require(clone_result.returncode == 0, "Cannot clone saved Git bundle: " + clone_result.stderr.decode(errors='replace')[-300:])
             git(repo, "checkout", "--detach", row["head"], timeout=LONG_GIT_SECONDS)
             restored_refs = restore_refs(package, bundle, repo, row.get("stash_entries"))
             for filename, extra in [("index.patch", ["--index"]), ("worktree.patch", [])]:

@@ -7,7 +7,7 @@ import subprocess
 import tempfile
 import unicodedata
 
-from registry import Error, canonical, digest, git, pool_claim, read_at_gate, require, snapshot
+from registry import Error, canonical, digest, git, git_process, pool_claim, read_at_gate, require, snapshot
 
 POLICY = {"version": "light-v1", "lines": 80, "files": 4, "profile": "P2"}
 PROTECTED = (
@@ -70,9 +70,8 @@ def base_files(repo, base):
             if kind != "blob" or mode not in {"100644", "100755"}:
                 refuse("light_unmeasurable", "base contains a non-regular entry")
             entries.append((os.fsdecode(path), mode, oid))
-    run = subprocess.run(["git", "cat-file", "--batch"], cwd=repo,
-                         input="".join(oid + "\n" for _, _, oid in entries).encode(),
-                         capture_output=True, timeout=30)
+    run = git_process(repo, "cat-file", "--batch",
+                      input="".join(oid + "\n" for _, _, oid in entries).encode(), timeout=30)
     if run.returncode:
         refuse("light_unmeasurable", "base blobs unavailable")
     data, offset, files = run.stdout, 0, {}
@@ -94,11 +93,9 @@ def line_counts(before, after, folder):
         data.decode("utf-8", errors="strict")
     old, new = Path(folder) / "old", Path(folder) / "new"
     old.write_bytes(before); new.write_bytes(after)
-    result = subprocess.run([
-        "git", "-c", "core.autocrlf=false", "diff", "--no-index", "--numstat", "-z",
-        "--no-ext-diff", "--no-textconv", "--no-renames", "--diff-algorithm=myers",
-        "--no-indent-heuristic", "--", str(old), str(new)],
-        cwd=folder, capture_output=True, timeout=30)
+    result = git_process(folder, "-c", "core.autocrlf=false", "diff", "--no-index", "--numstat", "-z",
+                         "--no-renames", "--diff-algorithm=myers", "--no-indent-heuristic",
+                         "--", str(old), str(new), timeout=30)
     require(result.returncode in (0, 1), "light_unmeasurable: raw diff failed")
     if not result.stdout:
         return 0, 0

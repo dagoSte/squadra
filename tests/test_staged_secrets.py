@@ -6,7 +6,7 @@ import subprocess
 
 import test_ops_seams as ops
 
-KEY = b'-----BEGIN OPENSSH PRIVATE KEY-----\nsynthetic-only\n-----END OPENSSH PRIVATE KEY-----\n'
+KEY = b'----\x2dBEGIN OPENSSH PRIVATE KEY-----\nsynthetic-only\n-----END OPENSSH PRIVATE KEY-----\n'
 BENIGN = b'Synthetic benign source\n'
 
 

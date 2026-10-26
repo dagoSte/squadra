@@ -136,7 +136,11 @@ def base():
     key = hashlib.sha256(Path(__file__).read_bytes() + str(scripts()).encode()).hexdigest()[:16]
     home = Path(tempfile.gettempdir()) / f"sqmem-fixture-{key}"
     if not (home / "READY").is_file():
-        shutil.rmtree(home, ignore_errors=True)
+        if home.exists():
+            for path in [home, *home.rglob('*')]:
+                if not path.is_symlink():
+                    path.chmod(path.stat().st_mode | 0o700)
+            shutil.rmtree(home)
         home.mkdir(mode=0o700)
         _build(home)
         (home / "READY").write_text("ok\n")

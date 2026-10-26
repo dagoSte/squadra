@@ -636,8 +636,16 @@ candidate tree**. New CLI tasks copy the exact proved source, including relevant
 uncommitted and untracked files, into the registry at delivery. The builder may then
 continue; `review`, `check` and `close` measure the frozen copy and refuse tampering.
 Legacy tasks continue measuring their live checkout and refuse candidate drift.
-Ignored dependencies still need their own evidence. Checkpoint and save include the
-frozen candidates; restored readers resolve them relative to the restored registry. Repeating the same packet does
+Ignored dependencies still need their own evidence. Freeze refuses secret-filter
+matches in untracked or changed working-tree rows, absolute/escaping symlinks,
+symlinked parent directories and case/Unicode-normalization aliases in the index.
+Unchanged tracked content already committed at HEAD remains subject to save's checks.
+A frozen template's name-only exemption requires membership in delivered HEAD;
+commit staged-only or untracked templates such as `.env.example` before delivery,
+or leave them untracked and ignored.
+Checkpoint and save include healthy retained frozen candidates; a flagged candidate
+file refuses the copy with its SHA and path, and unavailable caches are reported.
+Restored readers resolve candidates relative to the restored registry. Repeating the same packet does
 not duplicate events. New proofs change the packet and require a new message/ACK,
 even when returning to an earlier candidate. Without `--reviewer`, the manual
 protocol remains.
@@ -1266,8 +1274,15 @@ are excluded. A shared candidate can retain an additional light base without
 changing its read-only checkout bytes. Default limits are 512 MiB per copy and
 2 GiB total, including damaged copies and staging.
 A conservative estimate is checked before fetching and actual bytes before sealing;
-concurrent deliveries share a storage lock. A checkpoint can require up to one
-additional total quota. Save packages also retain their separately documented repository bundles.
+concurrent deliveries, repair, retirement and checkpoint copies share a storage lock.
+Checkpoint candidate metadata comes from its exact SQLite backup, with registry read
+views released before slow file copying. A checkpoint can require up to one additional
+total quota. It includes registry artifacts, projections, run-lease evidence and healthy
+frozen repositories, but not `runs/`, queue tickets or dashboard/transport sidecars;
+reconcile process and abandonment evidence on the original machine before resuming.
+Save packages also retain their separately documented all-refs repository bundles,
+HEAD, staging/worktree patches and filtered untracked or explicitly included files.
+See [the exact filters and unscanned history/stash/artifacts](recovery.md#esclusioni-e-destinazione).
 
 `squadra candidate status` reports retained bytes and per-delivery availability.
 `doctor` reports journal integrity separately from `candidate_integrity`; a damaged
@@ -1281,14 +1296,18 @@ All mutations below require the coordinator and a recorded `--reason`:
 ```text
 squadra candidate repair --actor COORD --task TASK --reason "Recover reader pollution"
 squadra candidate retire --actor COORD --task CLOSED_TASK --reason "Retention after closure"
+squadra candidate retire --actor COORD --sha256 SHA --reason "Obsolete delivery no longer in use"
 squadra candidate limits --actor COORD --max-copy-mib 1024 --max-total-mib 4096 --reason "Larger project"
 ```
 
 Repair requires the original checkout to match the exact proved snapshot; it preserves
 the damaged folder as `candidates/damaged-*` and rematerializes in read-only mode.
 If those original bytes are gone, restore them or create a newly proved delivery.
-Retirement requires every task referencing the source to be closed or superseded.
-It records removal, preserves the journal/proofs, and makes doctor/checkpoint agree on
+Retirement by `--task` selects its current delivery; `--sha256` selects a historical
+delivery, including copies made obsolete by redelivery, promotion or a fix. It is
+refused only while an open, non-superseded task's current delivery uses that SHA.
+The receipt names the historical task. Retirement records removal, preserves the
+journal/proofs, and makes doctor/checkpoint agree on
 `retired`. No cache is silently collected. Quarantine remains evidence and counts toward
 quota; archive the registry if that evidence fills storage. Quotas may be explicitly
 raised (up to 100 GiB total) before delivering a larger project. A successful repair

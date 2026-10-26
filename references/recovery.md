@@ -121,8 +121,9 @@ monitor of Codex/Claude/Cursor memory.
 | WIP to preserve, a stop or context at risk | `save` the registry and repositories, then `restore-check` |
 
 A backup does not require a new test suite run. Use existing evidence when the candidate
-is unchanged. Do not call a registry-only `checkpoint` complete: Git, staging, untracked
-files and WIP are preserved by the `save` package. `save` requires the coordinator role.
+is unchanged. A `checkpoint` preserves the registry and retained frozen candidates;
+current Git history, staging, untracked files and WIP require the `save` package.
+`save` requires the coordinator role.
 A builder or reviewer saves its report and checkpoint, then sends the coordinator an
 operational request for a full package; it does not assume the coordinator's identity.
 The coordinator performs it within the already authorized scope, without asking the
@@ -193,8 +194,11 @@ actual reconciliation.
 It saves HEAD/branch and a verified Git bundle of all refs, **separate** binary patches
 for staging and worktree, non-ignored untracked files, modes and relative symlinks
 confined to the repository. `--include /repo/ignored-file` adds selected files, including
-ignored ones; an explicit directory includes its files. A missing repo, submodules,
-sparse checkout, LFS or links leading outside the repo cause the copy to be refused.
+ignored ones; an explicit directory includes its files without following symlinked
+directories. A missing repo, submodules, sparse checkout, LFS, absolute symlinks or
+links leading outside the repo cause the copy to be refused. Paths through symlinked
+parent directories and case/Unicode-normalization aliases in the index are refused.
+Git's owner execute bit determines a file's executable mode.
 Use repeated `--repo /clone` only for a selection declared to be **partial**.
 
 HEAD, files, index and inclusions are compared before/after, including across all
@@ -203,11 +207,20 @@ package with `FAILED.json`, not a green backup. The destination must be new and 
 the sources and registry. `/tmp` is allowed only with `--temporary` for tests; choose a
 durable directory for work.
 
-`checkpoint --to /new/directory` remains available: a SQLite backup, all referenced
-artifacts/source manifests and complete projections of the **registry only**, with
-checksums. The package is self-contained; it does not depend on the live registry's
-files remaining in place. Do not copy an open SQLite database without its
-WAL; do not delete WAL/SHM. `save` incorporates that checkpoint and adds the checkouts.
+`checkpoint --to /new/directory` copies a SQLite backup, artifacts/source manifests,
+run-lease evidence, complete registry projections and healthy retained frozen
+candidate repositories, including their Git objects. Candidate copying shares the
+delivery/repair/retirement storage lock; its metadata comes from that exact database
+backup. Damaged, missing and retired caches are named in the report, rather than
+presented as recovered source. Quarantined `candidates/damaged-*` directories stay on
+the original machine and are not copied. A candidate file rejected by the secret filters refuses
+the checkpoint, naming its SHA and path; it is never silently copied or called excluded.
+Checksums cover the copied files. The copy does not depend on live registry files
+remaining in place. Runtime files under `runs/`, queue tickets and local dashboard or
+transport sidecars are not copied: process/abandonment evidence must be reconciled
+against the original machine before resuming. Do not copy an open SQLite database
+without its WAL; do not delete WAL/SHM. `save` incorporates the checkpoint and adds
+the selected current checkouts.
 It does not automatically copy full conversations, client authentication, installed
 dependencies or ignored files not explicitly included. Content-addressed logs are in
 the registry; keep an explicit copy of any additional external evidence.
@@ -216,18 +229,32 @@ the registry; keep an explicit copy of any additional external evidence.
 
 ## Exclusions and destination
 
-Filters cover `.env*`, private keys/certificates, credential names and `PRIVATE KEY`
-headers. For tracked files, names and private-key headers are checked in HEAD, the
+Filters cover `.env*`, `*.pem`, `*.key`, `*.p12`, `*.pfx`, `*.ppk`, `*.jks`,
+`*.keystore`, `id_rsa*`, `id_ed25519*`, `id_ecdsa*`, `id_dsa*`, `.netrc`,
+`.git-credentials`, `.npmrc`, `.pypirc`, `auth.json`, `.credentials.json` and
+`credentials*`. The content check finds PEM/OpenSSH private-key headers anywhere in
+regular-file bytes, including inside JSON strings with escaped newlines, armored
+PGP private-key headers and PuTTY private-key markers. For tracked files, names and
+private-key headers are checked in HEAD, the
 staged index and regular working-tree content. Every staged blob is checked before the package
 folder is created, including binary blobs and files absent from HEAD or the working
 tree. A staged-key refusal names the file and leaves no package. The checked index
 fingerprint must still match when its patch is captured. Name allowances never bypass
 these content checks. For untracked or explicitly included files, names and current
-regular-file content are checked; matches are excluded and listed. A tracked template ending in
+regular-file content are checked; matches are excluded and listed. In a selected
+source checkout, a tracked template ending in
 `.example`, `.sample`, `.template` or `.dist` (such as `.env.example`) is judged by its
 content only: a `PRIVATE KEY` header in any of the three versions still refuses it.
-These filters do not find every secret: **there is no scan of earlier Git history
-or registry artifacts for secrets**; the Git bundle can contain older, unchecked content.
+Frozen candidates are checked too: freeze/delivery refuses flagged untracked or
+changed working-tree files; unchanged tracked content already committed at HEAD is
+left for the save/checkpoint check. A frozen template receives the name-only exemption
+only when its path belongs to the delivered HEAD: commit a staged-only or untracked
+`.env.example` before delivery, or leave it untracked and ignored. Save/checkpoint refuses any retained candidate
+whose exported files fail the filters, naming the candidate SHA and file. It does
+not copy a flagged candidate file behind an exclusion receipt.
+These filters do not find every secret: **there is no secret scan of earlier Git
+history, `refs/stash` or registry artifacts**. The all-refs bundle can therefore carry
+older or stashed unchecked content, including files captured by `git stash -u`.
 Inspect the data before sharing it.
 
 For a tracked source file refused only by its name, the coordinator may explicitly
@@ -248,7 +275,9 @@ those contents, and never changes a later save's filters. Private-key headers in
 of those three versions still refuse the save. Untracked exclusions stay unchanged.
 
 `MANIFEST.json` records tool/version/UTC, repos, fingerprints, inclusions/exclusions,
-event head and count, limits and destination provenance. Same `st_dev`: local checkpoint.
+candidate-copy availability, event head and count, limits and destination provenance.
+Its status becomes `saved` only after `CHECKSUMS.json` has been written; interruption
+before that leaves an incomplete package. Same `st_dev`: local checkpoint.
 Different `st_dev`: different filesystem, external disk unverified.
 `--declared-offsite "..."` remains a declaration; `offsite_verified` remains false.
 No automatic upload. Protection against disk failure requires a separate copy.
@@ -257,7 +286,10 @@ No automatic upload. Protection against disk failure requires a separate copy.
 
 ## Restore check and resumption
 
-`restore-check` expects a package produced by `save`, including `MANIFEST.json`; a registry-only `checkpoint` is a different format and is refused with that explanation. It verifies inventory/checksums, added/missing files and confinement
+`restore-check` expects a package produced by `save`, including `MANIFEST.json` and
+`CHECKSUMS.json`; a `checkpoint` is a different format and is refused with that
+explanation. A missing checksum file produces a plain package refusal. It verifies
+inventory/checksums, added/missing files and confinement
 **before** opening Git or SQLite. In a new destination, it restores a clone from the
 bundle, HEAD, index and worktree patches, files/modes/symlinks; it compares the expected
 contents and staging. It verifies the copied registry's chain, artifacts, count and head.
@@ -318,7 +350,9 @@ A script sends the token in the `X-Squadra-Token` header, for example
 `curl -H "X-Squadra-Token: <token>" http://127.0.0.1:<port>/api/state`; without the token
 the API answers 401, and with any other Host 403.
 Guarded POSTs for plugin settings and action selections write only the declared files.
-No command or shell execution, no remote scripts or CDN. The disconnected view keeps the
+The pages load no remote scripts or CDN. The local server runs fixed Git and Python
+commands for repository measurements; it does not provide a general command runner.
+The disconnected view keeps the
 last page with a warning. Ctrl-C stops that server, not the agents. Do not expose the port
 or use it as a multi-user service.
 
@@ -461,7 +495,7 @@ Every screenshot exists in both languages:
 | Candidate / review | A fixed version of the work / a check by someone who did not write it. |
 | ID / hash | A technical name for a record / a fingerprint of the exact contents checked. |
 | Log / exit | A command's recorded output / its termination code. Read both together. |
-| Checkpoint / WIP | A copy of the registry for recovery / unfinished code changes. A checkpoint alone does not copy the code. |
+| Checkpoint / WIP | A recovery copy of the registry and healthy retained frozen candidates / unfinished code changes. Current checkout WIP requires `save`. |
 | UTC / PID / cwd | Universal time / process number / working directory. Technical data, not proof of activity. |
 | Brief | A short plain-words description of the project or of a task, written by the coordinator; a task's brief gives it its name on the page. |
 | Ping / stand-by | A presence call asking a window to confirm it still answers / the coordinator's record that a window gets no new assignments for now. Stand-by stops nothing that is running. |
@@ -470,9 +504,9 @@ Every screenshot exists in both languages:
 
 ## Checkpoint, save, restore and handover: the README summary
 
-*Moved from the README, word for word.*
+*Expanded from the README summary.*
 
-- **`checkpoint`** copies **only the registry**, its artifacts and projections. **`save`**, coordinator only, adds every registered Git root (history bundles, HEAD, branch, index and worktree patches, untracked files) into a new destination outside registry and sources (`--temporary` for throwaway ones); `--repo` makes a declared partial package and `--include` adds ignored files inside a selected repository. Sources that change meanwhile refuse a green package. Builders and readers ask the coordinator for it within the existing scope, without asking the owner again.
+- **`checkpoint`** copies the registry, its artifacts, run-lease evidence, projections and healthy retained frozen candidates; its report names missing, damaged or retired caches. It does not preserve current checkout WIP or local runtime sidecars. **`save`**, coordinator only, adds every registered Git root (history bundles, HEAD, branch, index and worktree patches, filtered untracked files) into a new destination outside registry and sources (`--temporary` for throwaway ones); `--repo` makes a declared partial package and `--include` adds ignored files inside a selected repository. Sources that change meanwhile refuse a green package. Builders and readers ask the coordinator for it within the existing scope, without asking the owner again.
 - **`restore-check`** verifies checksums before opening anything, restores into a new folder and compares the result; the restored copy is paused, old acceptances are historical, nothing restarts by itself, and `--actor coord` records the receipt in the live registry (`--root` or `SQUADRA_ROOT`); any other actor is refused before restoring.
 - **When context fills up**, on a real client signal or when constraints can no longer be reliably reconstructed, the agent saves a handover **before continuing**: task, identity, branch and SHA, open findings, pending ACKs, budgets, resources and one exact next step. It never invents token percentages. A fresh session ACKs, runs `doctor` and reconciles sources and resources before writing; a prepared prompt does not prove that a window started. The same window keeps its identity and updates `agent --session`; a different window needs a new seat. There is **no command that moves a task to another owner**: keep one writer, never duplicate a task to erase a budget, and earlier builders stay authors.
 - **A pause** blocks new work, reviews, runs and deliveries and keeps consultation and recovery, while a checkpoint alone pauses nothing. Stop only the processes you own; resume only on the owner's word, after reconciling processes and state. Other squads are never migrated or resumed.
@@ -494,8 +528,9 @@ chmod -R u+w /path/to/retired-registry-or-checkpoint-or-quarantine
 ```
 
 Then remove only that tree. Do not change permissions or remove a source still
-needed by an active task. Use the recorded `candidate retire` operation for a
-closed/superseded healthy source cache. Quarantine is retained evidence; archive
+needed by an active task. Use the recorded `candidate retire --sha256 SHA` operation
+with coordinator, reason and shared root for an obsolete source cache; an open task's
+current delivery must no longer reference that SHA. Quarantine is retained evidence; archive
 what is needed before manual deletion. This recipe also applies to throwaway
 synthetic test registries and checkpoints. It does not record a retention event;
 manual removal of an active candidate is reported as missing by doctor/checkpoint.

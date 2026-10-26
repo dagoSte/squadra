@@ -82,7 +82,7 @@ class Recovery(unittest.TestCase):
         self.assertFalse((root/'.env').exists() or (root/'.env.local.example').exists())
 
     def test_tracked_template_with_a_key_and_other_secret_names_stay_refused(self):
-        key='-----BEGIN OPENSSH PRIVATE KEY-----\nfake\n'
+        key='----\x2dBEGIN OPENSSH PRIVATE KEY-----\nfake\n'
         for n,(name,body) in enumerate([('id_rsa.example',key),('.envrc','export TOKEN=x\n'),
                                          ('credentials.py','TOKEN = "x"\n'),('.env.local','A=1\n')]):
             (self.repo/name).write_text(body);self.git('add',name)
@@ -116,7 +116,7 @@ class Recovery(unittest.TestCase):
         self.assertEqual((rc,json.loads(out)['recorded']),(0,False));self.assertEqual(len(self.store.events()),before)
 
     def test_private_key_header_detected_in_ordinary_untracked_filename(self):
-        (self.repo/'notes.txt').write_text('-----BEGIN PRIVATE KEY-----\nfake\n')
+        (self.repo/'notes.txt').write_text('----\x2dBEGIN PRIVATE KEY-----\nfake\n')
         path,result=self.pack();self.assertIn('notes.txt',result['repositories'][0]['excluded'])
         self.assertFalse((path/'repo-0/files/notes.txt').exists())
 

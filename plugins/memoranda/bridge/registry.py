@@ -151,9 +151,49 @@ def atomic(path, data):
         temporary.unlink(missing_ok=True)
 
 
+def git_process(repo, *args, timeout=30, input=None, local_only=False):
+    """Run internal Git with configured hooks, monitors, filters and diff programs disabled."""
+    import time
+    started = time.monotonic()
+    arguments = list(args)
+    command = 0
+    while command < len(arguments) and arguments[command].startswith('-'):
+        if arguments[command] in {'--version', '-v', '--help', '-h', '--exec-path',
+                                  '--html-path', '--man-path', '--info-path'}:
+            break
+        command += 2 if arguments[command] in {'-C', '-c', '--git-dir', '--work-tree',
+                                              '--namespace', '--config-env'} else 1
+    if command < len(arguments) and arguments[command] in {'diff', 'show', 'log'}:
+        arguments[command + 1:command + 1] = ['--no-ext-diff', '--no-textconv',
+                                             '--src-prefix=a/', '--dst-prefix=b/']
+    if local_only and command < len(arguments) and arguments[command] in {'fetch', 'clone'}:
+        arguments[command + 1:command + 1] = ['--upload-pack=git-upload-pack']
+    environment = dict(os.environ, GIT_ALLOW_PROTOCOL='file') if local_only else None
+    prefix = ['git', '--no-pager', '-c', 'core.fsmonitor=false', '-c', 'core.hooksPath=/dev/null',
+              '-c', 'diff.noprefix=false', '-c', 'diff.mnemonicPrefix=false']
+    inspected = subprocess.run([*prefix, *arguments[:command], 'config', '--null', '--name-only',
+                                '--get-regexp', r'^filter\..*\.(clean|smudge|process|required)$'],
+                               cwd=repo, env=environment, capture_output=True, timeout=timeout)
+    if inspected.returncode not in (0, 1):
+        return subprocess.CompletedProcess([*prefix, *arguments], inspected.returncode, b'',
+                                           b'Cannot inspect Git filter configuration: ' + inspected.stderr)
+    drivers = {key.rsplit(b'.', 1)[0] for key in inspected.stdout.split(b'\0') if key}
+    overrides = []
+    if drivers:
+        environment = dict(os.environ) if environment is None else environment
+        environment.update(SQUADRA_GIT_FILTER_PROGRAM='', SQUADRA_GIT_FILTER_REQUIRED='false')
+        for driver in sorted(drivers):
+            for name in ('clean', 'smudge', 'process', 'required'):
+                variable = 'SQUADRA_GIT_FILTER_REQUIRED' if name == 'required' else 'SQUADRA_GIT_FILTER_PROGRAM'
+                overrides.append('--config-env=' + os.fsdecode(driver) + '.' + name + '=' + variable)
+    remaining = None if timeout is None else max(0.001, timeout - (time.monotonic() - started))
+    return subprocess.run([*prefix, *arguments[:command], *overrides, *arguments[command:]],
+                          cwd=repo, input=input, env=environment, capture_output=True, timeout=remaining)
+
+
 def git(repo, *args, timeout=30):
     try:
-        p = subprocess.run(["git", *args], cwd=repo, capture_output=True, timeout=timeout)
+        p = git_process(repo, *args, timeout=timeout)
     except subprocess.TimeoutExpired:
         raise Error("git " + str(args[0]) + " timed out after " + str(timeout) + " s") from None
     if p.returncode:
@@ -164,7 +204,7 @@ def git(repo, *args, timeout=30):
 def git_probe(*args, timeout=30):
     """Run git for its exit status; a hung git becomes a plain refusal."""
     try:
-        return subprocess.run(["git", *args], capture_output=True, timeout=timeout)
+        return git_process(None, *args, timeout=timeout)
     except subprocess.TimeoutExpired:
         raise Error("git timed out after " + str(timeout) + " s") from None
 
@@ -172,13 +212,25 @@ def git_probe(*args, timeout=30):
 def snapshot(repo, exclude=None):
     repo = Path(repo).resolve()
     head = git(repo, "rev-parse", "HEAD").decode().strip()
-    tracked = git(repo, "ls-files", "-z").split(b"\0")
+    tracked = set(git(repo, "ls-files", "-z").split(b"\0")) - {b""}
     untracked = git(repo, "ls-files", "--others", "--exclude-standard", "-z").split(b"\0")
+    aliases = {}
+    for raw in sorted(tracked):
+        rel = os.fsdecode(raw)
+        key = unicodedata.normalize("NFC", rel).casefold()
+        require(key not in aliases, "Case/Unicode path alias collision in index: " +
+                aliases.get(key, "") + " and " + rel)
+        aliases[key] = rel
     rows = []
-    for raw in sorted(set(tracked + untracked) - {b""}):
+    excluded = Path(exclude).resolve() if exclude else None
+    for raw in sorted(tracked | (set(untracked) - {b""})):
         rel = os.fsdecode(raw)
         path = repo / rel
-        if raw not in tracked and exclude and Path(exclude).resolve() in path.resolve().parents:
+        parent = repo
+        for part in Path(rel).parts[:-1]:
+            parent = parent / part
+            require(not parent.is_symlink(), "Symlinked parent refused: " + rel)
+        if raw not in tracked and excluded and excluded in path.parents:
             continue
         if path.is_symlink():
             body = os.fsencode(os.readlink(path))
@@ -189,7 +241,7 @@ def snapshot(repo, exclude=None):
                 for chunk in iter(lambda: f.read(1024 * 1024), b""):
                     h.update(chunk)
             row = {"path": rel, "kind": "file", "sha256": h.hexdigest(),
-                   "executable": bool(path.stat().st_mode & 0o111)}
+                   "executable": bool(path.stat().st_mode & 0o100)}
         elif not path.exists():
             row = {"path": rel, "kind": "deleted"}
         else:
@@ -399,6 +451,9 @@ def apply(state, event):
         state["tasks"][d["task"]]["status_utc"] = event["utc"]
     elif kind == "deliver":
         task = state["tasks"][d["task"]]
+        sha = d.get('frozen', {}).get('sha256')
+        if sha and sha not in task.setdefault('frozen_candidates', []):
+            task['frozen_candidates'].append(sha)
         task.update(status="delivered", candidate=d["snapshot"], delivery=d,
                     status_utc=event["utc"], delivered_utc=event["utc"])
         # A claim belongs to the packet: an identical redelivery keeps it, a new packet starts unclaimed.
@@ -1821,7 +1876,8 @@ def validate(state, kind, actor, d, stored_packet=None):
                     'Invalid frozen storage limits')
         else:
             task = state['tasks'].get(d.get('task'), {})
-            require(action.get('sha256') == task.get('delivery', {}).get('frozen', {}).get('sha256') and action.get('sha256'),
+            source = task.get('frozen_candidates', []) if action['action'] == 'retire' else [task.get('delivery', {}).get('frozen', {}).get('sha256')]
+            require(action.get('sha256') and action['sha256'] in source,
                     'Candidate action must name its delivered source')
             if action['action'] == 'retire':
                 require(not any(t.get('delivery', {}).get('frozen', {}).get('sha256') == action['sha256'] and
@@ -3203,28 +3259,34 @@ class Store:
 
     def checkpoint(self, destination, *, audit_source=True, report=None):
         from registry_checkpoint import CheckpointError, copy_immutable_tree, verify_tree
+        from frozen_candidate import cache_lock, checkpoint as copy_candidates
         require(not self._cache_mismatch, 'Cache mismatch; run squadra doctor --repair')
         if audit_source:
             require(self.audit()['cache'] != 'mismatch', 'Cache mismatch; run squadra doctor --repair')
         destination = Path(destination).resolve()
         require(not destination.exists(), "Checkpoint destination must be new")
-        destination.mkdir(parents=True, mode=0o700)
-        target = sqlite3.connect(destination / "registry.sqlite3")
-        try:
-            self.db.backup(target)
-        finally:
-            target.close()
+        self.release_views()
         copied = {}
-        try:
-            for name in ("artifacts", "run-leases"):
-                source = self.root / name
-                if os.path.lexists(source):
-                    copied[name] = copy_immutable_tree(source, destination / name,
-                                                       skip_lease_locks=name == "run-leases")
-        except (OSError, CheckpointError) as exc:
-            raise Error("Checkpoint file copy refused: " + str(exc)) from exc
-        from frozen_candidate import checkpoint as copy_candidates
-        candidates = copy_candidates(self, destination)
+        with cache_lock(self):
+            destination.mkdir(parents=True, mode=0o700)
+            target = sqlite3.connect(destination / "registry.sqlite3")
+            try:
+                self.db.backup(target)
+            finally:
+                target.close()
+            try:
+                for name in ("artifacts", "run-leases"):
+                    source = self.root / name
+                    if os.path.lexists(source):
+                        copied[name] = copy_immutable_tree(source, destination / name,
+                                                           skip_lease_locks=name == "run-leases")
+            except (OSError, CheckpointError) as exc:
+                raise Error("Checkpoint file copy refused: " + str(exc)) from exc
+            boundary = Store(destination, read_only=True)
+            try:
+                candidates = copy_candidates(boundary, destination, source_root=self.root, locked=True)
+            finally:
+                boundary.close()
         if report is not None:
             report['candidates'] = candidates
         check = Store(destination)

@@ -5,10 +5,9 @@ import stat
 import uuid
 from pathlib import Path
 import shutil
-import subprocess
 import tempfile
 
-from registry import Error, canonical, digest, git, git_probe, require, snapshot
+from registry import Error, canonical, digest, git, git_probe, git_process, plain, require, snapshot
 
 
 def repository(task, root):
@@ -31,12 +30,17 @@ def measured(task, path):
 
 MAX_COPY_BYTES = 512 * 1024 * 1024
 MAX_TOTAL_BYTES = 2 * 1024 * 1024 * 1024
+QUOTA_HELP = ('; inspect with candidate status; coordinator: candidate retire --actor COORD --sha256 SHA --reason TEXT '
+              'for an obsolete copy, or candidate limits --actor COORD --max-copy-mib N --max-total-mib N --reason TEXT')
 
 
 def limits(store):
-    value = next((o['candidate_action'] for o in reversed(store.view()['outputs'])
-                  if o.get('candidate_action', {}).get('action') == 'limits'), {})
-    return value.get('max_copy_bytes', MAX_COPY_BYTES), value.get('max_total_bytes', MAX_TOTAL_BYTES)
+    try:
+        value = next((o['candidate_action'] for o in reversed(store.view()['outputs'])
+                      if o.get('candidate_action', {}).get('action') == 'limits'), {})
+        return value.get('max_copy_bytes', MAX_COPY_BYTES), value.get('max_total_bytes', MAX_TOTAL_BYTES)
+    finally:
+        store.release_views()
 
 
 def size(path):
@@ -101,38 +105,105 @@ def current(task, root=None):
     return result
 
 
-def inventory(store):
-    retired = {o.get('candidate_action', {}).get('sha256') for o in store.view()['outputs']
-               if o.get('candidate_action', {}).get('action') == 'retire'}
-    rows, seen = [], set()
-    for event in store.events():
+def candidate_records(store):
+    """Materialize journal facts before any potentially slow Git or file operation."""
+    try:
+        events = store.events()
+    finally:
+        store.release_views()
+    retired = {e['data']['candidate_action']['sha256'] for e in events
+               if e['kind'] == 'output' and e['data'].get('candidate_action', {}).get('action') == 'retire'}
+    tasks, seen = [], set()
+    for event in events:
         data = event['data']
         if event['kind'] != 'deliver' or not data.get('frozen') or data['frozen']['sha256'] in seen:
             continue
         sha = data['frozen']['sha256']; seen.add(sha)
         expected = store.resolve_snapshot(data['snapshot'])
-        task = {'id': data['task'], 'repo': expected['repo'], 'candidate': expected, 'delivery': data}
-        path = store.root / 'candidates' / sha / 'repo'
-        row = {'task': data['task'], 'sha256': sha, 'path': str(path), 'status': 'available'}
+        tasks.append({'id': data['task'], 'repo': expected['repo'], 'candidate': expected, 'delivery': data})
+    return tasks, retired
+
+
+def inventory_records(store, source_root=None):
+    tasks, retired = candidate_records(store)
+    root = Path(source_root) if source_root is not None else store.root
+    rows = []
+    for task in tasks:
+        sha = task['delivery']['frozen']['sha256']
+        path = root / 'candidates' / sha / 'repo'
+        row = {'task': task['id'], 'sha256': sha, 'path': str(path), 'status': 'available'}
         try:
-            repository(task, store.root)
+            repository(task, root)
         except Error as exc:
-            rows.append({**row, 'status': 'damaged', 'reason': str(exc)})
+            rows.append(({**row, 'status': 'damaged', 'reason': str(exc)}, task))
             continue
         if not path.exists():
             row['status'] = 'retired' if sha in retired else 'missing'
         else:
             try:
-                current(task, store.root)
+                current(task, root)
             except (Error, OSError) as exc:
                 row.update(status='damaged', reason=str(exc))
-        rows.append(row)
+        rows.append((row, task))
     return rows
 
 
+def inventory(store):
+    return [row for row, _ in inventory_records(store)]
+
+
 def freeze(store, task, candidate):
+    task = plain(task)
+    store.release_views()
     with cache_lock(store):
         return _freeze(store, task, candidate)
+
+
+def validate_candidate(repo, files=None, *, working_only=False, label='Frozen candidate'):
+    """Check the bytes that a frozen checkout or its Git metadata would carry."""
+    from recovery import record_file, secret, private_key, inside
+    repo = Path(repo)
+    heads = {}
+    for row in git(repo, 'ls-tree', '-r', '-z', 'HEAD').split(b'\0'):
+        if row:
+            meta, name = row.split(b'\t', 1)
+            mode, _, sha = meta.split()
+            heads[os.fsdecode(name)] = (mode, sha.decode('ascii'))
+    if files is None:
+        files = snapshot(repo)['files']
+    for row in files:
+        rel = row['path']; path = repo / rel
+        require(not Path(rel).is_absolute() and '..' not in Path(rel).parts and
+                all(p.lower() != '.git' for p in Path(rel).parts), label + ' invalid path: ' + rel)
+        require(all(not p.is_symlink() for p in path.parents if p.is_relative_to(repo)),
+                label + ' symlinked parent refused: ' + rel)
+        if row['kind'] == 'deleted':
+            continue
+        record_file(path, repo)
+        body = os.fsencode(os.readlink(path)) if path.is_symlink() else path.read_bytes()
+        head = heads.get(rel)
+        mode = b'120000' if row['kind'] == 'symlink' else b'100755' if row.get('executable') else b'100644'
+        unchanged = head and head[0] == mode and git(repo, 'cat-file', 'blob', head[1]) == body
+        if unchanged and working_only:
+            continue
+        require(not secret(path, body, tracked=rel in heads), label + ' secret file refused: ' + rel +
+                ('; commit the template at HEAD or ignore it before delivery' if rel not in heads else ''))
+    if working_only:
+        return
+    for rel, (mode, sha) in heads.items():
+        body = git(repo, 'cat-file', 'blob', sha)
+        require(not secret(Path(rel), body, tracked=True), label + ' secret HEAD file refused: ' + rel)
+        if mode == b'120000':
+            target = os.fsdecode(body)
+            require(not Path(target).is_absolute() and inside(((repo / rel).parent / target).resolve(), repo),
+                    label + ' escaping HEAD symlink refused: ' + rel)
+    for row in git(repo, 'ls-files', '--stage', '-z').split(b'\0'):
+        if row:
+            meta, name = row.split(b'\t', 1)
+            mode, sha, _ = meta.split()
+            if mode != b'160000':
+                require(not private_key(git(repo, 'cat-file', 'blob', sha.decode('ascii'))),
+                        label + ' private-key index blob refused: ' + os.fsdecode(name))
 
 
 def tree_bytes(repo, revisions):
@@ -142,11 +213,10 @@ def tree_bytes(repo, revisions):
 
 
 def fetch(repo, source, revisions):
-    result = subprocess.run(['git', '-C', str(repo), '-c', 'core.hooksPath=/dev/null',
-                             '-c', 'gc.auto=0', '-c', 'maintenance.auto=false',
+    result = git_process(repo, '-c', 'gc.auto=0', '-c', 'maintenance.auto=false',
                              'fetch', '--quiet', '--depth=1', '--no-tags', '--no-write-fetch-head', '--',
-                             Path(source).resolve().as_uri(), *dict.fromkeys(revisions)],
-                            capture_output=True, timeout=120)
+                             Path(source).resolve().as_uri(), *dict.fromkeys(revisions),
+                             local_only=True, timeout=120)
     require(result.returncode == 0, 'Cannot fetch the delivered commit or required light base')
 
 
@@ -159,7 +229,7 @@ def retain_base(store, task, repo):
     extra = 2 * tree_bytes(task['repo'], [base]) + 16 * 1024 * 1024
     max_copy, max_total = limits(store)
     require(size(repo.parent) + extra <= max_copy and size(store.root / 'candidates') + extra <= max_total,
-            'Frozen storage limit for light base; retire closed copies or ask the coordinator for higher candidate limits')
+            'Frozen storage limit for light base' + QUOTA_HELP)
     metadata = repo / '.git'
     require(metadata.is_dir() and not metadata.is_symlink(), 'Frozen Git metadata must be a directory')
     try:
@@ -169,12 +239,14 @@ def retain_base(store, task, repo):
             require(all(not (Path(parent) / name).is_symlink() for name in dirs), 'Linked frozen Git directory')
         fetch(repo, task['repo'], [base])
         require(size(repo.parent) <= max_copy and size(store.root / 'candidates') <= max_total,
-                'Frozen storage limit exceeded while retaining light base')
+                'Frozen storage limit exceeded while retaining light base' + QUOTA_HELP)
     finally:
         readonly(metadata)
 
 
 def _freeze(store, task, candidate):
+    validate_candidate(task['repo'], candidate['files'], working_only=True,
+                       label='Frozen candidate ' + candidate['sha256'])
     parent = store.root / 'candidates'
     parent.mkdir(mode=0o700, exist_ok=True)
     require(not parent.is_symlink(), 'Candidate folder cannot be a symlink')
@@ -195,28 +267,28 @@ def _freeze(store, task, candidate):
     max_copy, max_total = limits(store)
     estimate = 2 * base_bytes + working_bytes + 16 * 1024 * 1024
     require(estimate <= max_copy and size(parent) + estimate <= max_total,
-            'Frozen storage limit (configured per-copy/total quota including quarantine); retire closed copies, archive this registry, or ask the coordinator to record higher candidate limits')
+            'Frozen storage limit (per-copy/total including quarantine)' + QUOTA_HELP)
     stage = Path(tempfile.mkdtemp(prefix='.freeze-', dir=parent))
     try:
         copied = stage / 'repo'
         git(store.root, 'init', '--quiet', str(copied))
         fetch(copied, task['repo'], revisions)
-        result = subprocess.run(['git', '-C', str(copied), '-c', 'core.hooksPath=/dev/null',
-                                 'checkout', '--quiet', '--detach', candidate['head']],
-                                capture_output=True, timeout=120)
+        result = git_process(copied, 'checkout', '--quiet', '--detach', candidate['head'], timeout=120)
         require(result.returncode == 0, 'Cannot check out the delivered Git head')
         listed = {row['path'] for row in candidate['files']}
         removed = [path for path in git(copied, 'ls-files', '-z').split(b'\0') if path and os.fsdecode(path) not in listed]
         if removed:
-            result = subprocess.run(['git', '-C', str(copied), '-c', 'core.hooksPath=/dev/null',
-                                     '--literal-pathspecs', 'rm', '--quiet', '--force', '--pathspec-from-file=-', '--pathspec-file-nul'],
-                                    input=b'\0'.join(removed) + b'\0', capture_output=True, timeout=30)
+            result = git_process(copied,
+                                     '--literal-pathspecs', 'rm', '--quiet', '--force', '--pathspec-from-file=-', '--pathspec-file-nul',
+                                    input=b'\0'.join(removed) + b'\0', timeout=30)
             require(result.returncode == 0, 'Cannot remove checkout paths absent from the proved snapshot')
         for row in candidate['files']:
             relative = Path(row['path'])
-            require(not relative.is_absolute() and '..' not in relative.parts and '.git' not in relative.parts,
+            require(not relative.is_absolute() and '..' not in relative.parts and all(p.lower() != '.git' for p in relative.parts),
                     'Invalid frozen candidate path')
             source, target = Path(task['repo']) / relative, copied / relative
+            require(all(not p.is_symlink() for p in source.parents if p.is_relative_to(Path(task['repo']))),
+                    'Frozen source parent is a symlink: ' + row['path'])
             require(all(not p.is_symlink() for p in target.parents if p != copied.parent and p.is_relative_to(copied)),
                     'Frozen candidate parent is a symlink')
             if target.is_symlink() or target.is_file():
@@ -232,21 +304,19 @@ def _freeze(store, task, candidate):
         tracked = {os.fsdecode(path) for path in git(copied, 'ls-files', '-z').split(b'\0') if path}
         added = [os.fsencode(row['path']) for row in candidate['files'] if row['kind'] != 'deleted' and row['path'] not in tracked]
         if added:
-            result = subprocess.run(['git', '-C', str(copied), '-c', 'core.hooksPath=/dev/null',
-                                     '--literal-pathspecs', 'add', '--intent-to-add', '--force', '--pathspec-from-file=-', '--pathspec-file-nul'],
-                                    input=b'\0'.join(added) + b'\0', capture_output=True, timeout=30)
+            result = git_process(copied, '--literal-pathspecs', 'add', '--intent-to-add', '--force', '--pathspec-from-file=-', '--pathspec-file-nul',
+                                    input=b'\0'.join(added) + b'\0', timeout=30)
             require(result.returncode == 0, 'Cannot retain added snapshot paths in the frozen index')
         missing = [row['path'] for row in candidate['files'] if row['kind'] == 'deleted' and row['path'] not in tracked]
         if missing:
-            empty = subprocess.run(['git', '-C', str(copied), 'hash-object', '-w', '--stdin'],
-                                   input=b'', capture_output=True, timeout=30)
+            empty = git_process(copied, 'hash-object', '-w', '--stdin', input=b'', timeout=30)
             require(empty.returncode == 0, 'Cannot create empty frozen index placeholder')
             for path in missing:
                 git(copied, 'update-index', '--add', '--cacheinfo', '100644', empty.stdout.decode().strip(), path)
         require(snapshot(task['repo'], store.root) == candidate, 'Source changed while freezing delivery')
         require(measured(task, copied) == candidate,
                 'Frozen copy does not match the proved source')
-        require(size(stage) <= max_copy and size(parent) <= max_total, 'Frozen storage limit exceeded')
+        require(size(stage) <= max_copy and size(parent) <= max_total, 'Frozen storage limit exceeded' + QUOTA_HELP)
         readonly(stage)
         try:
             stage.rename(destination)
@@ -259,13 +329,20 @@ def _freeze(store, task, candidate):
             remove(stage)
 
 
-def checkpoint(store, destination):
+def checkpoint(store, destination, *, source_root=None, locked=False):
     """Copy healthy retained candidates; damaged/missing caches cannot block journal recovery."""
-    rows = inventory(store)
-    for row in rows:
+    store.release_views()
+    if not locked:
+        require(source_root is None, 'Relocated candidate checkpoint requires its source storage lock')
+        with cache_lock(store):
+            return checkpoint(store, destination, locked=True)
+    root = Path(source_root) if source_root is not None else store.root
+    records = inventory_records(store, root)
+    for row, task in records:
         if row['status'] != 'available':
             continue
         source = Path(row['path'])
+        validate_candidate(source, label='Frozen candidate ' + row['sha256'])
         target = Path(destination) / 'candidates' / row['sha256'] / 'repo'
         target.parent.mkdir(parents=True, mode=0o700)
         try:
@@ -275,25 +352,23 @@ def checkpoint(store, destination):
                 remove(target.parent)
             row.update(status='damaged', reason='Source copy unavailable: ' + str(exc))
             continue
-        delivered = next(e['data'] for e in store.events() if e['kind'] == 'deliver' and e['data'].get('frozen', {}).get('sha256') == row['sha256'])
-        expected = store.resolve_snapshot(delivered['snapshot'])
-        task = {'id': row['task'], 'repo': expected['repo'], 'candidate': expected, 'delivery': delivered}
         try:
-            current(task, store.root)
+            current(task, root)
             current(task, destination)
         except (Error, OSError) as exc:
             remove(target.parent)
             row.update(status='damaged', reason=str(exc))
-    return rows
+    return [row for row, _ in records]
 
 
-def manage(store, actor, task_id, action, reason, max_copy_mib=None, max_total_mib=None):
+def manage(store, actor, task_id, action, reason, max_copy_mib=None, max_total_mib=None, *, sha256=None):
     if action == 'status':
         max_copy, max_total = limits(store)
         return {'candidates': inventory(store), 'bytes': size(store.root / 'candidates'),
                 'max_copy_bytes': max_copy, 'max_total_bytes': max_total}
     require(store.view()['agents'][actor]['role'] == 'coordinator', 'Candidate repair/retire requires coordinator')
     require(reason and reason.strip(), 'Recorded candidate action reason required')
+    store.release_views()
     with cache_lock(store):
         if action == 'limits':
             require(type(max_copy_mib) is int and type(max_total_mib) is int and
@@ -304,7 +379,16 @@ def manage(store, actor, task_id, action, reason, max_copy_mib=None, max_total_m
             store.append('output', actor, {'text': 'Configure frozen candidate quotas', 'next': 'Use the recorded storage limits.',
                          'artifacts': [], 'candidate_action': record})
             return record
-        task = store.task(task_id)
+        if sha256 is not None:
+            require(action == 'retire' and task_id is None, 'SHA retirement cannot name a current task')
+            historical = next((t for t in candidate_records(store)[0] if
+                               t['delivery']['frozen']['sha256'] == sha256), None)
+            require(historical is not None, 'Unknown historical frozen candidate: ' + sha256)
+            task_id = historical['id']
+            task = historical
+        else:
+            task = plain(store.task(task_id))
+            store.release_views()
         require(task.get('delivery', {}).get('frozen'), 'Task has no frozen delivery')
         path = repository(task, store.root)
         sha = task['delivery']['frozen']['sha256']
@@ -312,6 +396,7 @@ def manage(store, actor, task_id, action, reason, max_copy_mib=None, max_total_m
         if action == 'retire':
             live = [t['id'] for t in store.view()['tasks'].values() if t.get('delivery', {}).get('frozen', {}).get('sha256') == sha
                     and t['status'] != 'done' and not t.get('superseded_by')]
+            store.release_views()
             require(not live, 'Candidate still needed by active tasks: ' + ', '.join(live))
             store.append('output', actor, {'task': task_id, 'text': 'Retire frozen candidate ' + sha,
                          'next': 'Historical proofs remain; source cache is retired.', 'artifacts': [], 'candidate_action': record})

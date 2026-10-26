@@ -8,7 +8,7 @@ import statistics
 import subprocess
 import sys
 
-from registry import Error, plain
+from registry import Error, git_process, plain
 
 MINIMUM = 3
 
@@ -32,8 +32,9 @@ def instant(value):
 @lru_cache(maxsize=16)
 def base_manifest(repo, base):
     def git(*args, data=None):
-        return subprocess.run(['git', *args], cwd=repo, input=data, capture_output=True,
-                              check=True, timeout=10).stdout
+        result = git_process(repo, *args, input=data, timeout=10)
+        result.check_returncode()
+        return result.stdout
     rows = []
     for raw in git('ls-tree', '-rz', '--full-tree', base).split(b'\0'):
         if not raw:
