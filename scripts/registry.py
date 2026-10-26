@@ -630,6 +630,13 @@ def current_plan_review(task):
     return review if review and review["binding"] == task.get("plan", {}).get("sha256") else None
 
 
+def require_plan(task):
+    """A registered plan's latest read accepts its current bytes before a code read or a close, as the CLI checks (M-9)."""
+    if task.get("plan"):
+        review = current_plan_review(task)
+        require(review is not None and review["verdict"] == "accepted", "Current plan review pending")
+
+
 def next_step(task):
     """Find who holds a task's next step for both the board and attention view."""
     status = task["status"]
@@ -2085,6 +2092,7 @@ def validate(state, kind, actor, d, stored_packet=None):
             else:
                 require(task.get("candidate", {}).get("sha256") == d["binding"], "Review refers to another candidate")
                 require(task["status"] in {"delivered", "reviewed", "changes-required"}, "No delivered candidate")
+                require_plan(task)
                 delivery = task.get("delivery", {})
                 if task.get("reviewer") or delivery.get("handoff"):
                     require_handoff(state, task, actor, "review")
@@ -2098,6 +2106,7 @@ def validate(state, kind, actor, d, stored_packet=None):
         if kind == "close":
             require(task["status"] == "reviewed" or (read_at_gate(task) and task["status"] == "delivered"),
                     "Exact candidate independent review still pending")
+            require_plan(task)
             cross_client_read(state, task, task.get("candidate"))
             if task.get("release_gate") is True:
                 from frozen_candidate import current as frozen_current
