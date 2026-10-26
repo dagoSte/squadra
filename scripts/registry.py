@@ -3071,7 +3071,9 @@ class Store:
                 data = json.loads(canonical(transform_event(kind, data, self.compact_snapshot)))
                 event = {"id": event_id, "utc": now(), "kind": kind, "actor": actor,
                          "data": data, "previous": previous, "format": 2}
+                # Only 3.11 folds a close note, so a note is written in the format older readers refuse (M-10).
                 if (kind == 'reassign' or (kind == 'task' and data.get('delivery_policy') == 'frozen-v1') or
+                        (kind == 'close' and data.get('note')) or
                         self.db.execute('SELECT 1 FROM events WHERE hash_format=3 LIMIT 1').fetchone() is not None):
                     event['format'] = 3
                 # A restore of a package with no new-format event keeps the envelope the saving version can read.
