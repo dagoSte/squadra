@@ -2079,6 +2079,14 @@ def validate(state, kind, actor, d, stored_packet=None):
         require(d["message"] in state["messages"], "Unknown message")
         require(state["messages"][d["message"]]["to"] == actor, "ACK must come from actual recipient seat")
         require(state["messages"][d["message"]]["ack"] is None, "Message already acknowledged")
+        name = state["messages"][d["message"]].get("task")
+        if name:
+            # The reducer readies the task of any acknowledged message carrying task, as recorded history
+            # replays; so only its owner's ACK of the task's own assignment, before it closes, is recorded (G-1).
+            assigned = state["tasks"].get(name)
+            require(d["message"] == "assign-" + name and assigned is not None and actor == assigned["owner"] and
+                    assigned["status"] != "done",
+                    "assignment_ack_invalid: " + d["message"] + " is not the assignment of an open task to " + actor)
         siblings = state["messages"][d["message"]].get("pool") or []
         winner = next((state["messages"][m]["ack"]["agent"] for m in siblings
                        if m != d["message"] and state["messages"].get(m, {}).get("ack")), None)
@@ -2096,6 +2104,13 @@ def validate(state, kind, actor, d, stored_packet=None):
         require(d["to"] not in state["agents"] if d.get("awaited") else d["to"] in state["agents"],
                 "Awaited recipient already registered" if d.get("awaited") else "Recipient not registered")
         require(d["id"] not in state["messages"], "Message ID already exists")
+        if "task" in d:
+            # task marks the assignment, whose owner's ACK readies the task; any other link is related_task (G-1).
+            assigned = state["tasks"].get(d["task"]) if isinstance(d["task"], str) else None
+            require(coordinator and assigned is not None and d["id"] == "assign-" + d["task"] and
+                    d["to"] == assigned["owner"] and assigned["status"] == "waiting-ack",
+                    "assignment_invalid: only the coordinator's assign-<task> message to the owner of a task waiting "
+                    "for its ACK carries task; other messages about a task name it as related_task")
         if d.get("pool") is not None:
             related = state["tasks"].get(d.get("related_task"), {})
             require(d["pool"] == related.get("delivery", {}).get("handoffs") and d["id"] in d["pool"],
