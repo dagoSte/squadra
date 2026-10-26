@@ -96,7 +96,8 @@ class Selection:
 
     def __enter__(self):
         try:
-            self.folder = os.open(self.home, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC)
+            # The Store's rule: HOME itself may be a link (network or managed homes); every level below it is not.
+            self.folder = os.open(os.path.realpath(self.home), os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC)
             for name in (*connector.PLUGIN, "actions"):
                 if name == "actions":
                     self.plugin = os.dup(self.folder)
