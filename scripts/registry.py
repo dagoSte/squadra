@@ -1784,6 +1784,20 @@ def task_progress(events):
     return result
 
 
+# A refusal receipt the CLI writes: its command and error, when it happened, and the task it named.
+DIAGNOSTIC_RECEIPT = frozenset({"command", "error", "utc", "task"})
+
+
+def validate_diagnostic(actor, d):
+    """A diagnostic is the tool's own receipt; one that names a command or task, and so enters a task's story,
+    keeps the CLI's fields (L-24)."""
+    require(actor == "system", "diagnostic_invalid: a diagnostic is the tool's receipt, recorded as system")
+    if "command" in d or "task" in d:
+        require(set(d) <= DIAGNOSTIC_RECEIPT and isinstance(d.get("command"), str) and isinstance(d.get("error"), str)
+                and all(isinstance(d[k], str) for k in ("utc", "task") if k in d),
+                "diagnostic_invalid: a refusal receipt carries its command and error, and possibly utc and task, as text")
+
+
 def validate(state, kind, actor, d, stored_packet=None):
     require(kind in {"init", "agent", "task", "ack", "message", "transport", "plan", "start", "deliver",
                     "review", "close", "output", "run.start", "run.end", "run.cancel", "run.progress", "run.abandon",
@@ -1801,6 +1815,7 @@ def validate(state, kind, actor, d, stored_packet=None):
                 "Recovery freeze is a tool receipt, not an agent authorization")
         return
     if kind == "diagnostic":
+        validate_diagnostic(actor, d)
         return
     if kind == "agent":
         require("availability" not in d, "Availability requires a recorded coordinator action")
