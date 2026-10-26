@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from contextlib import contextmanager
 import json
 import os
 from pathlib import Path
@@ -22,6 +23,27 @@ SERIAL_MODULES = {}  # Module name: measured reason it cannot overlap another mo
 # Workers run in their own sessions, so a kill of this runner's group never reaches them; the runner keeps them here.
 LIVE, LIVE_LOCK = set(), threading.RLock()  # Reentrant: the TERM handler runs on the main thread, which may hold it.
 DISPOSE_GRACE = 1.0  # Seconds between TERM and KILL, inside the 2 s a proof cancel gives this runner.
+
+
+class Spawning:
+    """The main thread's spawn-and-register section. The TERM handler runs on the main thread, so a TERM that
+    lands inside it would dispose before the new worker is registered; it is held and replayed after it."""
+    depth, pending = 0, None
+
+
+@contextmanager
+def registering():
+    main = threading.current_thread() is threading.main_thread()
+    if main:
+        Spawning.depth += 1
+    try:
+        yield
+    finally:
+        if main:
+            Spawning.depth -= 1
+            if not Spawning.depth and Spawning.pending is not None:
+                signum, Spawning.pending = Spawning.pending, None
+                signal.raise_signal(signum)
 
 
 def test_ids(suite):
@@ -116,7 +138,7 @@ def launch(args, folder, cancel, module=None):
         with (folder / 'stdout.log').open('w') as out, (folder / 'stderr.log').open('w') as err:
             try:
                 # Checked under the lock, so no worker starts after a disposal has taken its snapshot.
-                with LIVE_LOCK:
+                with LIVE_LOCK, registering():
                     if cancel.is_set():
                         raise RuntimeError('cancelled before start')
                     proc = subprocess.Popen(command, env=environment(folder), stdout=out, stderr=err,
@@ -177,6 +199,9 @@ def dispose(grace=DISPOSE_GRACE):
 def stopped(cancel):
     """A proof cancel or timeout TERMs this runner's group: refuse new workers, dispose of the live ones, exit."""
     def handler(signum, frame):
+        if Spawning.depth:
+            Spawning.pending = signum
+            return
         signal.signal(signum, signal.SIG_IGN)
         cancel.set()
         dispose()
