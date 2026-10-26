@@ -308,3 +308,76 @@ class SymlinkStart(ops.Squad):
         finally:
             if process.poll() is None:
                 process.terminate(); process.communicate(timeout=10)
+
+
+class LongReaders(ops.Squad):
+    def assert_checkpoints_while_running(self, process):
+        from contextlib import closing
+        import sqlite3
+        import time
+        self.store.release_views()
+        for turn in range(3):
+            self.assertIsNone(process.poll(), 'reader must remain alive during the check')
+            rc, _, err = self.cli('decision', '--actor', 'C', '--reason', 'Reader guard ' + str(turn))
+            self.assertEqual(rc, 0, err)
+            deadline = time.monotonic() + 1
+            while True:
+                with closing(sqlite3.connect(self.root / 'registry.sqlite3', isolation_level=None)) as db:
+                    busy, frames, copied = db.execute('PRAGMA wal_checkpoint(PASSIVE)').fetchone()
+                if busy == 0 and frames == copied:
+                    break
+                self.assertLess(time.monotonic(), deadline, (busy, frames, copied))
+                time.sleep(.01)
+            self.assertIsNone(process.poll(), 'reader exited before the checkpoint completed')
+
+    def test_inbox_follow_variants_do_not_pin_wal_while_waiting(self):
+        import selectors
+        import subprocess
+        import sys
+        variants = [('--agent', 'X', '--until-first'),
+                    ('--cursor-file', str(self.base / 'cursor-R.json')),
+                    ('--agent', 'X', '--cursor-file', str(self.base / 'cursor-RX.json')),
+                    ('--since', '0', '--no-cursor')]
+        for flags in variants:
+            with self.subTest(flags=flags):
+                if '--since' in flags:
+                    self.store.append('message', 'C', {'id': 'guard-ready', 'to': 'R', 'body': 'Synthetic guard', 'info': True})
+                self.store.release_views()
+                process = subprocess.Popen([sys.executable, '-B', str(ops.CLI), '--root', str(self.root),
+                                            'inbox', '--agent', 'R', '--follow', *flags], env=self.env,
+                                           stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                try:
+                    with selectors.DefaultSelector() as ready:
+                        ready.register(process.stdout, selectors.EVENT_READ)
+                        self.assertTrue(ready.select(10), 'follower must flush its first poll')
+                    row = json.loads(process.stdout.readline())
+                    self.assertIn(row['kind'], ('pending', 'message'))
+                    self.assert_checkpoints_while_running(process)
+                finally:
+                    if process.poll() is None:
+                        process.terminate()
+                    process.communicate(timeout=10)
+
+    def test_queued_resource_waiter_does_not_pin_wal(self):
+        import subprocess
+        import sys
+        import time
+        self.store.append('resource.acquire', 'C', {'name': 'gate', 'reason': 'Synthetic holder'})
+        self.store.release_views()
+        log = self.base / 'waiter.stderr'
+        with log.open('w') as stderr:
+            process = subprocess.Popen([sys.executable, '-B', str(ops.CLI), '--root', str(self.root),
+                                        'resource', 'acquire', '--actor', 'A', '--name', 'gate',
+                                        '--reason', 'Synthetic waiter guard', '--wait', '30'], env=self.env,
+                                       stdout=subprocess.PIPE, stderr=stderr, text=True)
+            try:
+                deadline = time.monotonic() + 10
+                while not any(word in log.read_text() for word in ('posizione in coda', 'queue position')):
+                    self.assertIsNone(process.poll(), log.read_text())
+                    self.assertLess(time.monotonic(), deadline, 'waiter did not join the queue')
+                    time.sleep(.01)
+                self.assert_checkpoints_while_running(process)
+            finally:
+                if process.poll() is None:
+                    process.terminate()
+                process.communicate(timeout=10)
