@@ -451,9 +451,6 @@ def apply(state, event):
         state["tasks"][d["task"]]["status_utc"] = event["utc"]
     elif kind == "deliver":
         task = state["tasks"][d["task"]]
-        sha = d.get('frozen', {}).get('sha256')
-        if sha and sha not in task.setdefault('frozen_candidates', []):
-            task['frozen_candidates'].append(sha)
         task.update(status="delivered", candidate=d["snapshot"], delivery=d,
                     status_utc=event["utc"], delivered_utc=event["utc"])
         # A claim belongs to the packet: an identical redelivery keeps it, a new packet starts unclaimed.
@@ -1799,7 +1796,7 @@ def task_progress(events):
     return result
 
 
-def validate(state, kind, actor, d, stored_packet=None):
+def validate(state, kind, actor, d, stored_packet=None, *, candidate_history=()):
     require(kind in {"init", "agent", "task", "ack", "message", "transport", "plan", "start", "deliver",
                     "review", "close", "output", "run.start", "run.end", "run.cancel", "run.progress", "run.abandon",
                     "resource.acquire", "resource.release", "pause", "resume", "legacy", "decision", "ask", "diagnostic",
@@ -1876,7 +1873,9 @@ def validate(state, kind, actor, d, stored_packet=None):
                     'Invalid frozen storage limits')
         else:
             task = state['tasks'].get(d.get('task'), {})
-            source = task.get('frozen_candidates', []) if action['action'] == 'retire' else [task.get('delivery', {}).get('frozen', {}).get('sha256')]
+            source = [task.get('delivery', {}).get('frozen', {}).get('sha256')]
+            if action['action'] == 'retire':
+                source.extend(candidate_history)
             require(action.get('sha256') and action['sha256'] in source,
                     'Candidate action must name its delivered source')
             if action['action'] == 'retire':
@@ -3059,7 +3058,14 @@ class Store:
                     target = wait_view(state, wait_facts(self.decode_event(row) for row in rows))
                 else:
                     target = state
-                validate(target, kind, actor, checked_data, stored_packet=data.get("packet_data") if kind in {"deliver", "reassign"} else None)
+                candidate_history = ()
+                if kind == 'output' and checked_data.get('candidate_action', {}).get('action') == 'retire':
+                    candidate_history = tuple(e['data']['frozen']['sha256'] for e in self.events()
+                                              if e['kind'] == 'deliver' and e['data'].get('task') == data.get('task')
+                                              and e['data'].get('frozen'))
+                validate(target, kind, actor, checked_data,
+                         stored_packet=data.get("packet_data") if kind in {"deliver", "reassign"} else None,
+                         candidate_history=candidate_history)
                 if kind == "run.abandon":
                     validate_abandonment_files(self, state["runs"][data["id"]], data)
                 if kind == "run.end" and data.get("reconciled") is not None:

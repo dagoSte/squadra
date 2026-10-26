@@ -44,7 +44,9 @@ class RetireHistory(unittest.TestCase):
             state = plain(original)
             apply(state, {'kind': kind, 'data': data, 'actor': 'C', 'utc': 'synthetic', 'id': 'synthetic'})
             self.assertNotIn('delivery', state['tasks']['T'])
+            self.assertNotIn('frozen_candidates', state['tasks']['T'])
             receipt = {'task': 'T', 'candidate_action': {'action': 'retire', 'sha256': sha, 'reason': 'Obsolete cache'}}
-            validate(state, 'output', 'C', receipt)
+            with self.assertRaises(Error): validate(state, 'output', 'C', receipt)
+            validate(state, 'output', 'C', receipt, candidate_history=(sha,))
             receipt['candidate_action']['sha256'] = 'f' * 64
             with self.assertRaises(Error): validate(state, 'output', 'C', receipt)
