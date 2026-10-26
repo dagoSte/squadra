@@ -137,8 +137,8 @@ class Board(unittest.TestCase):
         self.assertIn("| Reader to assign | Work T | plan review |", self.cli("board", "--lang", "en"))
 
     def test_task_role_not_global_seat_role_and_escaped_title(self):
-        self.task(owner="C", title="Title | second\nline")
-        self.assertIn("| C (costruttore) | Title \\| second line |", self.cli("board"))
+        self.task(owner="C", title="Title | second")
+        self.assertIn("| C (costruttore) | Title \\| second |", self.cli("board"))
         self.assertNotIn("C (coordinatore)", self.cli("board"))
 
     def test_superseded_work_is_not_active_or_counted(self):

@@ -107,6 +107,8 @@ def apply(store, actor, task_id, path, *, defer_commit=False, timeout=120):
     original = target.read_bytes() if target.exists() else None
     updated = render((original or b'').decode('utf-8'), rule).encode()
     head = git(repo, 'rev-parse', 'HEAD').strip()
+    # The check can run for minutes: a held read view would keep the registry WAL from being trimmed.
+    store.release_views()
     target.write_bytes(updated)
     committing = False
     try:
@@ -181,7 +183,6 @@ def commit(repo, rule_id, expected_sha, base_head):
             index_reconciled = not changed
 
             def reconcile_index():
-                # Hooks used a private index; preserve real entries that were already staged.
                 if index.exists():
                     shutil.copyfile(index, private)
                 else:
@@ -195,12 +196,7 @@ def commit(repo, rule_id, expected_sha, base_head):
                         clean = entry.split(b'\t')[0].split()[:2] == before.split(b'\t')[0].split()[::2]
                     if clean:
                         run('reset', '-q', actual, '--', name)
-                try:
-                    os.replace(private, index)
-                except OSError as exc:
-                    # Both paths are beside the real index. Retain the error even if rename recovers.
-                    mismatch.append('Index replacement recovered with same-filesystem rename: ' + str(exc))
-                    os.rename(private, index)
+                os.replace(private, index)
 
             if changed:
                 try:
@@ -235,6 +231,7 @@ def commit(repo, rule_id, expected_sha, base_head):
 
 
 def recorded_commit(store, actor, task_id, repo, rule_id, pending):
+    store.release_views()
     outcome = commit(repo, rule_id, pending['sha256'], pending['base_head'])
     logs = [store.artifact_bytes(outcome.pop(key), 'migliora-commit-' + key + '.log', 'migliora:' + rule_id)
             for key in ('stdout_bytes', 'stderr_bytes')]

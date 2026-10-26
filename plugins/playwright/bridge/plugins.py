@@ -39,6 +39,13 @@ def check_directory(fd, private=False):
             and (mode == 0o700 if private else not mode & 0o022), "unsafe_permissions")
 
 
+def check_file(fd):
+    """Shared policy for a plugin's data file: a regular file the user owns, not writable by others, one link."""
+    info = os.fstat(fd)
+    require(stat.S_ISREG(info.st_mode) and info.st_uid == os.getuid() and not stat.S_IMODE(info.st_mode) & 0o022
+            and info.st_nlink == 1, "unsafe_permissions")
+
+
 def _open(parent, name, directory=False):
     try:
         flags = os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK
@@ -350,8 +357,9 @@ def panel_at(plugin, key):
             return None
         raise
     try:
+        check_directory(panels)
         try:
-            return _panel(_read(panels, key + ".json", PANEL_BYTES))
+            return _panel(_read(panels, key + ".json", PANEL_BYTES, check_file))
         except Refused as exc:
             if exc.code == "not_found":
                 return None

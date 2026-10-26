@@ -26,19 +26,27 @@ from test_usage_page import state_fixture
 STAMP = '2026-10-16T12:00:00+00:00'
 
 
-def as_codex(store, *seats):
-    """Re-register seats as Codex windows: only a Codex recipient's mail waits on forwarding."""
-    for name in seats:
-        agent = {k: v for k, v in store.state()['agents'][name].items() if k not in {'updated', 'availability'}}
-        store.append('agent', name, {**agent, 'client': 'codex', 'session': 'thread-' + name})
+@contextlib.contextmanager
+def codex_seats(*seats):
+    """Register these seats as Codex windows from their first registration: only a Codex recipient's mail
+    waits on forwarding, and a seat's client cannot be rewritten later."""
+    original = Store.append
+
+    def append(store, kind, actor, data, event_id=None):
+        if kind == 'agent' and data.get('id') in seats:
+            data = {**data, 'client': 'codex', 'session': 'thread-' + data['id']}
+        return original(store, kind, actor, data, event_id)
+
+    with patch.object(Store, 'append', append):
+        yield
 
 
 class MessageWaits(unittest.TestCase):
     git = support.Workflow.git
 
     def setUp(self):
-        support.Workflow.setUp(self)
-        as_codex(self.store, 'R', 'A-alias')
+        with codex_seats('R', 'A-alias'):
+            support.Workflow.setUp(self)
 
     task = support.Workflow.task
     ack = support.Workflow.ack
@@ -241,7 +249,10 @@ class MessageWaits(unittest.TestCase):
 
 
 class MessageWaitsHTTP(unittest.TestCase):
-    setUp = transfer.DashboardTransfer.setUp
+    def setUp(self):
+        with codex_seats('R'):
+            transfer.DashboardTransfer.setUp(self)
+
     stop_server = transfer.DashboardTransfer.stop_server
     get = transfer.DashboardTransfer.get
     state = transfer.DashboardTransfer.state
@@ -254,7 +265,6 @@ class MessageWaitsHTTP(unittest.TestCase):
 
     def test_event_count_race_fallback_retains_both_transient_waits(self):
         import dashboard
-        as_codex(self.store, 'R')
         with patch('registry.now', return_value=self.stamp):
             self.store.append('plan', 'A', {'task':self.task_id, 'artifact':self.artifact})
             self.store.append('message', 'A', {'id':'FORWARD', 'to':'R', 'related_task':self.task_id, 'body':'Read plan'})
@@ -272,7 +282,6 @@ class MessageWaitsHTTP(unittest.TestCase):
 
     def test_both_new_kinds_keep_conditional_http_and_invalidate_at_their_thresholds(self):
         import dashboard
-        as_codex(self.store, 'R')
         with patch('registry.now', return_value=self.stamp):
             self.store.append('plan', 'A', {'task': self.task_id, 'artifact': self.artifact})
             self.store.append('message', 'A', {'id': 'FORWARD', 'to': 'R', 'related_task': self.task_id, 'body': 'Read plan'})

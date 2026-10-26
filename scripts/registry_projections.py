@@ -246,9 +246,11 @@ def _append(path, parts):
 
 
 def render_daily(event):
-    """Readable bounded text, with the immutable event digest for complete detail."""
+    """Readable bounded text, with the immutable event digest for complete detail; registry text never opens a line
+    of structure of its own (md_inline, md_block)."""
+    from registry import md_block, md_inline
     data = event["data"]
-    parts = [f"\n## {event['utc']} · {event['actor']} · {event['kind']} · #{event['seq']}\n"]
+    parts = [f"\n## {md_inline(event['utc'])} · {md_inline(event['actor'])} · {md_inline(event['kind'])} · #{event['seq']}\n"]
     if event["kind"] == "message" and data.get("info") is True:
         parts.append("\nINFO · No ACK required / Nessuna conferma richiesta\n")
     budget = 64 * 1024
@@ -259,7 +261,8 @@ def render_daily(event):
             encoded = text.encode("utf-8")
             if len(encoded) > budget:
                 text = encoded[:max(0, budget - 80)].decode("utf-8", "ignore") + "\n[Full text in source event / Testo completo nell'evento sorgente]"
-            parts.append(f"\n{key}: {text}\n")
+            block = md_block(text)
+            parts.append(f"\n{key}: {text}\n" if block == text else f"\n{key}:\n\n{block}\n")
             budget -= len(text.encode("utf-8"))
             if budget <= 0:
                 break
@@ -269,7 +272,8 @@ def render_daily(event):
         visited += 1
         if isinstance(value, dict):
             if {"sha256", "name", "bytes"} <= value.keys():
-                refs.append(f"Artifact / Artefatto: {str(value['name'])[:200]} · {str(value['sha256'])[:64]} · {str(value['bytes'])[:30]} bytes")
+                refs.append(f"Artifact / Artefatto: {md_inline(str(value['name'])[:200])} · {md_inline(str(value['sha256'])[:64])} · "
+                            f"{md_inline(str(value['bytes'])[:30])} bytes")
             pending.extend(v for k, v in islice(value.items(), 64) if k != "files" and isinstance(v, (dict, list)))
         elif isinstance(value, list):
             pending.extend(value[:16])

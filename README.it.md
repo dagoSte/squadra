@@ -110,7 +110,7 @@ export PATH="$HOME/.local/bin:$PATH"
 squadra --version
 ```
 
-Installa da un checkout pulito, senza modifiche fuori dai commit, con una **nuova cartella di backup** ogni volta; l'installatore conserva le skill e il comando precedenti, così puoi tornare indietro. La riga `export PATH` vale solo per quel terminale: aggiungila al profilo della shell (per esempio `~/.zshrc` o `~/.bashrc`) perché i terminali nuovi trovino `squadra`. Senza installare, usa `python3 -B scripts/squadra.py <comando>`. [Dettagli e ritorno alla versione precedente](references/start.md#install-and-join-details), in inglese.
+Installa da un checkout pulito, senza modifiche fuori dai commit, con una **nuova cartella di backup** ogni volta; l'installatore conserva le skill e il comando precedenti, così puoi tornare indietro: `python3 -B scripts/install.py --undo <cartella di backup>` ripristina le skill precedenti e conserva il backup. La riga `export PATH` vale solo per quel terminale: aggiungila al profilo della shell (per esempio `~/.zshrc` o `~/.bashrc`) perché i terminali nuovi trovino `squadra`. Senza installare, usa `python3 -B scripts/squadra.py <comando>`. [Dettagli e ritorno alla versione precedente](references/start.md#install-and-join-details), in inglese.
 
 </details>
 
@@ -477,7 +477,7 @@ Un **plugin** porta nella dashboard i dati di un altro strumento: una cartella `
 
 Le cartelle dei plugin devono appartenere a te e non essere scrivibili da gruppo o altri; lo Store le crea private.
 
-**Chi esegue la richiesta?** Un plugin installato può fornire `$HOME/.squadra/plugins/<name>/AGENTS.md` con istruzioni per gli agenti. La finestra coordinatrice lo legge all’avvio e alla ripresa ed esegue solo i comandi indicati, nei permessi già autorizzati: il produttore dopo una chiusura, il consumatore quando la dashboard mostra una richiesta in attesa, poi riferisce l’esito. Vale solo un file regolare di proprietà dell’utente, non scrivibile da gruppo o altri e non un link simbolico. Senza un file valido, la richiesta resta in attesa e la coordinatrice lo segnala: non devi lanciare comandi. La dashboard non legge, non scrive e non esegue questo file. Questo file non amplia mai i permessi e non autorizza installazioni, push, pubblicazioni o decisioni riservate all’utente; per qualunque richiesta oltre a eseguire il produttore o il consumatore di quel plugin, fermarsi e riferire.
+**Chi esegue la richiesta?** Un plugin installato può fornire `$HOME/.squadra/plugins/<name>/AGENTS.md` con istruzioni per gli agenti. La finestra coordinatrice lo legge all’avvio e alla ripresa ed esegue solo i comandi indicati, nei permessi già autorizzati e solo finché `squadra plugin list` riporta quel plugin con `instructions: valid` e `files: verified`: il produttore dopo una chiusura, il consumatore quando la dashboard mostra una richiesta in attesa, poi riferisce l’esito. Vale solo un file regolare di proprietà dell’utente, non scrivibile da gruppo o altri e non un link simbolico. Senza un file valido, la richiesta resta in attesa e la coordinatrice lo segnala: non devi lanciare comandi. La dashboard non legge, non scrive e non esegue questo file. Questo file non amplia mai i permessi e non autorizza installazioni, push, pubblicazioni o decisioni riservate all’utente; per qualunque richiesta oltre a eseguire il produttore o il consumatore di quel plugin, fermarsi e riferire.
 
 Schemi, dimensioni, limiti e codici di rifiuto esatti: [contratto dei plugin](references/plugins.md), [metadati about](references/plugins.md#optional-about-metadata), [sito e icona](references/plugins.md#homepage-and-local-icon).
 
@@ -507,7 +507,7 @@ Le sezioni seguenti conservano gli esempi operativi completi. Apri l’argomento
 | Seguire un incarico dall’assegnazione alla chiusura | [Flusso di lavoro](#workflow) |
 | Ricostruire un’istruzione o registrare una decisione | [Briefing, messaggi e decisioni](#decision-reference) |
 | Salvare il lavoro o riprendere una sessione | [Checkpoint e ripristino](#checkpoints) |
-| Cercare un comando o il suo prompt in parole semplici | [Tutti i 53 comandi](#commands) |
+| Cercare un comando o il suo prompt in parole semplici | [Tutti i 54 comandi](#commands) |
 
 [Skill](SKILL.md) · [Avvio](references/start.md) · [Lavoro/prova/lettura](references/work.md) · [Runner nativi](references/runtime.md) · [Ripristino/passaggio di contesto](references/recovery.md) · [Sfide/confronto](references/benchmark.md) · [Plugin](references/plugins.md) · [Creare un plugin](references/plugin-authoring.md)
 
@@ -789,7 +789,7 @@ Le altre letture ordinarie indicate sopra non ricontrollano gli eventi precedent
 
 #### Piccole modifiche: il percorso leggero
 
-Il coordinatore può dichiarare `task --route light` per una modifica delimitata e reversibile: al massimo **80 righe aggiunte più eliminate in quattro file** (criterio **light-v1 / P2**), contate dalla base Git originale pulita. Script, pacchetti dei plugin, file di istruzioni e contratti normativi restano protetti, e un impatto sulla sicurezza o un gate completo richiesto portano comunque al percorso completo. Il percorso leggero salta la lettura del piano e usa la prova mirata concordata; restano la lettura di un non autore, i legami e i budget. Solo il coordinatore può promuovere un incarico al percorso completo, e la promozione non azzera mai un budget. Vedi [il percorso leggero](references/work.md#light-route) e [i dettagli](references/work.md#readme-protocol-details), in inglese.
+Il coordinatore può dichiarare `task --route light` per una modifica delimitata e reversibile: al massimo **80 righe aggiunte più eliminate in quattro file**, e 16 KiB di righe cambiate (criterio **light-v1 / P2**), contate dalla base Git originale pulita. Script, pacchetti dei plugin, la pagina della dashboard, file di istruzioni e contratti normativi restano protetti, e un impatto sulla sicurezza o un gate completo richiesto portano comunque al percorso completo. Il percorso leggero salta la lettura del piano e usa la prova mirata concordata; restano la lettura di un non autore, i legami e i budget. Solo il coordinatore può promuovere un incarico al percorso completo, e la promozione non azzera mai un budget. Vedi [il percorso leggero](references/work.md#light-route) e [i dettagli](references/work.md#readme-protocol-details), in inglese.
 
 </details>
 
@@ -808,7 +808,7 @@ Non serve scrivere questi comandi: **il modo consigliato è chiedere alla finest
 Ogni comando, raggruppato per scopo: **54 sottocomandi**, più `--version`. Usa `squadra <comando> --help` per le opzioni; i comandi del registro accettano `--root` o `SQUADRA_ROOT`. «Solo il coordinatore» segna ciò che solo il coordinatore può registrare: `task`, `route`, `supersede`, `reassign`, `brief`, `close`, `ask`, `decision`, `settings`, `pause`, `resume`, `save`, `standby`, `ping --all`, `ping --sweep`, e la ricevuta che `restore-check` scrive nel registro vivo. Senza installare, gli stessi comandi girano come `python3 -B scripts/squadra.py <comando>`.
 
 <details>
-<summary><strong>Tutti i 53 comandi con i loro prompt, raggruppati per scopo</strong></summary>
+<summary><strong>Tutti i 54 comandi con i loro prompt, raggruppati per scopo</strong></summary>
 
 ### Avvio e squadra
 
@@ -849,8 +849,8 @@ Ogni comando, raggruppato per scopo: **54 sottocomandi**, più `--version`. Usa 
 
 | Comando | Cosa fa | Oppure chiedi |
 |---|---|---|
-| `prove` | Esegue la prova concordata sui file esatti congelati e ne conserva l'esito nativo. | «Congela la modifica ed esegui la prova concordata.» |
-| `probe` | Registra un test indipendente, compreso un controllo negativo che deve fallire. | Al revisore: «Esegui un tuo test sul candidato, con un controllo negativo che deve fallire, e registralo.» |
+| `prove` | Esegue la prova concordata nella copia di lavoro del costruttore, sui file esatti dell'impronta prima che siano congelati, e ne conserva l'esito nativo. | «Esegui la prova concordata sulla tua modifica esatta.» |
+| `probe` | Registra un test indipendente, compreso un controllo negativo che deve fallire; la sonda di un lettore su una consegna congelata gira su una copia privata del candidato congelato. | Al revisore: «Esegui un tuo test sul candidato, con un controllo negativo che deve fallire, e registralo.» |
 | `deliver` | Consegna al lettore un pacchetto immutabile del candidato provato. | «Consegna al revisore il candidato provato.» |
 | `advance` | Riconcilia un passaggio già consegnato, senza costruire né approvare. | «T1 è già stato consegnato: riconcilia il passaggio, senza costruire né approvare nulla.» |
 | `review` | Registra il verdetto di un non autore su un piano o sul codice: accettato, correzioni richieste o bloccato. | Al revisore: «Leggi il candidato congelato di T1 e registra il tuo verdetto.» |

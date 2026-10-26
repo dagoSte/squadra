@@ -115,11 +115,11 @@ class LightRoute(unittest.TestCase):
                      "tests/AGENTS.md", "docs/CLAUDE.md", "SKILL.md", "references/work.md",
                      "references/plugin-authoring.md", "docs/plugin-authoring.it.md", "package.json",
                      "a.lock", ".github/x", ".codex/config.toml", "unknown.py", "assets/logo.png",
-                     "SCRIPTS/Registry.py", "Ｓcripts/x.py"):
+                     "SCRIPTS/Registry.py", "Ｓcripts/x.py", "assets/dashboard.html"):
             with self.subTest(name=name):
                 self.assertTrue(protected(name))
         for name in ("README.md", "README.it.md", "docs/deep/example.md", "references/notes.md",
-                     "tests/test_x.py", "assets/dashboard.html"):
+                     "tests/test_x.py"):
             self.assertFalse(protected(name), name)
 
     def test_protected_delete_or_rename_never_hides_the_source(self):

@@ -7,9 +7,11 @@ import subprocess
 import tempfile
 import unicodedata
 
-from registry import Error, canonical, digest, git, git_process, pool_claim, read_at_gate, require, snapshot
+from registry import Error, canonical, digest, git, git_probe, git_process, pool_claim, read_at_gate, require, snapshot
 
 POLICY = {"version": "light-v1", "lines": 80, "files": 4, "profile": "P2"}
+# Changed bytes are the added and deleted lines with their newlines: one long line counts by its size, not as one line.
+MAX_BYTES = 16 * 1024
 PROTECTED = (
     "scripts/*", "plugins/*", "assets/vendor/*", ".github/*", ".agents/*",
     ".codex/*", ".claude/*", ".cursor/*", ".claude-plugin/*", ".codex-plugin/*",
@@ -18,10 +20,9 @@ PROTECTED = (
     "yarn.lock", "makefile", "package*.json", "skill.md",
     "references/work.md", "references/start.md", "references/runtime.md",
     "references/recovery.md", "references/plugins.md", "references/plugin-authoring.md",
-    "docs/plugin-authoring.it.md",
+    "docs/plugin-authoring.it.md", "assets/dashboard.html",
 )
-ALLOWED = ("readme.md", "readme.it.md", "docs/*.md", "references/*.md",
-           "tests/*", "assets/dashboard.html")
+ALLOWED = ("readme.md", "readme.it.md", "docs/*.md", "references/*.md", "tests/*")
 
 
 def refuse(code, detail=""):
@@ -103,13 +104,24 @@ def line_counts(before, after, folder):
     return int(added), int(deleted)
 
 
+def changed_bytes(folder):
+    """Bytes of the added and deleted lines between the old and new files line_counts left in folder."""
+    result = git_probe("-C", str(folder), "-c", "core.autocrlf=false", "diff", "--no-index", "-U0", "--no-color",
+                       "--no-ext-diff", "--no-textconv", "--no-renames", "--diff-algorithm=myers",
+                       "--no-indent-heuristic", "--", str(Path(folder) / "old"), str(Path(folder) / "new"))
+    require(result.returncode in (0, 1), "light_unmeasurable: raw diff failed")
+    hunks = result.stdout.split(b"\n@@", 1)
+    return sum(len(line) for line in hunks[1].split(b"\n")[1:] if line[:1] in (b"+", b"-")) if len(hunks) > 1 else 0
+
+
 def measure(task, candidate=None, root=None):
     check_contract(task)
     try:
         frozen = task.get('delivery', {}).get('frozen')
         use_frozen = frozen and candidate is not None and candidate.get('sha256') == frozen['sha256']
         from frozen_candidate import repository as frozen_repository
-        repo = frozen_repository(task, root or Path(frozen['repo']).parents[2]) if use_frozen else Path(task['repo'])
+        # The caller names the registry: a root derived from the recorded path would make the containment check empty.
+        repo = frozen_repository(task, root) if use_frozen else Path(task['repo'])
         physical = snapshot(repo)
         before = dict(physical)
         if use_frozen:
@@ -126,7 +138,7 @@ def measure(task, candidate=None, root=None):
             if key in aliases and aliases[key] != name:
                 refuse("light_unmeasurable", "path alias collision")
             aliases[key] = name
-        changes = []
+        changes, size = [], 0
         with tempfile.TemporaryDirectory(prefix="squadra-light-") as folder:
             for name in names:
                 old, executable = base.get(name, (b"", False))
@@ -154,6 +166,7 @@ def measure(task, candidate=None, root=None):
                 if protected(name):
                     refuse("light_protected_path", name)
                 added, deleted = line_counts(old, new, folder)
+                size += changed_bytes(folder)
                 changes.append({"path": name, "added": added, "deleted": deleted})
         if snapshot(repo) != physical:
             refuse("light_unmeasurable", "unstable source")
@@ -164,6 +177,8 @@ def measure(task, candidate=None, root=None):
             refuse("light_files_exceeded", f"{len(changes)} changed paths; maximum {POLICY['files']}")
         if lines > POLICY["lines"]:
             refuse("light_lines_exceeded", f"{lines} changed lines; maximum {POLICY['lines']}")
+        if size > MAX_BYTES:
+            refuse("light_bytes_exceeded", f"{size} changed bytes; maximum {MAX_BYTES}")
         return {"policy": dict(POLICY), "base": task["base"], "base_tree": tree,
                 "contract": task["contract"], "candidate": before["sha256"],
                 "files": len(changes), "lines": lines, "changes": changes}
@@ -232,7 +247,8 @@ def validate_event(state, kind, task, data):
         require(data.get("argv") == task["proof"] and data.get("expected_rc") == 0,
                 "Proof command differs from agreed task contract")
         if task["route"] == "light":
-            require(data.get("light") == measure(task, data.get("before")), "Light proof measurement changed")
+            require(data.get("light") == measure(task, data.get("before"), root=state.get('root')),
+                    "Light proof measurement changed")
     if kind in {"deliver", "review", "close"}:
         from frozen_candidate import current as delivered_current
         current = snapshot(task['repo']) if kind == 'deliver' else delivered_current(task, state.get('root'))

@@ -13,8 +13,8 @@ import tempfile
 import time
 import uuid
 
-from registry import (Error, require, snapshot, now, atomic, canonical, run_lease, run_lease_paths,
-                      shared_record, validate)
+from registry import (Error, require, snapshot, now, atomic, canonical, counts_match, executed_tests, run_lease,
+                      run_lease_paths, shared_record, validate)
 
 # A measured process gets HOME and TMPDIR in a private folder outside the registry: Unix socket paths stop
 # near 104 bytes, and a folder others can write lets them swap what the process reads.
@@ -148,7 +148,8 @@ def cli_command(client, mode, folder, model=None, executable=None):
     if client == "claude":
         args = [executable, "-p", "--output-format", "json", "--permission-prompts", "none"]
         if mode == "read":
-            args += ["--safe-mode", "--strict-mcp-config", "--mcp-config", '{"mcpServers":{}}',
+            # The read runs inside the delivered copy: its .claude/settings*.json are the builder's, so only user settings load.
+            args += ["--setting-sources", "user", "--safe-mode", "--strict-mcp-config", "--mcp-config", '{"mcpServers":{}}',
                      "--tools", "Read,Glob,Grep", "--allowedTools", "Read,Glob,Grep",
                      "--permission-mode", "dontAsk", "--no-chrome", "--json-schema", json.dumps(REVIEW_SCHEMA)]
         else:
@@ -200,6 +201,34 @@ def validate_reply(client, folder, structured=True):
     require(response["verdict"] != "changes-required" or response["findings"], "Missing concrete findings")
     require(response["verdict"] != "blocked" or response["limitations"], "Missing blocker")
     return {"response": response, "actual_session": session, "usage": usage, "observed_models": models}
+
+
+UNITTEST_CATEGORIES = {"skipped": "skipped", "expected failures": "xfailed", "unexpected successes": "xpassed"}
+
+
+def test_counts(text):
+    """Per-category counts of the last recognized pytest or unittest summary; a skipped test is never a pass."""
+    summaries = [line for line in text.splitlines() if re.search(r"\d+ passed", line)]
+    counts = {name: int(n) for n, name in re.findall(r"(\d+) (passed|failed|skipped|xfailed|xpassed|errors?)", summaries[-1] if summaries else "")}
+    unit = re.findall(r"Ran (\d+) tests? in", text)
+    ok = re.findall(r"^OK(?: \((.*)\))?$", text, re.M)
+    if unit and ok:
+        other = {UNITTEST_CATEGORIES[name]: int(n) for name, n in
+                 re.findall(r"(skipped|expected failures|unexpected successes)=(\d+)", ok[-1])}
+        counts = {"passed": int(unit[-1]) - sum(other.values()), **{k: v for k, v in other.items() if v}}
+    return counts
+
+
+def writable_copy(source, target):
+    """A private writable copy of a frozen candidate, so a probe can run without touching the sealed original."""
+    shutil.copytree(source, target, symlinks=True)
+    for parent, _, files in os.walk(target):
+        os.chmod(parent, 0o700)
+        for name in files:
+            path = os.path.join(parent, name)
+            if not os.path.islink(path):
+                os.chmod(path, stat.S_IMODE(os.lstat(path).st_mode) | 0o600)
+    return target
 
 
 def terminate(proc):
@@ -266,11 +295,15 @@ def _execute_owned(store, actor, task_id, argv, mode, prompt, timeout, gate, exe
         from registry import digest
         path = Path(task["plan"]["original"])
         require(path.is_file() and digest(path.read_bytes()) == task["plan"]["sha256"], "Original plan changed; re-register/review it")
-    read_frozen = mode == 'read' and stage == 'code' and task.get('delivery', {}).get('frozen')
+    frozen = task.get('delivery', {}).get('frozen')
+    read_frozen = mode == 'read' and stage == 'code' and frozen
+    # A non-author's probe tests what was delivered: a private writable copy of the frozen candidate, not the live tree.
+    probe_frozen = bool(mode == 'probe' and frozen and agent['identity'] not in
+                        {state['agents'][a]['identity'] for a in task['authors']})
     from frozen_candidate import current as delivered_current
-    from frozen_candidate import repository as frozen_repository
+    from frozen_candidate import measured, repository as frozen_repository
     working_repo = str(frozen_repository(task, store.root)) if read_frozen else task['repo']
-    before = delivered_current(task, store.root) if read_frozen else snapshot(task['repo'], store.root)
+    before = delivered_current(task, store.root) if read_frozen or probe_frozen else snapshot(task['repo'], store.root)
     # A passed precheck binds the proof to the exact bytes it checked, before any record or process.
     require(checked is None or before == checked,
             "precheck_failed: source changed after the checks (checked " + str((checked or {}).get("sha256", ""))[:12] +
@@ -286,7 +319,7 @@ def _execute_owned(store, actor, task_id, argv, mode, prompt, timeout, gate, exe
         check_contract(task)
         route_record["contract"] = task["contract"]
         if mode == "proof" and task["route"] == "light":
-            route_record["light"] = measure(task, before)
+            route_record["light"] = measure(task, before, root=store.root)
     shared = None
     if also:
         require(mode == 'proof', 'Only proof runs may serve additional tasks')
@@ -304,6 +337,12 @@ def _execute_owned(store, actor, task_id, argv, mode, prompt, timeout, gate, exe
         if agent["client"] == "codex" and mode == "read":
             config = Path(working_repo) / ".codex/config.toml"
             require(not config.exists(), "Review repo contains Codex config; inspect in a clean isolated copy without external MCP configuration")
+        # Before any record: a client that cannot start spends no read or build budget.
+        try:
+            version = subprocess.run([argv[0], "--version"], capture_output=True, text=True, timeout=15)
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            raise Error("CLI version preflight failed: " + type(exc).__name__ + ": " + str(exc)) from None
+        require(version.returncode == 0, "CLI version preflight failed: " + argv[0] + " --version exited " + str(version.returncode))
     else:
         require(argv and all(isinstance(x, str) and x for x in argv), "Proof requires an argv list")
         require(mode == "probe" or not task.get("proof") or argv == task["proof"], "Proof command differs from agreed task contract")
@@ -311,6 +350,8 @@ def _execute_owned(store, actor, task_id, argv, mode, prompt, timeout, gate, exe
               "before": before, "gate": gate, "timeout": timeout, "folder": str(folder), "stage": stage,
               "expected_rc": expected_rc, "requested_model": agent.get("model"), "covers": covers or [], **route_record}
     record.update(fix_record)
+    if probe_frozen:
+        record["frozen_copy"] = True
     record["lease_version"] = 1
     if shared is not None:
         record['shared_proof'] = shared
@@ -320,6 +361,8 @@ def _execute_owned(store, actor, task_id, argv, mode, prompt, timeout, gate, exe
     try:
         if temp:
             record["temp"] = temp
+        if probe_frozen:
+            working_repo = writable_copy(frozen_repository(task, store.root), Path(temp) / "candidate")
         folder.mkdir(parents=True, mode=0o700, exist_ok=False)
         if mode in {"read", "build"}:
             (folder / "schema.json").write_text(json.dumps(REVIEW_SCHEMA))
@@ -340,8 +383,6 @@ def _execute_owned(store, actor, task_id, argv, mode, prompt, timeout, gate, exe
     last_heartbeat = start
     try:
         if mode in {"read", "build"}:
-            version = subprocess.run([argv[0], "--version"], capture_output=True, text=True, timeout=15)
-            require(version.returncode == 0, "CLI version preflight failed")
             result["cli_version"] = version.stdout.strip()
         (folder / "input.txt").write_text(prompt or "")
         with (folder / "stdout.log").open("wb") as stdout, (folder / "stderr.log").open("wb") as stderr, (folder / "input.txt").open("rb") as stdin:
@@ -367,7 +408,8 @@ def _execute_owned(store, actor, task_id, argv, mode, prompt, timeout, gate, exe
                     last_heartbeat = time.monotonic()
                 time.sleep(0.1)
             result["native_rc"] = proc.wait()
-        after = delivered_current(task, store.root) if read_frozen else snapshot(task["repo"], store.root)
+        after = (delivered_current(task, store.root) if read_frozen else measured(task, working_repo) if probe_frozen
+                 else snapshot(task["repo"], store.root))
         result["after"] = after
         if result["status"] not in {"interrupted", "timeout"}:
             require(result["native_rc"] == expected_rc, "Native command exit differs from expected result")
@@ -380,14 +422,11 @@ def _execute_owned(store, actor, task_id, argv, mode, prompt, timeout, gate, exe
                 result.update(validate_reply(agent["client"], folder, structured=False))
             if mode == "proof" and task.get("expected") is not None:
                 text = (folder / "stdout.log").read_text(errors="replace") + (folder / "stderr.log").read_text(errors="replace")
-                summaries = [line for line in text.splitlines() if re.search(r"\d+ passed", line)]
-                counts = {name: int(n) for n, name in re.findall(r"(\d+) (passed|failed|skipped|xfailed|xpassed|errors?)", summaries[-1] if summaries else "")}
-                unit = re.findall(r"Ran (\d+) tests? in", text)
-                if unit and re.search(r"^OK(?: \(.*\))?$", text, re.M):
-                    counts = {"passed": int(unit[-1])}
-                require(sum(counts.values()) == task["expected"] and not counts.get("failed") and
-                        not counts.get("error") and not counts.get("errors"), "Executed test counts do not match agreed collection")
-                result["counts"] = counts
+                counts = result["counts"] = test_counts(text)
+                require(counts_match(counts, task["expected"]),
+                        "Executed test counts do not match agreed collection: executed " + str(executed_tests(counts)) +
+                        " of " + str(task["expected"]) + " agreed (" +
+                        (", ".join(k + " " + str(v) for k, v in sorted(counts.items())) or "no recognized summary") + ")")
             if shared is not None:
                 current = store.resolved()
                 all_covers = [*record['covers'], *[key for entry in shared['tasks'] for key in entry['covers']]]

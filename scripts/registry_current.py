@@ -167,7 +167,7 @@ def advance(indexes, state, event):
     elif kind == "supersede":
         _task(indexes, state, data["task"])
         _task(indexes, state, data["by"])
-    elif kind in {"start", "close", "plan", "deliver", "review", "route", "fix", "reassign"}:
+    elif kind in {"start", "close", "plan", "deliver", "review", "route", "fix"}:
         name = data["task"]
         _task(indexes, state, name)
         timing = indexes["task_timings"].get(name)

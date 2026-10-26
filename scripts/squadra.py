@@ -217,18 +217,70 @@ def codex_queue(session, text):
             **bounded("receipt", proc.stdout), **bounded("stderr", proc.stderr)}
 
 
+def blob_ids(repo, current):
+    """Each present snapshot row's mode and Git blob id, from the bytes the row fingerprints; refuses moved bytes."""
+    import hashlib
+    algorithm = git(repo, "rev-parse", "--show-object-format").decode().strip()
+    ids = {}
+    for row in current["files"]:
+        if row["kind"] == "deleted":
+            continue
+        path, blob, fingerprint = Path(repo) / row["path"], hashlib.new(algorithm), hashlib.sha256()
+        if row["kind"] == "symlink":
+            target, mode = os.fsencode(os.readlink(path)), "120000"
+            blob.update(b"blob %d\0" % len(target) + target); fingerprint.update(target)
+        else:
+            mode = "100755" if row["executable"] else "100644"
+            with os.fdopen(os.open(path, os.O_RDONLY | os.O_NOFOLLOW), "rb") as body:
+                blob.update(b"blob %d\0" % os.fstat(body.fileno()).st_size)
+                for chunk in iter(lambda: body.read(1024 * 1024), b""):
+                    blob.update(chunk); fingerprint.update(chunk)
+        require(fingerprint.hexdigest() == row["sha256"], "Source changed after its snapshot: " + row["path"])
+        ids[row["path"]] = (mode, blob.hexdigest())
+    return ids
+
+
+def uncommitted(current):
+    """The snapshot paths whose bytes or mode differ from its commit, by blob id: the index's skip-worktree and
+    assume-unchanged flags cannot hide a change."""
+    repo = current["repo"]
+    committed = {}
+    for raw in git(repo, "ls-tree", "-r", "-z", current["head"]).split(b"\0"):
+        if raw:
+            meta, path = raw.split(b"\t", 1)
+            mode, _, oid = meta.decode().split()
+            committed[os.fsdecode(path)] = (mode, oid)
+    present = blob_ids(repo, current)
+    return sorted(path for path in present.keys() | committed.keys() if present.get(path) != committed.get(path))
+
+
+def lacking(current, changed):
+    return (", NOT commit " + current["head"] + ", which lacks " + str(len(changed)) + " uncommitted or untracked paths: " +
+            ", ".join(changed[:10]) + (", ..." if len(changed) > 10 else ""))
+
+
 def candidate_line(current, task_id):
     """What the reader must read: the commit when the snapshot equals it, otherwise the working-tree snapshot."""
-    repo = current["repo"]
-    tracked = {os.fsdecode(p) for p in git(repo, "ls-files", "-z").split(b"\0") if p}
-    changed = sorted({os.fsdecode(p) for p in git(repo, "diff", "--relative", "--no-renames", "--name-only", "-z",
-                                                    current["head"]).split(b"\0") if p}
-                     | ({row["path"] for row in current["files"]} - tracked))
+    changed = uncommitted(current)
     if not changed:
         return "Read exact candidate " + current["head"] + " for " + task_id + "."
-    return ("Read exact candidate for " + task_id + ": the working tree of " + repo + " matching snapshot " +
-            current["sha256"] + ", NOT commit " + current["head"] + ", which lacks " + str(len(changed)) +
-            " uncommitted or untracked paths: " + ", ".join(changed[:10]) + (", ..." if len(changed) > 10 else "") + ".")
+    return ("Read exact candidate for " + task_id + ": the working tree of " + current["repo"] + " matching snapshot " +
+            current["sha256"] + lacking(current, changed) + ".")
+
+
+def frozen_copy(root, frozen, repo):
+    """Where a frozen delivery is read: the registry's copy, which the builder cannot edit, never the live tree."""
+    relative = "candidates/" + frozen["sha256"] + "/repo"
+    return ("the frozen copy " + str(Path(root) / relative) + " (registry path " + relative + ")",
+            "The builder's working tree " + repo + " may differ after delivery; read only the frozen copy.")
+
+
+def frozen_line(root, frozen, current, task_id):
+    """What the reader of a frozen delivery must read, with the paths its commit lacks."""
+    where, warning = frozen_copy(root, frozen, current["repo"])
+    changed = uncommitted(current)
+    return ("Read exact candidate for " + task_id + ": " + where + " matching snapshot " + current["sha256"] +
+            (lacking(current, changed) if changed else " on commit " + current["head"]) + ". " + warning)
 
 
 def deliver(store, actor, task_id, reconcile=False, note=None):
@@ -259,7 +311,7 @@ def deliver(store, actor, task_id, reconcile=False, note=None):
         from light_route import check_contract, measure
         check_contract(task)
         if task["route"] == "light":
-            data["light"] = measure(task, current)
+            data["light"] = measure(task, current, root=store.root)
     reader = task.get("reviewer")
     if reader or task.get("pool"):
         packet = {"task": task_id, "candidate": current, "base": task["base"],
@@ -293,7 +345,8 @@ def deliver(store, actor, task_id, reconcile=False, note=None):
         key = digest(canonical(packet).encode())
         message = "review-" + key
         artifact = store.artifact_bytes((canonical(packet) + "\n").encode(), message + ".json", "generated-handoff:" + message)
-        body = candidate_line(current, task_id) + "\nImmutable packet " + artifact["sha256"] + " in " + str(store.root / "artifacts") + ".\nActual recipient ACK required before independent review."
+        body = (frozen_line(store.root, data["frozen"], current, task_id) if data.get("frozen") else
+                candidate_line(current, task_id)) + "\nImmutable packet " + artifact["sha256"] + " in " + str(store.root / "artifacts") + ".\nActual recipient ACK required before independent review."
         if shared_notes:
             body += '\n' + '\n'.join(shared_notes)
         if task.get("pool"):
@@ -723,9 +776,13 @@ def dispatch(a, store):
             notifications.append(('message', actor, {'id': mid, 'to': recipient, 'info': True, 'related_task': a.task,
                                   'body': 'Your read was reassigned to ' + a.reviewer + '. Previous handoff is replaced: ' + a.reason}, mid))
         bindings(store, a.task, require_review=False)
+        where = ''
+        if old.get('frozen'):
+            copy, warning = frozen_copy(store.root, old['frozen'], task['repo'])
+            where = ': ' + copy + '. ' + warning
         store.batch([('reassign', actor, data, 'reassign:' + handoff),
                      ('message', actor, {'id': handoff, 'to': a.reviewer, 'related_task': a.task,
-                      'body': 'Read reassigned on the same proved candidate. ACK this exact handoff.\n' +
+                      'body': 'Read reassigned on the same proved candidate' + (where or '.') + ' ACK this exact handoff.\n' +
                               canonical(packet)}, handoff), *notifications])
         return {'handoff': handoff, 'proof_reused': True, 'snapshot': task['candidate']['sha256']}
     elif command == 'candidate':

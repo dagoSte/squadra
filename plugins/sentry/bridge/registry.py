@@ -77,8 +77,9 @@ FINDINGS_BYTES = 16 * 1024
 SEVERITIES = ('grave', 'minor', 'info')
 # SQLite's write-ahead log is cut back to this size once its frames are in the database file.
 WAL_LIMIT = 64 * 1024 * 1024
-# After a commit the writer never waits for readers: a held log is left for a later commit or doctor --repair.
-TRIM_BUSY_MS = 0
+# After a commit the writer waits at most this long for other readers; a log still held waits for a later
+# commit or doctor --repair.
+TRIM_BUSY_MS = 200
 BUSY_MS = 30000
 
 
@@ -1078,6 +1079,16 @@ def shared_coverage(state, task_ids, covers):
     return ids
 
 
+def executed_tests(counts):
+    """Tests a recognized summary reports as run: skipped tests never ran."""
+    return sum(n for name, n in counts.items() if name != 'skipped')
+
+
+def counts_match(counts, expected):
+    """Every agreed test ran and none failed; a skipped test is never counted as executed."""
+    return executed_tests(counts) == expected and not any(counts.get(key) for key in ('failed', 'error', 'errors'))
+
+
 def shared_record(state, task_id, also, before, argv, gate, expected_rc, covers):
     """Bind each served task; this changes no reducer record."""
     require(isinstance(also, (list, tuple)) and also and all(isinstance(name, str) for name in also),
@@ -1116,7 +1127,7 @@ def shared_record(state, task_id, also, before, argv, gate, expected_rc, covers)
             check_contract(task)
             entry['contract'] = task['contract']
             if task['route'] == 'light':
-                entry['light'] = measure(task, before)
+                entry['light'] = measure(task, before, root=state.get('root'))
         entries.append(entry)
     return {'v': 1, 'primary_binding': entries[0]['binding'], 'tasks': entries[1:]}, entries[0]['covers']
 
@@ -1176,10 +1187,8 @@ def effective_proof(task, run, entry):
             entry.get('expected') == task.get('expected') and
             set(entry.get('covers', [])) == {r['id'] for r in task.get('requirements', [])}):
         return None
-    if task.get('expected') is not None:
-        counts = run.get('counts', {})
-        if sum(counts.values()) != task['expected'] or any(counts.get(key) for key in ('failed', 'error', 'errors')):
-            return None
+    if task.get('expected') is not None and not counts_match(run.get('counts', {}), task['expected']):
+        return None
     proof = {key: value for key, value in run.items() if key not in SHARED_RUN_FIELDS}
     proof.update(task=task['id'], shared_from=run['task'], covers=entry['covers'])
     proof.update({key: entry[key] for key in SHARED_RUN_FIELDS if key in entry})
@@ -1872,11 +1881,16 @@ def validate(state, kind, actor, d, stored_packet=None, *, candidate_history=())
         return
     if kind == "diagnostic":
         return
+    if kind in {"agent", "task"}:
+        require(all(isinstance(v, str) and control_free(v) for v in (d.get("id"), *([d["title"]] if d.get("title") is not None else []))),
+                "name_invalid: seat and task IDs and task titles cannot contain control, format or line-separator characters")
     if kind == "agent":
         require("availability" not in d, "Availability requires a recorded coordinator action")
         old = state["agents"].get(d["id"])
-        require(not old or (old["identity"] == d["identity"] and old["role"] == d["role"]),
-                "Agent identity/role cannot be rewritten; register a new seat")
+        # The client decides which reads count under the cross-client rule, so it is as fixed as identity and role.
+        require(not old or (old["identity"] == d["identity"] and old["role"] == d["role"] and
+                            old.get("client") == d.get("client")),
+                "Agent identity/role/client cannot be rewritten; register a new seat")
         return
     require(actor in state["agents"], "Unknown agent: " + actor)
     coordinator = state["agents"][actor]["role"] == "coordinator"
@@ -2243,9 +2257,7 @@ def validate(state, kind, actor, d, stored_packet=None, *, candidate_history=())
                 require(d.get('native_rc') == 0 and run.get('expected_rc', 0) == 0 and d.get('after') == run['before'],
                         'Shared proof does not keep its native source binding')
                 if task.get('expected') is not None:
-                    counts = d.get('counts', {})
-                    require(sum(counts.values()) == task['expected'] and
-                            not any(counts.get(key) for key in ('failed', 'error', 'errors')),
+                    require(counts_match(d.get('counts', {}), task['expected']),
                             'Shared proof test counts do not match the agreed collection')
                 require(run['shared_proof']['primary_binding'] == proof_binding(task) and
                         all(item['binding'] == proof_binding(state['tasks'][item['task']])
@@ -2276,7 +2288,8 @@ def validate(state, kind, actor, d, stored_packet=None, *, candidate_history=())
                     from light_route import check_contract, measure
                     check_contract(task)
                     if task["route"] == "light":
-                        require(run.get("light") == measure(task, d["after"]), "Light proof measurement changed")
+                        require(run.get("light") == measure(task, d["after"], root=state.get("root")),
+                                "Light proof measurement changed")
     if kind == "resource.acquire":
         require(d["name"] not in state["resources"], "Resource already reserved; expiry is not release")
         if d.get('task') is not None:
@@ -2569,6 +2582,7 @@ class Store:
         # The live file identity whose private copy audit() reads; only the dashboard's background audit sets it.
         self._audit_copy = None
         self._views = []
+        self._trim_due = False
         self._integrity_failed = False
         self._cache_mismatch = False
         self._summary_context = None
@@ -2644,6 +2658,8 @@ class Store:
             self.release_views()
         except BaseException as exc:
             failure = exc
+        if self._trim_due and not self.read_only:
+            self._trim_wal()
         self._summary_context = self._wait_memo = None
         try:
             self.db.close()
@@ -2661,7 +2677,13 @@ class Store:
             self.db.execute("PRAGMA busy_timeout=%d" % BUSY_MS)
 
     def _trim_wal(self):
-        """After a commit, an oversized write-ahead log is copied back and emptied if no reader holds it."""
+        """After a commit, an oversized write-ahead log is copied back and emptied if no reader holds it.
+
+        This Store's own open views would hold it, so while they are open the trim waits for close()."""
+        if self._views:
+            self._trim_due = True
+            return
+        self._trim_due = False
         try:
             if os.stat(str(self.path) + "-wal").st_size > WAL_LIMIT:
                 self.compact_wal(TRIM_BUSY_MS)
@@ -3265,7 +3287,7 @@ class Store:
                 else:
                     output = next((o for o in reversed(state['outputs']) if o['agent'] == actor), {})
                 lines.append("| " + cell(actor) + " | " + cell(output.get('next', '—')) + " |")
-            atomic(self.root / 'stato.md', ('\n'.join(lines) + '\n').encode())
+            atomic(self.root / 'stato.md', ('\n'.join(map(md_inline, lines)) + '\n').encode())
         return publish(self, summary=summary)
 
     def project(self, with_events=False, audited=False):
@@ -3285,6 +3307,9 @@ class Store:
                 import fcntl
                 fcntl.flock(f, fcntl.LOCK_EX)
             try:
+                # A linked or non-directory posta/ is refused before the first file is written, not after.
+                from registry_projections import _folder
+                _folder(self.root)
                 self.db.execute("BEGIN")
                 events = self.events()
                 state = self.state(events)
@@ -3298,14 +3323,15 @@ class Store:
                 for m in state["messages"].values():
                     ack = m["ack"]["utc"] if m["ack"] else "NOT REQUIRED" if m.get("info") is True else "PENDING"
                     label = "INFO · " if m.get("info") is True else ""
-                    mail.append(f"\n## {m['id']} · {m['from']} → {m['to']} · {label}ACK {ack}\n\n{m['body']}\n")
+                    mail.append(f"\n## {md_inline(m['id'])} · {md_inline(m['from'])} → {md_inline(m['to'])} · {label}ACK {ack}"
+                                f"\n\n{md_block(str(m['body']))}\n")
                 atomic(self.root / "squadra-posta.md", "".join(mail).encode())
                 daily = {}
                 for e in events:
                     day = e["utc"][:10]
                     from registry_projections import render_daily
                     daily.setdefault(day, ["# Squadra — scambi del giorno UTC\n\nProiezione ricostruibile del registro comune; non una seconda fonte.\n"]).append(render_daily(e))
-                folder = self.root / "posta"; folder.mkdir(mode=0o700, exist_ok=True)
+                folder = self.root / "posta"
                 for day, parts in daily.items():
                     atomic(folder / ("exchange-" + day + ".md"), "".join(parts).encode())
                 summary_state = wait_view({**state, 'root': str(self.root)}, wait_facts(events))
@@ -3376,8 +3402,37 @@ class Store:
         return str(destination)
 
 
+def control_free(text):
+    """Text that prints as written: no Unicode control, format or line/paragraph separator character."""
+    return not any(unicodedata.category(c).startswith("C") or c in "\u2028\u2029" for c in text)
+
+
+def printable(text):
+    """Terminal output: every control, format or separator character except the newline prints as its escape."""
+    return "\n".join(line if line.isprintable() else "".join(
+        c if control_free(c) else c.encode("unicode_escape").decode("ascii") for c in line) for line in text.split("\n"))
+
+
+LINE_BREAKS = re.compile(r"\r\n|[\n\r\x0b\x0c\x1c-\x1e\x85\u2028\u2029]")
+# A line a Markdown reader takes as structure: a heading, quote or HTML block, a setext underline, or a fence.
+STRUCTURE = re.compile(r"^ {0,3}(?:[#<>]|(?:=+|-+) *$|`{3}|~{3})", re.M)
+
+
+def md_inline(value):
+    """Registry text inside one Markdown line: line breaks and controls print as escapes."""
+    return printable(LINE_BREAKS.sub(lambda m: m.group().encode("unicode_escape").decode("ascii"), str(value)))
+
+
+def md_block(text):
+    """Free registry text in a Markdown projection: as written, unless a line could open a heading, quote,
+    HTML block or fence, or a control character could break a line; then each line is indented as literal code."""
+    if control_free(text.replace("\n", "")) and not STRUCTURE.search(text):
+        return text
+    return "\n".join("    " + line for line in printable(text).split("\n"))
+
+
 def cell(value):
-    return str(value).replace("|", "\\|").replace("\n", " ")
+    return LINE_BREAKS.sub(" ", str(value).replace("|", "\\|"))
 
 
 def board_times(events):
@@ -3447,7 +3502,7 @@ def board(state, lang=None, read_at=None, events=(), *, live=True):
         (active if started else todo).append(task)
     name = state["workspace"].get("name", "Squadra")
     mode = ("PAUSED" if state["paused"] else "ACTIVE") if en else ("IN PAUSA" if state["paused"] else "OPERATIVO")
-    lines = [f"{name} · {'Registry' if en else 'Registro'} #{state['event_count']} · {mode}", ""]
+    lines = [f"{md_inline(name)} · {'Registry' if en else 'Registro'} #{state['event_count']} · {mode}", ""]
     for heading, rows in zip(("In progress", "To do", "Done") if en else ("In corso", "Da fare", "Fatti"),
                              (active, todo, done[:10])):
         lines += ["## " + heading, "", "| Window | Work | State | Time (approx.) |" if en else "| Finestra | Lavoro | Stato | Tempo (circa) |", "|---|---|---|---|"]
@@ -3468,7 +3523,7 @@ def board(state, lang=None, read_at=None, events=(), *, live=True):
     if unread:
         lines.append(f"Closed without a read, to be read at the gate: {unread}" if en
                      else f"Chiusi senza lettura, da leggere al gate: {unread}")
-    return "\n".join(lines)
+    return printable("\n".join(lines))
 
 
 def step_text(step, en):
@@ -3711,7 +3766,7 @@ def table(state, read_at=None, events=(), *, compact=False, lang=None, attention
         if len(steps) > 5:
             lines.append((str(len(steps) - 5) + ' more steps: squadra status --all.') if en
                          else ('Altri ' + str(len(steps) - 5) + ' passi: squadra status --all.'))
-        return "\n".join(lines)
+        return "\n".join([lines[0], *map(md_inline, lines[1:])])
     lines += ["", "Next step per task:" if en else "Prossimo passo per incarico:"]
     lines += ["- " + item["task"] + ": " + step_text(item, en) for item in view["next_steps"]]
     if view["superseded"]:
@@ -3772,4 +3827,5 @@ def table(state, read_at=None, events=(), *, compact=False, lang=None, attention
     else:
         lines += ["", f"Messaggi senza ACK: {pending}. Riserve attive: {len(state['resources'])}.",
                   "Registrazione e heartbeat non dimostrano esecuzione, accettazione o risveglio del client."]
-    return "\n".join(lines)
+    # The board is the first element; every other element is one line, whatever its registry text holds.
+    return "\n".join([lines[0], *map(md_inline, lines[1:])])

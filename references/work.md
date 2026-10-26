@@ -355,9 +355,11 @@ squadra close --actor coord --task T1
 ```
 
 The argv for `prove` must match the agreed command. `--expected N` on the task
-checks the test count in recognized pytest/unittest summaries; it refuses a
-missing count. Other runners require their own explicit check. `--full-gate`
-requires a gate-labelled proof: first `resource acquire --actor builder --name
+checks the count of executed tests in recognized pytest/unittest summaries; it refuses a
+missing count. Skipped tests never count as executed: `1 passed, 9 skipped` or unittest's
+`OK (skipped=9)` after `Ran 10 tests` executes 1 of 10 and refuses. The receipt records each
+category apart (`passed`, `skipped`, `xfailed`, `xpassed`). Other runners require their own
+explicit check. `--full-gate` requires a gate-labelled proof: first `resource acquire --actor builder --name
 gate --reason ...`, then `prove --gate`, finally `resource release` after the
 terminal receipt. The label does not prove the command is the whole suite:
 the coordinator must agree on the correct command and project reservations.
@@ -374,7 +376,10 @@ one inside the registry, even through a link, is refused with the path and the f
 process left unreadable, and never follows a link. Logs, metadata and the lease stay in
 `<registry>/runs/<id>/`; the run record names the private folder and whether it was removed
 when the run ended, whatever its outcome. Claude and Codex turns keep the caller's HOME, where
-the client keeps its sign-in.
+the client keeps its sign-in. Apart from HOME and TMPDIR, every run inherits the caller's
+environment unfiltered, so a credential in an environment variable (an API key, a token)
+reaches the measured process and may appear in its retained, immutable logs: start proofs
+from a shell without secrets the tests must not see.
 
 ### One execution for the two final reads
 
@@ -486,7 +491,12 @@ The review records a non-author report bound to the current fingerprint; it does
 not magically run tests. The reviewer may use `probe --actor reader --task T1
 --expected-rc 0 -- argv...` for independent probes, or `--expected-rc 1` for a
 negative control. Expected native 1 is called `matched`, not a passing product
-proof. Do not put mutants in the frozen checkout: use isolated copies and preserve
+proof. A non-author's probe of a frozen delivery runs on a private writable copy of
+the frozen candidate inside the run's temporary folder, bound to the delivered
+fingerprint (`frozen_copy` in the run), so a builder who keeps editing the live tree
+cannot change what it tests; the builder's own probes run in the live checkout.
+`prove` runs in the builder's checkout before the freeze, so git-ignored files there
+can still affect it. Do not put mutants in the frozen checkout: use isolated copies and preserve
 the original probe before modifying it. Report limits, collection, assertions/
 errors/skips, configuration and provenance. Reproduce the original issue on the
 exact remedy.
@@ -629,8 +639,11 @@ differs from the authors' and, for a Claude or Codex author, whose client is the
 model's (see above). `deliver` saves the candidate, content-addressed packet
 with scope/plan/proofs and `review-...` message in one transaction. The command
 returns that ID. The recipient ACKs it before the code review or `read` turn.
-The message names the commit only when the working tree equals it; otherwise it names
-the working-tree snapshot and the uncommitted or untracked paths the commit lacks.
+The message names the commit only when the working tree equals it byte for byte (compared
+by Git blob id, so skip-worktree or assume-unchanged flags cannot hide a change); otherwise it
+names the working-tree snapshot and the uncommitted or untracked paths the commit lacks.
+For a frozen delivery it names the frozen copy instead (`candidates/<sha>/repo` in the
+registry) and warns that the builder's working tree may differ; a reassigned read says the same.
 A new fingerprint requires a new handoff and ACK. **Reader evidence lives outside the
 candidate tree**. New CLI tasks copy the exact proved source, including relevant
 uncommitted and untracked files, into the registry at delivery. The builder may then
@@ -834,15 +847,17 @@ of an already active squad.
 After the same question-based triage, the coordinator may use `task --route light`.
 The task must start at a clean Git base, with a nonempty scope, requirements,
 configured independent reader and exact proof argv. These form an immutable
-contract under **light-v1: 80 added plus deleted lines, 4 files, profile P2**.
-Equality is allowed; 81 lines or 5 files refuse. Tests, documentation, comments and
+contract under **light-v1: 80 added plus deleted lines, 4 files, profile P2**, and at most
+16 KiB (16,384 bytes) of added plus deleted lines, so one long line counts by its size.
+Equality is allowed; 81 lines, 5 files or 16,385 bytes refuse. Tests, documentation, comments and
 whitespace count. Git raw Myers diff counts renames as deletion plus addition,
 without textconv, external diff or whitespace exemptions. Intermediate commits do
 not change the original base. There is no flag to enlarge these limits.
 
-P2 permits README.md/README.it.md, Markdown under docs/ or references/,
-tests/** and assets/dashboard.html, except the following protected names:
-all scripts/**, plugins/**, assets/vendor/**, client/CI directories
+P2 permits README.md/README.it.md, Markdown under docs/ or references/ and
+tests/**, except the following protected names:
+all scripts/**, plugins/**, assets/vendor/**, assets/dashboard.html (the dashboard page
+holds the dashboard token and calls its write routes), client/CI directories
 (.github, .agents, .codex, .claude, .cursor, .claude-plugin, .codex-plugin),
 .gitignore/.gitattributes/.gitmodules, VERSION, pyproject.toml, requirements*.txt,
 *.lock, package-lock.json, pnpm-lock.yaml, yarn.lock, Makefile, package*.json,
@@ -856,17 +871,15 @@ changes, unavailable bases, unstable snapshots and no-op changes require full.
 No plan or plan read on light; use the agreed targeted proof and one code-read
 round. ACKs, non-author identity, native proof on unchanged exact bytes and the
 same contract, requirement covers, dependencies, pauses, resources and budgets
-remain. Required browser or other domain evidence remains too. The refreshed
-status example changed 23 added/deleted lines in two files including its test:
-`["python3","-B","-m","unittest","discover","-s","tests","-p","test_dashboard_loading.py","-v"]`
-would run its six targeted tests, but would not replace the required browser
-measurement. Release final reads and the owner's explicit typed publication
+remain. Required browser or other domain evidence remains too. A fix to the
+dashboard page, however small, takes the full route with its browser measurement,
+because the page is protected. Release final reads and the owner's explicit typed publication
 permission never relax. No minification to qualify, and no path/size threshold
 replaces judgment about security or irreversible impact.
 
 The central validator remeasures before a proof process, at deliver, check and
 close, also for direct Store events; packets retain the verified measurement.
-Refusals use `light_lines_exceeded`, `light_files_exceeded`,
+Refusals use `light_lines_exceeded`, `light_bytes_exceeded`, `light_files_exceeded`,
 `light_protected_path`, `light_unmeasurable`, `light_empty_change`,
 `light_contract_required`, `light_policy_unsupported`,
 `light_plan_requires_full` or `light_read_round_exhausted`, with a native nonzero
@@ -1118,7 +1131,7 @@ A project brief starts with its goal; `## Steps` and `## Glossary` (or `## Passi
 - **Readers** are available non-authors chosen with `task --reviewer`, working in parallel on frozen copies, with shared gates, ports and databases reserved. The handoff that `deliver` generates is the go for the assigned read once its recipient ACKs it; the CLI never invokes a client by itself. A corrective read uses the same budget, and no alias or new task resets spent rounds.
 - **Browser and installation steps** need the capability proven first by a probe receipt in the right context (for a browser: a named DevTools connection, timeouts, private resources, owned cleanup). Without it, declare the step **not run**, cite the last valid run and inform the coordinator. **Never hand commands to the owner**, and no capability bypasses execution permissions.
 
-- **Options and budgets:** `--depends T0` (prerequisites closed independently first), `--expected N` (recognized test count), `--full-gate` (a gate-labelled proof); none of them proves a suite complete, so agree the real command with the project. By default three plan reads, two code reads and three build attempts in the optional runner (`init --plan-rounds/--review-rounds`); acceptance binds to the latest plan bytes; exhausted budgets need an explicit disposition, never a reset. Small changes get proportionate checks.
+- **Options and budgets:** `--depends T0` (prerequisites closed independently first), `--expected N` (recognized count of executed tests; skips never count), `--full-gate` (a gate-labelled proof); none of them proves a suite complete, so agree the real command with the project. By default three plan reads, two code reads and three build attempts in the optional runner (`init --plan-rounds/--review-rounds`); acceptance binds to the latest plan bytes; exhausted budgets need an explicit disposition, never a reset. Small changes get proportionate checks.
 - **`prove`** keeps the native status, duration, output and before/after fingerprints of tracked and non-ignored files; ignored dependencies need their own evidence. **`deliver`** needs a passing proof on the exact current source, freezes an immutable packet, returns a `review-…` ID and never invokes a model.
 - **`review`** records `accepted`, `changes-required` or `blocked`. `probe` records independent tests and negative controls (`--expected-rc 1`; a matched negative is not a product pass); mutants go in isolated copies. `--covers` records coverage, not test adequacy, which the reader judges.
 - **`check`** binds candidate, plan, proof, artifacts and coverage again before `close`. For new CLI tasks the delivered frozen source binds the proof and review; changing that copy invalidates both. Legacy tasks retain live-source binding. `advance` reconciles a delivered handoff without building, approving or waking clients; without `--reviewer` the manual review protocol applies.
@@ -1202,11 +1215,11 @@ fixes keep the requirement. The normal proof and independent review still apply.
 Old tasks keep working; frozen squads require an explicit upgrade of every writer,
 with no mixed-version enforcement. See the [complete example and limits](work.md#defect-fixes-show-that-the-regression-detects-the-original).
 
-The coordinator may declare `task --route light` for a bounded, reversible change after the usual questions. Policy **light-v1 / P2** allows at most **80 added plus deleted lines in four files**, counted from the original clean Git base, including tests and documents. Replacing one line counts as two; commits during the task do not reset the count. Binary files, symlinks, type/mode changes, missing bases, unstable snapshots and empty changes refuse. No compression to qualify.
+The coordinator may declare `task --route light` for a bounded, reversible change after the usual questions. Policy **light-v1 / P2** allows at most **80 added plus deleted lines in four files** and 16 KiB of changed lines, counted from the original clean Git base, including tests and documents. Replacing one line counts as two; commits during the task do not reset the count. Binary files, symlinks, type/mode changes, missing bases, unstable snapshots and empty changes refuse. No compression to qualify.
 
-P2 admits descriptive Markdown under docs/references, README EN/IT, tests and `assets/dashboard.html`. All scripts, plugin bundles, client/CI/build/dependency files, instruction files and normative contracts stay protected; unknown paths are protected too. The exact exclusions are in [the workflow](work.md#light-route). A security impact or required whole gate still takes the full route: size and paths never grant permission.
+P2 admits descriptive Markdown under docs/references, README EN/IT and tests. All scripts, plugin bundles, the dashboard page (`assets/dashboard.html`, which holds the dashboard token), client/CI/build/dependency files, instruction files and normative contracts stay protected; unknown paths are protected too. The exact exclusions are in [the workflow](work.md#light-route). A security impact or required whole gate still takes the full route: size and paths never grant permission.
 
-The light route skips a plan read and uses the agreed targeted proof instead of a whole suite; it allows one code-read round. A non-author reader, assignment/handoff ACKs, exact source and contract bindings, native results, explicit requirement coverage, pauses, reservations, budgets and required evidence remain. Release final reads and the owner's typed publication permission do not change. Example: the steady refresh fix changed **23 added/deleted lines in two files** including its test; it could use the six loading-contract tests, while its required browser measurement remains.
+The light route skips a plan read and uses the agreed targeted proof instead of a whole suite; it allows one code-read round. A non-author reader, assignment/handoff ACKs, exact source and contract bindings, native results, explicit requirement coverage, pauses, reservations, budgets and required evidence remain. Release final reads and the owner's typed publication permission do not change. Example: a wording fix of **12 added/deleted lines in README.md and README.it.md** can use the agreed targeted test of those two files; a fix to the dashboard page cannot, because the page is protected.
 
 The registry remeasures before a proof process, on delivery, check and close, including direct Store writes. An excess or protected path refuses with a `light_*` code and “Full route required”; a second light read is refused too. Only the coordinator can promote with `route --full --scope-file ... --proof-file ... --reason ...` (and `--full-gate` or `--expected` when required). Promotion keeps the base, authors, history and spent counters, invalidates old proof/read bindings, and has no reverse. It cannot reset an exhausted budget.
 

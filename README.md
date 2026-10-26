@@ -110,7 +110,7 @@ export PATH="$HOME/.local/bin:$PATH"
 squadra --version
 ```
 
-Install from a clean, committed checkout with a **new backup directory** each time; the installer keeps your previous skills and launcher, so you can roll back. The `export PATH` line lasts for that terminal only: add it to your shell profile (for example `~/.zshrc` or `~/.bashrc`) so new terminals find `squadra`. Without installing, run `python3 -B scripts/squadra.py <command>`. [Details and rollback](references/start.md#install-and-join-details).
+Install from a clean, committed checkout with a **new backup directory** each time; the installer keeps your previous skills and launcher, so you can roll back: `python3 -B scripts/install.py --undo <backup folder>` restores the earlier skills and keeps the backup. The `export PATH` line lasts for that terminal only: add it to your shell profile (for example `~/.zshrc` or `~/.bashrc`) so new terminals find `squadra`. Without installing, run `python3 -B scripts/squadra.py <command>`. [Details and rollback](references/start.md#install-and-join-details).
 
 </details>
 
@@ -475,7 +475,7 @@ A **plugin** brings another tool's data into the dashboard: a folder `$HOME/.squ
 
 Plugin folders must belong to you and must not be writable by group or others; the Store creates private ones.
 
-**Who runs the request?** An installed plugin may ship `$HOME/.squadra/plugins/<name>/AGENTS.md` with instructions for agents. The coordinator window reads it at start and resume and runs only the commands it specifies, within existing permissions: the producer after a close, the consumer when the dashboard shows a pending request, then reports the outcome. This requires a regular file owned by the user, not group- or other-writable and not a symlink. Without a valid file, the request stays pending and the coordinator says so; you have no command to run. The dashboard never reads, writes or runs this file. This file never widens permissions and never authorizes installation, push, publication or decisions reserved for the user; for anything beyond running that plugin’s producer or consumer, stop and report.
+**Who runs the request?** An installed plugin may ship `$HOME/.squadra/plugins/<name>/AGENTS.md` with instructions for agents. The coordinator window reads it at start and resume and runs only the commands it specifies, within existing permissions and only while `squadra plugin list` reports that plugin with `instructions: valid` and `files: verified`: the producer after a close, the consumer when the dashboard shows a pending request, then reports the outcome. This requires a regular file owned by the user, not group- or other-writable and not a symlink. Without a valid file, the request stays pending and the coordinator says so; you have no command to run. The dashboard never reads, writes or runs this file. This file never widens permissions and never authorizes installation, push, publication or decisions reserved for the user; for anything beyond running that plugin’s producer or consumer, stop and report.
 
 Exact schemas, sizes, limits and refusal codes: [plugin contract](references/plugins.md), [about metadata](references/plugins.md#optional-about-metadata), [homepage and icon](references/plugins.md#homepage-and-local-icon).
 
@@ -505,7 +505,7 @@ The sections below keep the full working examples. Open the topic you need; the 
 | Follow a task from assignment to closure | [Task workflow](#workflow) |
 | Trace an instruction or record a decision | [Briefs, messages and decisions](#decision-reference) |
 | Save work or resume a session | [Checkpoints and recovery](#checkpoints) |
-| Look up a command or its plain-language prompt | [All 53 commands](#commands) |
+| Look up a command or its plain-language prompt | [All 54 commands](#commands) |
 
 [Skill](SKILL.md) · [Setup](references/start.md) · [Work/proof/review](references/work.md) · [Native runners](references/runtime.md) · [Recovery/context handover](references/recovery.md) · [Challenges/benchmark](references/benchmark.md) · [Plugins](references/plugins.md) · [Plugin authoring](references/plugin-authoring.md)
 
@@ -787,7 +787,7 @@ The other ordinary reads above do not reverify earlier events, untouched cache l
 
 #### Small changes: the light route
 
-The coordinator may declare `task --route light` for a bounded, reversible change: at most **80 added plus deleted lines in four files** (policy **light-v1 / P2**), counted from the original clean Git base. Scripts, plugin bundles, instruction files and normative contracts stay protected, and a security impact or a required whole gate still takes the full route. The light route skips the plan read and uses the agreed targeted proof; a non-author read, the bindings and the budgets remain. Only the coordinator can promote a task to the full route, and promotion never resets a budget. See [the light route](references/work.md#light-route) and [the details](references/work.md#readme-protocol-details).
+The coordinator may declare `task --route light` for a bounded, reversible change: at most **80 added plus deleted lines in four files**, and 16 KiB of changed lines (policy **light-v1 / P2**), counted from the original clean Git base. Scripts, plugin bundles, the dashboard page, instruction files and normative contracts stay protected, and a security impact or a required whole gate still takes the full route. The light route skips the plan read and uses the agreed targeted proof; a non-author read, the bindings and the budgets remain. Only the coordinator can promote a task to the full route, and promotion never resets a budget. See [the light route](references/work.md#light-route) and [the details](references/work.md#readme-protocol-details).
 
 </details>
 
@@ -805,7 +805,7 @@ You do not have to type these commands: **asking your window in plain words is t
 Every command, grouped by purpose: **54 subcommands**, plus `--version`. Use `squadra <command> --help` for the flags; registry commands accept `--root` or `SQUADRA_ROOT`. «Coordinator only» marks what only the coordinator can record: `task`, `route`, `supersede`, `reassign`, `brief`, `close`, `ask`, `decision`, `settings`, `pause`, `resume`, `save`, `standby`, `ping --all`, `ping --sweep`, and the receipt that `restore-check` writes into the live registry. Without installing, the same commands run as `python3 -B scripts/squadra.py <command>`.
 
 <details>
-<summary><strong>All 53 commands and their prompts, grouped by purpose</strong></summary>
+<summary><strong>All 54 commands and their prompts, grouped by purpose</strong></summary>
 
 ### Start and team
 
@@ -846,8 +846,8 @@ Every command, grouped by purpose: **54 subcommands**, plus `--version`. Use `sq
 
 | Command | What it does | Or just ask |
 |---|---|---|
-| `prove` | Run the agreed proof on the exact frozen files and keep its native result. | “Freeze your change and run the agreed proof on it.” |
-| `probe` | Record an independent test, including a negative control that must fail. | To the reviewer: “Run your own test on the candidate, with a negative control that must fail, and record it.” |
+| `prove` | Run the agreed proof in the builder's checkout on the exact fingerprinted files, before they are frozen, and keep its native result. | “Run the agreed proof on your exact change.” |
+| `probe` | Record an independent test, including a negative control that must fail; a reader's probe of a frozen delivery runs on a private copy of the frozen candidate. | To the reviewer: “Run your own test on the candidate, with a negative control that must fail, and record it.” |
 | `deliver` | Hand over an immutable packet of the proven candidate to its reviewer. | “Deliver the proven candidate to its reviewer.” |
 | `advance` | Reconcile a handoff that was already delivered, without building or approving. | “T1 was already delivered: reconcile the handoff, without building or approving anything.” |
 | `review` | Record a non-author verdict on a plan or on the code: accepted, changes required or blocked. | To the reviewer: “Read the frozen candidate of T1 and record your verdict.” |

@@ -41,7 +41,10 @@ resolve them when comparing source files, without changing stored packet hashes.
 Files must be regular files. Traversal from the trusted HOME directory uses
 directory descriptors and no-follow opens for `.squadra` and every component
 below it. Symlinks, directories in place of files, FIFOs and unsafe I/O are
-refused. Writes by a producer should replace a complete JSON file atomically;
+refused. The `panels/` folder passes the same owner and mode check as the plugin
+folder, and a panel file must belong to you, must not be writable by group or
+others and must have a single link; otherwise the panel is refused with
+`unsafe_permissions`. Writes by a producer should replace a complete JSON file atomically;
 partially written or malformed data is refused, not repaired by the dashboard.
 These checks do not authenticate the producer against someone who can already
 write under the same local account.

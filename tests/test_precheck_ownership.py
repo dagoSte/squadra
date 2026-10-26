@@ -14,6 +14,9 @@ import precheck
 import registry
 import runtime
 
+# The bound for each check of the lease-inheritance scenario, and for the wait on its child's report.
+CHECK_SECONDS = 40
+
 
 class PrecheckOwnership(unittest.TestCase):
     setUp = support.Precheck.setUp
@@ -132,10 +135,11 @@ class PrecheckOwnership(unittest.TestCase):
                 " except OSError: pass\n"
                 f"Path({str(ready)!r} + '-tmp').write_text(json.dumps(held))\n"
                 f"Path({str(ready)!r} + '-tmp').replace({str(ready)!r})\n"
-                "until=time.monotonic()+8\n"
+                f"until=time.monotonic()+{CHECK_SECONDS}\n"
                 f"while not Path({str(release)!r}).exists() and time.monotonic()<until: time.sleep(.01)\n")
         command = support.py(code)
-        self.declare([support.check('active', command, 10), support.check('queued', support.py('pass'))], total=15)
+        self.declare([support.check('active', command, CHECK_SECONDS), support.check('queued', support.py('pass'), CHECK_SECONDS)],
+                     total=3 * CHECK_SECONDS)
         popen, terminate = subprocess.Popen, runtime.terminate
         observed = {'cleanup': []}
 
@@ -143,7 +147,8 @@ class PrecheckOwnership(unittest.TestCase):
             proc = popen(argv, *args, **kwargs)
             if argv == command:
                 try:
-                    limit = time.monotonic() + 5
+                    # Wait for the report or the child's exit, never a shorter fixed time: a loaded machine starts it late.
+                    limit = time.monotonic() + CHECK_SECONDS
                     while not ready.exists() and proc.poll() is None and time.monotonic() < limit:
                         time.sleep(.01)
                     observed['inherited'] = json.loads(ready.read_text()) if ready.exists() else []

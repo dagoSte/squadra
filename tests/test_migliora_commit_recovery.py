@@ -67,13 +67,18 @@ class CommitRecovery(unittest.TestCase):
     def test_exdev_after_head_moves_is_recorded_and_index_is_recovered(self):
         import migliora
         rule = self.rule(); self.stage_foreign(); index = self.repo / '.git/index'
-        real_replace = os.replace
+        real_replace, failed = os.replace, []
         def exdev(source, target, *args, **kwargs):
-            if Path(target) == index:
+            # The first index replacement fails; the recorded retry recovers the index.
+            if Path(target) == index and not failed:
+                failed.append(target)
                 raise OSError(errno.EXDEV, 'Injected cross-device link')
             return real_replace(source, target, *args, **kwargs)
         with patch.object(migliora.os, 'replace', side_effect=exdev):
             self.assertIn('needs reconciliation', self.refuse('migliora', 'apply', '--actor', 'A', '--task', 'T', '--rule-file', str(rule)))
+        self.assertEqual(len(failed), 1)
+        self.assertTrue(any(m.startswith('Post-commit error: ') and 'Injected cross-device link' in m
+                            for m in self.state()['outputs'][-1]['migliora']['mismatch']))
         self.check_partial_receipt()
 
     def test_post_commit_verification_error_keeps_receipt_and_clean_index(self):
