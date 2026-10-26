@@ -1687,6 +1687,7 @@ function registryIntegrityFailure(){
  for(const id of ['story','artifact','read-dialog']){const dialog=$(id);if(dialog.open)dialog.close();}
  for(const id of ['artifact-title','artifact-body','read-title','read-body'])$(id).replaceChildren();
  $('legacy').hidden=true;$('registry-details').hidden=true;$('connected-context').hidden=true;
+ if(typeof notifyClear==='function')notifyClear();
  registryAuditLabels();
 }
 function loadingLabels(){
@@ -3895,6 +3896,11 @@ function notifyDraw(){
 function notifyDismiss(toast){
  const index=notifyToasts.indexOf(toast);if(index<0)return;
  window.clearTimeout?.(toast.timer);notifyToasts.splice(index,1);notifyDraw();
+}
+// Notices describe registry state; an integrity failure withdraws them with the rest of that state.
+function notifyClear(){
+ for(const toast of notifyToasts)window.clearTimeout?.(toast.timer);
+ notifyToasts.splice(0);notifyPrevious=null;notifyDraw();
 }
 function notifyToast(key,vars={}){
  const toast={key,vars,box:node('div',undefined,'sq-toast'),text:node('span'),close:node('button')};
