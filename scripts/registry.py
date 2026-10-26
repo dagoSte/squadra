@@ -1196,7 +1196,8 @@ def candidate_checks(task, current, require_review=True, delivering=False):
         require(ids <= set(reviews[-1].get("covers", [])), "Requirement lacks independent current review")
         if reviews[-1].get('request'):
             delivery = task.get('delivery', {})
-            handoffs = delivery.get('handoffs', []) + ([delivery['handoff']] if delivery.get('handoff') else [None])
+            # A review with no handoff counts only on a delivery with none, which has no configured reader (H-5).
+            handoffs = [h for h in [*delivery.get('handoffs', []), delivery.get('handoff')] if h] or [None]
             require(reviews[-1].get('handoff') in handoffs, 'Independent review belongs to an older handoff')
 
 
@@ -1225,6 +1226,16 @@ def check_pool(state, d):
                    "in stand-by" if standby(state, member) else
                    "author alias is not independent" if agent["identity"] == owner else None)
         require(problem is None, "review_pool_member: " + str(member) + ": " + str(problem))
+
+
+def require_handoff(state, task, actor, action):
+    """Only the configured reader, after its own ACK of the delivery's handoff about this task, reads it (H-5)."""
+    require(actor == task.get("reviewer"), "Configured reviewer must ACK exact handoff before " + action)
+    handoff = task.get("delivery", {}).get("handoff")
+    message = state["messages"].get(handoff) if isinstance(handoff, str) else None
+    require(message is not None and message["to"] == actor and message.get("related_task") == task["id"],
+            "handoff_missing: " + task["id"] + " was delivered without a handoff message to " + actor)
+    require((message["ack"] or {}).get("agent") == actor, "Configured reviewer must ACK exact handoff before " + action)
 
 
 def require_claim(state, task, actor, action):
@@ -1985,11 +1996,16 @@ def validate(state, kind, actor, d, stored_packet=None):
                         packet.get("plan") == task.get("plan") and packet.get("reviewer") == task["reviewer"] and
                         packet.get("pool") == task.get("pool"),
                         "Handoff packet changed during delivery")
+                key = "review-" + digest(canonical(stored_packet if stored_packet is not None else packet).encode())
                 if task.get("pool"):
                     # One handoff per active member, each named after this exact packet; stand-by members get none.
-                    key = "review-" + digest(canonical(stored_packet if stored_packet is not None else packet).encode()) + "-"
-                    require(d.get("handoffs") == [key + member for member in active_pool(state, task)],
-                            "Pool handoffs must name every active member for this exact packet")
+                    require(d.get("handoffs") == [key + "-" + member for member in active_pool(state, task)] and
+                            "handoff" not in d, "Pool handoffs must name every active member for this exact packet")
+                else:
+                    # The single reader's handoff is named after this exact packet too, so new bytes need a new ACK (H-5).
+                    require(d.get("handoff") == key and "handoffs" not in d,
+                            "handoff_unbound: a delivery to " + str(task["reviewer"]) + " names the handoff "
+                            "review-<digest of its packet>")
                 require(packet.get("proofs") == [p for p in task["proofs"] if p["status"] == "passed" and
                         p["after"] == d["snapshot"] and contract_matches(task, p)], "Handoff proofs changed during delivery")
         if kind == "run.start":
@@ -2011,11 +2027,10 @@ def validate(state, kind, actor, d, stored_packet=None):
                 stage = d.get("stage", "code")
                 require(run_count(state, d["task"], "read", stage) < state["workspace"]["limits"][stage],
                         "Independent CLI read budget exhausted")
-                handoff = task.get("delivery", {}).get("handoff")
-                if handoff and stage == "code":
-                    require(actor == task["reviewer"] and state["messages"][handoff]["ack"] is not None,
-                            "Configured reviewer must ACK exact handoff before read")
-                elif task.get("delivery", {}).get("handoffs") and stage == "code":
+                delivery = task.get("delivery", {})
+                if (task.get("reviewer") or delivery.get("handoff")) and stage == "code":
+                    require_handoff(state, task, actor, "read")
+                elif delivery.get("handoffs") and stage == "code":
                     require_claim(state, task, actor, "read")
             if d.get("gate"):
                 require(state["resources"].get("gate", {}).get("owner") == actor,
@@ -2054,11 +2069,10 @@ def validate(state, kind, actor, d, stored_packet=None):
             else:
                 require(task.get("candidate", {}).get("sha256") == d["binding"], "Review refers to another candidate")
                 require(task["status"] in {"delivered", "reviewed", "changes-required"}, "No delivered candidate")
-                handoff = task.get("delivery", {}).get("handoff")
-                if handoff:
-                    require(actor == task["reviewer"] and state["messages"][handoff]["ack"] is not None,
-                            "Configured reviewer must ACK exact handoff before review")
-                elif task.get("delivery", {}).get("handoffs"):
+                delivery = task.get("delivery", {})
+                if task.get("reviewer") or delivery.get("handoff"):
+                    require_handoff(state, task, actor, "review")
+                elif delivery.get("handoffs"):
                     require_claim(state, task, actor, "review")
                 if d["verdict"] == "accepted":
                     require(set(d.get("covers", [])) == {r["id"] for r in task.get("requirements", [])},
@@ -2115,6 +2129,9 @@ def validate(state, kind, actor, d, stored_packet=None):
             related = state["tasks"].get(d.get("related_task"), {})
             require(d["pool"] == related.get("delivery", {}).get("handoffs") and d["id"] in d["pool"],
                     "Pool handoff must belong to the current pool delivery")
+            # A slot is review-<packet digest>-<member>: its message goes to that member only (H-5).
+            require(d["id"][len("review-") + 64 + 1:] == d["to"] and d["to"] in (related.get("pool") or []),
+                    "pool_slot_invalid: the pool handoff " + d["id"] + " is addressed to the member its name carries")
         if d.get("ping"):
             require(d["ping"] is True and not d.get("awaited") and not d.get("task") and not d.get("related_task"),
                     "Ping is a registered presence challenge, not an assignment")
