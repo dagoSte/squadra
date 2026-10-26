@@ -8,6 +8,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import json
 import os
 from pathlib import Path
+import signal
 import subprocess
 import sys
 import tempfile
@@ -18,6 +19,9 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 SERIAL_MODULES = {}  # Module name: measured reason it cannot overlap another module.
+# Workers run in their own sessions, so a kill of this runner's group never reaches them; the runner keeps them here.
+LIVE, LIVE_LOCK = set(), threading.RLock()  # Reentrant: the TERM handler runs on the main thread, which may hold it.
+DISPOSE_GRACE = 1.0  # Seconds between TERM and KILL, inside the 2 s a proof cancel gives this runner.
 
 
 def test_ids(suite):
@@ -107,13 +111,17 @@ def launch(args, folder, cancel, module=None):
     started = time.monotonic()
     problem = None
     code = None
+    proc = None
     try:
         with (folder / 'stdout.log').open('w') as out, (folder / 'stderr.log').open('w') as err:
-            if cancel.is_set():
-                raise RuntimeError('cancelled before start')
-            proc = subprocess.Popen(command, env=environment(folder), stdout=out, stderr=err,
-                                    start_new_session=True)
             try:
+                # Checked under the lock, so no worker starts after a disposal has taken its snapshot.
+                with LIVE_LOCK:
+                    if cancel.is_set():
+                        raise RuntimeError('cancelled before start')
+                    proc = subprocess.Popen(command, env=environment(folder), stdout=out, stderr=err,
+                                            start_new_session=True)
+                    LIVE.add(proc)
                 while True:
                     if cancel.is_set():
                         raise RuntimeError('cancelled')
@@ -126,7 +134,12 @@ def launch(args, folder, cancel, module=None):
                     except subprocess.TimeoutExpired:
                         pass
             finally:
-                terminate(proc)
+                if proc is not None:
+                    try:
+                        terminate(proc)
+                    finally:
+                        with LIVE_LOCK:
+                            LIVE.discard(proc)
     except Exception as exc:
         problem = f'{type(exc).__name__}: {exc}'
     elapsed = time.monotonic() - started
@@ -134,6 +147,41 @@ def launch(args, folder, cancel, module=None):
                  'problem': problem, 'seconds': elapsed}
     (folder / 'process.json').write_text(json.dumps(execution), encoding='utf-8')
     return execution
+
+
+def dispose(grace=DISPOSE_GRACE):
+    """Stop every live worker group: TERM at once, then KILL whatever is left after the grace."""
+    with LIVE_LOCK:
+        groups = list(LIVE)
+
+    def signal_group(proc, sig):
+        try:
+            os.killpg(proc.pid, sig)
+            return True
+        except ProcessLookupError:
+            return False
+        except PermissionError:
+            return proc.poll() is None
+
+    remaining = [proc for proc in groups if signal_group(proc, signal.SIGTERM)]
+    deadline = time.monotonic() + grace
+    while remaining and time.monotonic() < deadline:
+        time.sleep(0.02)
+        for proc in remaining:
+            proc.poll()
+        remaining = [proc for proc in remaining if signal_group(proc, 0)]
+    for proc in remaining:
+        signal_group(proc, signal.SIGKILL)
+
+
+def stopped(cancel):
+    """A proof cancel or timeout TERMs this runner's group: refuse new workers, dispose of the live ones, exit."""
+    def handler(signum, frame):
+        signal.signal(signum, signal.SIG_IGN)
+        cancel.set()
+        dispose()
+        raise KeyboardInterrupt
+    return handler
 
 
 def read_json(path):
@@ -208,6 +256,8 @@ def run(args):
             output.rmdir()
             raise ValueError('temporary directory must be outside the source and discovery trees')
     cancel = threading.Event()
+    if os.name != 'nt':
+        signal.signal(signal.SIGTERM, stopped(cancel))
     print(f'Logs and isolated profiles: {output}', flush=True)
     process = launch(args, output / 'discovery', cancel)
     collected, executed = [], []
