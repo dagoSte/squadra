@@ -511,7 +511,8 @@ saves a message. `ack --actor builder --message M1` is a separate recipient acti
 or wakeup, and records `delivered: null`: unconfirmed, not failed. `--via codex-queue`
 requires a known session ID and checks the local CLI; native 0 means queued, not read.
 `send` and `transport` print short JSON receipts without the board; full transport
-evidence stays in the journal. Read-only JSON commands, including `candidate status`
+evidence stays in the journal; a failed or unconfirmed queue attempt also shows
+at most 300 characters from stderr in its receipt. Read-only JSON commands, including `check`, `candidate status`
 and `lesson --list`, print one JSON document on stdout; `status` keeps its human board.
 **To forward.** A Codex window has no follower of its own, so mail to a Codex seat
 waits on the coordinator until a transport reports `delivered: true` or the recipient

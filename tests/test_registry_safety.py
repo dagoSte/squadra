@@ -277,7 +277,7 @@ class RegistrySafety(unittest.TestCase):
             return None
         with patch.object(squadra, 'dispatch', side_effect=foreign_write), \
                 patch.object(squadra, 'table', side_effect=RuntimeError('summary unavailable')):
-            rc, out, err = self.invoke('check', '--actor', 'C', '--task', 'T')
+            rc, out, err = self.invoke('status')
         self.assertEqual(rc, 1)
         self.assertNotIn('committed', out + err)
         self.assertNotIn('diagnostic', [e['kind'] for e in self.store.events()])
@@ -291,13 +291,15 @@ class RegistrySafety(unittest.TestCase):
         replies = [SimpleNamespace(returncode=0, stdout='--thread --message', stderr=''),
                    SimpleNamespace(returncode=1, stdout='', stderr='queue unavailable')]
         with patch('subprocess.run', side_effect=replies), \
-                patch.object(squadra, 'table', side_effect=RuntimeError('render unavailable')):
+                patch.object(Store, 'publish', side_effect=RuntimeError('summary unavailable')), \
+                patch.object(squadra, 'table') as render:
             rc, out, err = self.invoke('transport', '--actor', 'A', '--message', 'queue-message', '--via', 'codex-queue')
+        render.assert_not_called()
         self.assertEqual(rc, 1, err)
         self.assertIn('delivery failed', err)
         self.assertNotIn('do not retry', err)
         self.assertEqual([e['kind'] for e in self.store.events()[before:]], ['transport'])
-        first, _ = json.JSONDecoder().raw_decode(out); self.assertFalse(first['delivered'])
+        self.assertFalse(json.loads(out)['delivered'])
 
     def test_selftest_result_exit_code_is_preserved(self):
         with patch('selftest.run', return_value={'status': 'failed', 'tests': 1, 'folder': str(self.base)}):

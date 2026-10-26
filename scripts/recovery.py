@@ -18,6 +18,10 @@ SECRET_NAMES = (".env*", "*.pem", "*.key", "*.p12", "id_rsa*", "id_ed25519*", ".
 TEMPLATE_SUFFIXES = (".example", ".sample", ".template", ".dist")
 
 
+class DestinationRefused(Error):
+    """Invalid save destination, rejected before recording an allowance."""
+
+
 def secret(path, body=b"", tracked=False):
     """A secret name or a private-key header; a tracked template is judged by its content only."""
     name = path.name.lower()
@@ -43,7 +47,20 @@ def allowed_file(repo, rel):
             "head_sha256": digest(historical) if historical is not None else None}
 
 
-def allow_names(store, actor, destination, repos, names, reason):
+def save_destination(store, state, destination, repos, temporary):
+    destination = Path(destination).resolve()
+    selected = repositories(state, repos)
+    registered = repositories(state, None)
+    if destination.exists():
+        raise DestinationRefused("Save destination must be new")
+    if any(inside(destination, r) for r in [*selected, *registered, store.root]):
+        raise DestinationRefused("Save outside all source/registry roots")
+    if not temporary and any(inside(destination, p) for p in [Path(tempfile.gettempdir()).resolve(), Path('/private/tmp')]):
+        raise DestinationRefused("Durable save cannot live in tmp; --temporary for tests")
+    return destination, selected
+
+
+def allow_names(store, actor, destination, repos, names, reason, temporary=False):
     """Record a coordinator's exact, content-bound exception for one save destination."""
     state = store.state()
     require(state['agents'][actor]['role'] == 'coordinator', "Coordinator role required")
@@ -54,9 +71,10 @@ def allow_names(store, actor, destination, repos, names, reason):
         require(name and not Path(name).is_absolute() and Path(name).as_posix() == name and
                 not any(part in {'', '.', '..'} for part in name.split('/')) and
                 not any(c in name for c in '*?[\\'), "--allow-name requires an exact relative path, never a pattern")
-    repo = repositories(state, repos)[0]
+    destination, selected = save_destination(store, state, destination, repos, temporary)
+    repo = selected[0]
     files = [allowed_file(repo, name) for name in names]
-    allowance = {"repo": str(repo), "destination": str(Path(destination).resolve()), "files": files}
+    allowance = {"repo": str(repo), "destination": str(destination), "files": files}
     decision = 'save-name-' + uuid.uuid4().hex
     store.append('decision', actor, {'id': decision, 'reason': reason, 'save_name_allowance': allowance})
     return decision
@@ -145,10 +163,8 @@ def inventory(folder):
 
 def save(store, destination, repos=None, includes=None, temporary=False, declared_offsite=None, name_allowance=None):
     require(os.name != "nt", "Windows full recovery not qualified")
-    destination = Path(destination).resolve()
     state = store.state()
-    selected = repositories(state, repos)
-    registered = repositories(state, None)
+    destination, selected = save_destination(store, state, destination, repos, temporary)
     allowance = None
     if name_allowance is not None:
         decision = next((d for d in state['decisions'] if d.get('id') == name_allowance), None)
@@ -157,10 +173,6 @@ def save(store, destination, repos=None, includes=None, temporary=False, declare
         allowance = decision.get('save_name_allowance')
         require(allowance and allowance['destination'] == str(destination) and
                 selected == [Path(allowance['repo'])], "Name allowance belongs to one exact save and repository")
-    require(not destination.exists(), "Save destination must be new")
-    require(not any(inside(destination, r) for r in [*selected, *registered, store.root]), "Save outside all source/registry roots")
-    require(temporary or not any(inside(destination, p) for p in [Path(tempfile.gettempdir()).resolve(), Path('/private/tmp')]),
-            "Durable save cannot live in tmp; --temporary for tests")
     for value in includes or []:
         require(any(inside(Path(os.path.abspath(value)), r) for r in selected), "Include must belong to a selected repository")
     destination.mkdir(parents=True, mode=0o700)

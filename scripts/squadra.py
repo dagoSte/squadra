@@ -825,8 +825,11 @@ def dispatch(a, store):
         if relay:
             result["relayed_by"] = actor
         store.append("transport", actor, result)
-        return {key: value for key, value in result.items() if key not in
-                {"receipt", "receipt_length", "stderr", "stderr_length"}}
+        receipt = {key: value for key, value in result.items() if key not in
+                   {"receipt", "receipt_length", "stderr", "stderr_length"}}
+        if result.get('delivered') is not True and result.get('stderr'):
+            receipt['stderr'] = result['stderr'][-300:]
+        return receipt
     elif command == "plan":
         store.append("plan", actor, {"task": a.task, "artifact": store.artifact(a.file)})
     elif command == "start":
@@ -1025,11 +1028,14 @@ def dispatch(a, store):
                 "source_code": "Not included: preserve worktree and Git bundle separately",
                 **({"scrubbed": report["scrubbed"]} if report.get("scrubbed") else {})}
     elif command == "save":
-        from recovery import save, allow_names
+        from recovery import save, allow_names, DestinationRefused
         require(state["agents"][actor]["role"] == "coordinator", "Coordinator role required")
         require(not a.reason or a.allow_name, "--reason requires --allow-name")
-        allowance = allow_names(store, actor, a.to, a.repo, a.allow_name, a.reason) if a.allow_name else None
-        result = save(store, a.to, a.repo, a.include, a.temporary, a.declared_offsite, name_allowance=allowance)
+        try:
+            allowance = allow_names(store, actor, a.to, a.repo, a.allow_name, a.reason, a.temporary) if a.allow_name else None
+            result = save(store, a.to, a.repo, a.include, a.temporary, a.declared_offsite, name_allowance=allowance)
+        except DestinationRefused as exc:
+            raise InputRefusal(str(exc)) from exc
         store.append("save", actor, {"path": str(Path(a.to).resolve()), "manifest": store.artifact(Path(a.to) / "MANIFEST.json")})
         return {"saved": str(Path(a.to).resolve()), "repositories": len(result["repositories"]),
                 "scope": result["scope"], "destination": result["destination"], "offsite_verified": False,
@@ -1340,7 +1346,7 @@ def main(argv=None):
                         state, attention_value = context
                     else:
                         attention_value = None
-                if (a.command not in {"inbox", "doctor", "send", "transport", "migliora"} and
+                if (a.command not in {"inbox", "doctor", "send", "transport", "migliora", "check"} and
                     not (a.command in {"resource", "candidate"} and a.action == "status") and
                     not (a.command == "lesson" and a.list)):
                     from registry import current_index

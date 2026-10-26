@@ -234,7 +234,8 @@ squadra save --actor coord --repo /path/to/repo --to /durable/path/save-002 \
 
 Repeat `--allow-name` for several files in the same single `--repo`. Paths must be
 literal, canonical repository-relative paths of tracked regular files; no patterns,
-directories or symlinks. A coordinator decision is recorded before copying; the manifest
+directories or symlinks. The destination must pass the ordinary new-folder, confinement
+and durability checks before any allowance is recorded. A coordinator decision is recorded before copying; the manifest
 references it and records each allowed file's SHA-256 in the working tree, index and
 HEAD (null if absent from HEAD). The exception is bound to that save destination and
 those contents, and never changes a later save's filters. Private-key headers in any

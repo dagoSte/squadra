@@ -13,6 +13,18 @@ class Receipts(ops.Squad):
         self.assertEqual(rc, 0, err)
         self.assertIsInstance(json.loads(out), dict)
 
+    def test_check_is_one_json_document_and_records_nothing(self):
+        self.ack()
+        self.assertEqual(self.proof()['status'], 'passed')
+        self.assertEqual(self.cli('deliver', '--actor', 'A', '--task', 'T')[0], 0)
+        self.assertEqual(self.cli('review', '--actor', 'R', '--task', 'T', '--verdict', 'accepted',
+                                  '--report', str(self.report))[0], 0)
+        before = len(self.store.events())
+        rc, out, err = self.cli('check', '--actor', 'C', '--task', 'T')
+        self.assertEqual(rc, 0, err)
+        self.assertTrue(json.loads(out)['verified'])
+        self.assertEqual(len(self.store.events()), before)
+
     def test_lesson_list_is_one_json_document(self):
         rc, out, err = self.cli('lesson', '--list')
         self.assertEqual(rc, 0, err)
@@ -40,11 +52,17 @@ class Receipts(ops.Squad):
         self.assertEqual((receipt['message'], receipt['delivered'], receipt['native_rc']), ('M', False, 7))
         self.assertLess(len(out), 1200)
         self.assertNotIn('receipt', receipt)
-        self.assertNotIn('stderr', receipt)
+        self.assertEqual(receipt['stderr'], evidence['stderr'][-300:])
+        self.assertLessEqual(len(receipt['stderr']), 300)
         record = [e['data'] for e in self.store.events() if e['kind'] == 'transport'][-1]
         for key, value in evidence.items():
             self.assertEqual(record[key], value)
         self.assertIsNone(self.store.state()['messages']['M']['ack'])
+        with patch('squadra.codex_queue', return_value={**evidence, 'delivered': True, 'native_rc': 0}):
+            rc, out, err = self.cli('transport', '--actor', 'C', '--message', 'M', '--via', 'codex-queue')
+        self.assertEqual(rc, 0, err)
+        self.assertNotIn('stderr', json.loads(out))
+        self.assertNotIn('receipt', json.loads(out))
 
 
 class Adoption(plugin_support.Fixture):
@@ -170,6 +188,21 @@ class SaveAllowance(ops.Squad):
             self.assertNotEqual(rc, 0)
             self.assertFalse((self.base / name).exists())
 
+        existing = self.base / 'existing'; existing.mkdir()
+        for name, destination in (('existing', existing), ('source', self.repo / 'nested-save'),
+                                  ('registry', self.root / 'nested-save')):
+            before = len(self.store.events())
+            rc, _, _ = self.cli('save', '--actor', 'C', '--repo', str(self.repo), '--to', str(destination),
+                                '--temporary', '--allow-name', 'deploy/credentials.py', '--reason', 'Synthetic')
+            self.assertEqual(rc, 1, name)
+            self.assertEqual(len(self.store.events()), before, name)
+        before = len(self.store.events())
+        args = [arg for arg in self.save_args('not-durable') if arg != '--temporary']
+        rc, _, _ = self.cli(*args, '--allow-name', 'deploy/credentials.py', '--reason', 'Synthetic')
+        self.assertEqual(rc, 1)
+        self.assertEqual(len(self.store.events()), before)
+        self.assertEqual(list(existing.iterdir()), [])
+
     def test_allowance_never_permits_private_keys_in_head_index_or_worktree(self):
         path = self.tracked_module()
         benign = path.read_bytes()
@@ -213,7 +246,7 @@ class SaveAllowance(ops.Squad):
         from registry import Error
         path = self.tracked_module()
         decision = allow_names(self.store, 'C', self.base / 'saved', [str(self.repo)],
-                               ['deploy/credentials.py'], 'Synthetic explicit allowance')
+                               ['deploy/credentials.py'], 'Synthetic explicit allowance', temporary=True)
         with self.assertRaisesRegex(Error, 'one exact save'):
             save(self.store, self.base / 'other', [str(self.repo)], temporary=True, name_allowance=decision)
         self.assertFalse((self.base / 'other').exists())
