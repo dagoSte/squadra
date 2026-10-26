@@ -581,9 +581,11 @@ UTF-8 file at most 64 KiB. Relative path components use ASCII letters, digits,
 period, underscore or hyphen, up to 128 characters; no traversal, case-colliding
 names, symlinks or special files. Root `settings.json`, `secrets/`, `actions/`,
 `panels/`, `.settings.lock`, `.store-receipt.json` and `.store.lock` are reserved.
-`SKILL.md`, `.claude-plugin`, `.codex-plugin`, `.agents` and `.mcp.json` are refused
-at every depth, including case variants: a data plugin must not become another
-client skill, agent, hook or MCP configuration through client discovery.
+`SKILL.md`, `CLAUDE.md`, `.claude`, `.claude-plugin`, `.codex`, `.codex-plugin`,
+`.cursor`, `.agents` and `.mcp.json` are refused at every depth, and so is an
+`AGENTS.md` below the plugin root, including case variants: a data plugin must not
+become another client skill, agent, hook, rule or MCP configuration through client
+discovery. The root `AGENTS.md` is the plugin's own [agent instructions](#agent-instructions).
 
 ### List, install and recover
 
