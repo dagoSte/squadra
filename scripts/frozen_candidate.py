@@ -172,7 +172,7 @@ def validate_candidate(repo, files=None, *, working_only=False, label='Frozen ca
             heads[os.fsdecode(name)] = (mode, sha.decode('ascii'))
     if files is None:
         files = snapshot(repo)['files']
-    object_format = git_object_format(repo) if working_only else None
+    object_format = git_object_format(repo)
     for row in files:
         rel = row['path']; path = repo / rel
         require(not Path(rel).is_absolute() and '..' not in Path(rel).parts and
@@ -189,7 +189,9 @@ def validate_candidate(repo, files=None, *, working_only=False, label='Frozen ca
             body = path.read_bytes()
         head = heads.get(rel)
         mode = b'120000' if row['kind'] == 'symlink' else b'100755' if row.get('executable') else b'100644'
-        if working_only and head and head[0] == mode and git_blob_id(body, object_format) == head[1]:
+        if not working_only:
+            require(not private_key(body), label + ' private-key working file refused: ' + rel)
+        if head and head[0] == mode and git_blob_id(body, object_format) == head[1]:
             continue
         require(not secret(path, body, tracked=rel in heads), label + ' secret file refused: ' + rel +
                 ('; commit the template at HEAD or ignore it before delivery' if rel not in heads else ''))
@@ -207,7 +209,7 @@ def validate_candidate(repo, files=None, *, working_only=False, label='Frozen ca
     for sha, body in git_blobs(repo, uses):
         for version, rel, mode in uses[sha]:
             if version == 'HEAD':
-                require(not secret(Path(rel), body, tracked=True), label + ' secret HEAD file refused: ' + rel)
+                require(not private_key(body), label + ' private-key HEAD file refused: ' + rel)
                 if mode == b'120000':
                     target = os.fsdecode(body)
                     require(not Path(target).is_absolute() and inside(((repo / rel).parent / target).resolve(), repo),
