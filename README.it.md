@@ -880,7 +880,7 @@ Ogni comando, raggruppato per scopo: **54 sottocomandi**, più `--version`. Usa 
 | `pause` | Solo il coordinatore: ferma nuovo lavoro, letture ed esecuzioni, lasciando possibili consultazione e ripristino. | Al coordinatore: «Metti in pausa la squadra: niente lavoro nuovo finché non te lo dico.» |
 | `resume` | Solo il coordinatore: riprende dopo la parola esplicita del proprietario e una riconciliazione. | Al coordinatore: «Riprendi il lavoro: prima riconcilia, poi dimmi il prossimo passo.» |
 | `checkpoint` | Copia il registro, i suoi artefatti e le viste derivate in una cartella nuova. | «Fai un checkpoint del registro in una cartella nuova.» |
-| `save` | Solo il coordinatore: impacchetta il registro con ogni repository Git registrato e il lavoro in corso. | Al coordinatore: «Salva il registro e il codice di ogni repository, compreso il lavoro non finito.» |
+| `save` | Solo il coordinatore: impacchetta il registro con ogni repository Git registrato e il lavoro in corso; `--repo ROOT --allow-name REL --reason TEXT` registra una deroga al nome per un solo salvataggio. | Al coordinatore: «Salva il registro e il codice di ogni repository, compreso il lavoro non finito.» |
 | `restore-check` | Dimostra un pacchetto ripristinandolo davvero in una cartella nuova; registrare la ricevuta nel registro vivo spetta solo al coordinatore. | «Dimostra che il salvataggio funziona ripristinandolo in una cartella nuova.» |
 
 ### Runner nativi
@@ -934,6 +934,8 @@ Controlli statici, comportamentali e delle dipendenze, con `tests/` esclusa. Il 
 ## Novità
 
 **3.11.0 — consegne congelate, letture riassegnabili e migliora**
+
+Aggiornamento: l’avvio della dashboard libera la lettura del WAL; risposte JSON e transport brevi, deroghe registrate per singolo percorso e rifiuti di recupero più chiari.
 
 - **Il costruttore può continuare dopo la consegna.** La copia del candidato verificato resta nel registro e contiene anche le modifiche non committate.
 - **Cambia lettore senza rifare la prova.** `reassign` conserva candidato, prove e budget, richiedendo il nuovo ACK.

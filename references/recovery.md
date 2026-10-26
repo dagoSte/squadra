@@ -67,6 +67,7 @@ Squadra keeps it bounded on its own:
   few seconds outside the registry folder and removed afterwards, so its long read
   never holds the log; an interrupted, failed or changed copy is never reported as
   a completed audit;
+- the dashboard closes the CLI startup Store before waiting for HTTP requests, so that startup snapshot cannot pin the log;
 - a closed connection finishes its own statements, so a leftover read cannot keep it
   holding the log.
 
@@ -223,6 +224,22 @@ is judged by its content only: a `PRIVATE KEY` header still refuses it. This doe
 not find every secret: **there is no complete scan of Git history or registry artifacts**.
 Inspect the data before sharing it.
 
+For a tracked source file refused only by its name, the coordinator may explicitly
+allow that exact path for one save:
+
+```sh
+squadra save --actor coord --repo /path/to/repo --to /durable/path/save-002 \
+  --allow-name deploy/credentials.py --reason "Source module checked; name-only exception"
+```
+
+Repeat `--allow-name` for several files in the same single `--repo`. Paths must be
+literal, canonical repository-relative paths of tracked regular files; no patterns,
+directories or symlinks. A coordinator decision is recorded before copying; the manifest
+references it and records each allowed file's SHA-256 in the working tree, index and
+HEAD (null if absent from HEAD). The exception is bound to that save destination and
+those contents, and never changes a later save's filters. Private-key headers in any
+of those three versions still refuse the save. Untracked exclusions stay unchanged.
+
 `MANIFEST.json` records tool/version/UTC, repos, fingerprints, inclusions/exclusions,
 event head and count, limits and destination provenance. Same `st_dev`: local checkpoint.
 Different `st_dev`: different filesystem, external disk unverified.
@@ -233,7 +250,7 @@ No automatic upload. Protection against disk failure requires a separate copy.
 
 ## Restore check and resumption
 
-`restore-check` verifies inventory/checksums, added/missing files and confinement
+`restore-check` expects a package produced by `save`, including `MANIFEST.json`; a registry-only `checkpoint` is a different format and is refused with that explanation. It verifies inventory/checksums, added/missing files and confinement
 **before** opening Git or SQLite. In a new destination, it restores a clone from the
 bundle, HEAD, index and worktree patches, files/modes/symlinks; it compares the expected
 contents and staging. It verifies the copied registry's chain, artifacts, count and head.

@@ -877,7 +877,7 @@ Every command, grouped by purpose: **54 subcommands**, plus `--version`. Use `sq
 | `pause` | Coordinator only: stop new work, reviews and runs, keeping consultation and recovery. | To the coordinator: “Pause the squad: no new work until I say so.” |
 | `resume` | Coordinator only: resume after the owner's explicit word and a reconciliation. | To the coordinator: “Resume the squad: reconcile first, then tell me the next step.” |
 | `checkpoint` | Copy the registry, its artifacts and projections to a new folder. | “Take a checkpoint of the registry in a new folder.” |
-| `save` | Coordinator only: package the registry with every registered Git repository and its unfinished work. | To the coordinator: “Save the registry and the code of every repository, unfinished work included.” |
+| `save` | Coordinator only: package the registry with every registered Git repository and its unfinished work; `--repo ROOT --allow-name REL --reason TEXT` records a one-save name exception. | To the coordinator: “Save the registry and the code of every repository, unfinished work included.” |
 | `restore-check` | Prove a package by actually restoring it into a new folder; recording the receipt in the live registry is coordinator only. | “Prove the save works by restoring it into a new folder.” |
 
 ### Native runners
@@ -931,6 +931,8 @@ Static, behavioral and dependency checks, excluding `tests/`. Passing means no H
 ## What's new
 
 **3.11.0 — frozen delivery, reader transfers and migliora**
+
+Refresh: dashboard startup releases its WAL read; JSON and transport replies are concise, and recovery supports recorded per-path name exceptions with clearer refusals.
 
 - **Builders can continue after delivery.** A copy of the proved candidate stays in the registry, including uncommitted changes.
 - **Change readers without rerunning the proof.** `reassign` preserves candidate, proofs and budgets and requires the new ACK.

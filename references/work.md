@@ -510,6 +510,9 @@ saves a message. `ack --actor builder --message M1` is a separate recipient acti
 `transport --via manual` provides the exact handoff without pretending delivery
 or wakeup, and records `delivered: null`: unconfirmed, not failed. `--via codex-queue`
 requires a known session ID and checks the local CLI; native 0 means queued, not read.
+`send` and `transport` print short JSON receipts without the board; full transport
+evidence stays in the journal. Read-only JSON commands, including `candidate status`
+and `lesson --list`, print one JSON document on stdout; `status` keeps its human board.
 **To forward.** A Codex window has no follower of its own, so mail to a Codex seat
 waits on the coordinator until a transport reports `delivered: true` or the recipient
 ACKs: with failed or unconfirmed attempts, or with none at all (a review handoff that

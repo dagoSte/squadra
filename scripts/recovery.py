@@ -9,6 +9,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import tempfile
+import uuid
 
 from registry import Store, Error, VERSION, atomic, canonical, digest, git, now, require, snapshot
 
@@ -20,8 +21,45 @@ TEMPLATE_SUFFIXES = (".example", ".sample", ".template", ".dist")
 def secret(path, body=b"", tracked=False):
     """A secret name or a private-key header; a tracked template is judged by its content only."""
     name = path.name.lower()
-    return (not (tracked and name.endswith(TEMPLATE_SUFFIXES)) and any(fnmatch.fnmatch(name, p) for p in SECRET_NAMES)) or any(
-        line.strip().startswith(b"-----BEGIN ") and b"PRIVATE KEY-----" in line for line in body.splitlines())
+    return (not (tracked and name.endswith(TEMPLATE_SUFFIXES)) and any(fnmatch.fnmatch(name, p) for p in SECRET_NAMES)) or private_key(body)
+
+
+def private_key(body):
+    return any(line.strip().startswith(b"-----BEGIN ") and b"PRIVATE KEY-----" in line for line in body.splitlines())
+
+
+def allowed_file(repo, rel):
+    path = repo / rel
+    tracked = git(repo, "ls-files", "-z").split(b'\0')
+    require(os.fsencode(rel) in tracked and path.is_file() and path.resolve() == path,
+            "--allow-name needs an exact tracked regular file: " + rel)
+    body = path.read_bytes()
+    staged = git(repo, "show", ":" + rel)
+    head_files = git(repo, "ls-tree", "-r", "--name-only", "-z", "HEAD").split(b'\0')
+    historical = git(repo, "show", "HEAD:" + rel) if os.fsencode(rel) in head_files else None
+    require(not any(private_key(value) for value in (body, staged, historical) if value is not None),
+            "Private-key content refused in HEAD, index or working tree: " + rel)
+    return {"path": rel, "sha256": digest(body), "index_sha256": digest(staged),
+            "head_sha256": digest(historical) if historical is not None else None}
+
+
+def allow_names(store, actor, destination, repos, names, reason):
+    """Record a coordinator's exact, content-bound exception for one save destination."""
+    state = store.state()
+    require(state['agents'][actor]['role'] == 'coordinator', "Coordinator role required")
+    require(len(repos) == 1 and isinstance(reason, str) and reason.strip(),
+            "--allow-name requires one --repo and a nonblank --reason")
+    require(len(set(names)) == len(names), "Duplicate --allow-name path")
+    for name in names:
+        require(name and not Path(name).is_absolute() and Path(name).as_posix() == name and
+                not any(part in {'', '.', '..'} for part in name.split('/')) and
+                not any(c in name for c in '*?[\\'), "--allow-name requires an exact relative path, never a pattern")
+    repo = repositories(state, repos)[0]
+    files = [allowed_file(repo, name) for name in names]
+    allowance = {"repo": str(repo), "destination": str(Path(destination).resolve()), "files": files}
+    decision = 'save-name-' + uuid.uuid4().hex
+    store.append('decision', actor, {'id': decision, 'reason': reason, 'save_name_allowance': allowance})
+    return decision
 
 
 def inside(path, parent):
@@ -105,12 +143,20 @@ def inventory(folder):
     return result
 
 
-def save(store, destination, repos=None, includes=None, temporary=False, declared_offsite=None):
+def save(store, destination, repos=None, includes=None, temporary=False, declared_offsite=None, name_allowance=None):
     require(os.name != "nt", "Windows full recovery not qualified")
     destination = Path(destination).resolve()
     state = store.state()
     selected = repositories(state, repos)
     registered = repositories(state, None)
+    allowance = None
+    if name_allowance is not None:
+        decision = next((d for d in state['decisions'] if d.get('id') == name_allowance), None)
+        require(decision is not None and state['agents'][decision['actor']]['role'] == 'coordinator',
+                "Recorded coordinator allowance required")
+        allowance = decision.get('save_name_allowance')
+        require(allowance and allowance['destination'] == str(destination) and
+                selected == [Path(allowance['repo'])], "Name allowance belongs to one exact save and repository")
     require(not destination.exists(), "Save destination must be new")
     require(not any(inside(destination, r) for r in [*selected, *registered, store.root]), "Save outside all source/registry roots")
     require(temporary or not any(inside(destination, p) for p in [Path(tempfile.gettempdir()).resolve(), Path('/private/tmp')]),
@@ -123,8 +169,10 @@ def save(store, destination, repos=None, includes=None, temporary=False, declare
                 "destination": "local checkpoint" if destination.stat().st_dev == store.root.stat().st_dev else "different filesystem, external disk unverified",
                 "declared_offsite": declared_offsite, "offsite_verified": False,
                 "limitations": "Current checkout/HEAD name and private-key-header filters only; no complete Git-history or registry secret scan. No upload. Restored approvals stay historical."}
+    if allowance is not None:
+        manifest['name_allowance'] = {"decision": name_allowance, **allowance}
+    guards = []
     try:
-        guards = []
         for n, repo in enumerate(selected):
             supported(repo); before = snapshot(repo, store.root); old_index = index(repo)
             extra = included_files(repo, includes or [])
@@ -144,12 +192,20 @@ def save(store, destination, repos=None, includes=None, temporary=False, declare
                     require(not Path(target).is_absolute() and inside(((repo/rel).parent/target).resolve(),repo),
                             "Escaping or absolute index symlink refused: " + rel)
             head_files = set(os.fsdecode(p) for p in git(repo, "ls-tree", "-r", "--name-only", "-z", "HEAD").split(b'\0') if p)
+            allowed = {row['path']: row for row in allowance['files']} if allowance else {}
+            require(allowed.keys() <= tracked, "Allowed tracked files changed before copy")
             for rel in sorted(tracked | head_files):
                 path = repo / rel
                 if path.is_symlink(): record_file(path, repo)
                 body = path.read_bytes() if path.is_file() and not path.is_symlink() else b""
                 historical = git(repo, "show", "HEAD:" + rel) if rel in head_files else b""
-                require(not secret(path, body, True) and not secret(path, historical, True), "Tracked secret candidate refused: " + rel)
+                if rel in allowed:
+                    require(allowed_file(repo, rel) == allowed[rel], "Allowed file changed before copy: " + rel)
+                else:
+                    require(not secret(path, body, True) and not secret(path, historical, True),
+                            "Tracked secret candidate refused: " + rel +
+                            "; for a name-only refusal the coordinator can use save --repo ROOT --allow-name " +
+                            rel + " --reason TEXT")
             name = "repo-" + str(n); folder = destination / name; folder.mkdir(mode=0o700)
             git(repo, "bundle", "create", str(folder / "history.bundle"), "--all", "HEAD", timeout=LONG_GIT_SECONDS)
             git(repo, "bundle", "verify", str(folder / "history.bundle"), timeout=LONG_GIT_SECONDS)
@@ -205,6 +261,8 @@ def save(store, destination, repos=None, includes=None, temporary=False, declare
 
 def verify_package(folder):
     folder = Path(folder).resolve(strict=True)
+    require((folder / "MANIFEST.json").is_file(),
+            "Expected a save package from squadra save, not a registry checkpoint; MANIFEST.json is missing")
     require(not (folder / "CHECKSUMS.json").is_symlink(), "Checksum symlink refused")
     expected = json.loads((folder / "CHECKSUMS.json").read_text())
     require(isinstance(expected, dict), "Checksum inventory must be a mapping")

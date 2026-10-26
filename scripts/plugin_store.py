@@ -86,6 +86,10 @@ def explain(exc, root=None):
         return exc.code
     if exc.code == 'symlink':
         return 'symlink: ' + path + ' is a symbolic link, which the Store does not follow'
+    if exc.code == 'unmanaged_installation':
+        return ('unmanaged_installation: ' + path + '. Save settings.json and secrets/ separately; '
+                'move this folder aside, run squadra plugin install <name>, then restore the saved '
+                'settings and secrets only after checking compatibility. See references/plugins.md.')
     if exc.code != 'unsafe_permissions':
         return exc.code + ': ' + path
     if exc.repair is None:
@@ -242,7 +246,7 @@ def receipt(fd, name):
             p.require(value['old'] == {} and value['previous'] is None)
         return value
     except (p.Refused, ValueError, TypeError):
-        raise p.Refused('unmanaged_installation') from None
+        raise Named('unmanaged_installation', where(fd)) from None
 
 
 def installed(root, name):

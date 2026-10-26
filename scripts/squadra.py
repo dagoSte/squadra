@@ -503,6 +503,9 @@ def parser():
     a = sub.add_parser("save"); a.add_argument("--actor", required=True); a.add_argument("--to", required=True)
     a.add_argument("--repo", action="append", default=[]); a.add_argument("--include", action="append", default=[])
     a.add_argument("--temporary", action="store_true"); a.add_argument("--declared-offsite")
+    a.add_argument('--allow-name', action='append', default=[], metavar='REL',
+                   help='Coordinator records a one-save exception for this exact tracked path; requires one --repo and --reason; private keys remain refused')
+    a.add_argument('--reason', help='Reason for the explicit --allow-name exception')
     a = sub.add_parser("restore-check"); a.add_argument("--from", dest="package", required=True)
     a.add_argument("--to", required=True); a.add_argument("--actor")
     a = sub.add_parser("settings"); a.add_argument("--actor", required=True); a.add_argument("--file", required=True)
@@ -822,7 +825,8 @@ def dispatch(a, store):
         if relay:
             result["relayed_by"] = actor
         store.append("transport", actor, result)
-        return result
+        return {key: value for key, value in result.items() if key not in
+                {"receipt", "receipt_length", "stderr", "stderr_length"}}
     elif command == "plan":
         store.append("plan", actor, {"task": a.task, "artifact": store.artifact(a.file)})
     elif command == "start":
@@ -1021,9 +1025,11 @@ def dispatch(a, store):
                 "source_code": "Not included: preserve worktree and Git bundle separately",
                 **({"scrubbed": report["scrubbed"]} if report.get("scrubbed") else {})}
     elif command == "save":
-        from recovery import save
+        from recovery import save, allow_names
         require(state["agents"][actor]["role"] == "coordinator", "Coordinator role required")
-        result = save(store, a.to, a.repo, a.include, a.temporary, a.declared_offsite)
+        require(not a.reason or a.allow_name, "--reason requires --allow-name")
+        allowance = allow_names(store, actor, a.to, a.repo, a.allow_name, a.reason) if a.allow_name else None
+        result = save(store, a.to, a.repo, a.include, a.temporary, a.declared_offsite, name_allowance=allowance)
         store.append("save", actor, {"path": str(Path(a.to).resolve()), "manifest": store.artifact(Path(a.to) / "MANIFEST.json")})
         return {"saved": str(Path(a.to).resolve()), "repositories": len(result["repositories"]),
                 "scope": result["scope"], "destination": result["destination"], "offsite_verified": False,
@@ -1115,7 +1121,9 @@ def dispatch(a, store):
                 "warning": "Integrity verifies the record, not truth of agents' claims or external process liveness"}
     elif command == "dash":
         from dashboard import serve
-        serve(store.root, port=a.port, open_browser=a.open)
+        root = store.root
+        store.close()
+        serve(root, port=a.port, open_browser=a.open)
     return None
 
 
@@ -1332,7 +1340,9 @@ def main(argv=None):
                         state, attention_value = context
                     else:
                         attention_value = None
-                if a.command not in {"inbox", "doctor", "send", "migliora"} and not (a.command == "resource" and a.action == "status"):
+                if (a.command not in {"inbox", "doctor", "send", "transport", "migliora"} and
+                    not (a.command in {"resource", "candidate"} and a.action == "status") and
+                    not (a.command == "lesson" and a.list)):
                     from registry import current_index
                     if current_index(state) is None and not events:
                         events = store.events()
