@@ -303,6 +303,8 @@ def deliver(store, actor, task_id, reconcile=False, note=None):
     if task.get('delivery_policy') == 'frozen-v1':
         from frozen_candidate import freeze
         data['frozen'] = freeze(store, task, current)
+        # freeze releases the registry views it would otherwise hold while copying; read them again.
+        state = store.resolved(); task = state["tasks"][task_id]
     if task.get("fix"):
         from fix_challenge import binding, disposition
         data.update(fix_binding=binding(task), fix_disposition=disposition(task))

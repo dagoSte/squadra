@@ -12,7 +12,7 @@ class ReadOnlyClaim(unittest.TestCase):
         paragraph = ' '.join(text.split('## Dashboard and versions', 1)[1].split('\n\n', 2)[1].split()).casefold()
         for clause in ('token and exact host', 'recorded state and artifacts', 'plugin data projections',
                        'guarded posts', 'plugin settings', 'action selections',
-                       'write only the declared files', 'no command or shell execution',
+                       'write only the declared files', 'fixed git and python commands', 'does not provide a general command runner',
                        'no remote scripts or cdn'):
             self.assertIn(clause, paragraph)
         self.assertNotRegex(paragraph, r'nessun(?:a)?\s+post|no\s+post|only\s+(?:state|get)|get.only|sol[oi]\s+stato|solo\s+get|sola\s+lettura|read.only')
