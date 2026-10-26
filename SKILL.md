@@ -574,7 +574,11 @@ close. This intentional refusal is not data loss: use the upgraded CLI, never by
 the verifier. New doctor/export commands verify the complete mixed-format history.
 
 The local registry protects against concurrent overwrites and detects accidental
-alterations within these verification boundaries. It does not cryptographically authenticate the windows:
+alterations within these verification boundaries. A whole older `registry.sqlite3`,
+or one whose `-wal` was lost, still verifies on its own: the journal cannot see the
+tail it lost. The next projection refresh notices that `events.jsonl` holds events
+the journal lacks, refuses, and keeps the projections unchanged; `squadra export`
+does not make that check. The registry does not cryptographically authenticate the windows:
 anyone with the same account can impersonate a name or rewrite the database.
 Continuity requires backups to another destination; no disk guarantees
 "never lose" against failure or total deletion.

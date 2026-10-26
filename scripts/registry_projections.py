@@ -158,6 +158,44 @@ def _save_file(store, relative, value):
                      "ON CONFLICT(path) DO UPDATE SET data=excluded.data", (relative, _pack(value)))
 
 
+class JournalRollback(ProjectionError):
+    """The exports hold events the journal no longer has: an older database was restored or its WAL was lost."""
+
+
+def _journal_tail(store, root, record):
+    """Refuse when events.jsonl past its cursor holds an event the journal lacks or records with another hash.
+
+    Projections are appended only after the journal commits, so an interrupted append leaves journal events
+    or a partial line past the cursor. Anything else means the journal lost the tail the exports still hold,
+    and truncating or regenerating them would erase the only copy. No cursor means the whole file is checked."""
+    offset = record["offset"] if isinstance(record, dict) and type(record.get("offset")) is int and record["offset"] >= 0 else 0
+    try:
+        fd = _safe_fd(Path(root) / "events.jsonl", os.O_RDONLY)
+    except (OSError, ProjectionError):
+        return
+    lost = []
+    with os.fdopen(fd, "rb") as source:
+        source.seek(offset)
+        for line in source:
+            if not line.endswith(b"\n"):
+                break
+            try:
+                event = json.loads(line)
+            except (ValueError, RecursionError):
+                continue
+            if not isinstance(event, dict) or type(event.get("seq")) is not int or not isinstance(event.get("hash"), str):
+                continue
+            row = store.db.execute("SELECT hash FROM events WHERE seq=?", (event["seq"],)).fetchone()
+            if row is None or row[0] != event["hash"]:
+                lost.append(event["seq"])
+    if lost:
+        raise JournalRollback(
+            f"events.jsonl holds {len(lost)} event(s) from #{lost[0]} to #{lost[-1]} that the journal "
+            f"(now at #{_position(store.db)['seq']}) lacks or records with another hash: an older registry.sqlite3 "
+            "was restored or its -wal was lost. The projections are kept unchanged; restore the newer database, "
+            "or move events.jsonl, squadra-posta.md and posta/ aside to accept the loss.")
+
+
 def _recover(path, record):
     try:
         if (not isinstance(record, dict) or type(record.get("offset")) is not int or record["offset"] < 0
@@ -298,8 +336,9 @@ def _marker_matches(store):
 
 
 def _regenerate(store, canonical, previous=None):
-    events = store.events()
     root = Path(store.root)
+    _journal_tail(store, root, None)
+    events = store.events()
     _folder(root)
     store.db.execute("DELETE FROM derived_projection_files")
     _atomic_parts(root / "events.jsonl", ((canonical(event) + "\n").encode() for event in events))
@@ -332,6 +371,7 @@ def publish(store, canonical=None, summary=None):
         try:
             try:
                 meta = _meta(store)
+                _journal_tail(store, root, _file_cursor(store, "events.jsonl"))
                 suffix = store.events_since(meta["seq"], meta["head"])
                 touched = {"events.jsonl", "squadra-posta.md"} | {_day(event) for event in suffix}
                 records = {relative: _file_cursor(store, relative) for relative in touched}
@@ -344,6 +384,8 @@ def publish(store, canonical=None, summary=None):
                         if _recover(path, record):
                             _save_file(store, relative, _file_record(path))
                             changed = True
+            except JournalRollback:
+                raise
             except Exception:
                 # The full verifier remains authoritative: its failure propagates.
                 meta = _regenerate(store, canonical, meta)
