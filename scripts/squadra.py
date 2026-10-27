@@ -401,6 +401,8 @@ def parser():
     a.add_argument("--prices", metavar="FILE", help="Optional local price table for a labelled estimate; no default prices")
     a = sub.add_parser("context", help="Read-only bounded task resume packet; no model call or client compaction")
     a.add_argument("--task", required=True)
+    a.add_argument("--for", dest="recipient", help="Registered window, including its identity aliases")
+    a.add_argument("--since", help="Verified revision <seq>:<hash> for relevant changes")
     a.add_argument("--max-chars", type=int, default=8000, help="Complete output cap, 4000..32000 characters (default 8000)")
     a.add_argument("--json", action="store_true")
     a = sub.add_parser("init"); a.add_argument("--name", required=True); a.add_argument("--project", required=True)
@@ -414,6 +416,24 @@ def parser():
     a.add_argument("--skill", action="append", default=[])
     a = sub.add_parser("census", help="Observe local Codex/Claude processes and registered replies without writes")
     a.add_argument("--project", help="Project path; required before init, otherwise registry project")
+    a.add_argument('--unregistered', action='store_true', help='Propose unregistered project sessions without writes')
+    a.add_argument('--peers-file', help='JSON array exported from the Claude coordinator peer list')
+    a = sub.add_parser('replace', help='Atomically hand work from old windows to replacements')
+    a.add_argument('--actor', required=True); a.add_argument('--old'); a.add_argument('--new'); a.add_argument('--map')
+    a.add_argument('--reason', required=True); a.add_argument('--session', action='append')
+    a.add_argument('--client', choices=['codex', 'claude', 'cursor'])
+    a.add_argument('--carry', choices=['useful', 'all', 'none'], default='useful')
+    a.add_argument('--dry-run', action='store_true'); a.add_argument('--force', action='store_true')
+    a = sub.add_parser('access', help='Observe recipient write access before assignment')
+    a.add_argument('action', choices=['probe', 'status'])
+    a.add_argument('--actor', required=True); a.add_argument('--repo'); a.add_argument('--session')
+    a.add_argument('--context', choices=['sandbox', 'escalated', 'unknown'])
+    a = sub.add_parser('ready', help='Reader declares availability for a task before delivery')
+    a.add_argument('--actor', required=True); a.add_argument('--task', required=True)
+    a.add_argument('--revoke', action='store_true', help='Withdraw this reader readiness declaration')
+    a = sub.add_parser('wait', help='Record a client service wait without sleeping')
+    a.add_argument('--actor', required=True); a.add_argument('--until', required=True)
+    a.add_argument('--cause', choices=['429', 'outage'], required=True)
     a = sub.add_parser("ping", help="Record/reuse challenges, or reconcile availability as coordinator")
     a.add_argument("--actor", required=True)
     target = a.add_mutually_exclusive_group(required=True)
@@ -486,6 +506,7 @@ def parser():
     a = sub.add_parser("ack"); a.add_argument("--actor", required=True); a.add_argument("--message", required=True)
     a = sub.add_parser("transport"); a.add_argument("--actor", required=True); a.add_argument("--message", required=True)
     a.add_argument("--via", choices=["codex-queue", "manual"], required=True)
+    a.add_argument('--force', action='store_true', help='Explicitly retry a stale or ambiguous delivery')
     a = sub.add_parser("plan"); a.add_argument("--actor", required=True); a.add_argument("--task", required=True); a.add_argument("--file", required=True)
     for command in ["start", "deliver", "advance", "check", "close"]:
         a = sub.add_parser(command); a.add_argument("--actor", required=True); a.add_argument("--task", required=True)
@@ -642,7 +663,8 @@ class Inbox(list):
 def inbox(state, agents, everything=False, message=None):
     """Mail to the named agents, oldest first: the ACK waits plus the latest INBOX_RECENT, all of it, or one message."""
     from registry_current import attached, message_ids
-    names = set(agents)
+    from comms import mail_recipients
+    names = mail_recipients(state, agents)
     if message is not None:
         found = state["messages"].get(message)
         require(found is not None and found["to"] in names, "Unknown message for the named agents: " + message)
@@ -650,7 +672,7 @@ def inbox(state, agents, everything=False, message=None):
     index = attached(state)
     if index is not None:
         keys = sorted({key for agent in names for key in message_ids(index, recipient=agent)},
-                      key=lambda key: index["message_order"][key])
+                      key=lambda key: (index["message_order"][key], key))
     else:
         keys = [key for key, m in state["messages"].items() if m["to"] in names]
     pending, shown = [], set(keys)
@@ -801,8 +823,32 @@ def dispatch(a, store):
         if a.action == 'commit':
             return migliora.finish(store, actor, a.task, a.rule_file)
         return migliora.apply(store, actor, a.task, a.rule_file, defer_commit=a.defer_commit, timeout=a.timeout)
+    elif command == 'replace':
+        from replacement import execute, request
+        return execute(store, actor, request(a), a.dry_run)
+    elif command == 'ready':
+        store.append('reader.ready', actor, {'task': a.task, 'ready': not a.revoke})
+        return {'task': a.task, 'reader': actor, 'ready': not a.revoke}
+    elif command == 'wait':
+        import datetime as dt
+        try:
+            if len(a.until) == 5 and a.until[2] == ':':
+                local = dt.datetime.now().astimezone()
+                hour, minute = map(int, a.until.split(':'))
+                until = local.replace(hour=hour, minute=minute, second=0, microsecond=0)
+                if until <= local:
+                    until += dt.timedelta(days=1)
+            else:
+                until = dt.datetime.fromisoformat(a.until.replace('Z', '+00:00'))
+            require(until.tzinfo is not None, 'Wait deadline needs a timezone')
+        except ValueError as exc:
+            raise Error('Use HH:MM or an ISO time with timezone') from exc
+        store.append('service.wait', actor, {'until': until.isoformat(), 'cause': a.cause})
+        return {'until': until.isoformat(), 'cause': a.cause, 'sleeping': False}
     elif command == "send":
         data = {"id": a.id or uuid.uuid4().hex, "to": a.to or a.to_new, "body": Path(a.body_file).read_text(), "reply_to": a.reply_to}
+        if data['id'] in state['messages']:
+            data['id'] += '-' + uuid.uuid4().hex
         if a.info:
             data["info"] = True
         if a.to_new:
@@ -868,6 +914,27 @@ def dispatch(a, store):
         return {"messages": messages, "transport": "Use recorded transport; no client was invoked"}
     elif command == "transport":
         message = state["messages"][a.message]
+        agent = state['agents'].get(message['to'], {})
+        if not getattr(a, 'force', False):
+            require(not message.get('replaced_by'), 'Message was replaced; inspect the current inbox')
+            session_start, boundary = None, agent.get('updated', message['utc'])
+            if agent.get('session'):
+                history = [child for event in store.events() for child in
+                           ([{**event, **op} for op in event['data']['operations']] if event['kind'] == 'replace' else [event])]
+                for event in reversed(history):
+                    if event['kind'] != 'agent' or event['data']['id'] != message['to']:
+                        continue
+                    prior = event['data'].get('session')
+                    if prior == agent['session']:
+                        boundary = event['utc']
+                    elif prior:
+                        session_start = boundary
+                        break
+            require(session_start is None or message['utc'] >= session_start,
+                    'Message predates the current recipient registration; inspect it and use --force to resend')
+            previous = message.get('transport', {})
+            require(not message.get('delivery_intent') or not previous.get('attempted'),
+                    'Replacement delivery was already attempted; inspect receipt before --force retry')
         relay = message["from"] != actor
         require(not relay or coordinator_ping(state, message, actor) or
                 state["agents"].get(actor, {}).get("role") == "coordinator", "Only the sender or the coordinator can deliver")
@@ -882,8 +949,13 @@ def dispatch(a, store):
             agent = state["agents"][message["to"]]
             require(agent["client"] == "codex" and agent["session"], "Registered Codex session required")
             text = f"Squadra message {a.message}; workspace {store.root}.\n{message['body']}\n{instruction}"
+            if message.get('delivery_intent'):
+                store.append('transport', actor, {'message': a.message, 'via': a.via, 'attempted': True,
+                             'delivered': None, 'phase': 'attempting', 'force': getattr(a, 'force', False), **({'relayed_by': actor} if relay else {})})
             result = {"message": a.message, "via": a.via, **codex_queue(agent["session"], text),
                       "ack": "not required; information only" if message.get("info") is True else "still pending; native queue does not prove wakeup"}
+        if message.get('delivery_intent'):
+            result['attempted'] = True
         if relay:
             result["relayed_by"] = actor
         store.append("transport", actor, result)
@@ -1163,7 +1235,10 @@ def dispatch(a, store):
                   store.db.execute('SELECT 1 FROM events WHERE hash_format=2 LIMIT 1').fetchone() is not None)
         workflow3 = ('hash_format' in columns and
                      store.db.execute('SELECT 1 FROM events WHERE hash_format=3 LIMIT 1').fetchone() is not None)
-        compatibility = ({'compatibility': 'This registry requires Squadra 3.11.0 or later.'} if workflow3 else
+        workflow4 = ('hash_format' in columns and
+                     store.db.execute('SELECT 1 FROM events WHERE hash_format=4 LIMIT 1').fetchone() is not None)
+        compatibility = ({'compatibility': 'This registry requires Squadra 3.11.1 or later (journal format 4).'} if workflow4 else
+                         {'compatibility': 'This registry requires Squadra 3.11.0 or later.'} if workflow3 else
                          {"compatibility": "This registry requires Squadra 3.10.1 or later."} if modern else {})
         from registry import git_probe
         tracked = git_probe('-C', str(store.root), '--literal-pathspecs', 'ls-files', '--error-unmatch', '--', 'registry.sqlite3')
@@ -1245,9 +1320,18 @@ def main(argv=None):
                 from inbox_follow import follow
                 return follow(workspace_path(a.root), a.agent, a.timeout, a.since, until_first=a.until_first,
                               cursor_file=a.cursor_file, persist=not a.no_cursor)
+        if a.command == 'access':
+            from access import run
+            print(json.dumps(run(root, a.actor, a.action, a.repo, a.session, a.context), ensure_ascii=False, indent=2))
+            return 0
         if a.command == "context":
             import context_brief
             store = Store(workspace_path(a.root), read_only=True)
+            if a.recipient is not None or a.since is not None:
+                packet = context_brief.reentry(store, a.task, recipient=a.recipient, since=a.since,
+                                               max_chars=a.max_chars, as_json=a.json)
+                print(context_brief.render(packet, a.json), end="")
+                return 0
             state = store.resolved(store.view(), compact=True)
             known_id(state['tasks'], a.task, 'task')
             seq = state['event_count']
@@ -1305,6 +1389,10 @@ def main(argv=None):
             from registry import composition
             found = collect(a.project or state["workspace"]["project"], state)
             lang = state["workspace"].get("lang", "it") if state else "it"
+            if a.unregistered:
+                from census import unregistered
+                found['unregistered'] = unregistered(state or {'workspace': {'project': a.project}, 'agents': {}, 'tasks': {}},
+                                                   peers=json.loads(Path(a.peers_file).read_text()) if a.peers_file else ())
             found["composition"] = composition(state, found["processes"], lang, found["scan"])
             print(json.dumps(found, ensure_ascii=False, indent=2))
             return 0
@@ -1360,7 +1448,7 @@ def main(argv=None):
         read_only = (a.command in {'status', 'inbox', 'check', 'doctor', 'dash'} or
                      (a.command in {'resource', 'candidate'} and a.action == 'status') or
                      (a.command == 'migliora' and a.action == 'inspect') or
-                     (a.command == 'lesson' and a.list))
+                     (a.command == 'lesson' and a.list) or (a.command == 'replace' and a.dry_run))
         if a.command == 'init':
             validate_init(a, root)
         store = Store(root, create=a.command == "init", read_only=read_only)

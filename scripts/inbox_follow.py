@@ -11,6 +11,7 @@ import time
 
 from registry import Error, Store, attention, require
 from registry_current import attached, message_ids
+from comms import mail_recipients, mailbox_keys
 
 
 def command(root, agents, *extra):
@@ -31,13 +32,23 @@ def message_line(root, message, event):
                                        message['to'], '--message', message['id']]) if needed else None}
 
 
+def mail_events(events):
+    """Compound replacement events contain ordinary mail and registration operations."""
+    for event in events:
+        if event['kind'] == 'replace':
+            yield from mail_events([{**event, **operation} for operation in event['data']['operations']])
+        else:
+            yield event
+
+
 class Follower:
     """A poll returns detached lines; advance only after their successful flush.
 
     The first poll reads a verified view. A later poll on a changed head decodes only the events
     after the last verified head, whose hash anchors their chain, and opens a view only for named mail."""
     def __init__(self, store, agents, since=None, *, pending_on_start=False):
-        self.store, self.agents = store, tuple(dict.fromkeys(agents))
+        self.store, self.requested = store, tuple(dict.fromkeys(agents))
+        self.agents = set(self.requested)
         self.pending_on_start = pending_on_start
         self.since, self.cursor, self.head = since, since or 0, None
         self.first, self.printed, self.anchor = True, False, None
@@ -51,10 +62,11 @@ class Follower:
             return self.arrivals(tip)
         try:
             state = self.store.view()
+            self.agents = mail_recipients(state, self.requested)
             end, index = state['event_count'], attached(state)
             require(end >= self.cursor, '--since exceeds the verified registry head')
             if index is None:
-                orders = {e['data']['id']: e['seq'] for e in self.store.events()
+                orders = {e['data']['id']: e['seq'] for e in mail_events(self.store.events())
                           if e['kind'] == 'message' and e['seq'] <= end}
             else:
                 orders = index['message_order']
@@ -71,7 +83,19 @@ class Follower:
             else:
                 keys = [key for key, m in state['messages'].items()
                         if m['to'] in self.agents and orders[key] > self.cursor]
-            keys = sorted(keys, key=lambda key: orders[key])
+            if not backlog:
+                recent = [e for e in mail_events(self.store.events_since(*self.anchor_at(self.cursor)))
+                          if e['seq'] <= end]
+                registrations = self.changed_registrations(recent, self.cursor, self.agents)
+                if registrations:
+                    orders, keys = dict(orders), set(keys)
+                    for key, message in state['messages'].items():
+                        registered = registrations.get(message['to'])
+                        if (registered is not None and message.get('ack') is None and
+                                message.get('info') is not True and not message.get('replaced_by')):
+                            keys.add(key)
+                            orders[key] = max(orders[key], registered)
+            keys = sorted(keys, key=lambda key: (orders[key], key))
             rows = []
             if self.first and not backlog and self.pending_on_start:
                 pending = [k for k, m in state['messages'].items() if m['to'] in self.agents and
@@ -81,11 +105,15 @@ class Follower:
             if backlog:
                 rows.append({'kind': 'pending', 'event': 0, 'count': len(keys),
                              'text': f'{len(keys)} messages wait for your ACK'})
-            for key in keys[:10] if backlog else keys:
+            shown = keys[:10] if backlog else keys
+            # A sequence cursor cannot split the messages of one atomic event.
+            if backlog and shown:
+                shown += [key for key in keys[len(shown):] if orders[key] == orders[shown[-1]]]
+            for key in shown:
                 rows.append(message_line(self.store.root, state['messages'][key], orders[key]))
-            if backlog and len(keys) > 10:
-                rest = len(keys) - 10
-                inbox = command(self.store.root, self.agents)
+            if backlog and len(keys) > len(shown):
+                rest = len(keys) - len(shown)
+                inbox = command(self.store.root, sorted(self.agents))
                 rows.append({'kind': 'more', 'event': rows[-1]['event'], 'count': rest,
                              'inbox_command': inbox, 'text': f'{rest} more: {inbox}'})
             if backlog or keys or (self.first and self.pending_on_start):
@@ -93,6 +121,26 @@ class Follower:
             return tip, end, rows, self.anchor_at(end)
         finally:
             self.store.release_views()
+
+    def changed_registrations(self, recent, since, names):
+        candidates = {e['data']['id'] for e in recent
+                      if e['kind'] == 'agent' and e['data']['id'] in names}
+        if not candidates:
+            return {}
+        previous, changed = {}, {}
+        end = recent[-1]['seq']
+        # Compare bindings at the saved revision; a repeated registration is not an arrival.
+        for event in mail_events(self.store.events()):
+            if event['seq'] > end:
+                break
+            if event['kind'] != 'agent' or event['data']['id'] not in candidates:
+                continue
+            seat = event['data']
+            binding = tuple(seat.get(key) or '' for key in ('identity', 'role', 'client', 'session'))
+            if event['seq'] > since and previous.get(seat['id']) != binding:
+                changed[seat['id']] = event['seq']
+            previous[seat['id']] = binding
+        return changed
 
     def anchor_at(self, seq):
         if not seq:
@@ -103,19 +151,36 @@ class Follower:
 
     def arrivals(self, tip):
         """Rows for the named mail among the events after the anchor, chain-verified by events_since."""
-        events = self.store.events_since(*self.anchor)
+        events = list(mail_events(self.store.events_since(*self.anchor)))
         anchor = (events[-1]['seq'], events[-1]['hash']) if events else self.anchor
         orders = {e['data']['id']: e['seq'] for e in events
                   if e['kind'] == 'message' and e['data']['to'] in self.agents}
         rows = []
-        if orders:
+        membership = any(e['kind'] == 'agent' for e in events)
+        if orders or membership:
             try:
                 state = self.store.view()
                 require(state['event_count'] >= anchor[0], 'Registry view is behind its verified events')
-                rows = [message_line(self.store.root, state['messages'][key], event) for key, event in orders.items()]
+                names = mail_recipients(state, self.requested)
+                registrations = self.changed_registrations(events, self.anchor[0], names)
+                self.agents = names
+                orders = {e['data']['id']: e['seq'] for e in events
+                          if e['kind'] == 'message' and e['data']['to'] in names}
+                # A new role or session exposes pending mail, with its real recipient intact.
+                index = attached(state)
+                created = (index['message_order'] if index is not None else {
+                    e['data']['id']: e['seq'] for e in mail_events(self.store.events()) if e['kind'] == 'message'}) if registrations else {}
+                for key, message in state['messages'].items() if registrations else ():
+                    registered = registrations.get(message['to'])
+                    if (created[key] <= anchor[0] and registered is not None and message.get('ack') is None and
+                            message.get('info') is not True and not message.get('replaced_by')):
+                        orders[key] = max(created[key], registered)
+                rows = [message_line(self.store.root, state['messages'][key], event)
+                        for key, event in sorted(orders.items(), key=lambda item: item[1])]
             finally:
                 self.store.release_views()
-            rows.append({'kind': 'cursor', 'event': anchor[0]})
+            if rows:
+                rows.append({'kind': 'cursor', 'event': anchor[0]})
         return tip, anchor[0], rows, anchor
 
     def emit(self, batch):
@@ -147,7 +212,14 @@ def load_cursor(path, store, agents):
     # The shape save_cursor writes; anything else is one plain refusal, not a traceback.
     require(isinstance(saved, dict) and isinstance(saved.get('root'), str) and isinstance(saved.get('agents'), list)
             and isinstance(saved.get('hash'), str), 'Invalid inbox cursor file')
-    require(saved.get('root') == str(store.root) and saved.get('agents') == sorted(set(agents)),
+    require(all(isinstance(name, str) for name in saved['agents']), 'Invalid inbox cursor file')
+    recipients = saved['agents']
+    if recipients != sorted(set(agents)):
+        try:
+            recipients = mailbox_keys(store.view(), recipients)
+        finally:
+            store.release_views()
+    require(saved.get('root') == str(store.root) and recipients == sorted(set(agents)),
             'Inbox cursor belongs to another registry or recipient')
     seq = saved.get('event')
     require(type(seq) is int and seq >= 0, 'Invalid inbox cursor event')
@@ -174,10 +246,14 @@ def follow(root, agents, timeout=None, since=None, *, until_first=False, cursor_
     previous = signal.signal(signal.SIGTERM, _interrupt)
     try:
         store = Store(root, read_only=True)
-        path = Path(cursor_file).absolute() if cursor_file else cursor_path(root, agents)
+        keys = mailbox_keys(store.view(), agents)
+        store.release_views()
+        path = Path(cursor_file).absolute() if cursor_file else cursor_path(root, keys)
         resumed = False
         if persist and since is None:
-            since = load_cursor(path, store, agents)
+            legacy = cursor_path(root, agents)
+            source = legacy if not cursor_file and not path.exists() and legacy.exists() else path
+            since = load_cursor(source, store, keys)
             resumed = since is not None
         follower = Follower(store, agents, since, pending_on_start=resumed)
         while True:
@@ -193,7 +269,7 @@ def follow(root, agents, timeout=None, since=None, *, until_first=False, cursor_
                     follower.cursor = more['event']
                     follower.anchor = follower.anchor_at(follower.cursor)
                     follower.head = None
-                save_cursor(path, follower, agents)
+                save_cursor(path, follower, keys)
             if until_first and follower.printed:
                 return 0
             delay = max(0, 2 - (time.monotonic() - started))

@@ -95,3 +95,51 @@ def collect(project, state=None, at=None):
     return {"project": str(project), "roots": sorted(map(str, roots)), "as_of": stamp,
             "processes": sorted(found, key=lambda p: p["pid"]), "agents": seats,
             "scan": "partial" if errors else "observed", "errors": errors, "limitations": limitations}
+
+
+def unregistered(state, sessions=None, peers=()):
+    """Read only session metadata, never conversation bodies; peers are an explicit snapshot."""
+    import json
+    from registry import git, Error
+    roots = {Path(state['workspace']['project']).resolve()}
+    roots.update(Path(a['repo']).resolve() for a in state['agents'].values())
+    roots.update(Path(t['repo']).resolve() for t in state.get('tasks', {}).values())
+    limitations = []
+    try:
+        for line in git(state['workspace']['project'], 'worktree', 'list', '--porcelain').decode().splitlines():
+            if line.startswith('worktree '):
+                roots.add(Path(line[9:]).resolve())
+    except (Error, OSError):
+        limitations.append('Git worktree discovery unavailable; registered roots are still checked.')
+    registered = {(a['client'], a.get('session')) for a in state['agents'].values() if a.get('session')}
+    found = {}
+    folder = Path(sessions) if sessions is not None else Path(os.environ.get('CODEX_HOME', str(Path.home() / '.codex'))) / 'sessions'
+    for number, path in enumerate(folder.rglob('*.jsonl')):
+        if number >= 10000:
+            limitations.append('Session discovery stopped at 10000 files.')
+            break
+        if path.is_symlink():
+            continue
+        try:
+            with path.open('rb') as stream:
+                line = stream.readline(1024 * 1024)
+            record = json.loads(line)
+            data = record.get('payload', {})
+            session, cwd = data.get('id'), data.get('cwd')
+            if record.get('type') != 'session_meta' or not isinstance(session, str) or not isinstance(cwd, str):
+                continue
+            if Path(cwd).resolve() in roots and ('codex', session) not in registered:
+                found['codex', session] = {'client': 'codex', 'session': session, 'cwd': cwd, 'source': str(path)}
+        except (OSError, ValueError, TypeError):
+            limitations.append('Unreadable session metadata: ' + str(path))
+    for peer in peers:
+        if not isinstance(peer, dict):
+            continue
+        session, cwd = peer.get('session'), peer.get('cwd')
+        if (isinstance(session, str) and isinstance(cwd, str) and Path(cwd).resolve() in roots
+                and ('claude', session) not in registered):
+            found['claude', session] = {'client': 'claude', 'session': session, 'cwd': cwd, 'source': 'supplied Claude peer list'}
+    if not peers:
+        limitations.append('Claude peers are available through the coordinator client; supply --peers-file to census when exported.')
+    return {'candidates': sorted(found.values(), key=lambda row: (row['client'], row['session'])),
+            'limitations': limitations, 'notice': 'Candidates require verification; discovery does not register or wake a window.'}

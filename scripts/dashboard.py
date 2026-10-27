@@ -509,6 +509,8 @@ class VerifiedView:
         # Unfolded rows: a stand-by row hides the deadlines of the heartbeats it may come to count.
         crossings = [clock + FAR_SECONDS - row['seconds'] + row['threshold']
                      for row in waits(state, far, fold=False) + [r for r in presence(state, far) if r.get('ping')]]
+        crossings.extend(datetime.fromisoformat(a['service_wait']['until']).timestamp()
+                         for a in state['agents'].values() if a.get('service_wait'))
         future = [moment for moment in crossings if moment > clock]
         boundary = (math.floor(clock / ACTIVITY_STEP) + 1) * ACTIVITY_STEP
         with self.reply_lock:

@@ -291,12 +291,14 @@ Existing messages keep their original receipt contract; old readers may still
 show an unnecessary wait for new information messages until they are upgraded.
 
 `inbox` prints a JSON list of the messages addressed to the named `--agent`
-names, oldest first, each with its full body, sender, task, receipts and ACK. By
+names and every registered role of their identities, oldest first, once per message,
+each with its full body, original recipient, sender, task, receipts and ACK. By
 default it keeps it short: every message still waiting for an ACK (the same
 waits that `status` and the follower count) plus the latest ten messages. When
 older messages are left out, one line on standard error says how many and how
 to see them. `--message ID` prints only that message, refused unless it is
-addressed to one of the names; `--all` prints the whole history.
+addressed to one of those identities; `--all` prints the whole history. ACK still uses
+the actual recipient role shown in `to`; reading through another alias never ACKs it.
 
 After assignment, explain the task in plain words: the first line becomes its
 dashboard title, followed by why it exists, who it is for and when it will be
@@ -541,11 +543,17 @@ without the owner's authorization. Shared mail is enough across mixed clients.
 ## Following mail without a native queue
 
 Every Claude window and every other window without a native queue, including the
-coordinator, starts a follower when joining or resuming. Name all its roles with
-repeated `--agent`; the coordinator includes `coord`. The follower leaves the journal
+coordinator, starts a follower when joining or resuming. Name one of its roles with
+`--agent`; all registered roles of that identity are included, including roles added
+while the follower runs. Repeated `--agent` can explicitly include several identities;
+the coordinator includes `coord`. The follower leaves the journal
 and its projections read-only and saves its cursor separately under
 `$XDG_STATE_HOME/squadra/inbox` (default `~/.local/state/squadra/inbox`). Re-arm the
-same command without manually copying an event number.
+same command without manually copying an event number. Cursor keys use identities,
+so changing the named role does not start a second stream. An older seat-based cursor
+is migrated when re-arming its original command (or using its explicit `--cursor-file`);
+the old file remains untouched. New roles expose previously pending mail at registration,
+and replacement digests are visible even though they belong to one compound event.
 
 In Claude Code, arm **Monitor** with a timeout longer than the command's timeout:
 
@@ -1338,3 +1346,27 @@ Delivery and close notes remain in the journal/state and delivery packet; the co
 Claude plugin paths are explicit (`./` and `./migliora`), following the
 [official manifest contract](https://code.claude.com/docs/en/plugins-reference#fields).
 Manifest guards verify both paths; client discovery is a separate integration check.
+
+## Reader readiness
+
+An assigned independent reader can declare availability before delivery:
+
+```sh
+squadra ready --actor reader --task T1
+squadra ready --actor reader --task T1 --revoke
+```
+
+The first command records `reader.ready` in journal format 4. Status, board and dashboard
+show “reader ready, waiting for delivery” / “lettore pronto, attende consegna”. A pool
+member declares only its own readiness. Registration alone makes no declaration.
+Readiness does not ACK an assignment or a future delivery, claim a pool, start a read,
+consume a read budget, or record approval. The actual delivery clears it and creates
+the usual handoff: the configured reader still explicitly ACKs that exact message.
+
+Revocation, stand-by, window re-registration, delivery and replacement clear stale
+readiness. Returning from stand-by does not restore it; declare it again. A changed
+author window also clears readiness so the reader can recheck independence.
+
+The follower normally shows ten pending messages on its first arm. It keeps all messages
+of one atomic event together, even at that boundary, so a sequence cursor never skips
+part of a replacement. Reading the mailbox still leaves every ACK explicit.

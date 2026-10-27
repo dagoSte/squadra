@@ -7,10 +7,10 @@ import math
 STEP = 900
 ORDER = ("comms", "work", "reads", "other")
 FAMILIES = {
-    "comms": {"message", "ack", "transport", "availability"},
-    "work": {"task", "reassign", "route", "fix", "supersede", "brief", "plan", "start", "deliver", "output", "run.start", "run.end", "run.cancel", "run.abandon",
+    "comms": {"message", "ack", "transport", "availability", "service.wait", "access.probe"},
+    "work": {"task", "replace", "reassign", "route", "fix", "supersede", "brief", "plan", "start", "deliver", "output", "run.start", "run.end", "run.cancel", "run.abandon",
              "resource.acquire", "resource.release", "lesson", "lesson.retire", "lesson.recall", "lesson.ineffective"},
-    "reads": {"review", "close", "ask", "decision", "pause", "resume"},
+    "reads": {"reader.ready", "review", "close", "ask", "decision", "pause", "resume"},
     "other": {"init", "agent", "legacy", "diagnostic", "settings", "save", "restore.check", "restore.freeze",
               "challenge", "benchmark"},
 }

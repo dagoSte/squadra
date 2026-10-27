@@ -138,6 +138,20 @@ def advance(indexes, state, event):
     if indexes.get("schema") != SCHEMA:
         raise ValueError("Unsupported current-index schema")
     kind, data = event["kind"], event["data"]
+    if kind == 'replace':
+        for operation in data['operations']:
+            advance(indexes, state, {**event, **operation})
+        return
+    if kind == 'replacement.pool':
+        _task(indexes, state, data['task'])
+        for name in [data.get('previous'), *data.get('previous_pool', [])]:
+            if name in state['messages']:
+                _message(indexes, state, name, event.get('seq', state['event_count']), created=False)
+        return
+    if kind == 'replacement.retire':
+        for name in data['messages']:
+            _message(indexes, state, name, event.get('seq', state['event_count']), created=False)
+        return
     _forecast(indexes, state, event)
     order = event.get("seq", state["event_count"])
     if kind == "agent":

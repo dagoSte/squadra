@@ -95,6 +95,76 @@ class ShortAnswers(Squad):
         self.assertEqual(len(json.loads(out)['windows']), 10, 'squadra balance --task keeps the whole ranking')
 
 
+    def test_access_and_ready_readers_keep_ten_window_answers_within_limit(self):
+        from access import run, write_probe
+        for i in range(1, 7):
+            role, client = ('builder', 'codex' if i % 2 else 'claude') if i < 5 else ('reviewer', 'claude')
+            self.store.append('agent', 'W' + str(i), {'id': 'W' + str(i), 'role': role, 'identity': 'window-' + str(i),
+                              'client': client, 'repo': str(self.repo), 'skills': [], 'session': 'session-' + str(i)})
+        self.assertEqual(len({a['identity'] for a in self.store.state()['agents'].values()}), 10)
+        for name, seat in list(self.store.state()['agents'].items()):
+            if name == 'A-alias':
+                continue
+            session = 'probe-' + name
+            data = {k: v for k, v in seat.items() if k in ('id', 'role', 'identity', 'client', 'repo', 'skills')}
+            self.store.append('agent', name, {**data, 'session': session})
+            def probe(path):
+                if name == 'W6' and Path(path) == self.repo:
+                    return {'path': str(path), 'outcome': 'denied', 'error': 'EACCES'}
+                return write_probe(path)
+            with patch.dict(os.environ, {'CODEX_THREAD_ID': session, 'CLAUDE_SESSION_ID': session}), \
+                    patch('access.write_probe', side_effect=probe):
+                self.assertTrue(run(self.root, name, 'probe', str(self.repo), session, 'sandbox')['recorded'])
+        brief = self.base / 'brief.md'; brief.write_text('Task one\nwhy\n')
+        printed = {}
+        rc, printed['task'], err = self.cli('task', '--actor', 'C', '--id', 'T1', '--title', 'One', '--owner', 'W1',
+                                            '--reviewer', 'R', '--repo', str(self.repo), '--scope-file', str(self.scope))
+        self.assertEqual(rc, 0, err)
+        self.store.append('reader.ready', 'R', {'task': 'T1', 'ready': True})
+        rc, printed['brief'], err = self.cli('brief', '--actor', 'C', '--task', 'T1', '--file', str(brief))
+        self.assertEqual(rc, 0, err)
+        self.store.append('ack', 'W1', {'message': 'assign-T1'})
+        rc, printed['start'], err = self.cli('start', '--actor', 'W1', '--task', 'T1')
+        self.assertEqual(rc, 0, err)
+        for command, text in printed.items():
+            with self.subTest(command=command):
+                self.assertLessEqual(len(text.encode()), 2500, 'the original short-answer limit stays unchanged')
+                self.assertIn('non verificato', text)
+                self.assertIn('negato', text)
+                self.assertIn('verificato', text)
+                if command != 'task':
+                    self.assertIn('attesa di consegna', text)
+                self.assertNotIn(str(self.repo), text)
+        state = self.store.state()
+        for language in ('it', 'en'):
+            with self.subTest(language=language):
+                short = registry.table(state, lang=language, read_at=registry.now(), compact=True)
+                full = registry.board(state, lang=language)
+                self.assertIn(str(self.repo), full)
+                self.assertNotIn(str(self.repo), short)
+                if language == 'it':
+                    self.assertIn('registro: verificato 9, negato 0, non verificato 1', short)
+                    self.assertIn('clone: verificato 8, negato 1, non verificato 1', short)
+                    self.assertIn('Lettori pronti: 1', short)
+                    self.assertIn('incarichi in attesa di consegna: 1', short)
+                else:
+                    self.assertIn('registry: verified 9, denied 0, not verified 1', short)
+                    self.assertIn('clone: verified 8, denied 1, not verified 1', short)
+                    self.assertIn('Ready readers: 1', short)
+                    self.assertIn('tasks waiting for delivery: 1', short)
+                self.assertIn(state['agents']['W6']['access_probe']['utc'], full)
+        rc, detail, err = self.cli('status', '--all')
+        self.assertEqual(rc, 0, err)
+        self.assertIn(str(self.repo), detail)
+        self.assertIn('R · T1: lettore pronto, attende consegna', detail)
+        self.assertIn('clone: negato', detail)
+        rc, detail, err = self.cli('access', 'status', '--actor', 'W6', '--repo', str(self.repo))
+        self.assertEqual(rc, 0, err)
+        self.assertEqual(json.loads(detail)['clone']['status'], 'denied')
+        self.assertEqual(json.loads(detail)['clone']['path'], str(self.repo))
+
+
+
 class OrphanRuns(Squad):
     def declare(self, checks):
         (self.repo / '.squadra-precheck.json').write_text(json.dumps({'schema': 1, 'total_seconds': 90, 'checks': checks}))

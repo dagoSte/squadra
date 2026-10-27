@@ -20,7 +20,7 @@ import unicodedata
 import weakref
 
 
-VERSION = "3.11.0"
+VERSION = "3.11.1"
 WAIT_SECONDS = {"ack": 900, "delivered": 3600, "reviewed": 1800, "heartbeat": 1800, "alive": 300,
                 "to-forward": 120, "plan": 3600}
 MESSAGE_WAIT_KEYS = {"to-forward", "plan"}
@@ -377,9 +377,10 @@ def wait_view(source, facts):
 
 def wait_settings(value):
     """Older writers/readers understand only the original wait_seconds keys."""
-    require(isinstance(value, dict) and set(value) <= set(WAIT_SECONDS), "Unknown wait threshold")
-    return {"wait_seconds": {k: v for k, v in value.items() if k not in MESSAGE_WAIT_KEYS},
-            "message_wait_seconds": {k: v for k, v in value.items() if k in MESSAGE_WAIT_KEYS}}
+    require(isinstance(value, dict) and set(value) <= set(WAIT_SECONDS) | {"onboarding_template"}, "Unknown wait threshold")
+    return {"wait_seconds": {k: v for k, v in value.items() if k in WAIT_SECONDS and k not in MESSAGE_WAIT_KEYS},
+            "message_wait_seconds": {k: v for k, v in value.items() if k in MESSAGE_WAIT_KEYS},
+            **({'onboarding_template': value['onboarding_template']} if 'onboarding_template' in value else {})}
 
 
 def decision_id(data, seq):
@@ -438,10 +439,78 @@ def last_code_read(task):
     return reads[-1] if reads else {}
 
 
+def ready_readers(state, task):
+    """Explicit availability for a future delivery; never a handoff ACK or a read."""
+    if task.get('superseded_by') or task['status'] in {'delivered', 'reviewed', 'done', 'withdrawn'}:
+        return []
+    configured = [task.get('reviewer'), *(task.get('pool') or [])]
+    return [name for name in task.get('reader_ready', {})
+            if name in configured and name in state['agents'] and not standby(state, name)]
+
+
 def apply(state, event):
     d, kind = event["data"], event["kind"]
     refs = state.setdefault("refs", {"ask": {}, "decision": {}})
-    if kind == "init":
+    if kind == 'replace':
+        for operation in d['operations']:
+            apply(state, {**event, **operation})
+            state['event_count'] -= 1
+        state['workspace'].setdefault('replacements', {})[event['id']] = {
+            'request': d['request'], 'successors': d['successors'], 'outbox': d['outbox'],
+            'unresolved_runs': d['unresolved_runs'], 'utc': event['utc']}
+    elif kind == 'replacement.inherit':
+        task = state['tasks'][d['task']]
+        task['rounds'].update(d['rounds'])
+        task.update(authors=d['authors'], inherited_builds=d['builds'],
+                    inherited_runs=d['runs'], inherited_reads=d['reads'], taken_over_from=d['from'])
+        if d.get('plan'):
+            task['plan'] = d['plan']
+    elif kind == 'replacement.contract':
+        state['tasks'][d['task']]['contract'] = d['contract']
+    elif kind == 'replacement.hold':
+        state['tasks'][d['task']]['inherited_runs'] = d['runs']
+    elif kind == 'replacement.reader':
+        state['tasks'][d['task']].update(reviewer=d['reviewer'], pool=d['pool'])
+        if state['tasks'][d['task']].get('cross_client'):
+            state['tasks'][d['task']]['same_client_reason'] = d.get('same_client_reason')
+    elif kind == 'replacement.pool':
+        task = state['tasks'][d['task']]
+        for message in [d.get('previous'), *d.get('previous_pool', [])]:
+            if message in state['messages']:
+                state['messages'][message]['replaced_by'] = d['handoffs'][0]
+        task.update(reviewer=None, pool=d['pool'], status_utc=event['utc'])
+        if task.get('cross_client'):
+            task['same_client_reason'] = d.get('same_client_reason')
+        task['delivery'].update(packet=d['packet'], packet_data=d['packet_data'], handoffs=d['handoffs'])
+        task['delivery'].pop('handoff', None)
+        task.pop('claim', None)
+        task.setdefault('reassignments', []).append({**d, 'utc': event['utc'], 'event': event['id']})
+    elif kind == 'replacement.dependencies':
+        for task in state['tasks'].values():
+            if task['status'] != 'done' and not task.get('superseded_by'):
+                task['depends'] = [d['successors'].get(dep, dep) for dep in task.get('depends', [])]
+    elif kind == 'replacement.retire':
+        for message in d['messages']:
+            state['messages'][message]['replaced_by'] = d['by']
+    elif kind == 'replacement.provenance':
+        seat = state['agents'][d['agent']]
+        for agent in state['agents'].values():
+            if agent['identity'] == seat['identity']:
+                agent['replaces'] = list(dict.fromkeys([*agent.get('replaces', []), *d['olds']]))
+    elif kind == 'access.probe':
+        state['agents'][event['actor']]['access_probe'] = {**d, 'utc': event['utc']}
+    elif kind == 'reader.ready':
+        task = state['tasks'][d['task']]
+        if d['ready']:
+            task.setdefault('reader_ready', {})[event['actor']] = {'utc': event['utc'], 'event': event['id']}
+        else:
+            task.get('reader_ready', {}).pop(event['actor'], None)
+    elif kind == 'service.wait':
+        identity = state['agents'][event['actor']]['identity']
+        for agent in state['agents'].values():
+            if agent['identity'] == identity:
+                agent['service_wait'] = {**d, 'utc': event['utc']}
+    elif kind == "init":
         state["workspace"] = dict(d)
     elif kind == "agent":
         previous = next((a.get("availability") for a in state["agents"].values()
@@ -592,6 +661,8 @@ def apply(state, event):
                 {"gate": d["defer_read"]["gate"], "reason": d["reason"], "actor": event["actor"], "utc": event["utc"]})
     elif kind == "settings":
         state["workspace"]["wait_seconds"] = d["wait_seconds"]
+        if 'onboarding_template' in d:
+            state['workspace']['onboarding_template'] = d['onboarding_template']
     elif kind in {"save", "restore.check", "challenge", "benchmark"}:
         state[{"save": "saves", "restore.check": "restores", "challenge": "challenges", "benchmark":"benchmarks"}[kind]].append(
             {**d, "actor": event["actor"], "utc": event["utc"]})
@@ -616,6 +687,19 @@ def apply(state, event):
         state["lessons"][d["lesson"]]["ineffective"].append({"recall": d["recall"], "reason": d["reason"],
                                                              "actor": event["actor"], "utc": event["utc"],
                                                              "seq": event.get("seq")})
+    # Readiness expires on delivery or a changed window; returning must declare it again.
+    if kind in {'deliver', 'reassign', 'close', 'supersede'}:
+        state['tasks'][d['task']].pop('reader_ready', None)
+    elif kind == 'agent' or (kind == 'availability' and d['status'] == 'stand-by'):
+        names = {d['id']} if kind == 'agent' else {
+            name for name, seat in state['agents'].items()
+            if seat['identity'] == state['agents'][d['agent']]['identity']}
+        for task in state['tasks'].values():
+            if kind == 'agent' and d['id'] in task['authors']:
+                task.pop('reader_ready', None)
+            else:
+                for name in names:
+                    task.get('reader_ready', {}).pop(name, None)
     state["event_count"] += 1
 
 
@@ -657,11 +741,16 @@ def live_runs(state, status=None):
 
 
 def run_count(state, task, mode, stage=None):
+    prior = state['tasks'].get(task, {})
+    inherited = prior.get('inherited_builds', 0) if mode == 'build' else 0
+    if mode == 'read':
+        reads = prior.get('inherited_reads', {})
+        inherited = reads.get(stage, 0) if stage else sum(reads.values())
     index = current_index(state)
     if index is not None:
         from registry_current import run_count as count
-        return count(index, task, mode, stage)
-    return sum(r["task"] == task and r["mode"] == mode and
+        return inherited + count(index, task, mode, stage)
+    return inherited + sum(r["task"] == task and r["mode"] == mode and
                (stage is None or r.get("stage", "code") == stage) for r in state["runs"].values())
 
 
@@ -699,7 +788,10 @@ def presence(state, at, settings=None):
     require(clock.tzinfo is not None, "Timezone-aware clock required")
     threshold = (WAIT_SECONDS | state["workspace"].get("wait_seconds", {}) | (settings or {}))["alive"]
     require(type(threshold) is int and threshold >= 0, "Nonnegative integer alive seconds required")
-    result = []
+    result, ready_by = [], {}
+    for task in state['tasks'].values():
+        for reader in ready_readers(state, task):
+            ready_by.setdefault(reader, []).append(task['id'])
     for agent in state["agents"].values():
         index = current_index(state)
         if index is not None:
@@ -720,6 +812,12 @@ def presence(state, at, settings=None):
             row.update(ping=ping["id"], seconds=seconds, answer=ping["ack"], delivered=delivered,
                        due=delivered and not ping["ack"] and seconds >= threshold and
                        (standby(state, agent["id"]) or ping.get("availability_event") == current.get("event")))
+        row['ready_tasks'] = ready_by.get(agent['id'], [])
+        row['replaces'] = agent.get('replaces', [])
+        waiting = agent.get('service_wait')
+        if waiting:
+            row['service_wait'] = {**waiting, 'active': clock < dt.datetime.fromisoformat(waiting['until'])}
+        row['access'] = access_view(state, agent['id'])
         result.append(row)
     return result
 
@@ -851,14 +949,14 @@ def attention(state):
         exhausted = []
         for stage in ("plan", "code"):
             reads = [r for r in task["reviews"] if r["stage"] == stage]
-            if task["rounds"][stage] >= state["workspace"]["limits"][stage] and reads and reads[-1]["verdict"] != "accepted":
+            if task["rounds"][stage] >= state["workspace"]["limits"][stage] and (not reads or reads[-1]["verdict"] != "accepted"):
                 exhausted.append(stage)
         builds = run_count(state, task["id"], "build")
         last_build = last_run(state, task["id"], "build")
         code_reviews = [r for r in task["reviews"] if r["stage"] == "code"]
         accepted_code = (status == "reviewed" and code_reviews and code_reviews[-1]["verdict"] == "accepted"
                          and code_reviews[-1]["binding"] == task.get("candidate", {}).get("sha256"))
-        if not accepted_code and builds >= state["workspace"]["limits"]["build"] and last_build["status"] not in {"running", "passed"}:
+        if not accepted_code and builds >= state["workspace"]["limits"]["build"] and (last_build or {}).get("status") not in {"running", "passed"}:
             exhausted.append("build")
         if exhausted and not any(a.get("task") == task["id"] for a in open_asks):
             owners.append({**common, "kind": "budget", "stages": exhausted,
@@ -1924,9 +2022,39 @@ def validate(state, kind, actor, d, stored_packet=None, *, candidate_history=())
                     "review", "close", "output", "run.start", "run.end", "run.cancel", "run.progress", "run.abandon",
                     "resource.acquire", "resource.release", "pause", "resume", "legacy", "decision", "ask", "diagnostic",
                     "settings", "save", "restore.check", "restore.freeze", "challenge", "benchmark", "brief",
-                    "availability", "supersede", "reassign", "route", "fix",
+                    "availability", "supersede", "reassign", "route", "fix", "replace", "service.wait", "access.probe", "reader.ready",
                     "lesson", "lesson.retire", "lesson.recall", "lesson.ineffective"},
             "Unknown event kind")
+    if kind == 'access.probe':
+        validate_access(state, actor, d)
+        return
+    if kind == 'replace':
+        from replacement import validate_event
+        validate_event(state, actor, d)
+        return
+    if kind == 'reader.ready':
+        require(actor in state['agents'], 'Registered reader required')
+        task = state['tasks'].get(d.get('task'))
+        require(set(d) == {'task', 'ready'} and type(d.get('ready')) is bool and task is not None,
+                'Reader readiness requires a task and a boolean declaration')
+        require(actor in [task.get('reviewer'), *(task.get('pool') or [])] and
+                state['agents'][actor]['role'] in {'reviewer', 'coordinator'}, 'Configured reader required')
+        if d['ready']:
+            require(not task.get('superseded_by') and task['status'] not in
+                    {'delivered', 'reviewed', 'done', 'withdrawn'}, 'Reader readiness precedes delivery')
+            require(not standby(state, actor), 'Reader is in stand-by')
+            from replacement import independent
+            independent(state, task, actor)
+        return
+    if kind == 'service.wait':
+        require(actor in state['agents'], 'Registered actor required')
+        require(set(d) == {'until', 'cause'} and d['cause'] in {'429', 'outage'}, 'Wait cause must be 429 or outage')
+        try:
+            until = dt.datetime.fromisoformat(d['until'])
+            require(until.tzinfo is not None, 'Wait requires a timezone')
+        except (ValueError, TypeError) as exc:
+            raise Error('Invalid wait deadline') from exc
+        return
     if kind == "init":
         require(not state["workspace"], "Workspace already initialized")
         return
@@ -2032,7 +2160,13 @@ def validate(state, kind, actor, d, stored_packet=None, *, candidate_history=())
                 require(observed["due"], "Ping no longer overdue; read current answer and alive threshold")
             else:
                 require(return_ping(state, d["agent"]), "Return needs ACK of a post-stand-by ping")
+    if kind == 'transport' and d.get('phase') == 'attempting':
+        require(d.get('force') is True or not state['messages'][d['message']].get('transport', {}).get('attempted'),
+                'Replacement delivery already attempted; inspect its receipt before retrying')
     if kind == "settings":
+        if 'onboarding_template' in d:
+            require(isinstance(d['onboarding_template'], str) and len(d['onboarding_template'].encode()) <= 8192,
+                    'Onboarding template must be text of at most 8192 bytes')
         thresholds = d.get("wait_seconds")
         require(isinstance(thresholds, dict) and set(thresholds) <= set(WAIT_SECONDS) - MESSAGE_WAIT_KEYS, "Unknown wait threshold")
         require(all(type(v) is int and v >= 0 for v in thresholds.values()), "Nonnegative integer seconds required")
@@ -2138,6 +2272,8 @@ def validate(state, kind, actor, d, stored_packet=None, *, candidate_history=())
     if kind in {"plan", "start", "deliver", "review", "close", "run.start"} or (kind == "output" and d.get("task")):
         require(d["task"] in state["tasks"], "Unknown task")
         task = state["tasks"][d["task"]]
+        require(not any(state['runs'][r]['status'] in {'running', 'cleanup-unknown'}
+                        for r in task.get('inherited_runs', [])), 'Reconcile inherited live runs before executing the successor')
         if kind in {"run.start", "review"}:
             require(set(d.get("covers", [])) <= {r["id"] for r in task.get("requirements", [])}, "Unknown covered requirement")
         require(task["status"] != "done" or kind == "output", "Task already closed")
@@ -2784,7 +2920,7 @@ class Store:
         event = {k: row[k] for k in ["id", "utc", "kind", "actor", "previous"]}
         event["data"] = json.loads(row["data"])
         version = row['hash_format'] if 'hash_format' in row.keys() else None
-        require(version in (None, 2, 3), "Unsupported event hash format")
+        require(version in (None, 2, 3, 4), "Unsupported event hash format")
         if version is not None:
             event['format'] = version
         require(digest(canonical(event).encode()) == row["hash"],
@@ -3133,7 +3269,9 @@ class Store:
         require(not self._integrity_failed, "Full verification failed; no further writes on this connection")
         operations = list(operations)
         with ExitStack() as leases:
-            for run_id in sorted({data["id"] for kind, _, data, _ in operations if kind == "run.abandon" or
+            extra = {op['data']['id'] for kind, _, data, _ in operations if kind == 'replace'
+                     for op in data['operations'] if op['kind'] == 'run.abandon'}
+            for run_id in sorted(extra | {data["id"] for kind, _, data, _ in operations if kind == "run.abandon" or
                                   (kind == "run.end" and data.get("reconciled") is not None)}):
                 leases.enter_context(run_lease(self.root, run_id))
             return self._batch_owned(operations)
@@ -3220,7 +3358,7 @@ class Store:
                 checked_data = transform_event(kind, data, self.resolve_snapshot)
                 if kind in {'deliver', 'reassign'} and 'packet_data' in checked_data:
                     checked_data = {**checked_data, 'packet_data': transform_packet(checked_data['packet_data'], self.resolve_snapshot)}
-                if kind in {'run.start', 'run.end', 'deliver', 'reassign', 'review', 'close', 'challenge'}:
+                if kind in {'run.start', 'run.end', 'deliver', 'reassign', 'review', 'close', 'challenge', 'replace'}:
                     target = self.resolved(state)
                 elif kind == 'availability' and data.get('ping'):
                     # A sweep re-checks that its ping is due, and only a delivered ping can be due.
@@ -3236,6 +3374,10 @@ class Store:
                 validate(target, kind, actor, checked_data,
                          stored_packet=data.get("packet_data") if kind in {"deliver", "reassign"} else None,
                          candidate_history=candidate_history)
+                if kind == 'replace':
+                    for op in data['operations']:
+                        if op['kind'] == 'run.abandon':
+                            validate_abandonment_files(self, state['runs'][op['data']['id']], op['data'])
                 if kind == "run.abandon":
                     validate_abandonment_files(self, state["runs"][data["id"]], data)
                 if kind == "run.end" and data.get("reconciled") is not None:
@@ -3251,9 +3393,12 @@ class Store:
                         (kind == 'close' and data.get('note')) or
                         self.db.execute('SELECT 1 FROM events WHERE hash_format=3 LIMIT 1').fetchone() is not None):
                     event['format'] = 3
+                if (kind in {'replace', 'service.wait', 'access.probe', 'reader.ready'} or (kind == 'settings' and 'onboarding_template' in data) or
+                        self.db.execute('SELECT 1 FROM events WHERE hash_format=4 LIMIT 1').fetchone() is not None):
+                    event['format'] = 4
                 # A restore of a package with no new-format event keeps the envelope the saving version can read.
                 if kind == "restore.freeze" and self.db.execute(
-                        "SELECT 1 FROM events WHERE hash_format IN (2,3) LIMIT 1").fetchone() is None:
+                        "SELECT 1 FROM events WHERE hash_format IN (2,3,4) LIMIT 1").fetchone() is None:
                     del event["format"]
                 h = digest(canonical(event).encode())
                 cursor = self.db.execute("INSERT INTO events(id,utc,kind,actor,data,previous,hash,hash_format) VALUES(?,?,?,?,?,?,?,?)",
@@ -3532,7 +3677,9 @@ def cell(value):
 def board_times(events):
     """Derive timing separately so replayed task state keeps its existing shape."""
     times = {}
-    for event in events:
+    rows = (child for event in events for child in
+            ([{**event, **op} for op in event['data']['operations']] if event['kind'] == 'replace' else [event]))
+    for event in rows:
         data, kind = event["data"], event["kind"]
         if kind == "task":
             times[data["id"]] = {"assigned": event["utc"]}
@@ -3559,7 +3706,98 @@ def board_time(task, timing, clock, en):
     return f"{'about' if en else 'circa'} {amount} {label}"
 
 
-def board(state, lang=None, read_at=None, events=(), *, live=True):
+def seat_label(state, name, en=False):
+    old = state['agents'].get(name, {}).get('replaces', [])
+    return name + ((' (replaces ' if en else ' (sostituisce ') + ', '.join(old) + ')' if old else '')
+
+
+def validate_access(state, actor, data):
+    require(actor in state['agents'], 'Registered actor required')
+    agent = state['agents'][actor]
+    require(set(data) == {'identity', 'session', 'observed_session', 'registered_repo', 'context', 'registry', 'clone'},
+            'Invalid access receipt fields')
+    require(data['identity'] == agent['identity'] and data['session'] == agent.get('session') and
+            isinstance(data['session'], str) and bool(data['session']) and
+            data['registered_repo'] == agent['repo'], 'Access receipt must bind the recipient session and repository')
+    require(data['observed_session'] in ('', data['session']) and
+            data['context'] in ('sandbox', 'escalated', 'unknown'), 'Invalid access execution context')
+    for key in ('registry', 'clone'):
+        result = data[key]
+        require(isinstance(result, dict) and set(result) == {'path', 'outcome', 'error'}, 'Invalid access result')
+        require(isinstance(result['path'], str) and control_free(result['path']) and Path(result['path']).is_absolute(),
+                'Access result needs an absolute path')
+        require(result['outcome'] in ('writable', 'denied', 'unknown') and isinstance(result['error'], str) and
+                len(result['error']) <= 80 and control_free(result['error']), 'Invalid access observation')
+
+
+def access_view(state, name, *, repo=None, root=None):
+    """Historical observation bound to the same identity/session and named paths."""
+    agent = state['agents'][name]
+    records = [a['access_probe'] for a in state['agents'].values()
+               if a['identity'] == agent['identity'] and a.get('access_probe')]
+    record = max(records, key=lambda r: r['utc']) if records else None
+    result = {'registry': {'status': 'not-verified'}, 'clone': {'status': 'not-verified'},
+              'context': record['context'] if record else 'unknown', 'utc': record['utc'] if record else None}
+    bound = bool(record and record['session'] == agent.get('session') and record['observed_session'] == agent.get('session')
+                 and record['registered_repo'] == agent['repo'] and record['context'] == 'sandbox')
+    for key, requested in (('registry', root), ('clone', repo)):
+        if record:
+            observation = record[key]
+            matches = requested is None or str(Path(requested).resolve()) == observation['path']
+            status = {'writable': 'verified', 'denied': 'denied', 'unknown': 'not-verified'}[observation['outcome']]
+            result[key] = {**observation, 'status': status if bound and matches else 'not-verified'}
+        elif requested:
+            result[key]['path'] = str(Path(requested).resolve())
+    return result
+
+
+def access_lines(state, en=False, *, compact=False):
+    result, seen, missing = [], set(), []
+    labels = {'verified': ('verificato', 'verified'), 'denied': ('negato', 'denied'),
+              'not-verified': ('non verificato', 'not verified')}
+    counts = {key: dict.fromkeys(labels, 0) for key in ('registry', 'clone')}
+    for name, agent in state['agents'].items():
+        if agent['identity'] in seen:
+            continue
+        seen.add(agent['identity'])
+        access = access_view(state, name)
+        if compact:
+            for key in counts:
+                counts[key][access[key]['status']] += 1
+            continue
+        if access['utc'] is None:
+            missing.append(name)
+            continue
+        details = []
+        for key, label in (('registry', 'registry' if en else 'registro'), ('clone', 'clone')):
+            item = access[key]
+            details.append(label + ': ' + labels[item['status']][en] + (' (' + item['path'] + ')' if item.get('path') else ''))
+        result.append(('Write access — ' if en else 'Accesso in scrittura — ') + name + ': ' + '; '.join(details) +
+                      ((' · observed ' if en else ' · osservato ') + access['utc'] + ' [' + access['context'] + ']' if access['utc'] else ''))
+    if compact and seen:
+        summary = []
+        for key, label in (('registry', 'registry' if en else 'registro'), ('clone', 'clone')):
+            summary.append(label + ': ' + ', '.join(labels[status][en] + ' ' + str(count)
+                                                   for status, count in counts[key].items()))
+        result.append(('Write access — ' if en else 'Accesso in scrittura — ') + '; '.join(summary))
+    if missing:
+        result.append(('Registry and clone write access not verified: ' if en else
+                       'Scrittura registro e clone non verificata: ') + ', '.join(missing))
+    return result
+
+
+def service_lines(state, at=None, en=False):
+    clock = dt.datetime.fromisoformat(at or now())
+    result = []
+    for name, agent in state['agents'].items():
+        wait = agent.get('service_wait')
+        if wait and clock < dt.datetime.fromisoformat(wait['until']):
+            result.append(seat_label(state, name, en) + (': waiting for service until ' if en else ': in attesa del servizio fino alle ') +
+                          dt.datetime.fromisoformat(wait['until']).strftime('%H:%M %z') + ' (' + wait['cause'] + ')')
+    return result
+
+
+def board(state, lang=None, read_at=None, events=(), *, live=True, compact=False):
     """Build the progress table; saved views retain fixed durations, not running ages."""
     lang = lang or state["workspace"].get("lang", "it")
     require(lang in {"it", "en"}, "Board language must be it or en")
@@ -3571,6 +3809,8 @@ def board(state, lang=None, read_at=None, events=(), *, live=True):
     index = current_index(state)
     times = index["task_timings"] if index is not None and not events else board_times(events)
     en = lang == "en"
+    # Without observations, the existing grouped missing-access line is already short.
+    compact = compact and any(agent.get("access_probe") for agent in state["agents"].values())
     labels = {
         "waiting-ack": ("presa in carico da confermare", "awaiting assignment acknowledgement"),
         "ready": ("da avviare", "ready to start"),
@@ -3604,7 +3844,7 @@ def board(state, lang=None, read_at=None, events=(), *, live=True):
             step = next_step(task)
             names = [task["owner"]] if task["status"] == "done" else step["who"]
             agent = state["agents"].get(next(iter(names), None))
-            window = (" / ".join(names) + " (" + roles[step["role"]][en] + ")") if agent else ("Reader to assign" if en else "Lettore da assegnare")
+            window = (" / ".join(seat_label(state, name, en) for name in names) + " (" + roles[step["role"]][en] + ")") if agent else ("Reader to assign" if en else "Lettore da assegnare")
             elapsed = "—" if rows is todo or (rows is active and not live) else board_time(task, times.get(task["id"], {}), clock, en)
             lines.append("| " + " | ".join(cell(v) for v in (window, task["title"], labels[step["phase"]][en], elapsed)) + " |")
         if not rows:
@@ -3617,6 +3857,17 @@ def board(state, lang=None, read_at=None, events=(), *, live=True):
     if unread:
         lines.append(f"Closed without a read, to be read at the gate: {unread}" if en
                      else f"Chiusi senza lettura, da leggere al gate: {unread}")
+    lines.extend(access_lines(state, en, compact=compact))
+    ready = [(reader, task['id']) for task in tasks for reader in ready_readers(state, task)]
+    if compact and ready:
+        lines.append(('Ready readers: ' if en else 'Lettori pronti: ') + str(len({r for r, _ in ready})) +
+                     (' · tasks waiting for delivery: ' if en else ' · incarichi in attesa di consegna: ') +
+                     str(len({t for _, t in ready})))
+    elif not compact:
+        for reader, task_id in ready:
+            lines.append(seat_label(state, reader, en) + ' · ' + task_id + ': ' +
+                         ('reader ready, waiting for delivery' if en else 'lettore pronto, attende consegna'))
+    lines.extend(service_lines(state, clock.isoformat() if clock else now(), en))
     return printable("\n".join(lines))
 
 
@@ -3776,7 +4027,7 @@ def table(state, read_at=None, events=(), *, compact=False, lang=None, attention
     en = lang == "en"
     tasks = list(state["tasks"].values())
     view = attention(state) if attention_value is None else attention_value
-    lines = [board(state, lang, read_at=read_at, events=events, live=read_at is not None), "",
+    lines = [board(state, lang, read_at=read_at, events=events, live=read_at is not None, compact=compact), "",
              *([*composition_lines(composition(state, lang=lang), lang), ""] if advice else []),
              "Needs you:" if en else "Serve a te:"]
     information = information_count(state)

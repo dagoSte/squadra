@@ -5,13 +5,26 @@ import datetime as dt
 import re
 
 COMMUNICATION = {"message", "ack", "transport", "availability"}
-OTHER_KNOWN = {"init", "agent", "task", "plan", "start", "deliver", "review", "close", "output",
+OTHER_KNOWN = {"access.probe", "reader.ready", "replace", "service.wait", "init", "agent", "task", "plan", "start", "deliver", "review", "close", "output",
                "run.start", "run.end", "run.cancel", "run.progress", "run.abandon", "resource.acquire",
                "resource.release", "pause", "resume", "legacy", "decision", "ask", "diagnostic",
                "settings", "save", "restore.check", "restore.freeze", "challenge", "benchmark", "brief",
                "supersede", "reassign", "route", "fix", "lesson", "lesson.retire", "lesson.recall", "lesson.ineffective"}
 AVAILABILITY = {"active", "stand-by"}
 LIMIT = 500
+
+
+def mail_recipients(state, agents):
+    """One identity's mailbox includes every registered role, keeping original recipients."""
+    names = set(agents)
+    identities = {state['agents'][name]['identity'] for name in names if name in state['agents']}
+    return names | {name for name, seat in state['agents'].items() if seat['identity'] in identities}
+
+
+def mailbox_keys(state, agents):
+    """Stable cursor keys even when another role joins the same identity."""
+    return sorted({('identity:' + state['agents'][name]['identity']) if name in state['agents']
+                   else 'seat:' + name for name in agents})
 
 
 def _clock(value):

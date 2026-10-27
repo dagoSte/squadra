@@ -211,9 +211,12 @@ def transform_packet(value, transform):
 
 def transform_event(kind, value, transform):
     """Visit declared event bindings, preserving stored packet bytes and user data."""
+    if kind == 'replace':
+        return {**value, 'operations': [{**op, 'data': transform_event(op['kind'], op['data'], transform)}
+                                      for op in value['operations']]}
     if kind in {"run.start", "run.end"}:
         return transform_run(value, transform)
-    if kind == 'reassign' and 'packet_data' in value:
+    if kind in {'reassign', 'replacement.pool'} and 'packet_data' in value:
         return {**value, 'packet_data': transform_packet(value['packet_data'], transform)}
     if kind == "deliver" and "snapshot" in value:
         return {**value, "snapshot": transform(value["snapshot"])}

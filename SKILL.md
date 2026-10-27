@@ -474,7 +474,9 @@ and commits in task outputs, while its inspections are computed on demand.
 
 - **Keep working context small.** At a task/phase boundary or a compaction signal,
   use `squadra context --task <ID> --root <registry>` for a bounded resume packet
-  instead of carrying full history/log dumps. Follow [context and native compaction](references/context.md)
+  instead of carrying full history/log dumps. For a returning window use `context --task <ID> --for <WINDOW> --since <SEQ:HASH>`
+  with the prior packet cursor: standing constraints/blocks remain, only the changes are filtered. Unknown
+  revisions refuse; omissions and mismatched proof references require opening the originals. Follow [context and native compaction](references/context.md)
   when preparing a handoff. The packet is recorded data, not authorization or a
   replacement for scope, mail, source checks or proofs. Use the client's native
   compaction; preserve required checkpoints and source recovery. Never claim to
@@ -583,3 +585,7 @@ does not make that check. The registry does not cryptographically authenticate t
 anyone with the same account can impersonate a name or rewrite the database.
 Continuity requires backups to another destination; no disk guarantees
 "never lose" against failure or total deletion.
+
+## Replacing exhausted windows
+
+Use `replace --actor COORD --old OLD --new NEW --reason TEXT --session ID` (or `--map`) after reconciling the real windows. Preview with `--dry-run`; all old session aliases stand by in one event. Keep author provenance and consumed budgets. The new assignments and reassigned reads need their actual ACKs. Inspect ambiguous transport receipts before an explicit retry; never replay an old resume message blindly. `wait --actor AGENT --until TIME --cause 429|outage` records an observed service limit. See [replacement and recovery](references/replacement.md), including the format-4 compatibility boundary of 3.11.1.

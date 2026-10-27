@@ -13,7 +13,7 @@ Coordina Claude Code, Codex e Cursor con incarichi condivisi, revisioni indipend
 
 **Gratuita e open source** — licenza MIT, nessun account, tutto gira sul tuo computer.
 
-**Versione 3.11.0** · Python 3.12+ · macOS / POSIX
+**Versione 3.11.1** · Python 3.12+ · macOS / POSIX
 
 [English](README.md) · **Italiano** · [Privacy](PRIVACY.it.md)
 
@@ -21,7 +21,7 @@ Coordina Claude Code, Codex e Cursor con incarichi condivisi, revisioni indipend
 
 </div>
 
-[![Scansione di sicurezza Cisco](https://img.shields.io/github/actions/workflow/status/dagoSte/squadra/cisco-skill-scan.yml?branch=main&label=Cisco%20security%20scan&logo=cisco)](https://github.com/dagoSte/squadra/actions/workflows/cisco-skill-scan.yml) [![HOL Guard](https://img.shields.io/endpoint?url=https%3A%2F%2Fhol.org%2Fapi%2Fregistry%2Fbadges%2Fplugin%3Fslug%3Ddagoste%252Fsquadra%26metric%3Dtrust)](https://hol.org/registry/plugins/dagoste%2Fsquadra) [![Ultima versione](https://img.shields.io/github/v/release/dagoSte/squadra?label=release&color=2ea44f)](https://github.com/dagoSte/squadra/releases/latest) [![Licenza](https://img.shields.io/github/license/dagoSte/squadra?color=blue)](https://github.com/dagoSte/squadra/blob/main/LICENSE) [![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-3776AB?logo=python&logoColor=white)](#start) [![Dipendenze: solo libreria standard Python](https://img.shields.io/badge/dependencies-stdlib%20only-brightgreen)](#start) [![Claude Code skill](https://img.shields.io/badge/Claude%20Code-skill-D97757?logo=claude&logoColor=white)](#start) [![Codex plugin](https://img.shields.io/badge/Codex-plugin-412991?logo=openai&logoColor=white)](#start) [![Piattaforma](https://img.shields.io/badge/platform-macOS%20%7C%20POSIX-555)](#start) [![Stelle su GitHub](https://img.shields.io/github/stars/dagoSte/squadra?style=flat&logo=github&color=yellow)](https://github.com/dagoSte/squadra/stargazers) [![Ultimo aggiornamento](https://img.shields.io/github/last-commit/dagoSte/squadra)](https://github.com/dagoSte/squadra/commits/main)
+[![Scansione di sicurezza Cisco](https://img.shields.io/github/actions/workflow/status/dagoSte/squadra/cisco-skill-scan.yml?branch=main&label=Cisco%20security%20scan&logo=cisco)](https://github.com/dagoSte/squadra/actions/workflows/cisco-skill-scan.yml) [![Ultima versione](https://img.shields.io/github/v/release/dagoSte/squadra?label=release&color=2ea44f)](https://github.com/dagoSte/squadra/releases/latest) [![Licenza](https://img.shields.io/github/license/dagoSte/squadra?color=blue)](https://github.com/dagoSte/squadra/blob/main/LICENSE) [![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-3776AB?logo=python&logoColor=white)](#start) [![Dipendenze: solo libreria standard Python](https://img.shields.io/badge/dependencies-stdlib%20only-brightgreen)](#start) [![Claude Code skill](https://img.shields.io/badge/Claude%20Code-skill-D97757?logo=claude&logoColor=white)](#start) [![Codex plugin](https://img.shields.io/badge/Codex-plugin-412991?logo=openai&logoColor=white)](#start) [![Piattaforma](https://img.shields.io/badge/platform-macOS%20%7C%20POSIX-555)](#start) [![Stelle su GitHub](https://img.shields.io/github/stars/dagoSte/squadra?style=flat&logo=github&color=yellow)](https://github.com/dagoSte/squadra/stargazers) [![Ultimo aggiornamento](https://img.shields.io/github/last-commit/dagoSte/squadra)](https://github.com/dagoSte/squadra/commits/main)
 
 [Che cosa copre la scansione di sicurezza](#security-scan).
 
@@ -163,6 +163,8 @@ La prima finestra che scrive su un registro precedente o spostato costruisce la 
 **Requisiti:** Python 3.12+, Git e la libreria standard di Python. **Node.js** esegue i controlli JavaScript della dashboard nella suite di test e in `selftest`: senza Node quei controlli falliscono, non vengono mai saltati. Un browser per la dashboard; la CLI di Codex o di Claude solo per i runner nativi. L'ambiente di processi provato è macOS/POSIX; il controllo dei processi su Windows e il ripristino con submodule, LFS o checkout sparsi non sono qualificati.
 
 </details>
+
+**Aggiornamento alla 3.11.1:** aggiorna insieme tutte le finestre e reinstalla i plugin. `replace`, `wait`, `access probe`, `ready` e le impostazioni di onboarding scrivono il formato 4 del giornale, che la 3.11.0 e i client precedenti rifiutano invece di ignorarlo.
 
 **Aggiornamento alla 3.11.0:** aggiorna tutte le finestre e reinstalla i plugin prima di creare nuovi incarichi o riassegnare letture. I nuovi incarichi usano consegne congelate e il formato 3 del giornale; i client precedenti lo rifiutano. Gli incarichi storici mantengono il comportamento precedente. Il programma di installazione aggiunge anche la skill `migliora`.
 
@@ -507,7 +509,7 @@ Le sezioni seguenti conservano gli esempi operativi completi. Apri l’argomento
 | Seguire un incarico dall’assegnazione alla chiusura | [Flusso di lavoro](#workflow) |
 | Ricostruire un’istruzione o registrare una decisione | [Briefing, messaggi e decisioni](#decision-reference) |
 | Salvare il lavoro o riprendere una sessione | [Checkpoint e ripristino](#checkpoints) |
-| Cercare un comando o il suo prompt in parole semplici | [Tutti i 54 comandi](#commands) |
+| Cercare un comando o il suo prompt in parole semplici | [Tutti i 58 comandi](#commands) |
 
 [Skill](SKILL.md) · [Avvio](references/start.md) · [Lavoro/prova/lettura](references/work.md) · [Runner nativi](references/runtime.md) · [Ripristino/passaggio di contesto](references/recovery.md) · [Sfide/confronto](references/benchmark.md) · [Plugin](references/plugins.md) · [Creare un plugin](references/plugin-authoring.md)
 
@@ -805,10 +807,10 @@ attiva degrada l'integrita del candidato. Vedi la
 
 Non serve scrivere questi comandi: **il modo consigliato è chiedere alla finestra in parole semplici**, come nella colonna *Oppure chiedi* e nei [prompt di esempio](#prompts); il comando lo esegue la finestra. I comandi sono quello che eseguono le finestre, e quello che puoi scrivere tu per controllare.
 
-Ogni comando, raggruppato per scopo: **54 sottocomandi**, più `--version`. Usa `squadra <comando> --help` per le opzioni; i comandi del registro accettano `--root` o `SQUADRA_ROOT`. «Solo il coordinatore» segna ciò che solo il coordinatore può registrare: `task`, `route`, `supersede`, `reassign`, `brief`, `close`, `ask`, `decision`, `settings`, `pause`, `resume`, `save`, `standby`, `ping --all`, `ping --sweep`, e la ricevuta che `restore-check` scrive nel registro vivo. Senza installare, gli stessi comandi girano come `python3 -B scripts/squadra.py <comando>`.
+Ogni comando, raggruppato per scopo: **58 sottocomandi**, più `--version`. Usa `squadra <comando> --help` per le opzioni; i comandi del registro accettano `--root` o `SQUADRA_ROOT`. «Solo il coordinatore» segna ciò che solo il coordinatore può registrare: `task`, `route`, `supersede`, `reassign`, `replace`, `brief`, `close`, `ask`, `decision`, `settings`, `pause`, `resume`, `save`, `standby`, `ping --all`, `ping --sweep`, e la ricevuta che `restore-check` scrive nel registro vivo. Senza installare, gli stessi comandi girano come `python3 -B scripts/squadra.py <comando>`.
 
 <details>
-<summary><strong>Tutti i 54 comandi con i loro prompt, raggruppati per scopo</strong></summary>
+<summary><strong>Tutti i 58 comandi con i loro prompt, raggruppati per scopo</strong></summary>
 
 ### Avvio e squadra
 
@@ -819,6 +821,10 @@ Ogni comando, raggruppato per scopo: **54 sottocomandi**, più `--version`. Usa 
 | `agent` | Registra una finestra: identità, ruolo, client, checkout e le skill che ha letto davvero. | «Registra questa finestra nella squadra, con le skill che hai letto davvero.» |
 | `census` | Trova le finestre Codex, Claude e Cursor del progetto senza scrivere nulla; prima di `init` serve `--project`. Va lanciato da una finestra Claude: dentro la sandbox di Codex non vede le altre finestre, e lo dice. | «Trova le finestre Codex, Claude e Cursor che lavorano a questo progetto, senza scrivere nulla.» |
 | `ping` | Manda una chiamata di presenza a una finestra (`--to`) o, solo il coordinatore, a tutte (`--all`); `--sweep` (solo il coordinatore) registra lo stand-by per una chiamata senza risposta che un trasporto ha consegnato, e il ritorno dopo un ACK nuovo. | Al coordinatore: «Controlla quali finestre ci sono ancora: manda a tutte una chiamata di presenza.» |
+| `replace` | Solo il coordinatore: sostituisce finestre, trasferisce incarichi e posta utile; anteprima con `--dry-run`. | «Passa il lavoro della finestra esaurita alla sostituta.» |
+| `access` | Verifica dalla finestra destinataria la scrittura nel registro e nel clone, prima dell’incarico. | “Controlla i permessi di questa finestra.” |
+| `ready` | Il lettore assegnato dichiara di essere pronto prima della consegna; `--revoke` ritira la disponibilità. La consegna richiede comunque il suo ACK. | «Segna che sono pronto a leggere questo incarico quando verrà consegnato.» |
+| `wait` | Registra un limite del servizio con `--until` e `--cause 429|outage`, senza dormire o ritentare. | «Segna il disservizio fino alle 19:30.» |
 | `standby` | Solo il coordinatore: mette una finestra in stand-by, o la fa tornare con `--resume`; lavoro, esecuzioni e riserve restano suoi. | Al coordinatore: «Metti in stand-by la finestra revisora finché non te lo dico.» |
 | `settings` | Solo il coordinatore: imposta le soglie di attesa in secondi: `ack`, `delivered`, `reviewed`, `heartbeat`, `alive`. | Al coordinatore: «Segnala come attesa un ACK che manca da più di 10 minuti, invece di 15.» |
 
@@ -933,6 +939,19 @@ Controlli statici, comportamentali e delle dipendenze, con `tests/` esclusa. Il 
 <a id="news"></a>
 ## Novità
 
+**3.11.1 — sostituzione delle finestre, permessi all’ingresso, una posta per finestra e contesto di rientro**
+
+- **Sostituisci in un passo le finestre chiuse.** `replace` (o `--map`) passa incarichi, letture, posta e risorse dalle finestre vecchie alle nuove in un solo evento registrato, conservando autori, budget, il vincolo di approvazione del piano (il successore lo fa riapprovare) e le prenotazioni dei processi ancora vivi. `--dry-run` mostra l’anteprima e ripetere è sicuro; `census --unregistered` elenca le sessioni nuove.
+- **Limiti del servizio visibili.** `wait --until ORA --cause 429|outage` mostra in stato, tabella e dashboard che una finestra aspetta il servizio del modello.
+- **Permessi verificati all’ingresso.** `access probe` registra, dall’interno della finestra, se può scrivere nel registro e nel suo clone; `access status` mostra verificato, negato o non verificato.
+- **Una posta per finestra.** `inbox` e il suo follower leggono tutti i ruoli della stessa finestra e conservano il destinatario di ogni ACK; `ready` mostra un lettore in attesa della consegna.
+- **Contesto di rientro.** `context --for FINESTRA --since SEQ:HASH` mostra cosa è cambiato per una finestra e conserva sempre vincoli, ACK dovuti, budget e prove attuali.
+- **Correzioni.** `transport` non riconsegna più in silenzio un messaggio vecchio con un ID riusato; `save --repo` segnala come avvisi i repository non selezionati mancanti.
+- Plugin: memoranda 1.0.10, Playwright 1.0.11, Sentry 0.1.8.
+
+<details>
+<summary><strong>Versioni precedenti</strong></summary>
+
 **3.11.0 — consegne congelate, letture riassegnabili e migliora**
 
 Aggiornamento: l’avvio della dashboard libera la lettura del WAL; risposte JSON e transport brevi, deroghe registrate per singolo percorso e rifiuti di recupero più chiari.
@@ -943,9 +962,6 @@ Aggiornamento: l’avvio della dashboard libera la lettura del WAL; risposte JSO
 - **Comandi più brevi.** Verdetti identici senza duplicati, note a consegna e chiusura, prova dichiarabile con argomenti diretti e risposta breve di `send`.
 - **Migliora.** Una skill automatica per gli attriti dimostrati: regole circoscritte, verifica e commit locale dei propri file dopo le letture richieste dal progetto.
 - Plugin: memoranda 1.0.9, Playwright 1.0.10, Sentry 0.1.7.
-
-<details>
-<summary><strong>Versioni precedenti</strong></summary>
 
 **3.10.4 — le prove in una cartella temporanea privata dal percorso corto, e Claude e Codex rileggono l'uno il lavoro dell'altro**
 
@@ -1120,3 +1136,21 @@ Squadra è un progetto della community: migliora con ogni plugin, ogni segnalazi
 ---
 
 Sviluppato da Stefano D'Agostino · [GitHub](https://github.com/dagoSte/squadra)
+
+## Sostituire le finestre durante un milestone
+
+La 3.11.1 aggiunge `squadra replace`, `census --unregistered` e `wait --until … --cause 429|outage`. Il passaggio registrato conserva storico, autori e budget; offre anteprima e ripetizione sicura. Leggi [comandi, compatibilità ed esempio hotskills](references/replacement.it.md). Aggiornare tutte le finestre prima della prima scrittura nel formato 4 del registro.
+
+### Controllo dei permessi all’ingresso
+
+Prima dell’incarico, la finestra destinataria esegue `access probe` nel proprio sandbox ordinario; `access status` legge l’osservazione registrata. Registro e clone hanno stati distinti **verificato**, **negato** e **non verificato**, visibili in board, status e dashboard. Una prova con escalation non verifica il sandbox ordinario. Per un lettore il clone in sola lettura può essere corretto. Vedi [comandi e limiti delle prove](references/start.md#permission-check-at-entry). Una sonda registrata aggiorna anche le proiezioni giornaliere; un errore di proiezione viene segnalato separatamente dall’osservazione già registrata.
+
+### Contesto di rientro per finestra
+
+Usa `squadra context --task TASK --for WINDOW --since SEQ:HASH` quando una finestra rientra dopo una pausa, compattazione o sostituzione. Mostra le novità pertinenti e conserva vincoli precedenti, ACK dovuti, budget ereditati e riferimenti alle prove. Una revisione non corrispondente viene rifiutata; un delta vuoto non autorizza nulla. Apri gli originali quando ci sono omissioni o una prova non corrisponde più. [Comandi, limiti e confini delle prove](references/context.md#re-entry-for-one-window-and-one-revision). I diagnostici lunghi conservano un riepilogo limitato e la sequenza dell’evento originale; per uno storico esteso usa `--max-chars 32000` e apri gli eventi citati per il diagnostico completo.
+
+### Posta per identità e disponibilità del lettore
+
+`inbox --agent NOME` include tutti i ruoli registrati della stessa identità, una volta per messaggio. `--follow` include i ruoli aggiunti mentre gira e condivide il cursore fra gli alias. Ogni messaggio conserva il destinatario originale: usare quel ruolo per il suo ACK esplicito. La posta di altre identità resta esclusa.
+
+Il lettore assegnato può eseguire `ready --actor LETTORE --task INCARICO` prima della consegna. Status, board e dashboard mostrano «lettore pronto, attende consegna». È una dichiarazione di disponibilità: non conferma una consegna futura, non avvia una lettura e non approva il lavoro. `--revoke`, stand-by, nuova registrazione della finestra e consegna la azzerano; una sostituzione non la trasferisce. Il lettore deve ancora confermare il messaggio della consegna reale prima di leggere. Vedi [il protocollo di lavoro](references/work.md#reader-readiness).

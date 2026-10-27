@@ -13,7 +13,7 @@ Coordinate Claude Code, Codex and Cursor with shared tasks, independent reviews 
 
 **Free and open source** — MIT licence, no account, everything runs on your machine.
 
-**Version 3.11.0** · Python 3.12+ · macOS / POSIX
+**Version 3.11.1** · Python 3.12+ · macOS / POSIX
 
 **English** · [Italiano](README.it.md) · [Privacy](PRIVACY.md)
 
@@ -21,7 +21,7 @@ Coordinate Claude Code, Codex and Cursor with shared tasks, independent reviews 
 
 </div>
 
-[![Cisco security scan](https://img.shields.io/github/actions/workflow/status/dagoSte/squadra/cisco-skill-scan.yml?branch=main&label=Cisco%20security%20scan&logo=cisco)](https://github.com/dagoSte/squadra/actions/workflows/cisco-skill-scan.yml) [![HOL Guard](https://img.shields.io/endpoint?url=https%3A%2F%2Fhol.org%2Fapi%2Fregistry%2Fbadges%2Fplugin%3Fslug%3Ddagoste%252Fsquadra%26metric%3Dtrust)](https://hol.org/registry/plugins/dagoste%2Fsquadra) [![Latest release](https://img.shields.io/github/v/release/dagoSte/squadra?label=release&color=2ea44f)](https://github.com/dagoSte/squadra/releases/latest) [![License](https://img.shields.io/github/license/dagoSte/squadra?color=blue)](https://github.com/dagoSte/squadra/blob/main/LICENSE) [![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-3776AB?logo=python&logoColor=white)](#start) [![Dependencies: Python standard library only](https://img.shields.io/badge/dependencies-stdlib%20only-brightgreen)](#start) [![Claude Code skill](https://img.shields.io/badge/Claude%20Code-skill-D97757?logo=claude&logoColor=white)](#start) [![Codex plugin](https://img.shields.io/badge/Codex-plugin-412991?logo=openai&logoColor=white)](#start) [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20POSIX-555)](#start) [![GitHub stars](https://img.shields.io/github/stars/dagoSte/squadra?style=flat&logo=github&color=yellow)](https://github.com/dagoSte/squadra/stargazers) [![Last commit](https://img.shields.io/github/last-commit/dagoSte/squadra)](https://github.com/dagoSte/squadra/commits/main)
+[![Cisco security scan](https://img.shields.io/github/actions/workflow/status/dagoSte/squadra/cisco-skill-scan.yml?branch=main&label=Cisco%20security%20scan&logo=cisco)](https://github.com/dagoSte/squadra/actions/workflows/cisco-skill-scan.yml) [![Latest release](https://img.shields.io/github/v/release/dagoSte/squadra?label=release&color=2ea44f)](https://github.com/dagoSte/squadra/releases/latest) [![License](https://img.shields.io/github/license/dagoSte/squadra?color=blue)](https://github.com/dagoSte/squadra/blob/main/LICENSE) [![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-3776AB?logo=python&logoColor=white)](#start) [![Dependencies: Python standard library only](https://img.shields.io/badge/dependencies-stdlib%20only-brightgreen)](#start) [![Claude Code skill](https://img.shields.io/badge/Claude%20Code-skill-D97757?logo=claude&logoColor=white)](#start) [![Codex plugin](https://img.shields.io/badge/Codex-plugin-412991?logo=openai&logoColor=white)](#start) [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20POSIX-555)](#start) [![GitHub stars](https://img.shields.io/github/stars/dagoSte/squadra?style=flat&logo=github&color=yellow)](https://github.com/dagoSte/squadra/stargazers) [![Last commit](https://img.shields.io/github/last-commit/dagoSte/squadra)](https://github.com/dagoSte/squadra/commits/main)
 
 [What the security scan covers](#security-scan).
 
@@ -132,6 +132,8 @@ squadra --version
 ```
 
 Every release raises the version number, except a refresh that adds to a release under the same number, as 3.10.2 did on 17 October 2026. Plugins installed from the Store keep their version until `squadra plugin install <name>` runs again from the new release ([Plugins bundled in your release](#plugin-store)). Open windows keep the version they read until they restart, and a running squad keeps its protocol until you switch it explicitly.
+
+**Updating to 3.11.1:** upgrade every window together and reinstall bundled plugins. `replace`, `wait`, `access probe`, `ready` and onboarding settings write journal format 4, which 3.11.0 and older clients refuse instead of ignoring it.
 
 **Updating to 3.11.0:** upgrade every window and reinstall bundled plugins before creating new tasks or reassigning reads. New tasks use frozen delivery and journal format 3; older clients refuse it. Historical tasks retain their previous behavior. The installer also adds the `migliora` skill.
 
@@ -505,7 +507,7 @@ The sections below keep the full working examples. Open the topic you need; the 
 | Follow a task from assignment to closure | [Task workflow](#workflow) |
 | Trace an instruction or record a decision | [Briefs, messages and decisions](#decision-reference) |
 | Save work or resume a session | [Checkpoints and recovery](#checkpoints) |
-| Look up a command or its plain-language prompt | [All 54 commands](#commands) |
+| Look up a command or its plain-language prompt | [All 58 commands](#commands) |
 
 [Skill](SKILL.md) · [Setup](references/start.md) · [Work/proof/review](references/work.md) · [Native runners](references/runtime.md) · [Recovery/context handover](references/recovery.md) · [Challenges/benchmark](references/benchmark.md) · [Plugins](references/plugins.md) · [Plugin authoring](references/plugin-authoring.md)
 
@@ -802,10 +804,10 @@ manual deletion of an active cache degrades candidate integrity. See
 
 You do not have to type these commands: **asking your window in plain words is the recommended way**, as in the *Or just ask* column and the [example prompts](#prompts), and the window runs the command for you. The commands are what the windows run, and what you can type yourself to check.
 
-Every command, grouped by purpose: **54 subcommands**, plus `--version`. Use `squadra <command> --help` for the flags; registry commands accept `--root` or `SQUADRA_ROOT`. «Coordinator only» marks what only the coordinator can record: `task`, `route`, `supersede`, `reassign`, `brief`, `close`, `ask`, `decision`, `settings`, `pause`, `resume`, `save`, `standby`, `ping --all`, `ping --sweep`, and the receipt that `restore-check` writes into the live registry. Without installing, the same commands run as `python3 -B scripts/squadra.py <command>`.
+Every command, grouped by purpose: **58 subcommands**, plus `--version`. Use `squadra <command> --help` for the flags; registry commands accept `--root` or `SQUADRA_ROOT`. «Coordinator only» marks what only the coordinator can record: `task`, `route`, `supersede`, `reassign`, `replace`, `brief`, `close`, `ask`, `decision`, `settings`, `pause`, `resume`, `save`, `standby`, `ping --all`, `ping --sweep`, and the receipt that `restore-check` writes into the live registry. Without installing, the same commands run as `python3 -B scripts/squadra.py <command>`.
 
 <details>
-<summary><strong>All 54 commands and their prompts, grouped by purpose</strong></summary>
+<summary><strong>All 58 commands and their prompts, grouped by purpose</strong></summary>
 
 ### Start and team
 
@@ -816,6 +818,10 @@ Every command, grouped by purpose: **54 subcommands**, plus `--version`. Use `sq
 | `agent` | Register a window: identity, role, client, checkout, and the skills it actually read. | “Register this window in the squad, with the skills you actually read.” |
 | `census` | Find the project's Codex, Claude and Cursor windows without writing anything; `--project` is required before `init`. Run it from a Claude window: inside a Codex sandbox it cannot see the other windows, and says so. | “Find the Codex, Claude and Cursor windows working on this project, without writing anything.” |
 | `ping` | Send a presence call to one window (`--to`) or, coordinator only, to all (`--all`); `--sweep` (coordinator only) records stand-by for an unanswered call that a transport delivered, and the return after a fresh ACK. | To the coordinator: “Check which windows are still there: send a presence call to all of them.” |
+| `replace` | Coordinator only: atomically replace windows, carry tasks and useful mail; preview with `--dry-run`. | “Hand the exhausted window over to its replacement.” |
+| `access` | Probe recipient write access, or read the latest observation, before assignment. | “Check this window’s registry and clone permissions.” |
+| `ready` | Declare that the assigned reader is ready before delivery; `--revoke` withdraws readiness. The delivery still needs its own ACK. | “Record that I am ready to read this task when it is delivered.” |
+| `wait` | Record a service wait with `--until` and `--cause 429|outage`; no sleep or automatic retry. | “Record the service outage until 19:30.” |
 | `standby` | Coordinator only: put a window in stand-by, or bring it back with `--resume`; its work, runs and reservations stay its own. | To the coordinator: “Put the reviewer window in stand-by until I say otherwise.” |
 | `settings` | Coordinator only: set the wait thresholds in seconds: `ack`, `delivered`, `reviewed`, `heartbeat`, `alive`. | To the coordinator: “Show a missing ACK as a wait after 10 minutes instead of 15.” |
 
@@ -930,6 +936,19 @@ Static, behavioral and dependency checks, excluding `tests/`. Passing means no H
 <a id="news"></a>
 ## What's new
 
+**3.11.1 — replacing windows, access checks, one mailbox per window and re-entry context**
+
+- **Replace closed windows in one step.** `replace` (or `--map`) hands tasks, reads, mail and resources from old windows to new ones in one recorded event, keeping authors, budgets, plan gates and the reservations of live runs. `--dry-run` previews it and reruns are safe; `census --unregistered` lists new sessions.
+- **Service limits are visible.** `wait --until TIME --cause 429|outage` shows in status, board and dashboard that a window is waiting for its model service.
+- **Permission check at entry.** `access probe` records, from inside the window, whether it can write the registry and its clone; `access status` shows verified, denied or not verified.
+- **One mailbox per window.** `inbox` and its follower read every role of the same window and keep the recipient of each ACK; `ready` shows a reader waiting for a delivery.
+- **Re-entry context.** `context --for WINDOW --since SEQ:HASH` shows what changed for one window and always keeps the current constraints, pending ACKs, budgets and proofs.
+- **Fixes.** `transport` no longer silently re-delivers an older message under a reused ID; `save --repo` reports missing unselected repositories as warnings.
+- Plugins: memoranda 1.0.10, Playwright 1.0.11, Sentry 0.1.8.
+
+<details>
+<summary><strong>Earlier versions</strong></summary>
+
 **3.11.0 — frozen delivery, reader transfers and migliora**
 
 Refresh: dashboard startup releases its WAL read; JSON and transport replies are concise, and recovery supports recorded per-path name exceptions with clearer refusals.
@@ -940,9 +959,6 @@ Refresh: dashboard startup releases its WAL read; JSON and transport replies are
 - **Shorter commands.** Identical verdict retries do not duplicate reads; delivery and close take notes, task proofs accept direct argv, and `send` returns a short receipt.
 - **Migliora.** An automatic skill for demonstrated friction: scoped rules, a check and local commits of owned files after the project’s required reviews.
 - Plugins: memoranda 1.0.9, Playwright 1.0.10, Sentry 0.1.7.
-
-<details>
-<summary><strong>Earlier versions</strong></summary>
 
 **3.10.4 — a short private temporary folder for proofs, and Claude and Codex read each other's work**
 
@@ -1115,3 +1131,21 @@ Squadra is a community project: it gets better with every plugin, report and sha
 ---
 
 Developed by Stefano D'Agostino · [GitHub](https://github.com/dagoSte/squadra)
+
+## Replacing windows during a milestone
+
+3.11.1 adds `squadra replace`, `census --unregistered` and `wait --until … --cause 429|outage`. One recorded handover preserves task history, authors and budgets; previews and retries are safe. See the [commands, compatibility boundary and hotskills example](references/replacement.md). All windows must use 3.11.1 before the first journal-format-4 write.
+
+### Permission check at entry
+
+Before assignment, the recipient window runs `access probe` in its ordinary sandbox; `access status` reads the recorded observation. Registry and clone have separate **verified**, **denied** and **not verified** states in board, status and the dashboard. An escalated probe never verifies ordinary sandbox access. A reader may correctly have a read-only clone. See [the commands and evidence limits](references/start.md#permission-check-at-entry). A recorded probe also refreshes the daily projections; a projection failure is reported separately from the committed observation.
+
+### Per-window re-entry context
+
+Use `squadra context --task TASK --for WINDOW --since SEQ:HASH` when a window returns after a pause, compaction or replacement. It shows relevant changes and keeps earlier constraints, pending ACKs, inherited budgets and evidence references. A mismatched revision refuses; an empty delta grants nothing. Open the originals when data is omitted or a proof no longer matches. [Commands, size limits and evidence boundaries](references/context.md#re-entry-for-one-window-and-one-revision). Long error diagnostics retain a bounded summary and their original event sequence; for a long history use `--max-chars 32000` and open the referenced events for full diagnostics.
+
+### Identity mail and reader readiness
+
+`inbox --agent NAME` includes every registered role of the same identity, once per message. `--follow` picks up new roles while running and shares its cursor across aliases. Each message retains its original recipient: use that role for its explicit ACK. Messages from other identities stay outside this mailbox.
+
+An assigned reader can run `ready --actor READER --task TASK` before delivery. Status, board and dashboard show “reader ready, waiting for delivery”. This declares availability only; it does not acknowledge a future handoff, start a read or approve work. `--revoke`, stand-by, window re-registration and delivery clear it; replacement never transfers it. The reader still ACKs the actual delivery message before reading. See [the work protocol](references/work.md#reader-readiness).

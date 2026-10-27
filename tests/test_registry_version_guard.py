@@ -125,7 +125,7 @@ class RegistryVersionGuardTests(unittest.TestCase):
             store.events()
 
     def test_unknown_hash_format_is_refused_even_if_its_hash_matches(self):
-        store = self.append_new(); self.raw_event(store, version=4)
+        store = self.append_new(); self.raw_event(store, version=5)
         with self.assertRaisesRegex(registry.Error, 'Unsupported event hash format'):
             store.events()
 

@@ -119,7 +119,7 @@ def allowed_file(repo, rel):
 def save_destination(store, state, destination, repos, temporary):
     destination = Path(destination).resolve()
     selected = repositories(state, repos)
-    registered = repositories(state, None)
+    registered = [Path(p).resolve() for p in registered_names(state)]
     if destination.exists():
         raise DestinationRefused("Save destination must be new")
     if any(inside(destination, r) for r in [*selected, *registered, store.root]):
@@ -157,9 +157,13 @@ def index(repo):
     return digest(git(repo, "ls-files", "--stage", "-z"))
 
 
+def registered_names(state):
+    return [state['workspace']['project'], *[a['repo'] for a in state['agents'].values()],
+            *[t['repo'] for t in state['tasks'].values()]]
+
+
 def repositories(state, explicit):
-    names = explicit or [state["workspace"]["project"], *[a["repo"] for a in state["agents"].values()],
-                         *[t["repo"] for t in state["tasks"].values()]]
+    names = explicit or registered_names(state)
     result, seen = [], set()
     for name in names:
         path = Path(name).resolve(strict=True)
@@ -252,7 +256,9 @@ def save(store, destination, repos=None, includes=None, temporary=False, declare
     names = [row['path'] for row in allowance['files']] if allowance else []
     checked_indexes = {repo: checked_index(repo, details=True, names=names) for repo in selected}
     destination.mkdir(parents=True, mode=0o700)
-    manifest = {"schema": 1, "version": VERSION, "utc": now(), "status": "building", "repositories": [],
+    missing_unselected = sorted({str(Path(p).resolve()) for p in registered_names(state)
+                                 if repos and not Path(p).exists() and Path(p).resolve() not in selected})
+    manifest = {"warnings": ['Missing unselected registered repository: ' + p for p in missing_unselected], "schema": 1, "version": VERSION, "utc": now(), "status": "building", "repositories": [],
                 "scope": "explicit partial selection" if repos else "all registered repositories",
                 "destination": "local checkpoint" if destination.stat().st_dev == store.root.stat().st_dev else "different filesystem, external disk unverified",
                 "declared_offsite": declared_offsite, "offsite_verified": False,

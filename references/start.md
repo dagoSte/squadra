@@ -160,3 +160,37 @@ squadra transport --actor arrival --message PING-ID --via manual
 ```
 
 Every window uses the same `SQUADRA_ROOT` or `--root`; separate checkouts never create separate mailboxes. `agent --skill` records the path and hash of each skill actually read, `--session` a known session, `--model` a requested model; what a client does not expose stays unknown. **An identity is not a role:** two aliases of one window are not an independent reader, and a seat's identity and role cannot be rewritten, so a different window needs a new seat. The `executor` role also exists. Add builders only for independent scopes.
+
+## Permission check at entry
+
+Before assigning work, ask the recipient window to run this command in its own ordinary sandbox:
+
+```sh
+squadra access probe --actor WINDOW --session ACTUAL-SESSION --context sandbox --repo /assigned/clone --root /shared/registry
+squadra access status --actor WINDOW --repo /assigned/clone --root /shared/registry
+```
+
+The probe creates, writes, flushes and removes a private temporary file in each directory. It does not
+use Unix mode bits or `os.access` as evidence and never changes permissions. Results distinguish
+**verified**, **denied** and **not-verified**, with the exact paths, session, observation time and context.
+Board/status and the dashboard show these observations even before an assignment. They are observations
+at that time, not a permission grant or a guarantee that a later operation succeeds. Rerun after changing
+sandbox permissions, session or clone. A read-only clone is valid for a reader; this adds no assignment gate.
+
+Run with `--context escalated` if escalation was used, or `--context unknown` when the execution context
+cannot be established. Neither verifies ordinary sandbox access, even when the write succeeds. The
+context is an explicit declaration by the calling window; the CLI cannot introspect the client's sandbox.
+Codex session attribution uses `CODEX_THREAD_ID`; Claude uses `CLAUDE_SESSION_ID` when provided by its
+launcher. Without an observed session, the outcome remains **not-verified**. A different observed session
+is refused: the coordinator must not probe on another window's behalf. Session variables and registry
+actors are cooperative evidence, not cryptographic authentication. No native Claude session variable is
+assumed to exist. Other clients currently report **not-verified**.
+
+If the registry is readable but not writable, JSON includes the observations with `recorded: false`;
+there is no invented saved receipt. An unreadable registry produces a command error. I/O failures other
+than permission refusal, missing directories and incomplete cleanup remain **not-verified**. Keep that
+JSON as handoff evidence; never rerun with escalation and label it an ordinary sandbox success.
+
+The `access.probe` event uses journal format 4. Upgrade every reader before the first write, including
+bridge copies and their same-version pin. `access status` is read-only and compares the requested paths
+with the observation; mismatched sessions or paths cannot reuse a verified result.

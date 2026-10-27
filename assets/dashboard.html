@@ -1075,7 +1075,14 @@ function presencePanel(){
     }
     if(!a.answer&&ping.transport?.via==='codex-queue'&&ping.transport.delivered)result.push(tr('presence.queued'));
    }else result.push(tr('presence.noCall'));
-   const r=row(presenceWindowLabel(a.agent)+' — '+result.join(' '),tr('presence.lastAnswer',{time:a.last_answer?presenceDate(a.last_answer):tr('presence.none')}));
+   if(a.access){
+    const labels=UI_LANG==='en'?{'verified':'verified','denied':'denied','not-verified':'not verified'}:{'verified':'verificato','denied':'negato','not-verified':'non verificato'};
+    for(const key of ['registry','clone']){const v=a.access[key]||{status:'not-verified'};result.push((key==='registry'?(UI_LANG==='en'?'registry write: ':'scrittura registro: '):(UI_LANG==='en'?'clone write: ':'scrittura clone: '))+labels[v.status]+(v.path?' ('+v.path+')':''));}
+    if(a.access.utc)result.push((UI_LANG==='en'?'observed ':'osservato ')+presenceDate(a.access.utc)+' ['+a.access.context+']');
+   }
+   for(const task of a.ready_tasks||[])result.push((UI_LANG==='en'?'reader ready, waiting for delivery':'lettore pronto, attende consegna')+' · '+taskTitle(task));
+   if(a.service_wait?.active)result.push((UI_LANG==='en'?'waiting for service until ':'in attesa del servizio fino alle ')+presenceDate(a.service_wait.until)+' ('+a.service_wait.cause+')');
+   const r=row((agent?.replaces?.length?panelSeat(a.agent)+' — ':'')+presenceWindowLabel(a.agent)+' — '+result.join(' '),tr('presence.lastAnswer',{time:a.last_answer?presenceDate(a.last_answer):tr('presence.none')}));
    const details=node('details');details.append(node('summary',tr('presence.details.title')));
    details.open=presenceExpanded.has(a.agent);details.ontoggle=()=>{if(details.open)presenceExpanded.add(a.agent);else presenceExpanded.delete(a.agent)};
    details.append(node('div',tr('presence.details.window',{agent:a.agent,identity:a.identity,status:a.availability}),'sub mono bodytext'));
@@ -1568,7 +1575,7 @@ function recordedWaiting(){
  const forwarded=new Set(view.waiting.filter(w=>w.kind==='to-forward').map(w=>w.id));
  for(const w of compactWaits(newestFirst(state.waits||[],w=>-(w.seconds||0)),view.waiting).filter(w=>w.kind!=='stand-by'&&(w.kind!=='to-forward'||!forwarded.has(w.id))))p.append(row(tr('page.wait.over',{kind:descriptions[w.kind]||w.kind}),(w.task?taskTitle(w.task):w.id)+' · '+w.seconds+'s / '+w.threshold+'s · '+waitText(w),tr('page.wait.check')));addEmpty(p,view.waiting.length);for(const step of newestTasks(view.next_steps,s=>state.tasks[s.task]||{id:s.task}))p.append(row(taskTitle(step.task),stepText(step),step.status));return p;
 }
-function workOverview(){const p=panel(tr('connected.workNow'));headingKey(p.children[0],'work');p.className='panel sq-work';p.append(node('p',tr('connected.workIntro'),'sq-lede'));const all=newestTasks(Object.values(state.tasks).filter(matches)),closed=all.filter(t=>!panelOpen(t));for(const t of all.filter(panelOpen))p.append(panelTaskCard(t));if(closed.length){const group=node('details',undefined,'sq-closed');group.open=panelUI.closedOpen;group.ontoggle=()=>{panelUI.closedOpen=group.open;if(group.open)panelClampSoon()};const summary=node('summary',tr('work.closed',{n:closed.length}));focusKey(summary,'work:closed');summary.setAttribute('data-focus-fallback','work');group.append(summary);for(const t of closed)group.append(panelTaskCard(t));p.append(group)}if(!all.length)p.append(node('p',tr('page.empty'),'empty'));const waits=node('details',undefined,'sq-waits');waits.open=panelUI.waitsOpen;waits.ontoggle=()=>{panelUI.waitsOpen=waits.open};const summary=node('summary',tr('work.waits'));focusKey(summary,'work:waits');summary.setAttribute('data-focus-fallback','work');waits.append(summary,recordedWaiting());if(state.presence?.some(a=>a.ping||a.availability==='stand-by'))waits.append(presencePanel());p.append(waits);return p}
+function workOverview(){const p=panel(tr('connected.workNow'));headingKey(p.children[0],'work');p.className='panel sq-work';p.append(node('p',tr('connected.workIntro'),'sq-lede'));const all=newestTasks(Object.values(state.tasks).filter(matches)),closed=all.filter(t=>!panelOpen(t));for(const t of all.filter(panelOpen))p.append(panelTaskCard(t));if(closed.length){const group=node('details',undefined,'sq-closed');group.open=panelUI.closedOpen;group.ontoggle=()=>{panelUI.closedOpen=group.open;if(group.open)panelClampSoon()};const summary=node('summary',tr('work.closed',{n:closed.length}));focusKey(summary,'work:closed');summary.setAttribute('data-focus-fallback','work');group.append(summary);for(const t of closed)group.append(panelTaskCard(t));p.append(group)}if(!all.length)p.append(node('p',tr('page.empty'),'empty'));const waits=node('details',undefined,'sq-waits');waits.open=panelUI.waitsOpen;waits.ontoggle=()=>{panelUI.waitsOpen=waits.open};const summary=node('summary',tr('work.waits'));focusKey(summary,'work:waits');summary.setAttribute('data-focus-fallback','work');waits.append(summary,recordedWaiting());if(state.presence?.some(a=>a.ping||a.availability==='stand-by'||a.service_wait?.active))waits.append(presencePanel());p.append(waits);return p}
 function render(){if(!state)return;const anchor=commsAnchor();if(typeof renderHeaderExtras==='function')renderHeaderExtras();$('name').textContent=state.workspace.name;$('project').textContent=tr('page.project',{project:state.workspace.project,count:state.event_count});$('project').setAttribute('title',$('project').textContent);const tasksList=Object.values(state.tasks),messages=Object.values(state.messages),runs=Object.values(state.runs);const done=tasksList.filter(t=>t.status==='done').length,unread=Object.values(state.progress||{}).filter(p=>p.state?.id==='closed-unread').length;$('metrics').replaceChildren();for(const [label,value,detail,glyph] of [[tr('page.metric.closed'),done+'/'+tasksList.length,unread?tr('page.metric.closedUnread',{count:unread}):tr('page.metric.closedSub'),'check2-all'],[tr('page.metric.identities'),new Set(Object.values(state.agents).map(a=>a.identity)).size,tr('page.metric.identitiesSub',{count:Object.keys(state.agents).length}),'people'],[tr('page.metric.acks'),pendingAckIds().size,tr('page.metric.acksSub'),'envelope-exclamation'],[tr('page.metric.runs'),runs.filter(r=>['running','cleanup-unknown'].includes(r.status)).length,runs.some(r=>r.status==='cleanup-unknown')?tr('page.metric.runsUnknown'):tr('page.metric.runsPending'),'hourglass-split']]){const c=node('div',undefined,'metric');c.append(node('div',label,'label'),node('strong',value),node('div',detail,'sub'));if(typeof icon==='function')c.append(icon(glyph,'metric-icon'));$('metrics').append(c)}$('notice').replaceChildren();if(state.paused)$('notice').append(node('div',tr('page.paused'),'notice'));const tabs=['Quadro','Finestre','Incarichi','Posta','Comunicazioni','Decisioni','Letture','Prove','Output','Cronologia','Storico'];$('tabs').replaceChildren();tabs.forEach(t=>{const b=node('button',tr('tab.'+t),t===tab?'active':'');if(typeof panelTab==='function')panelTab(b,t);b.onclick=()=>{if(typeof connectedReset==='function')connectedReset();tab=t;if(typeof panelNavigate==='function')panelNavigate();render()};$('tabs').append(b)});if(typeof skillsNav==='function')skillsNav();if(typeof usageNav==='function')usageNav();if(typeof balanceNav==='function')balanceNav();const content=$('content');content.className=tab==='Quadro'?'sq-home':'';if(!transferPageReady(content)){commsRestore(anchor);return}if(tab==='Comunicazioni')comms(content);else{if(tab==='Usage'){usageRender(content)}else if(tab==='SystemSkills'){skillsRender(content)}else if(tab==='Bilanciamento'){balanceRender(content)}else if(tab==='Store'){storeRender(content)}else if(tab==='Letture'){readsRender(content)}else if(typeof pluginSelected==='function'&&pluginSelected()){pluginRender(content)}else{content.replaceChildren();if(tab==='Quadro'){content.append(ownerAttention(),workOverview(),connectedRail());content.append(transferOverviewDetail())}else content.append(({Finestre:team,Incarichi:tasks,Posta:mail,Prove:evidence,Output:outputs,Cronologia:timeline,Storico:legacyView,Decisioni:decisionsView})[tab]())}}commsRestore(anchor)}
 const loadUI={running:false,timer:null,error:null,query:'',searchAgain:false,integrity:false};
 let transferUI={head:null,sections:new Map(),pending:new Map(),errors:new Map(),overview:false},transferOffset=0;
@@ -2145,7 +2152,7 @@ function panelPhone(){
 }
 function panelPlural(key,n,vars){return tr(n===1&&I18N[key+'.one']?key+'.one':key,{...vars,n})}
 // Name windows as the Communications view does; keep seat identifiers in the details.
-function panelSeat(seat){return seat?capital(commsName(seat,'bare')):''}
+function panelSeat(seat){const a=state.agents[seat],old=a?.replaces||[];return seat?(old.length?seat+(UI_LANG==='en'?' (replaces ':' (sostituisce ')+old.join(', ')+')':capital(commsName(seat,'bare'))):''}
 
 // Follow the system in automatic mode; an explicit theme overrides it.
 function panelThemeChoice(){
@@ -2692,6 +2699,11 @@ function panelDeclared(t){
  const brief=t.brief&&typeof t.brief==='object'&&later(t.brief.utc)?t.brief:null;
  return {output,disposed:decision||brief||null};
 }
+function readerReadyLine(t){
+ if(t.superseded_by||['delivered','reviewed','done','withdrawn'].includes(t.status))return '';
+ const configured=[t.reviewer,...(t.pool||[])],names=Object.keys(t.reader_ready||{}).filter(n=>configured.includes(n)&&state.agents[n]&&state.agents[n].availability?.status!=='stand-by');
+ return names.length?names.map(panelSeat).join(', ')+': '+(UI_LANG==='en'?'reader ready, waiting for delivery':'lettore pronto, attende consegna'):'';
+}
 function panelTaskCard(t){
  const card=row(titled(taskTitle(t.id),'work|task:'+t.id+'|title'));card.className='row sq-task';card.setAttribute('data-task',t.id);
  const clamp=e=>{e.className=(e.className?e.className+' ':'')+'sq-readable';return e};
@@ -2701,6 +2713,7 @@ function panelTaskCard(t){
  if(about)card.append(clamp(node('p',about,'sq-purpose')));
  const steps=panelSteps(t);if(steps)card.append(steps);appendTaskTime(card,t);
  const roles=panelRoles(t);if(roles)card.append(clamp(node('p',roles,'sq-line')));
+ const ready=readerReadyLine(t);if(ready)card.append(clamp(node('p',ready,'sq-line')));
  const last=panelStory(t).at(-1);
  if(last){const words=tr('work.last',{text:last.short||last.text,age:ageText(last.utc)});card.append(clamp(node('p',words,'sq-line')))}
  const step=(state.attention?.next_steps||[]).find(s=>s.task===t.id),declared=panelDeclared(t);

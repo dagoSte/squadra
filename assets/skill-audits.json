@@ -11,7 +11,7 @@
         "osv": true,
         "fail_on_severity": "high"
       },
-      "scanned_at": "2026-10-26T13:22:55.060057+00:00",
+      "scanned_at": "2026-10-26T19:53:33.796722+00:00",
       "result": "pass",
       "findings": {
         "critical": 0,
@@ -20,12 +20,12 @@
         "low": 0
       },
       "files": {
-        "SKILL.md": "9adefcc463cc8f1f56f944455784fe068c9e8722da7ccaac1e75e05ef4fdc4c8",
-        "scripts/registry.py": "b11b594a2fdec88b591ce48366a810e51adca36e57d7b11bf220eddae1aebb82",
-        "scripts/squadra.py": "25dd8e0a92d35abe1a2458d6631fce187fd69f86315e9bf21e240ee35a7efcd2",
-        "scripts/dashboard.py": "bd930db9f490cc79e7ab006c74e3bb59a2ff49d43c200eb3e81016d959652695",
+        "SKILL.md": "768b9a62d0f7676866cd924dac1dec374eaf3e9488f759f8fd17eb320f83a919",
+        "scripts/registry.py": "9cd200863cfa59433b7ec19b92435ca39e2ce2094e6d300bcede48050c449b25",
+        "scripts/squadra.py": "f3a9831ebc5d99432b942ce12de200745fe7ab1128b965ad1324e1c628acf393",
+        "scripts/dashboard.py": "e12f7739690caa9f86aa42c0fab7350d8a7b63efc5ddf1e3c8c65562de8bed82",
         "scripts/system_skills.py": "616560474dccfc461b35d57b4769e7ebaad0ebcfda5be17cc2faa25d0bdb540c",
-        "assets/dashboard.html": "2b954085702560374ae324f116da0dc54ca7af797dea7ad1a8081074560c2e8a",
+        "assets/dashboard.html": "33f72cc94fdefe37a2b6b37a23898a6db7e246c5f57c1eb3d271ebcb90f14e3b",
         "references/skills/errata.md": "2a486d47946b59fd78794ed8978dba19cd6e0550b85093b96e8e79c7ca747272",
         "scripts/errata.py": "87ec2fe2c4da24f5537a995664185a03d28be61173c66a3b187e8191ab0f92e0"
       }
@@ -40,7 +40,7 @@
         "osv": true,
         "fail_on_severity": "high"
       },
-      "scanned_at": "2026-10-26T13:22:55.060057+00:00",
+      "scanned_at": "2026-10-26T19:53:33.796722+00:00",
       "result": "pass",
       "findings": {
         "critical": 0,
@@ -49,12 +49,12 @@
         "low": 0
       },
       "files": {
-        "SKILL.md": "9adefcc463cc8f1f56f944455784fe068c9e8722da7ccaac1e75e05ef4fdc4c8",
-        "scripts/registry.py": "b11b594a2fdec88b591ce48366a810e51adca36e57d7b11bf220eddae1aebb82",
-        "scripts/squadra.py": "25dd8e0a92d35abe1a2458d6631fce187fd69f86315e9bf21e240ee35a7efcd2",
-        "scripts/dashboard.py": "bd930db9f490cc79e7ab006c74e3bb59a2ff49d43c200eb3e81016d959652695",
+        "SKILL.md": "768b9a62d0f7676866cd924dac1dec374eaf3e9488f759f8fd17eb320f83a919",
+        "scripts/registry.py": "9cd200863cfa59433b7ec19b92435ca39e2ce2094e6d300bcede48050c449b25",
+        "scripts/squadra.py": "f3a9831ebc5d99432b942ce12de200745fe7ab1128b965ad1324e1c628acf393",
+        "scripts/dashboard.py": "e12f7739690caa9f86aa42c0fab7350d8a7b63efc5ddf1e3c8c65562de8bed82",
         "scripts/system_skills.py": "616560474dccfc461b35d57b4769e7ebaad0ebcfda5be17cc2faa25d0bdb540c",
-        "assets/dashboard.html": "2b954085702560374ae324f116da0dc54ca7af797dea7ad1a8081074560c2e8a",
+        "assets/dashboard.html": "33f72cc94fdefe37a2b6b37a23898a6db7e246c5f57c1eb3d271ebcb90f14e3b",
         "references/skills/previsione.md": "c6310aff2a0284c9e75f848b122cf04567a23fde4963586d64e8ae12aa9efdbe",
         "scripts/forecast.py": "bc938bfadb85da12f8ef5989bf00c2f24e4baa20a64ca11e350c7bca11ca399d"
       }
@@ -69,7 +69,7 @@
         "osv": true,
         "fail_on_severity": "high"
       },
-      "scanned_at": "2026-10-26T13:22:55.060057+00:00",
+      "scanned_at": "2026-10-26T19:53:33.796722+00:00",
       "result": "pass",
       "findings": {
         "critical": 0,
@@ -78,12 +78,12 @@
         "low": 0
       },
       "files": {
-        "SKILL.md": "9adefcc463cc8f1f56f944455784fe068c9e8722da7ccaac1e75e05ef4fdc4c8",
-        "scripts/registry.py": "b11b594a2fdec88b591ce48366a810e51adca36e57d7b11bf220eddae1aebb82",
-        "scripts/squadra.py": "25dd8e0a92d35abe1a2458d6631fce187fd69f86315e9bf21e240ee35a7efcd2",
-        "scripts/dashboard.py": "bd930db9f490cc79e7ab006c74e3bb59a2ff49d43c200eb3e81016d959652695",
+        "SKILL.md": "768b9a62d0f7676866cd924dac1dec374eaf3e9488f759f8fd17eb320f83a919",
+        "scripts/registry.py": "9cd200863cfa59433b7ec19b92435ca39e2ce2094e6d300bcede48050c449b25",
+        "scripts/squadra.py": "f3a9831ebc5d99432b942ce12de200745fe7ab1128b965ad1324e1c628acf393",
+        "scripts/dashboard.py": "e12f7739690caa9f86aa42c0fab7350d8a7b63efc5ddf1e3c8c65562de8bed82",
         "scripts/system_skills.py": "616560474dccfc461b35d57b4769e7ebaad0ebcfda5be17cc2faa25d0bdb540c",
-        "assets/dashboard.html": "2b954085702560374ae324f116da0dc54ca7af797dea7ad1a8081074560c2e8a",
+        "assets/dashboard.html": "33f72cc94fdefe37a2b6b37a23898a6db7e246c5f57c1eb3d271ebcb90f14e3b",
         "references/skills/rasoio.md": "cd47402b57aa2ec04f602bb4d71c578f7e404e81bc65552d8c2f079dc88be7df"
       }
     },
@@ -97,7 +97,7 @@
         "osv": true,
         "fail_on_severity": "high"
       },
-      "scanned_at": "2026-10-26T13:22:55.060057+00:00",
+      "scanned_at": "2026-10-26T19:53:33.796722+00:00",
       "result": "pass",
       "findings": {
         "critical": 0,
@@ -106,12 +106,12 @@
         "low": 0
       },
       "files": {
-        "SKILL.md": "9adefcc463cc8f1f56f944455784fe068c9e8722da7ccaac1e75e05ef4fdc4c8",
-        "scripts/registry.py": "b11b594a2fdec88b591ce48366a810e51adca36e57d7b11bf220eddae1aebb82",
-        "scripts/squadra.py": "25dd8e0a92d35abe1a2458d6631fce187fd69f86315e9bf21e240ee35a7efcd2",
-        "scripts/dashboard.py": "bd930db9f490cc79e7ab006c74e3bb59a2ff49d43c200eb3e81016d959652695",
+        "SKILL.md": "768b9a62d0f7676866cd924dac1dec374eaf3e9488f759f8fd17eb320f83a919",
+        "scripts/registry.py": "9cd200863cfa59433b7ec19b92435ca39e2ce2094e6d300bcede48050c449b25",
+        "scripts/squadra.py": "f3a9831ebc5d99432b942ce12de200745fe7ab1128b965ad1324e1c628acf393",
+        "scripts/dashboard.py": "e12f7739690caa9f86aa42c0fab7350d8a7b63efc5ddf1e3c8c65562de8bed82",
         "scripts/system_skills.py": "616560474dccfc461b35d57b4769e7ebaad0ebcfda5be17cc2faa25d0bdb540c",
-        "assets/dashboard.html": "2b954085702560374ae324f116da0dc54ca7af797dea7ad1a8081074560c2e8a",
+        "assets/dashboard.html": "33f72cc94fdefe37a2b6b37a23898a6db7e246c5f57c1eb3d271ebcb90f14e3b",
         "references/skills/bilanciamento.md": "cede3aae62fcdef6ef7aa2583ee717d14c839ffcb7efacea39f70c39e3371738",
         "scripts/balance.py": "c4076f1924e646d2b88784daf1ed17c7ad7bf65cf0bd8e20a18b4b93308d68e1",
         "scripts/forecast.py": "bc938bfadb85da12f8ef5989bf00c2f24e4baa20a64ca11e350c7bca11ca399d",
@@ -128,7 +128,7 @@
         "osv": true,
         "fail_on_severity": "high"
       },
-      "scanned_at": "2026-10-26T13:22:55.060057+00:00",
+      "scanned_at": "2026-10-26T19:53:33.796722+00:00",
       "result": "pass",
       "findings": {
         "critical": 0,
@@ -137,12 +137,12 @@
         "low": 0
       },
       "files": {
-        "SKILL.md": "9adefcc463cc8f1f56f944455784fe068c9e8722da7ccaac1e75e05ef4fdc4c8",
-        "scripts/registry.py": "b11b594a2fdec88b591ce48366a810e51adca36e57d7b11bf220eddae1aebb82",
-        "scripts/squadra.py": "25dd8e0a92d35abe1a2458d6631fce187fd69f86315e9bf21e240ee35a7efcd2",
-        "scripts/dashboard.py": "bd930db9f490cc79e7ab006c74e3bb59a2ff49d43c200eb3e81016d959652695",
+        "SKILL.md": "768b9a62d0f7676866cd924dac1dec374eaf3e9488f759f8fd17eb320f83a919",
+        "scripts/registry.py": "9cd200863cfa59433b7ec19b92435ca39e2ce2094e6d300bcede48050c449b25",
+        "scripts/squadra.py": "f3a9831ebc5d99432b942ce12de200745fe7ab1128b965ad1324e1c628acf393",
+        "scripts/dashboard.py": "e12f7739690caa9f86aa42c0fab7350d8a7b63efc5ddf1e3c8c65562de8bed82",
         "scripts/system_skills.py": "616560474dccfc461b35d57b4769e7ebaad0ebcfda5be17cc2faa25d0bdb540c",
-        "assets/dashboard.html": "2b954085702560374ae324f116da0dc54ca7af797dea7ad1a8081074560c2e8a",
+        "assets/dashboard.html": "33f72cc94fdefe37a2b6b37a23898a6db7e246c5f57c1eb3d271ebcb90f14e3b",
         "references/skills/migliora.md": "abd64c41f0b804883de02e8640168efad2f02c36876e379f020b5e817bccc193",
         "scripts/migliora.py": "d67765b78aa8bfcc1fcc988f829c0f58db6993bbcc35ab30451a1a2c70b39e28"
       }

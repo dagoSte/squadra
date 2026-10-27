@@ -544,3 +544,5 @@ current delivery must no longer reference that SHA. Quarantine is retained evide
 what is needed before manual deletion. This recipe also applies to throwaway
 synthetic test registries and checkpoints. It does not record a retention event;
 manual removal of an active candidate is reported as missing by doctor/checkpoint.
+
+For explicit `save --repo`, missing unselected registered repositories are MANIFEST warnings; selected missing repositories still fail. Destination containment still covers all registered source paths. See [window replacement](replacement.md) for handover and service-wait records.
