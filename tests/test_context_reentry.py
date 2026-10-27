@@ -87,7 +87,7 @@ class Reentry(unittest.TestCase):
         before = self.store.events()
         for revision in ('1', '0:'+'0'*64, '999999:'+'a'*64, '1:'+'a'*64, '1:abc', '-1:'+'a'*64):
             with self.subTest(revision=revision):
-                rc, out, err = self.cli('--since', revision)
+                rc, out, err = self.cli('--since=' + revision)
                 self.assertNotEqual(rc, 0)
                 self.assertEqual(out, '')
                 self.assertIn('Squadra:', err)
