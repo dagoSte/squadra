@@ -1110,6 +1110,8 @@ Squadra è gratuita e open source, e cresce grazie a chi la usa, la estende e la
 
 ### Dove si trova Squadra
 
+[![XERJ Corpus Hub contributor](https://hub.xerj.org/contributors/dagoSte/badge.svg)](https://hub.xerj.org/contributors/dagoSte)
+
 Squadra fa parte dello [XERJ Corpus Hub](https://hub.xerj.org/contributors/dagoSte), un indice pubblico di codice open source in cui gli agenti di programmazione cercano esempi pratici, con autore e licenza indicati.
 
 ### Sostenitori e contributori
