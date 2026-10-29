@@ -1108,6 +1108,10 @@ Squadra è gratuita e open source, e cresce grazie a chi la usa, la estende e la
 
 **[memoranda](https://memoranda.dev/it/)** sostiene lo sviluppo di Squadra. memoranda è la memoria condivisa dei tuoi agenti AI, con fonti, approvazioni e una storia verificabile delle decisioni.
 
+### Dove si trova Squadra
+
+Squadra fa parte dello [XERJ Corpus Hub](https://hub.xerj.org/contributors/dagoSte), un indice pubblico di codice open source in cui gli agenti di programmazione cercano esempi pratici, con autore e licenza indicati.
+
 ### Sostenitori e contributori
 
 Fa parte di Squadra chiunque costruisca un plugin, segnali un problema, migliori la documentazione o aiuti qualcuno a cominciare. Chi contribuisce al codice compare nella [pagina dei contributori](https://github.com/dagoSte/squadra/graphs/contributors) di GitHub; chi pubblica ogni plugin è indicato nella sua scheda dello Store, accanto a versione e licenza.
