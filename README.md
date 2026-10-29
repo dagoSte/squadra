@@ -1105,6 +1105,8 @@ Squadra is free and open source, and it grows with the people who use it, extend
 
 ### Featured in
 
+[![XERJ Corpus Hub contributor](https://hub.xerj.org/contributors/dagoSte/badge.svg)](https://hub.xerj.org/contributors/dagoSte)
+
 Squadra is part of the [XERJ Corpus Hub](https://hub.xerj.org/contributors/dagoSte), a public index of open-source code that coding agents search for worked examples, with the author and licence attached.
 
 ### Supporters and contributors
