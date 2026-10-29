@@ -1103,6 +1103,10 @@ Squadra is free and open source, and it grows with the people who use it, extend
 
 **[memoranda](https://memoranda.dev)** supports the development of Squadra. memoranda is shared memory for your AI agents, with sources, approvals and a record of every decision.
 
+### Featured in
+
+Squadra is part of the [XERJ Corpus Hub](https://hub.xerj.org/contributors/dagoSte), a public index of open-source code that coding agents search for worked examples, with the author and licence attached.
+
 ### Supporters and contributors
 
 Everyone who builds a plugin, reports a problem, improves the docs or helps someone get started is part of Squadra. Code contributors appear on GitHub's [contributors page](https://github.com/dagoSte/squadra/graphs/contributors); each plugin's publisher is named on its Store card, next to its version and licence.
