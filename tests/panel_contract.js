@@ -34,7 +34,7 @@ const text=e=>[...walk(e)].map(x=>x.textContent||'').filter(Boolean).join(' ');
 // Closed details show only their summary.
 const visibleText=(e,skip=()=>false)=>skip(e)?'':e.tag==='details'?(e.children.find(c=>c.tag==='summary')?visibleText(e.children.find(c=>c.tag==='summary'),skip):''):[e.textContent||'',...e.children.map(c=>visibleText(c,skip))].filter(Boolean).join(' ');
 const hasClass=(e,name)=>(' '+(e.className||'')+' '+(e.getAttribute('class')||'')+' ').includes(' '+name+' ');
-const key=e=>e&&e.getAttribute('data-focus-key');
+const key=e=>e?.getAttribute?.('data-focus-key')??null;
 const settle=async()=>{for(let i=0;i<8;i++)await new Promise(r=>setImmediate(r))};
 
 async function boot({fixture=clone(base),language='it-IT',storage='memory',stored={},phone=false,clock}={}){
