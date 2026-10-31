@@ -175,6 +175,25 @@ The command reads the registry and local Git only. It grants no permission to pu
 Follow the [checklist guide](references/skills/checklist.md), including its optional
 pre-push hook example; no hook is installed automatically.
 
+## Round-scope rule — what a round finds waits for the next one
+
+**Once a round's scope is fixed by a recorded decision, a problem found during the round
+becomes a new task only if it blocks closing one of the round's tasks** (owner,
+2026-10-31). Everything else goes into the round's deferral decision with an owner, a
+trigger and an acceptance check, and is opened as a task at the next round's kickoff.
+
+- Fix the scope with `decision` when the round starts: the tasks it closes, nothing else.
+- A finding that blocks a close (a red proof, a read asking for changes) is handled
+  inside that task's fix round (Rules 7 and 10), not as a new task.
+- A finding that does not block is recorded once, in the deferral decision, linked with
+  `--follows decision:<scope decision>`. No new `task` is created for it in this round.
+- Only the owner's word brings a deferred item into the current round; record it as a
+  decision that follows the scope decision.
+- An instrument error (a lost lock, an overloaded machine, a shallow copy) is resolved
+  where it happens and recorded as a disposition; it does not widen the round either.
+
+Follow the [round-scope guide](references/skills/perimetro.md).
+
 ## Rule 1 — parallel work
 
 The squad's value is parallelism. The coordinator immediately assigns independent work
