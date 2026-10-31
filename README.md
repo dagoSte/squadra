@@ -950,6 +950,13 @@ Static, behavioral and dependency checks, excluding `tests/`. Passing means no H
 - **Fixes.** `test_rf4a_upgrade` runs on a verified 5099f0c fixture; `test_challenge` no longer races Git maintenance.
 - **Skill audits not refreshed.** The recorded scans in `assets/skill-audits.json` predate this release's changes to `SKILL.md` and `scripts/squadra.py`; the System skills page shows every skill as not audited (files changed) until a fresh scan.
 
+**Watch the two-minute film of what's new in 3.10.2 — turn the sound on in the player:**
+
+https://github.com/user-attachments/assets/6ea747a5-a993-4aa7-a58d-1b2b7f908720
+
+<details>
+<summary><strong>Earlier versions</strong></summary>
+
 **3.11.1 — replacing windows, access checks, one mailbox per window and re-entry context**
 
 - **Replace closed windows in one step.** `replace` (or `--map`) hands tasks, reads, mail and resources from old windows to new ones in one recorded event, keeping authors, budgets, plan gates and the reservations of live runs. `--dry-run` previews it and reruns are safe; `census --unregistered` lists new sessions.
@@ -959,13 +966,6 @@ Static, behavioral and dependency checks, excluding `tests/`. Passing means no H
 - **Re-entry context.** `context --for WINDOW --since SEQ:HASH` shows what changed for one window and always keeps the current constraints, pending ACKs, budgets and proofs.
 - **Fixes.** `transport` no longer silently re-delivers an older message under a reused ID; `save --repo` reports missing unselected repositories as warnings.
 - Plugins: memoranda 1.0.10, Playwright 1.0.11, Sentry 0.1.8.
-
-**Watch the two-minute film of what's new in 3.10.2 — turn the sound on in the player:**
-
-https://github.com/user-attachments/assets/6ea747a5-a993-4aa7-a58d-1b2b7f908720
-
-<details>
-<summary><strong>Earlier versions</strong></summary>
 
 **3.11.0 — frozen delivery, reader transfers and migliora**
 

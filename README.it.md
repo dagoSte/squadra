@@ -953,6 +953,13 @@ Controlli statici, comportamentali e delle dipendenze, con `tests/` esclusa. Il 
 - **Correzioni.** `test_rf4a_upgrade` gira su una fixture verificata di 5099f0c; `test_challenge` non entra più in corsa con la manutenzione di Git.
 - **Audit delle skill non aggiornati.** Le scansioni registrate in `assets/skill-audits.json` precedono le modifiche di questa versione a `SKILL.md` e `scripts/squadra.py`; la pagina System skills mostra ogni skill come non verificata (file cambiati) fino a una nuova scansione.
 
+**Guarda il film delle novità della 3.10.2, due minuti — attiva l'audio nel lettore:**
+
+https://github.com/user-attachments/assets/8f38a443-b738-48f8-b562-9b072419b5f0
+
+<details>
+<summary><strong>Versioni precedenti</strong></summary>
+
 **3.11.1 — sostituzione delle finestre, permessi all’ingresso, una posta per finestra e contesto di rientro**
 
 - **Sostituisci in un passo le finestre chiuse.** `replace` (o `--map`) passa incarichi, letture, posta e risorse dalle finestre vecchie alle nuove in un solo evento registrato, conservando autori, budget, il vincolo di approvazione del piano (il successore lo fa riapprovare) e le prenotazioni dei processi ancora vivi. `--dry-run` mostra l’anteprima e ripetere è sicuro; `census --unregistered` elenca le sessioni nuove.
@@ -962,13 +969,6 @@ Controlli statici, comportamentali e delle dipendenze, con `tests/` esclusa. Il 
 - **Contesto di rientro.** `context --for FINESTRA --since SEQ:HASH` mostra cosa è cambiato per una finestra e conserva sempre vincoli, ACK dovuti, budget e prove attuali.
 - **Correzioni.** `transport` non riconsegna più in silenzio un messaggio vecchio con un ID riusato; `save --repo` segnala come avvisi i repository non selezionati mancanti.
 - Plugin: memoranda 1.0.10, Playwright 1.0.11, Sentry 0.1.8.
-
-**Guarda il film delle novità della 3.10.2, due minuti — attiva l'audio nel lettore:**
-
-https://github.com/user-attachments/assets/8f38a443-b738-48f8-b562-9b072419b5f0
-
-<details>
-<summary><strong>Versioni precedenti</strong></summary>
 
 **3.11.0 — consegne congelate, letture riassegnabili e migliora**
 
