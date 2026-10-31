@@ -95,3 +95,22 @@ class ResumeReadinessReview(unittest.TestCase):
         self.assertTrue(result['ready'], result['blockers'])
         self.assertIsNone(result['checkouts'][0]['git'])
         self.assertTrue(any('Git did not answer' in n for n in result['notices']))
+
+    def test_a_timeout_after_the_first_probe_is_also_a_notice(self):
+        import subprocess
+        from unittest.mock import patch
+        import ripresa
+        self.git('tag', 'v1.0.0')
+        real = ripresa.git_process
+        for command in ('branch', 'status', 'describe', 'rev-list'):
+            with self.subTest(command=command):
+                def slow(repo, *args, **kwargs):
+                    if args[0] == command:
+                        raise subprocess.TimeoutExpired('git', 10)
+                    return real(repo, *args, **kwargs)
+                with patch('ripresa.git_process', side_effect=slow):
+                    result = readiness(self.store.view(), now())
+                self.assertTrue(result['ready'], result['blockers'])
+                self.assertIsNone(result['checkouts'][0]['git'])
+                self.assertNotIn('commits_since_tag', result['checkouts'][0])
+                self.assertTrue(any('Git did not answer' in n for n in result['notices']))

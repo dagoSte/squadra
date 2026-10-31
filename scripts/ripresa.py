@@ -29,19 +29,22 @@ def checkout(path):
         return {'repo': path, 'exists': True, 'git': None}
     if inside != 'true':
         return {'repo': path, 'exists': True, 'git': False}
-    def ask(*args):
-        value = _git(path, *args)
-        return None if value is UNREADABLE else value
-    dirty = _git(path, 'status', '--porcelain', '--untracked-files=no')
-    row = {'repo': path, 'exists': True, 'git': True,
-           'branch': ask('branch', '--show-current') or None,
-           'head': ask('rev-parse', '--short', 'HEAD'),
-           'dirty': None if dirty is UNREADABLE else bool(dirty)}
-    tag = ask('describe', '--tags', '--abbrev=0')
+    unreadable = {'repo': path, 'exists': True, 'git': None}
+    answers = [_git(path, 'branch', '--show-current'), _git(path, 'rev-parse', '--short', 'HEAD'),
+               _git(path, 'status', '--porcelain', '--untracked-files=no'), _git(path, 'describe', '--tags', '--abbrev=0')]
+    if UNREADABLE in answers:
+        return unreadable
+    branch, head, dirty, tag = answers
+    row = {'repo': path, 'exists': True, 'git': True, 'branch': branch or None, 'head': head, 'dirty': bool(dirty)}
     if tag:
+        since = _git(path, 'rev-list', '--count', tag + '..HEAD')
+        if since is UNREADABLE:
+            return unreadable
         row['last_tag'] = tag
-        row['commits_since_tag'] = int(ask('rev-list', '--count', tag + '..HEAD') or 0)
-    counts = ask('rev-list', '--left-right', '--count', '@{upstream}...HEAD')
+        row['commits_since_tag'] = int(since) if since else None
+    counts = _git(path, 'rev-list', '--left-right', '--count', '@{upstream}...HEAD')
+    if counts is UNREADABLE:
+        return unreadable
     if counts:
         behind, ahead = (int(n) for n in counts.split())
         row['upstream'] = {'behind': behind, 'ahead': ahead, 'as_of': 'last fetch'}
