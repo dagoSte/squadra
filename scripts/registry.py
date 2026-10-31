@@ -20,7 +20,7 @@ import unicodedata
 import weakref
 
 
-VERSION = "3.11.1"
+VERSION = "3.11.2"
 WAIT_SECONDS = {"ack": 900, "delivered": 3600, "reviewed": 1800, "heartbeat": 1800, "alive": 300,
                 "to-forward": 120, "plan": 3600}
 MESSAGE_WAIT_KEYS = {"to-forward", "plan"}

@@ -13,7 +13,7 @@ Coordina Claude Code, Codex e Cursor con incarichi condivisi, revisioni indipend
 
 **Gratuita e open source** — licenza MIT, nessun account, tutto gira sul tuo computer.
 
-**Versione 3.11.1** · Python 3.12+ · macOS / POSIX
+**Versione 3.11.2** · Python 3.12+ · macOS / POSIX
 
 [English](README.md) · **Italiano** · [Privacy](PRIVACY.it.md)
 
@@ -941,6 +941,16 @@ Controlli statici, comportamentali e delle dipendenze, con `tests/` esclusa. Il 
 
 <a id="news"></a>
 ## Novità
+
+**3.11.2 — regole che si controllano da sole: nessuna sovrapposizione, ripresa in un passo, rossi noti, finestre ferme, checklist e perimetro del giro**
+
+- **Nessuna sovrapposizione tra finestre.** Il coordinatore controlla checkout, ramo, file posseduti, base, risorse riservate e commit attesi prima di ogni assegnazione ([guida](references/skills/sovrapposizioni.md)).
+- **Ripresa in un passo.** `doctor --resume` riporta l'interprete, ogni checkout di incarichi aperti e finestre attive, la distanza dal rilascio e le finestre silenziose; un checkout mancante di un incarico aperto blocca con codice 1.
+- **Rossi noti di main.** `tests/known_reds.json` elenca i test già rossi su main pulito; il runner parallelo separa `KNOWN RED` da `NEW RED` e `--accept-known` fa passare una prova d'incarico solo sui rossi noti. La prova di rilascio resta rigorosa, e l'elenco è di nuovo vuoto.
+- **Finestre ferme.** `doctor --resume` segna le finestre silenziose come `archivable` o dice cosa le trattiene (`keeps`), su tutti i posti di un'identità; solo la parola del proprietario le mette in stand-by con `standby`.
+- **Checklist.** `squadra checklist --moment resume|assign|deliver|push` controlla in sola lettura i momenti critici: al push, un'email di autore o committer mai vista prima fa fallire.
+- **Perimetro del giro.** Fissato il perimetro di un giro, ciò che emerge aspetta il giro successivo, salvo che blocchi una chiusura.
+- **Correzioni.** `test_rf4a_upgrade` gira su una fixture verificata di 5099f0c; `test_challenge` non entra più in corsa con la manutenzione di Git.
 
 **3.11.1 — sostituzione delle finestre, permessi all’ingresso, una posta per finestra e contesto di rientro**
 

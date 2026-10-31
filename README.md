@@ -13,7 +13,7 @@ Coordinate Claude Code, Codex and Cursor with shared tasks, independent reviews 
 
 **Free and open source** — MIT licence, no account, everything runs on your machine.
 
-**Version 3.11.1** · Python 3.12+ · macOS / POSIX
+**Version 3.11.2** · Python 3.12+ · macOS / POSIX
 
 **English** · [Italiano](README.it.md) · [Privacy](PRIVACY.md)
 
@@ -938,6 +938,16 @@ Static, behavioral and dependency checks, excluding `tests/`. Passing means no H
 
 <a id="news"></a>
 ## What's new
+
+**3.11.2 — rules that check themselves: no overlaps, one-step resume, known reds, stale windows, checklist and round scope**
+
+- **No overlap between windows.** The coordinator checks checkout, branch, owned files, base, reserved resources and expected commits before every assignment ([guide](references/skills/sovrapposizioni.md)).
+- **One-step resume.** `doctor --resume` reports the interpreter, every checkout of open tasks and active windows, release drift and silent windows; a missing checkout of an open task blocks with exit 1.
+- **Known reds of main.** `tests/known_reds.json` names tests already red on clean main; the parallel runner separates `KNOWN RED` from `NEW RED`, and `--accept-known` passes a task proof only on known reds. The release proof stays strict, and the list is empty again.
+- **Stale windows.** `doctor --resume` marks silent windows `archivable` or says what `keeps` them, across every seat of an identity; only the owner's word parks them with `standby`.
+- **Checklist.** `squadra checklist --moment resume|assign|deliver|push` checks the critical moments read-only: at push, an author or committer email never seen before fails.
+- **Round scope.** Once a round's scope is fixed, what it finds waits for the next round unless it blocks a close.
+- **Fixes.** `test_rf4a_upgrade` runs on a verified 5099f0c fixture; `test_challenge` no longer races Git maintenance.
 
 **3.11.1 — replacing windows, access checks, one mailbox per window and re-entry context**
 
