@@ -3,6 +3,20 @@
 Tutte le versioni di Squadra, dalla più nuova. Il README tiene la più nuova e le tre precedenti.
 
 
+**3.12.0 — la checklist conosce il giro, avvisi e consigli più chiari, e una storia delle versioni**
+
+- **Perimetro del giro nella checklist.** `checklist --moment assign` aggiunge `round_scope`: un incarico creato dopo l'ultima decisione la cui motivazione inizia con `Round scope:`, e non nominato in essa, risulta `unverifiable` con il motivo (consultivo, mai `fail`).
+- **Checklist più rigorosa.** `checklist --moment deliver` fallisce su un incarico già chiuso; `checklist --moment push --range A..B` fallisce quando `A` non è antenato di `B`, e un intervallo vuoto dice `0 commits`.
+- **Nessun incarico senza lettore in silenzio.** `task` senza `--reviewer` (o un gruppo di lettori, o `--read-at-gate`) avvisa che una consegna senza lettore non potrà riceverne uno dopo con `reassign`.
+- **`task --proof -- argv` funziona come documentato,** anche quando il comando della prova contiene opzioni come `--root` o `--task`.
+- **Consiglio di composizione secondo i ruoli veri.** `status`, tabella e dashboard dicono chi costruisce e chi rilegge; con ruoli misti mostrano i conteggi reali, e le righe di abbinamento restano visibili quando la squadra è sbilanciata.
+- **Storia delle versioni.** La storia completa è passata in [CHANGELOG.it.md](CHANGELOG.it.md); il README tiene la versione più nuova e le tre precedenti.
+- **Audit delle skill non aggiornati.** Come nella 3.11.2, le scansioni registrate in `assets/skill-audits.json` precedono questa versione; la pagina System skills mostra ogni skill come non verificata (file cambiati) fino a una nuova scansione.
+
+**Guarda il film delle novità della 3.10.2, due minuti — attiva l'audio nel lettore:**
+
+https://github.com/user-attachments/assets/8f38a443-b738-48f8-b562-9b072419b5f0
+
 **3.11.2 — regole che si controllano da sole: nessuna sovrapposizione, ripresa in un passo, rossi noti, finestre ferme, checklist e perimetro del giro**
 
 - **Nessuna sovrapposizione tra finestre.** Il coordinatore controlla checkout, ramo, file posseduti, base, risorse riservate e commit attesi prima di ogni assegnazione ([guida](references/skills/sovrapposizioni.md)).
@@ -13,10 +27,6 @@ Tutte le versioni di Squadra, dalla più nuova. Il README tiene la più nuova e 
 - **Perimetro del giro.** Fissato il perimetro di un giro, ciò che emerge aspetta il giro successivo, salvo che blocchi una chiusura.
 - **Correzioni.** `test_rf4a_upgrade` gira su una fixture verificata di 5099f0c; `test_challenge` non entra più in corsa con la manutenzione di Git.
 - **Audit delle skill non aggiornati.** Le scansioni registrate in `assets/skill-audits.json` precedono le modifiche di questa versione a `SKILL.md` e `scripts/squadra.py`; la pagina System skills mostra ogni skill come non verificata (file cambiati) fino a una nuova scansione.
-
-**Guarda il film delle novità della 3.10.2, due minuti — attiva l'audio nel lettore:**
-
-https://github.com/user-attachments/assets/8f38a443-b738-48f8-b562-9b072419b5f0
 
 **3.11.1 — sostituzione delle finestre, permessi all’ingresso, una posta per finestra e contesto di rientro**
 

@@ -3,6 +3,20 @@
 Every Squadra release, newest first. The README keeps the newest release and the three before it.
 
 
+**3.12.0 — the checklist knows the round, clearer warnings and advice, and a changelog**
+
+- **Round scope in the checklist.** `checklist --moment assign` adds `round_scope`: a task created after the latest decision whose reason starts with `Round scope:`, and not named in it, is reported `unverifiable` with the reason (advisory, never `fail`).
+- **Stricter checklist.** `checklist --moment deliver` fails on an already closed task; `checklist --moment push --range A..B` fails when `A` is not an ancestor of `B`, and an empty range says `0 commits`.
+- **No silent task without a reader.** `task` without `--reviewer` (or a pool, or `--read-at-gate`) warns that a delivery without a reader cannot get one later with `reassign`.
+- **`task --proof -- argv` works as documented,** also when the proof's argv contains options such as `--root` or `--task`.
+- **Composition advice by real roles.** `status`, board and dashboard name who builds and who reads; with mixed roles they show the real counts, and pairing rows stay visible when the squad is unbalanced.
+- **Changelog.** The full release history moved to [CHANGELOG.md](CHANGELOG.md); the README keeps the newest release and the three before it.
+- **Skill audits not refreshed.** As in 3.11.2, the recorded scans in `assets/skill-audits.json` predate this release; the System skills page shows every skill as not audited (files changed) until a fresh scan.
+
+**Watch the two-minute film of what's new in 3.10.2 — turn the sound on in the player:**
+
+https://github.com/user-attachments/assets/6ea747a5-a993-4aa7-a58d-1b2b7f908720
+
 **3.11.2 — rules that check themselves: no overlaps, one-step resume, known reds, stale windows, checklist and round scope**
 
 - **No overlap between windows.** The coordinator checks checkout, branch, owned files, base, reserved resources and expected commits before every assignment ([guide](references/skills/sovrapposizioni.md)).
@@ -13,10 +27,6 @@ Every Squadra release, newest first. The README keeps the newest release and the
 - **Round scope.** Once a round's scope is fixed, what it finds waits for the next round unless it blocks a close.
 - **Fixes.** `test_rf4a_upgrade` runs on a verified 5099f0c fixture; `test_challenge` no longer races Git maintenance.
 - **Skill audits not refreshed.** The recorded scans in `assets/skill-audits.json` predate this release's changes to `SKILL.md` and `scripts/squadra.py`; the System skills page shows every skill as not audited (files changed) until a fresh scan.
-
-**Watch the two-minute film of what's new in 3.10.2 — turn the sound on in the player:**
-
-https://github.com/user-attachments/assets/6ea747a5-a993-4aa7-a58d-1b2b7f908720
 
 **3.11.1 — replacing windows, access checks, one mailbox per window and re-entry context**
 

@@ -13,7 +13,7 @@ Coordina Claude Code, Codex e Cursor con incarichi condivisi, revisioni indipend
 
 **Gratuita e open source** — licenza MIT, nessun account, tutto gira sul tuo computer.
 
-**Versione 3.11.2** · Python 3.12+ · macOS / POSIX
+**Versione 3.12.0** · Python 3.12+ · macOS / POSIX
 
 [English](README.md) · **Italiano** · [Privacy](PRIVACY.it.md)
 
@@ -942,6 +942,23 @@ Controlli statici, comportamentali e delle dipendenze, con `tests/` esclusa. Il 
 <a id="news"></a>
 ## Novità
 
+**3.12.0 — la checklist conosce il giro, avvisi e consigli più chiari, e una storia delle versioni**
+
+- **Perimetro del giro nella checklist.** `checklist --moment assign` aggiunge `round_scope`: un incarico creato dopo l'ultima decisione la cui motivazione inizia con `Round scope:`, e non nominato in essa, risulta `unverifiable` con il motivo (consultivo, mai `fail`).
+- **Checklist più rigorosa.** `checklist --moment deliver` fallisce su un incarico già chiuso; `checklist --moment push --range A..B` fallisce quando `A` non è antenato di `B`, e un intervallo vuoto dice `0 commits`.
+- **Nessun incarico senza lettore in silenzio.** `task` senza `--reviewer` (o un gruppo di lettori, o `--read-at-gate`) avvisa che una consegna senza lettore non potrà riceverne uno dopo con `reassign`.
+- **`task --proof -- argv` funziona come documentato,** anche quando il comando della prova contiene opzioni come `--root` o `--task`.
+- **Consiglio di composizione secondo i ruoli veri.** `status`, tabella e dashboard dicono chi costruisce e chi rilegge; con ruoli misti mostrano i conteggi reali, e le righe di abbinamento restano visibili quando la squadra è sbilanciata.
+- **Storia delle versioni.** La storia completa è passata in [CHANGELOG.it.md](CHANGELOG.it.md); il README tiene la versione più nuova e le tre precedenti.
+- **Audit delle skill non aggiornati.** Come nella 3.11.2, le scansioni registrate in `assets/skill-audits.json` precedono questa versione; la pagina System skills mostra ogni skill come non verificata (file cambiati) fino a una nuova scansione.
+
+**Guarda il film delle novità della 3.10.2, due minuti — attiva l'audio nel lettore:**
+
+https://github.com/user-attachments/assets/8f38a443-b738-48f8-b562-9b072419b5f0
+
+<details>
+<summary><strong>Versioni precedenti</strong></summary>
+
 **3.11.2 — regole che si controllano da sole: nessuna sovrapposizione, ripresa in un passo, rossi noti, finestre ferme, checklist e perimetro del giro**
 
 - **Nessuna sovrapposizione tra finestre.** Il coordinatore controlla checkout, ramo, file posseduti, base, risorse riservate e commit attesi prima di ogni assegnazione ([guida](references/skills/sovrapposizioni.md)).
@@ -952,13 +969,6 @@ Controlli statici, comportamentali e delle dipendenze, con `tests/` esclusa. Il 
 - **Perimetro del giro.** Fissato il perimetro di un giro, ciò che emerge aspetta il giro successivo, salvo che blocchi una chiusura.
 - **Correzioni.** `test_rf4a_upgrade` gira su una fixture verificata di 5099f0c; `test_challenge` non entra più in corsa con la manutenzione di Git.
 - **Audit delle skill non aggiornati.** Le scansioni registrate in `assets/skill-audits.json` precedono le modifiche di questa versione a `SKILL.md` e `scripts/squadra.py`; la pagina System skills mostra ogni skill come non verificata (file cambiati) fino a una nuova scansione.
-
-**Guarda il film delle novità della 3.10.2, due minuti — attiva l'audio nel lettore:**
-
-https://github.com/user-attachments/assets/8f38a443-b738-48f8-b562-9b072419b5f0
-
-<details>
-<summary><strong>Versioni precedenti</strong></summary>
 
 **3.11.1 — sostituzione delle finestre, permessi all’ingresso, una posta per finestra e contesto di rientro**
 
@@ -980,14 +990,6 @@ Aggiornamento: l’avvio della dashboard libera la lettura del WAL; risposte JSO
 - **Comandi più brevi.** Verdetti identici senza duplicati, note a consegna e chiusura, prova dichiarabile con argomenti diretti e risposta breve di `send`.
 - **Migliora.** Una skill automatica per gli attriti dimostrati: regole circoscritte, verifica e commit locale dei propri file dopo le letture richieste dal progetto.
 - Plugin: memoranda 1.0.9, Playwright 1.0.10, Sentry 0.1.7.
-
-**3.10.4 — le prove in una cartella temporanea privata dal percorso corto, e Claude e Codex rileggono l'uno il lavoro dell'altro**
-
-- **Le prove in una cartella temporanea privata dal percorso corto.** Le prove, i controlli rapidi, `selftest` e i benchmark offline tengono i file temporanei in una cartella privata dal percorso corto, fuori dal registro, così un progetto tenuto in una cartella condivisa come `htdocs` di MAMP non fallisce più per percorsi temporanei troppo lunghi o scrivibili da altri.
-- **Rifiuti che nominano i file.** Una lettura rifiutata dice quali file sono cambiati dopo la consegna.
-- **Due modelli che si controllano a vicenda.** Se scrive Codex rilegge Claude, e viceversa: un lettore dello stesso modello viene rifiutato, a meno che tu non registri il motivo. Nel blocco finale, per ogni modifica conta la lettura dell'altro modello.
-- **Un consiglio su come dividere le finestre.** Il coordinatore ti dice come dividere le finestre tra i due modelli, per esempio che con 2 finestre Claude e 1 Codex la finestra Codex rileggerebbe tutto.
-- Plugin: memoranda 1.0.8, Playwright 1.0.9, Sentry 0.1.6.
 
 </details>
 

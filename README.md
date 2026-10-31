@@ -13,7 +13,7 @@ Coordinate Claude Code, Codex and Cursor with shared tasks, independent reviews 
 
 **Free and open source** — MIT licence, no account, everything runs on your machine.
 
-**Version 3.11.2** · Python 3.12+ · macOS / POSIX
+**Version 3.12.0** · Python 3.12+ · macOS / POSIX
 
 **English** · [Italiano](README.it.md) · [Privacy](PRIVACY.md)
 
@@ -939,6 +939,23 @@ Static, behavioral and dependency checks, excluding `tests/`. Passing means no H
 <a id="news"></a>
 ## What's new
 
+**3.12.0 — the checklist knows the round, clearer warnings and advice, and a changelog**
+
+- **Round scope in the checklist.** `checklist --moment assign` adds `round_scope`: a task created after the latest decision whose reason starts with `Round scope:`, and not named in it, is reported `unverifiable` with the reason (advisory, never `fail`).
+- **Stricter checklist.** `checklist --moment deliver` fails on an already closed task; `checklist --moment push --range A..B` fails when `A` is not an ancestor of `B`, and an empty range says `0 commits`.
+- **No silent task without a reader.** `task` without `--reviewer` (or a pool, or `--read-at-gate`) warns that a delivery without a reader cannot get one later with `reassign`.
+- **`task --proof -- argv` works as documented,** also when the proof's argv contains options such as `--root` or `--task`.
+- **Composition advice by real roles.** `status`, board and dashboard name who builds and who reads; with mixed roles they show the real counts, and pairing rows stay visible when the squad is unbalanced.
+- **Changelog.** The full release history moved to [CHANGELOG.md](CHANGELOG.md); the README keeps the newest release and the three before it.
+- **Skill audits not refreshed.** As in 3.11.2, the recorded scans in `assets/skill-audits.json` predate this release; the System skills page shows every skill as not audited (files changed) until a fresh scan.
+
+**Watch the two-minute film of what's new in 3.10.2 — turn the sound on in the player:**
+
+https://github.com/user-attachments/assets/6ea747a5-a993-4aa7-a58d-1b2b7f908720
+
+<details>
+<summary><strong>Earlier versions</strong></summary>
+
 **3.11.2 — rules that check themselves: no overlaps, one-step resume, known reds, stale windows, checklist and round scope**
 
 - **No overlap between windows.** The coordinator checks checkout, branch, owned files, base, reserved resources and expected commits before every assignment ([guide](references/skills/sovrapposizioni.md)).
@@ -949,13 +966,6 @@ Static, behavioral and dependency checks, excluding `tests/`. Passing means no H
 - **Round scope.** Once a round's scope is fixed, what it finds waits for the next round unless it blocks a close.
 - **Fixes.** `test_rf4a_upgrade` runs on a verified 5099f0c fixture; `test_challenge` no longer races Git maintenance.
 - **Skill audits not refreshed.** The recorded scans in `assets/skill-audits.json` predate this release's changes to `SKILL.md` and `scripts/squadra.py`; the System skills page shows every skill as not audited (files changed) until a fresh scan.
-
-**Watch the two-minute film of what's new in 3.10.2 — turn the sound on in the player:**
-
-https://github.com/user-attachments/assets/6ea747a5-a993-4aa7-a58d-1b2b7f908720
-
-<details>
-<summary><strong>Earlier versions</strong></summary>
 
 **3.11.1 — replacing windows, access checks, one mailbox per window and re-entry context**
 
@@ -977,14 +987,6 @@ Refresh: dashboard startup releases its WAL read; JSON and transport replies are
 - **Shorter commands.** Identical verdict retries do not duplicate reads; delivery and close take notes, task proofs accept direct argv, and `send` returns a short receipt.
 - **Migliora.** An automatic skill for demonstrated friction: scoped rules, a check and local commits of owned files after the project’s required reviews.
 - Plugins: memoranda 1.0.9, Playwright 1.0.10, Sentry 0.1.7.
-
-**3.10.4 — a short private temporary folder for proofs, and Claude and Codex read each other's work**
-
-- **A short private temporary folder for proofs.** Proofs, quick checks, `selftest` and offline benchmarks keep their temporary files in a short private folder outside the registry, so a project kept under a shared folder such as MAMP's `htdocs` no longer fails on temporary paths that are too long or that others can write.
-- **Refusals that name the files.** A refused read names the files that changed since delivery.
-- **Two models that check each other.** Codex writes and Claude reads, Claude writes and Codex reads: a reader of the same model is refused unless you record why. In the final block, the read that counts for each change is the one by the other model.
-- **Advice on splitting your windows.** The coordinator tells you how to split your windows between the two models, for example that with 2 Claude windows and 1 Codex window the Codex window would read everything.
-- Plugins: memoranda 1.0.8, Playwright 1.0.9, Sentry 0.1.6.
 
 </details>
 
