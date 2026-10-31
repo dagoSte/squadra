@@ -1,4 +1,5 @@
 """The published 3.11 registry upgrades without a cache repair or a lost retained delivery."""
+import hashlib
 import io
 import json
 import os
@@ -15,8 +16,9 @@ from frozen_candidate import inventory
 from registry import Store
 
 
-ROOT = Path(__file__).resolve().parents[1]
 PUBLISHED = '5099f0c96a9f319d5a3758d2a03af4d3784b0bad'
+# Byte copies of the published files this run loads; MANIFEST.json records their SHA-256 and Git blobs.
+FIXTURE = Path(__file__).resolve().parent / 'fixtures' / 'published-5099f0c'
 
 
 class PublishedRegistryUpgrade(unittest.TestCase):
@@ -39,19 +41,36 @@ class PublishedRegistryUpgrade(unittest.TestCase):
             'HOME': str(home), 'TMPDIR': str(temporary), 'XDG_STATE_HOME': str(home / 'state'),
             'GIT_CONFIG_NOSYSTEM': '1', 'GIT_CONFIG_GLOBAL': os.devnull, 'PYTHONDONTWRITEBYTECODE': '1'}))
 
-    def test_published_delivery_needs_no_repair_and_its_old_sha_can_be_retired(self):
-        repository = Path(os.environ.get('SQ_RF4A_BASE_REPO', ROOT))
-        qualified = subprocess.run(['git', '-C', str(repository), 'merge-base', '--is-ancestor',
-                                    PUBLISHED, 'HEAD'], capture_output=True, timeout=30)
-        self.assertEqual(qualified.returncode, 0,
-                         'Upgrade fixture requires the published 5099f0c ancestor in this Git repository; '
-                         'archive runners must set SQ_RF4A_BASE_REPO to that repository.\n' +
-                         qualified.stderr.decode(errors='replace'))
-        archived = subprocess.run(['git', '-C', str(repository), 'archive', PUBLISHED],
-                                  capture_output=True, check=True, timeout=30)
+    def published_source(self):
+        """The published 5099f0c sources: from SQ_RF4A_BASE_REPO when set, else the verified versioned fixture."""
         old_source = self.base / 'published'; old_source.mkdir()
-        with tarfile.open(fileobj=io.BytesIO(archived.stdout)) as archive:
-            archive.extractall(old_source, filter='data')
+        if os.environ.get('SQ_RF4A_BASE_REPO'):
+            repository = Path(os.environ['SQ_RF4A_BASE_REPO'])
+            qualified = subprocess.run(['git', '-C', str(repository), 'merge-base', '--is-ancestor',
+                                        PUBLISHED, 'HEAD'], capture_output=True, timeout=30)
+            self.assertEqual(qualified.returncode, 0,
+                             'SQ_RF4A_BASE_REPO must contain the published 5099f0c as an ancestor of HEAD.\n' +
+                             qualified.stderr.decode(errors='replace'))
+            archived = subprocess.run(['git', '-C', str(repository), 'archive', PUBLISHED],
+                                      capture_output=True, check=True, timeout=30)
+            with tarfile.open(fileobj=io.BytesIO(archived.stdout)) as archive:
+                archive.extractall(old_source, filter='data')
+            return old_source
+        manifest = json.loads((FIXTURE / 'MANIFEST.json').read_text(encoding='utf-8'))
+        self.assertEqual(manifest['commit'], PUBLISHED)
+        present = {path.relative_to(FIXTURE).as_posix() for path in FIXTURE.rglob('*')
+                   if path.is_file() and path.name != 'MANIFEST.json' and '__pycache__' not in path.parts}
+        self.assertEqual(present, set(manifest['files']), 'Fixture files differ from MANIFEST.json')
+        for name, entry in manifest['files'].items():
+            data = (FIXTURE / name).read_bytes()
+            self.assertEqual(hashlib.sha256(data).hexdigest(), entry['sha256'], f'{name} differs from 5099f0c')
+            target = old_source / name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(data)
+        return old_source
+
+    def test_published_delivery_needs_no_repair_and_its_old_sha_can_be_retired(self):
+        old_source = self.published_source()
         env = os.environ.copy()
         code = '''import json,sys
 sys.path.insert(0,sys.argv[1]+'/tests')

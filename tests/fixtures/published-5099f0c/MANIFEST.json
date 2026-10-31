@@ -1,0 +1,83 @@
+{
+  "version": 1,
+  "commit": "5099f0c96a9f319d5a3758d2a03af4d3784b0bad",
+  "source": "git fetch origin 5099f0c96a9f319d5a3758d2a03af4d3784b0bad from https://github.com/dagoSte/squadra.git, bytes from git cat-file blob, 2026-10-31",
+  "purpose": "Published 3.11 sources that tests/test_rf4a_upgrade.py runs to build a registry the current code must upgrade; only the files that run loads.",
+  "files": {
+    "scripts/balance.py": {
+      "sha256": "c4076f1924e646d2b88784daf1ed17c7ad7bf65cf0bd8e20a18b4b93308d68e1",
+      "bytes": 23017,
+      "git_blob": "251d8d17c249a863e77daae8b87be56c6a0abb04"
+    },
+    "scripts/errata.py": {
+      "sha256": "0db6699770ad7a6e4dbdf5c50eb1a2144b0b8b242bd358939c33d3d89a93d6fa",
+      "bytes": 7850,
+      "git_blob": "38a81da944abbb1e1e15a454151085236dcda307"
+    },
+    "scripts/forecast.py": {
+      "sha256": "0da60890635eae583f09f48973c522c371a5bd1e0037102fe500fe58ecb1aeeb",
+      "bytes": 10087,
+      "git_blob": "ef13a934630b888a3202fe74e54204b0c01169f6"
+    },
+    "scripts/frozen_candidate.py": {
+      "sha256": "7e9692129d66dc6f321ad426627add974d18171b66d3a73d2fbb2d751fc048fe",
+      "bytes": 17343,
+      "git_blob": "9a594a91dc8d2742cbb1f3bcac28c80382cb4d19"
+    },
+    "scripts/precheck.py": {
+      "sha256": "6594a32dbaeb191daf8c24f554edf6dada2cd1e2849aba3206a90589a80a18b5",
+      "bytes": 12850,
+      "git_blob": "41337298361ade4865a1ed885083e3281716ae08"
+    },
+    "scripts/registry.py": {
+      "sha256": "ac0211b8fcb08f2a6dedb8c82d59e93b87732835b70b1b56b5b1b4c6f590d368",
+      "bytes": 205099,
+      "git_blob": "8e52d58dda19460f34a132e9ee1828c663c3d529"
+    },
+    "scripts/registry_cache.py": {
+      "sha256": "b08ededf1a9279fe9fbdfc4dbcd0e0211bf6c6c4626ea1e7bd66d827db2684f3",
+      "bytes": 16028,
+      "git_blob": "5fa5850fc87c9f408342ec43c7a5905176406fed"
+    },
+    "scripts/registry_current.py": {
+      "sha256": "4f631e4d7415d53ae385fefabe9f13bf3b1d90a452966069ffddabb15664dd9f",
+      "bytes": 11292,
+      "git_blob": "5e0851c09712e92286cff474458bb8c186403cdf"
+    },
+    "scripts/registry_prepare.py": {
+      "sha256": "ed2072f250a7d195ca9353ef8f79ff0ecd989d27e66633b2d34776389ab4c3d8",
+      "bytes": 17294,
+      "git_blob": "69cd6fafc12c1b1a9bb16dbd24ad6fdb962aef7a"
+    },
+    "scripts/registry_projections.py": {
+      "sha256": "03de1a549a20fe2330c0c7d671f51b280a44d50d47c330654b466d81af88ff96",
+      "bytes": 16874,
+      "git_blob": "6138ecd972ec96cd957a7ff1d2dbfaf94ca64519"
+    },
+    "scripts/registry_radix.py": {
+      "sha256": "62b1b97f4c021b37aceaf7cff320e993cec33edb648b0f154dd680eec6f91574",
+      "bytes": 11081,
+      "git_blob": "e534b6429105f03c7c04b40ff3fab2732732ec07"
+    },
+    "scripts/runtime.py": {
+      "sha256": "895587688e9fedb24d82f24f449210db81929d6f8131d37213e5dfbc610c9280",
+      "bytes": 23444,
+      "git_blob": "063cd0973be60e75a253326c104e9a0047219757"
+    },
+    "scripts/source_manifests.py": {
+      "sha256": "fbddd2d33f96d23f9574f4f7aab2bad1fc3519fc6d38adafe11c1d25fbd4c72e",
+      "bytes": 10395,
+      "git_blob": "6d4aa8efb6f5b04f94af68994c4062bf20a0da97"
+    },
+    "scripts/squadra.py": {
+      "sha256": "21959f44aef69809773c06497fadaf1793f56d062384a5b1ae3999a7f12883e8",
+      "bytes": 87029,
+      "git_blob": "e79e5e40928788b339c415956e62880717a2c257"
+    },
+    "tests/test_board.py": {
+      "sha256": "ffef17eb5ecce5bd4ced07b003bd7b5c69cee43c408e102c142e69233d1e3462",
+      "bytes": 14751,
+      "git_blob": "f8e976fd71b7f4de31edc7e073e98db37806ad55"
+    }
+  }
+}
