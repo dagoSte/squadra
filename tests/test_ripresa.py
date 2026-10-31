@@ -79,3 +79,19 @@ class ResumeReadiness(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class ResumeReadinessReview(unittest.TestCase):
+    """Review finding on 245e119: a Git timeout is unknown, not 'not a Git checkout'."""
+    setUp = support.Workflow.setUp
+    git = support.Workflow.git
+    task = support.Workflow.task
+
+    def test_a_git_timeout_is_a_notice_and_never_a_blocker(self):
+        import subprocess
+        from unittest.mock import patch
+        with patch('ripresa.git_process', side_effect=subprocess.TimeoutExpired('git', 10)):
+            result = readiness(self.store.view(), now())
+        self.assertTrue(result['ready'], result['blockers'])
+        self.assertIsNone(result['checkouts'][0]['git'])
+        self.assertTrue(any('Git did not answer' in n for n in result['notices']))

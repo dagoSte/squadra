@@ -54,7 +54,11 @@ the commit that fixes the test.
 
 ## Limits
 
-- The list covers test IDs only: a crash, a skip, a count mismatch or a discovery error
-  is never accepted.
+- The list covers test IDs only: a crash, a skip, an unexpected success, a count or ID
+  mismatch or a discovery error is never accepted. A worker that only had failing tests
+  exits with code 86 after writing its receipt; any other nonzero exit, 1 included, is an
+  instrument error.
+- A listed `@expectedFailure` test that passes again is an unexpected success: the
+  entry is stale and must be removed.
 - A known red still blocks a release unless the owner records its deferral.
 - The list says a test fails; it does not say the product is right.

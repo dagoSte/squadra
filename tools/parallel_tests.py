@@ -23,6 +23,9 @@ SERIAL_MODULES = {}  # Module name: measured reason it cannot overlap another mo
 # Workers run in their own sessions, so a kill of this runner's group never reaches them; the runner keeps them here.
 LIVE, LIVE_LOCK = set(), threading.RLock()  # Reentrant: the TERM handler runs on the main thread, which may hold it.
 DISPOSE_GRACE = 1.0  # Seconds between TERM and KILL, inside the 2 s a proof cancel gives this runner.
+# A worker that completed its receipt and only had failing or erroring tests exits with this code;
+# any other nonzero exit, including 1, is an instrument error that known reds never cover.
+TESTS_FAILED = 86
 
 
 class Spawning:
@@ -105,10 +108,13 @@ def child(args):
                'failed': len(result.failures) + len(result.unexpectedSuccesses),
                'errors': len(result.errors), 'skipped': len(result.skipped),
                'expected_failures': len(result.expectedFailures), 'passed': result.wasSuccessful(),
-               'failing': sorted(test.id() for test, _ in result.failures + result.errors)
-                          + sorted(test.id() for test in result.unexpectedSuccesses)}
+               'unexpected_successes': len(result.unexpectedSuccesses),
+               'failing': sorted(test.id() for test, _ in result.failures + result.errors)}
     (folder / 'result.json').write_text(json.dumps(receipt), encoding='utf-8')
-    return 0 if result.wasSuccessful() and not result.skipped else 1
+    if result.wasSuccessful() and not result.skipped:
+        return 0
+    only_failures = receipt['failing'] and not (result.skipped or result.unexpectedSuccesses)
+    return TESTS_FAILED if only_failures else 1
 
 
 def environment(folder):
@@ -219,7 +225,7 @@ def reconcile(folder, expected, process):
     problems = []
     started = []
     failing = []
-    hard = bool(process['problem'] or process['native_rc'] not in (0, 1))
+    hard = bool(process['problem'] or process['native_rc'] not in (0, TESTS_FAILED))
     counts = dict(failed=0, errors=0, skipped=0, expected_failures=0)
     if process['problem'] or process['native_rc'] != 0:
         problems.append(process['problem'] or f"worker exited with native rc {process['native_rc']}")
@@ -246,9 +252,15 @@ def reconcile(folder, expected, process):
             counts[name] = value
         if receipt['passed'] is not True or any(counts[name] for name in ('failed', 'errors', 'skipped')):
             problems.append('module did not pass every required test (skips are not a complete proof)')
-        # A worker that fails only by named failing tests is a test result, not an instrument error.
-        hard = hard or bool(counts['skipped']) or (process['native_rc'] == 1 and not failing) or (
-            len(failing) != counts['failed'] + counts['errors'])
+        # A worker that fails only by named failing tests is a test result, not an instrument error:
+        # its exit code, counts and failing IDs must agree, and every failing ID must have run that often.
+        unexpected = receipt['unexpected_successes']
+        if type(unexpected) is not int or unexpected < 0:
+            raise ValueError('invalid unexpected_successes count')
+        hard = (hard or bool(counts['skipped']) or bool(unexpected)
+                or bool(failing) != (process['native_rc'] == TESTS_FAILED)
+                or len(failing) != counts['failed'] - unexpected + counts['errors']
+                or bool(Counter(failing) - Counter(started)))
     except (OSError, ValueError, KeyError, TypeError) as exc:
         problems.append(f'missing or invalid completion receipt: {exc}')
         hard = True

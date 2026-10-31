@@ -267,3 +267,54 @@ class KnownReds(unittest.TestCase):
         self.assertEqual(result.returncode, 1)
         self.assertIn('every known red needs non-empty id, reason, since, retire_when', result.stderr)
         self.assertFalse((self.output / 'summary.json').exists())
+
+
+class KnownRedsReview(unittest.TestCase):
+    """Review findings on 712c913: false acceptances of --accept-known."""
+    setUp = ParallelProof.setUp
+    write = ParallelProof.write
+    run_suite = ParallelProof.run_suite
+    known = KnownReds.known
+
+    def test_a_listed_expected_failure_that_now_passes_is_stale_not_accepted(self):
+        self.write('test_red.py', '''
+            import unittest
+            class Red(unittest.TestCase):
+                @unittest.expectedFailure
+                def test_red(self): self.assertEqual(1, 1)
+        ''')
+        self.known(RED_ID)
+        self.assertEqual(self.run_suite('--accept-known'), 1, self.log)
+        self.assertEqual((self.summary['known_red'], self.summary['stale_known']), (0, 1))
+        self.assertFalse(self.summary['only_known_reds'])
+
+    def test_a_worker_that_crashes_with_exit_one_after_its_receipt_is_not_accepted(self):
+        self.write('test_red.py', '''
+            import atexit, os, sys, unittest
+            if '--_module' in sys.argv:  # only the worker, after it has written its receipt
+                atexit.register(lambda: os._exit(1))
+            class Red(unittest.TestCase):
+                def test_red(self): self.assertEqual(1, 2)
+        ''')
+        self.known(RED_ID)
+        self.assertEqual(self.run_suite('--accept-known'), 1, self.log)
+        self.assertFalse(self.summary['only_known_reds'])
+
+    def reconcile(self, started, failing, failed, rc=86):
+        sys.path.insert(0, str(ROOT / 'tools'))
+        import parallel_tests
+        folder = self.folder / ('worker-' + str(len(list(self.folder.glob('worker-*')))))
+        folder.mkdir()
+        (folder / 'started.jsonl').write_text(''.join(json.dumps(i) + '\n' for i in started))
+        (folder / 'result.json').write_text(json.dumps(
+            {'collected': started, 'executed': len(started), 'failed': failed, 'errors': 0, 'skipped': 0,
+             'expected_failures': 0, 'unexpected_successes': 0, 'passed': False, 'failing': failing}))
+        return parallel_tests.reconcile(folder, started, {'problem': None, 'native_rc': rc, 'seconds': 0})[4]
+
+    def test_failing_ids_must_match_executed_ids_with_multiplicity(self):
+        self.assertFalse(self.reconcile(['m.A', 'm.B'], ['m.A'], 1))
+        self.assertTrue(self.reconcile(['m.A', 'm.B'], ['m.A', 'm.A'], 2), 'a duplicate hides B')
+        self.assertTrue(self.reconcile(['m.A'], ['m.Z'], 1), 'an ID that never ran')
+        self.assertFalse(self.reconcile(['m.A', 'm.A'], ['m.A', 'm.A'], 2), 'real duplicate executions stay valid')
+        self.assertTrue(self.reconcile(['m.A'], ['m.A'], 1, rc=1), 'exit 1 is never a plain test failure')
+        self.assertTrue(self.reconcile(['m.A'], [], 0, rc=86), 'failure exit without failing IDs')

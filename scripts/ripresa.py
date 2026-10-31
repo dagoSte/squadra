@@ -7,13 +7,15 @@ from registry import git_process, presence, standby
 
 # A window with no recorded answer for this long is listed for explicit reconciliation, never changed.
 SILENT_DAYS = 2
+# Git could not be asked (timeout, missing binary): unknown, never reported as "not a Git checkout".
+UNREADABLE = object()
 
 
 def _git(repo, *args):
     try:
         done = git_process(repo, *args, timeout=10)
     except Exception:
-        return None
+        return UNREADABLE
     return done.stdout.decode(errors='replace').strip() if done.returncode == 0 else None
 
 
@@ -22,17 +24,24 @@ def checkout(path):
     folder = Path(path)
     if not folder.is_dir():
         return {'repo': path, 'exists': False}
-    if _git(path, 'rev-parse', '--is-inside-work-tree') != 'true':
+    inside = _git(path, 'rev-parse', '--is-inside-work-tree')
+    if inside is UNREADABLE:
+        return {'repo': path, 'exists': True, 'git': None}
+    if inside != 'true':
         return {'repo': path, 'exists': True, 'git': False}
+    def ask(*args):
+        value = _git(path, *args)
+        return None if value is UNREADABLE else value
+    dirty = _git(path, 'status', '--porcelain', '--untracked-files=no')
     row = {'repo': path, 'exists': True, 'git': True,
-           'branch': _git(path, 'branch', '--show-current') or None,
-           'head': _git(path, 'rev-parse', '--short', 'HEAD'),
-           'dirty': bool(_git(path, 'status', '--porcelain', '--untracked-files=no'))}
-    tag = _git(path, 'describe', '--tags', '--abbrev=0')
+           'branch': ask('branch', '--show-current') or None,
+           'head': ask('rev-parse', '--short', 'HEAD'),
+           'dirty': None if dirty is UNREADABLE else bool(dirty)}
+    tag = ask('describe', '--tags', '--abbrev=0')
     if tag:
         row['last_tag'] = tag
-        row['commits_since_tag'] = int(_git(path, 'rev-list', '--count', tag + '..HEAD') or 0)
-    counts = _git(path, 'rev-list', '--left-right', '--count', '@{upstream}...HEAD')
+        row['commits_since_tag'] = int(ask('rev-list', '--count', tag + '..HEAD') or 0)
+    counts = ask('rev-list', '--left-right', '--count', '@{upstream}...HEAD')
     if counts:
         behind, ahead = (int(n) for n in counts.split())
         row['upstream'] = {'behind': behind, 'ahead': ahead, 'as_of': 'last fetch'}
@@ -54,6 +63,9 @@ def readiness(state, at):
     for path in sorted(repos):
         row = {**checkout(path), **repos[path]}
         checkouts.append(row)
+        if row.get('git', True) is None:
+            notices.append(f"{path}: Git did not answer; checkout not inspected, check it by hand")
+            continue
         if not row['exists'] or not row.get('git', True):
             problem = 'missing' if not row['exists'] else 'not a Git checkout'
             if row['tasks']:

@@ -45,6 +45,8 @@ If the command refuses with «needs Python 3.12 or newer», run it with a newer 
 ## Limits
 
 - No fetch, no network: upstream distance is as of the last fetch.
+- When Git does not answer (timeout, missing binary) the checkout shows `git: null` and a
+  notice: it is not inspected, and it is never reported as missing or as not Git.
 - It reads checkouts registered in the registry; work outside it is not seen.
 - A listed window is only an observation: the check never changes availability,
   stops a process, archives a window or moves work.
