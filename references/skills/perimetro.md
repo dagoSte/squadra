@@ -19,7 +19,7 @@ For every new problem, ask one question: **does it block closing a task of this 
 
 | Answer | What to do |
 | --- | --- |
-| Yes: a red proof, a read asking for changes, a missing capability | Handle it in that task's fix round (Rules 7 and 10) or as a recorded disposition |
+| Yes: a red proof, a read asking for changes, a missing capability | Handle it in that task's fix round (Rules 7 and 10), with the bounded fix tasks Rule 10 requires and only their assigned changes, or as a recorded disposition |
 | It is an instrument error (lost lock, overloaded machine, shallow copy) | Fix it where it happens and record the disposition; no new task |
 | No | Add it to the round's deferral decision, once |
 
@@ -42,6 +42,7 @@ withdrawn by a decision.
 
 ## Limits
 
-- The rule bounds new tasks, not the fixes a task needs to close.
+- The rule bounds new scope, not the fixes a task needs to close: Rule 10's bounded fix
+  tasks are part of the round.
 - It is not enforced by a command yet: `squadra checklist --moment assign` does not
   know about a scope decision. Until it does, the coordinator applies it at every `task`.

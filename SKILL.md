@@ -183,8 +183,9 @@ becomes a new task only if it blocks closing one of the round's tasks** (owner,
 trigger and an acceptance check, and is opened as a task at the next round's kickoff.
 
 - Fix the scope with `decision` when the round starts: the tasks it closes, nothing else.
-- A finding that blocks a close (a red proof, a read asking for changes) is handled
-  inside that task's fix round (Rules 7 and 10), not as a new task.
+- A finding that blocks a close (a red proof, a read asking for changes) is handled in
+  that task's fix round (Rules 7 and 10), including the bounded fix tasks Rule 10
+  requires; those carry only the assigned changes and never unrelated scope.
 - A finding that does not block is recorded once, in the deferral decision, linked with
   `--follows decision:<scope decision>`. No new `task` is created for it in this round.
 - Only the owner's word brings a deferred item into the current round; record it as a
