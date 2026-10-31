@@ -23,7 +23,7 @@ the procedure for the
 | `notices` | checkouts of active windows that are missing, commits after the last tag, commits behind upstream, silent windows |
 | `python` | interpreter path and version actually running Squadra |
 | `checkouts` | per checkout: tasks, windows, branch, short head, uncommitted tracked changes, last tag, commits since it, upstream distance |
-| `silent_windows` | active windows with no recorded answer for two days or more |
+| `silent_windows` | active windows with no recorded answer for two days or more: `archivable`, what `keeps` them, and for archivable ones the `standby` `command` ([stale windows](finestre-ferme.md)) |
 
 If the command refuses with «needs Python 3.12 or newer», run it with a newer interpreter:
 `python3.13 <skill-folder>/scripts/squadra.py …` (look for `python3.12`, `python3.13` or

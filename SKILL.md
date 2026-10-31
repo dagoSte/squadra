@@ -139,6 +139,27 @@ its reason, the version it appeared in and the condition that retires it (owner,
 
 Follow the [known reds guide](references/skills/rossi-noti.md).
 
+## Stale-windows rule — silent windows are parked, on the owner's word
+
+**Windows that stopped answering are parked in stand-by, so the board, the composition
+advice and the waits show only the squad that is really there** (owner, 2026-10-31).
+
+- `squadra doctor --resume` lists every active window silent for two days or more, with
+  `archivable` and, when it is not, what `keeps` it: a coordinator role (reconcile it with
+  Rule 0), open tasks it owns or reads (reviewer or pool), resources it holds. An
+  archivable window carries the exact `standby` command.
+- **Only the owner's word parks a window.** The coordinator shows the list, records the
+  question with `ask` or the owner's words with `decision --owner-words`, then runs one
+  `standby --reason "<owner's words>"` per window. Nothing is parked automatically.
+- A window that keeps something is reconciled first: ping it, `reassign` its reads,
+  supersede its tasks, release its resources through their owner. It is never parked
+  to hide open work.
+- Stand-by keeps identity, history, authors and budgets and stops no process; a parked
+  window leaves the composition advice, the waits and `silent_windows`. A window that
+  answers a new `ping` returns as described in Rule 0.
+
+Follow the [stale windows guide](references/skills/finestre-ferme.md).
+
 ## Rule 1 — parallel work
 
 The squad's value is parallelism. The coordinator immediately assigns independent work

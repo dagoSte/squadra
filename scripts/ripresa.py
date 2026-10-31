@@ -51,6 +51,23 @@ def checkout(path):
     return row
 
 
+def holds(state, agent, open_tasks):
+    """What keeps a silent window from being archived: it must be reconciled first, never parked."""
+    keeps = []
+    if state['agents'][agent]['role'] == 'coordinator':
+        keeps.append('coordinator: reconcile it with Rule 0')
+    owned = [t['id'] for t in open_tasks if t.get('owner') == agent]
+    if owned:
+        keeps.append('owns open tasks ' + ', '.join(owned))
+    readers = [t['id'] for t in open_tasks if agent in (t.get('reviewer'), *(t.get('pool') or []))]
+    if readers:
+        keeps.append('reads open tasks ' + ', '.join(readers))
+    held = [name for name, resource in state.get('resources', {}).items() if resource.get('owner') == agent]
+    if held:
+        keeps.append('holds resources ' + ', '.join(held))
+    return keeps
+
+
 def readiness(state, at):
     """Blockers stop the resume; notices ask for reconciliation. Nothing here writes or reassigns."""
     blockers, notices = [], []
@@ -88,9 +105,17 @@ def readiness(state, at):
         last = row['last_answer']
         days = None if last is None else (clock - dt.datetime.fromisoformat(last)).days
         if days is None or days >= SILENT_DAYS:
-            silent.append({'agent': row['agent'], 'last_answer': last, 'days': days})
+            keeps = holds(state, row['agent'], open_tasks)
+            entry = {'agent': row['agent'], 'last_answer': last, 'days': days,
+                     'archivable': not keeps, 'keeps': keeps}
+            if not keeps:
+                entry['command'] = (f"squadra standby --actor <coordinator> --agent {row['agent']} "
+                                    f"--reason \"<owner's words>\"")
+            silent.append(entry)
     if silent:
-        notices.append(f"{len(silent)} active windows silent for {SILENT_DAYS}+ days: ping them or record stand-by")
+        archivable = sum(entry['archivable'] for entry in silent)
+        notices.append(f"{len(silent)} active windows silent for {SILENT_DAYS}+ days, {archivable} archivable "
+                       f"after the owner's confirmation: ping them or record stand-by")
     return {'ready': not blockers, 'blockers': blockers, 'notices': notices,
             'python': {'executable': sys.executable, 'version': '%d.%d.%d' % sys.version_info[:3]},
             'checkouts': checkouts, 'silent_windows': silent,
