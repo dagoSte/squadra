@@ -15,15 +15,28 @@ class Challenge(unittest.TestCase):
 
     def copies(self):
         # A commit starts Git's background auto-maintenance, which creates and deletes .git/objects/maintenance.lock
-        # while copytree walks the tree. Turn it off for the fix commit, and never copy transient locks (one may come
-        # from a maintenance run setUp's commits already started).
+        # while copytree walks the tree. Turn it off for the fix commit, and never copy that one transient lock (it may
+        # come from a maintenance run setUp's commits already started). Every other file is copied.
         self.git('config','maintenance.auto','false');self.git('config','gc.auto','0')
-        locks=shutil.ignore_patterns('*.lock')
-        original=self.base/'original';shutil.copytree(self.repo,original,ignore=locks)
+        objects=(self.repo/'.git'/'objects').resolve()
+        def lock(folder,names):
+            return {'maintenance.lock'} & set(names) if Path(folder).resolve()==objects else set()
+        original=self.base/'original';shutil.copytree(self.repo,original,ignore=lock)
         (self.repo/'code.py').write_text('VALUE = 2\n');self.git('add','code.py');self.git('commit','-qm','fix')
-        positive=self.base/'positive';shutil.copytree(self.repo,positive,ignore=locks)
+        positive=self.base/'positive';shutil.copytree(self.repo,positive,ignore=lock)
         oracle=self.base/'oracle.py';oracle.write_text('def check(repo):\n assert "VALUE = 2" in (repo/"code.py").read_text(), "wrong value"\n')
         return oracle,original,positive
+
+    def test_copies_skip_only_the_maintenance_lock(self):
+        (self.repo/'dependencies.lock').write_text('pinned\n')
+        (self.repo/'data.lock').mkdir();(self.repo/'data.lock'/'maintenance.lock').write_text('kept\n')
+        (self.repo/'.git'/'objects'/'maintenance.lock').write_text('')
+        _,original,positive=self.copies()
+        for copy in (original,positive):
+            with self.subTest(copy=copy.name):
+                self.assertEqual((copy/'dependencies.lock').read_text(),'pinned\n')
+                self.assertEqual((copy/'data.lock'/'maintenance.lock').read_text(),'kept\n')
+                self.assertFalse((copy/'.git'/'objects'/'maintenance.lock').exists())
 
     def test_original_red_remedy_and_positive_green_unchanged_oracle(self):
         oracle,original,positive=self.copies();before=snapshot(original)
