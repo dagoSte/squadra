@@ -52,19 +52,25 @@ def checkout(path):
 
 
 def holds(state, agent, open_tasks):
-    """What keeps a silent window from being archived: it must be reconciled first, never parked."""
+    """What keeps a silent window from being archived: it must be reconciled first, never parked.
+
+    Stand-by applies to every seat of an identity, so every seat sharing it is checked.
+    """
+    identity = state['agents'][agent]['identity']
     keeps = []
-    if state['agents'][agent]['role'] == 'coordinator':
-        keeps.append('coordinator: reconcile it with Rule 0')
-    owned = [t['id'] for t in open_tasks if t.get('owner') == agent]
-    if owned:
-        keeps.append('owns open tasks ' + ', '.join(owned))
-    readers = [t['id'] for t in open_tasks if agent in (t.get('reviewer'), *(t.get('pool') or []))]
-    if readers:
-        keeps.append('reads open tasks ' + ', '.join(readers))
-    held = [name for name, resource in state.get('resources', {}).items() if resource.get('owner') == agent]
-    if held:
-        keeps.append('holds resources ' + ', '.join(held))
+    for seat in sorted(name for name, row in state['agents'].items() if row['identity'] == identity):
+        prefix = '' if seat == agent else f'same identity as {seat}: '
+        if state['agents'][seat]['role'] == 'coordinator':
+            keeps.append(prefix + 'coordinator: reconcile it with Rule 0')
+        owned = [t['id'] for t in open_tasks if t.get('owner') == seat]
+        if owned:
+            keeps.append(prefix + 'owns open tasks ' + ', '.join(owned))
+        readers = [t['id'] for t in open_tasks if seat in (t.get('reviewer'), *(t.get('pool') or []))]
+        if readers:
+            keeps.append(prefix + 'reads open tasks ' + ', '.join(readers))
+        held = [name for name, resource in state.get('resources', {}).items() if resource.get('owner') == seat]
+        if held:
+            keeps.append(prefix + 'holds resources ' + ', '.join(held))
     return keeps
 
 

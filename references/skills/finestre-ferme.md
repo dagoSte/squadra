@@ -15,7 +15,7 @@ recorded answer for two days or more:
 | --- | --- |
 | `agent`, `last_answer`, `days` | the window and its last recorded answer (`null` if it never answered) |
 | `archivable` | `true` when nothing keeps it |
-| `keeps` | why it cannot be parked yet: coordinator role, open tasks it owns or reads (reviewer or pool), resources it holds |
+| `keeps` | why it cannot be parked yet: coordinator role, open tasks it owns or reads (reviewer or pool), resources it holds — for every seat of the same identity, prefixed `same identity as <seat>:` |
 | `command` | for archivable windows only: the `standby` command to run after the owner's word |
 
 ## Parking
@@ -29,6 +29,9 @@ recorded answer for two days or more:
    composition advice of `status` no longer counts them.
 
 ## Windows that keep something
+
+`standby` parks the whole identity, not one seat: a free alias of a coordinator or of a
+window with open work is kept by that other seat.
 
 - **Coordinator:** reconcile it with Rule 0 (ping, ACK, explicit handover); never park
   it from here.

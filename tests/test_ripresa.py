@@ -139,9 +139,11 @@ class StaleWindows(unittest.TestCase):
         state['tasks']['T']['reviewer'] = 'R'
         self.assertEqual(state['resources']['port']['owner'], 'A-alias')
         rows = self.silent(state)
-        self.assertEqual(rows['A']['keeps'], ['owns open tasks T'])
+        self.assertEqual(rows['A']['keeps'], ['owns open tasks T', 'same identity as A-alias: reads open tasks T',
+                                              'same identity as A-alias: holds resources port'])
         self.assertEqual(rows['R']['keeps'], ['reads open tasks T'])
-        self.assertEqual(rows['A-alias']['keeps'], ['reads open tasks T', 'holds resources port'])
+        self.assertEqual(rows['A-alias']['keeps'], ['same identity as A: owns open tasks T',
+                                                    'reads open tasks T', 'holds resources port'])
         self.assertEqual(rows['C']['keeps'], ['coordinator: reconcile it with Rule 0'])
         self.assertFalse(any(row['archivable'] for row in rows.values()))
         self.assertFalse(any('command' in row for row in rows.values()))
@@ -158,3 +160,14 @@ class StaleWindows(unittest.TestCase):
         self.assertEqual(rc, 0)
         self.assertNotIn('R', self.silent())
         self.assertNotIn('outside', composition_windows(self.store.view()))
+
+    def test_a_free_seat_sharing_an_identity_is_kept_by_its_other_seats(self):
+        # standby parks every seat of an identity: a free alias of a coordinator or a task owner is never archivable
+        self.store.append('agent', 'C-build', {'id': 'C-build', 'role': 'builder', 'identity': 'coord', 'client': 'manual',
+                                               'repo': str(self.repo), 'skills': [], 'session': ''})
+        rows = self.silent()
+        self.assertEqual(rows['C-build']['keeps'], ['same identity as C: coordinator: reconcile it with Rule 0'])
+        self.assertEqual(rows['A-alias']['keeps'], ['same identity as A: owns open tasks T'])
+        self.assertFalse(rows['C-build']['archivable'] or rows['A-alias']['archivable'])
+        self.assertNotIn('command', rows['C-build'])
+        self.assertTrue(rows['R']['archivable'])

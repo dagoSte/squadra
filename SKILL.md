@@ -146,7 +146,8 @@ advice and the waits show only the squad that is really there** (owner, 2026-10-
 
 - `squadra doctor --resume` lists every active window silent for two days or more, with
   `archivable` and, when it is not, what `keeps` it: a coordinator role (reconcile it with
-  Rule 0), open tasks it owns or reads (reviewer or pool), resources it holds. An
+  Rule 0), open tasks it owns or reads (reviewer or pool), resources it holds. Stand-by
+  parks every seat of an identity, so these checks cover every seat sharing it. An
   archivable window carries the exact `standby` command.
 - **Only the owner's word parks a window.** The coordinator shows the list, records the
   question with `ask` or the owner's words with `decision --owner-words`, then runs one
