@@ -4,6 +4,7 @@ import io
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tarfile
@@ -56,18 +57,57 @@ class PublishedRegistryUpgrade(unittest.TestCase):
             with tarfile.open(fileobj=io.BytesIO(archived.stdout)) as archive:
                 archive.extractall(old_source, filter='data')
             return old_source
-        manifest = json.loads((FIXTURE / 'MANIFEST.json').read_text(encoding='utf-8'))
-        self.assertEqual(manifest['commit'], PUBLISHED)
-        present = {path.relative_to(FIXTURE).as_posix() for path in FIXTURE.rglob('*')
-                   if path.is_file() and path.name != 'MANIFEST.json' and '__pycache__' not in path.parts}
-        self.assertEqual(present, set(manifest['files']), 'Fixture files differ from MANIFEST.json')
-        for name, entry in manifest['files'].items():
-            data = (FIXTURE / name).read_bytes()
-            self.assertEqual(hashlib.sha256(data).hexdigest(), entry['sha256'], f'{name} differs from 5099f0c')
+        for name, data in self.verified_fixture(FIXTURE).items():
             target = old_source / name
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(data)
         return old_source
+
+    def verified_fixture(self, fixture):
+        """Bytes of every manifest entry; any symlink, special file or unlisted file refuses the fixture.
+        Only MANIFEST.json at the fixture root is outside the manifest."""
+        manifest = json.loads((fixture / 'MANIFEST.json').read_text(encoding='utf-8'))
+        self.assertEqual(manifest['commit'], PUBLISHED)
+        present = set()
+        for path in fixture.rglob('*'):
+            name = path.relative_to(fixture).as_posix()
+            if path.is_symlink():
+                self.fail(f'Fixture symlink refused: {name}')
+            if path.is_dir():
+                continue
+            if not path.is_file():
+                self.fail(f'Fixture special file refused: {name}')
+            if name != 'MANIFEST.json':
+                present.add(name)
+        self.assertEqual(present, set(manifest['files']), 'Fixture files differ from MANIFEST.json')
+        files = {}
+        for name, entry in manifest['files'].items():
+            data = (fixture / name).read_bytes()
+            self.assertEqual(hashlib.sha256(data).hexdigest(), entry['sha256'], f'{name} differs from 5099f0c')
+            files[name] = data
+        return files
+
+    def test_fixture_refuses_unlisted_files_and_symlinks(self):
+        def copy(label):
+            target = self.base / label
+            shutil.copytree(FIXTURE, target, symlinks=True)
+            return target
+        self.assertEqual(set(self.verified_fixture(copy('clean'))), set(json.loads(
+            (FIXTURE / 'MANIFEST.json').read_text(encoding='utf-8'))['files']))
+        nested = copy('nested'); (nested / 'scripts' / 'MANIFEST.json').write_text('{}\n')
+        cache = copy('cache'); (cache / 'scripts' / '__pycache__').mkdir(); (cache / 'scripts' / '__pycache__' / 'extra.py').write_text('')
+        for fixture, unlisted in [(nested, 'scripts/MANIFEST.json'), (cache, 'scripts/__pycache__/extra.py')]:
+            with self.subTest(unlisted=unlisted):
+                with self.assertRaisesRegex(AssertionError, 'differ from MANIFEST.json') as raised:
+                    self.verified_fixture(fixture)
+                self.assertIn(unlisted, str(raised.exception))
+        # A symlink to identical bytes still refuses: the fixture holds the bytes, never a path to them.
+        linked = copy('linked'); listed = linked / 'scripts' / 'runtime.py'
+        outside = self.base / 'runtime.py'; outside.write_bytes(listed.read_bytes())
+        listed.unlink(); listed.symlink_to(outside)
+        with self.subTest(symlink='scripts/runtime.py'), \
+                self.assertRaisesRegex(AssertionError, 'symlink refused: scripts/runtime.py'):
+            self.verified_fixture(linked)
 
     def test_published_delivery_needs_no_repair_and_its_old_sha_can_be_retired(self):
         old_source = self.published_source()
