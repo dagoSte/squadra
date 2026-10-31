@@ -959,6 +959,10 @@ Static, behavioral and dependency checks, excluding `tests/`. Passing means no H
 - **Fixes.** `transport` no longer silently re-delivers an older message under a reused ID; `save --repo` reports missing unselected repositories as warnings.
 - Plugins: memoranda 1.0.10, Playwright 1.0.11, Sentry 0.1.8.
 
+**Watch the two-minute film of what's new — turn the sound on in the player:**
+
+https://github.com/user-attachments/assets/6ea747a5-a993-4aa7-a58d-1b2b7f908720
+
 <details>
 <summary><strong>Earlier versions</strong></summary>
 
@@ -1017,10 +1021,6 @@ account quota stays separate. [Scope and limits](references/usage.md#project-sco
 **3.10.2 — messages that always arrive, and a dashboard that keeps up with a working squad**
 
 The coordinator can deliver every message to its window, the dashboard updates only what changed, and the search box finds past work by the words people wrote. The registry format does not change.
-
-**Watch the two-minute film of what's new — turn the sound on in the player:**
-
-https://github.com/user-attachments/assets/6ea747a5-a993-4aa7-a58d-1b2b7f908720
 
 <details>
 <summary><strong>3.10.2: improvements and dashboard measurements</strong></summary>

@@ -962,6 +962,10 @@ Controlli statici, comportamentali e delle dipendenze, con `tests/` esclusa. Il 
 - **Correzioni.** `transport` non riconsegna più in silenzio un messaggio vecchio con un ID riusato; `save --repo` segnala come avvisi i repository non selezionati mancanti.
 - Plugin: memoranda 1.0.10, Playwright 1.0.11, Sentry 0.1.8.
 
+**Guarda il film delle novità, due minuti — attiva l'audio nel lettore:**
+
+https://github.com/user-attachments/assets/8f38a443-b738-48f8-b562-9b072419b5f0
+
 <details>
 <summary><strong>Versioni precedenti</strong></summary>
 
@@ -1022,10 +1026,6 @@ parziali. Lo storico resta intatto; la quota dell'account rimane separata.
 **3.10.2 — messaggi che arrivano sempre, e una dashboard che sta al passo con una squadra al lavoro**
 
 Il coordinatore può consegnare ogni messaggio alla sua finestra, la dashboard aggiorna solo ciò che è cambiato e la casella di ricerca trova il lavoro passato dalle parole che le persone hanno scritto. Il formato del registro non cambia.
-
-**Guarda il film delle novità, due minuti — attiva l'audio nel lettore:**
-
-https://github.com/user-attachments/assets/8f38a443-b738-48f8-b562-9b072419b5f0
 
 <details>
 <summary><strong>3.10.2: miglioramenti e misure della dashboard</strong></summary>
