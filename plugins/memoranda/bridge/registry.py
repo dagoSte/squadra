@@ -3926,8 +3926,21 @@ def composition_pairs(state):
     return result
 
 
-def composition_message(counts, en):
-    """The advice for a count of Claude and Codex windows, and its case."""
+def composition_roles(state):
+    """Windows counted by composition_windows, per model and role: an identity counts once for each role it holds."""
+    windows, roles = composition_windows(state), {m: {"builder": set(), "reviewer": set()} for m in MODEL_CLIENTS}
+    for name, agent in state["agents"].items():
+        client = windows.get(agent["identity"])
+        if client in MODEL_CLIENTS and agent["role"] in {"builder", "reviewer"} and not standby(state, name):
+            roles[client][agent["role"]].add(agent["identity"])
+    return {m: {role: len(ids) for role, ids in value.items()} for m, value in roles.items()}
+
+
+def composition_message(counts, en, roles=None):
+    """The advice for a count of Claude and Codex windows, and its case.
+
+    roles, when the registry knows them, keeps the bottleneck advice only where it holds: the larger model builds
+    and the smaller one reads. Otherwise the advice states who builds and who reads."""
     claude, codex = counts["claude"], counts["codex"]
     if claude + codex == 0:
         return "none", ("No Claude or Codex window can build or read yet: open one of each, so that one model "
@@ -3949,6 +3962,17 @@ def composition_message(counts, en):
         return "one-client", text
     if claude != codex:
         few, many = ("claude", "codex") if claude < codex else ("codex", "claude")
+        if roles is not None and not (roles[many]["builder"] and roles[few]["reviewer"]):
+            def side(role):
+                named = [str(roles[m][role]) + " " + MODEL_NAMES[m] for m in MODEL_CLIENTS if roles[m][role]]
+                return ", ".join(named) or ("no window" if en else "nessuna finestra")
+            if en:
+                return "imbalance", ("Imbalance: " + str(claude) + " Claude and " + str(codex) + " Codex. Building: " +
+                                     side("builder") + "; reading: " + side("reviewer") + ". Pair each builder with "
+                                     "a reader of the other model.")
+            return "imbalance", ("Squilibrio: " + str(claude) + " Claude e " + str(codex) + " Codex. Costruiscono: " +
+                                 side("builder") + "; rileggono: " + side("reviewer") + ". Abbina a ogni costruttore "
+                                 "un lettore dell'altro modello.")
         lone, small, large = counts[few] == 1, MODEL_NAMES[few], MODEL_NAMES[many]
         if en:
             who = "The lone " + small + " window" if lone else "The " + str(counts[few]) + " " + small + " windows"
@@ -3996,11 +4020,11 @@ def composition(state=None, observed=None, lang="it", scan="observed"):
     if observed is not None and scan != "observed":
         source += ("; the census is partial and may not see every window" if en else
                    "; il censimento è parziale e può non vedere tutte le finestre")
-    case, message = composition_message(counts, en)
+    case, message = composition_message(counts, en, composition_roles(state) if state is not None else None)
     return {"claude": counts["claude"], "codex": counts["codex"],
             "other": sum(c not in MODEL_CLIENTS for c in clients), "source": source, "observed": seen,
             "case": case, "message": message,
-            "pairs": composition_pairs(state) if case == "balanced" and state is not None else []}
+            "pairs": composition_pairs(state) if case in {"balanced", "imbalance"} and state is not None else []}
 
 
 def composition_lines(value, lang="it"):
