@@ -104,19 +104,26 @@ def readiness(state, at):
         if row.get('commits_since_tag'):
             notices.append(f"{path}: {row['commits_since_tag']} commits after {row['last_tag']}")
     clock = dt.datetime.fromisoformat(at) if isinstance(at, str) else at
-    silent = []
+    silent, parked_by = [], {}
     for row in presence(state, clock):
         if row['availability'] != 'active':
             continue
         last = row['last_answer']
-        days = None if last is None else (clock - dt.datetime.fromisoformat(last)).days
+        # The latest sign of life: an answer, or the seat's (re)registration for a seat that never answered.
+        signs = [stamp for stamp in (last, state['agents'][row['agent']].get('updated')) if stamp]
+        days = (clock - max(dt.datetime.fromisoformat(stamp) for stamp in signs)).days if signs else None
         if days is None or days >= SILENT_DAYS:
             keeps = holds(state, row['agent'], open_tasks)
-            entry = {'agent': row['agent'], 'last_answer': last, 'days': days,
+            entry = {'agent': row['agent'], 'identity': row['identity'], 'last_answer': last, 'days': days,
                      'archivable': not keeps, 'keeps': keeps}
             if not keeps:
-                entry['command'] = (f"squadra standby --actor <coordinator> --agent {row['agent']} "
-                                    f"--reason \"<owner's words>\"")
+                # standby parks every seat of the identity: one command per identity.
+                first = parked_by.setdefault(row['identity'], row['agent'])
+                if first == row['agent']:
+                    entry['command'] = (f"squadra standby --actor <coordinator> --agent {row['agent']} "
+                                        f"--reason \"<owner's words>\"")
+                else:
+                    entry['parked_with'] = first
             silent.append(entry)
     if silent:
         archivable = sum(entry['archivable'] for entry in silent)

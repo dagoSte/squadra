@@ -9,14 +9,17 @@ procedure for the
 ## Finding them
 
 `squadra doctor --resume` lists in `resume.silent_windows` every active window with no
-recorded answer for two days or more:
+sign of life for two days or more: no recorded answer and no (re)registration. A window
+registered a moment ago is not silent:
 
 | Field | Meaning |
 | --- | --- |
-| `agent`, `last_answer`, `days` | the window and its last recorded answer (`null` if it never answered) |
+| `agent`, `identity` | the window and the identity that `standby` parks as a whole |
+| `last_answer`, `days` | its last recorded answer (`null` if it never answered) and the days since its latest sign of life: that answer or, if later, its registration |
 | `archivable` | `true` when nothing keeps it |
 | `keeps` | why it cannot be parked yet: coordinator role, open tasks it owns or reads (reviewer or pool), resources it holds — for every seat of the same identity, prefixed `same identity as <seat>:` |
-| `command` | for archivable windows only: the `standby` command to run after the owner's word |
+| `command` | for archivable windows only, one per identity: the `standby` command to run after the owner's word |
+| `parked_with` | the other archivable seats of that identity: the seat whose command parks them too |
 
 ## Parking
 

@@ -62,13 +62,17 @@ class ResumeReadiness(unittest.TestCase):
         self.assertEqual((row['last_tag'], row['commits_since_tag']), ('v1.0.0', 1))
 
     def test_silent_windows_are_listed_and_a_recent_answer_clears_one(self):
-        self.ack()
+        # Decision silenzio-dalla-registrazione-20261031: silence counts from the latest answer or registration.
+        from unittest.mock import patch
         clock = dt.datetime.fromisoformat(now())
-        silent = {r['agent'] for r in readiness(self.store.view(), clock)['silent_windows']}
-        self.assertNotIn('A', silent)
-        self.assertIn('R', silent)
+        self.assertEqual(readiness(self.store.view(), clock)['silent_windows'], [], 'seats registered now are not silent')
+        with patch('registry.now', return_value=(clock + dt.timedelta(days=1)).isoformat()):
+            self.ack()
         later = clock + dt.timedelta(days=SILENT_DAYS)
         silent = {r['agent'] for r in readiness(self.store.view(), later)['silent_windows']}
+        self.assertNotIn('A', silent)
+        self.assertIn('R', silent)
+        silent = {r['agent'] for r in readiness(self.store.view(), later + dt.timedelta(days=1))['silent_windows']}
         self.assertIn('A', silent)
 
     def test_plain_doctor_quick_output_is_unchanged(self):
@@ -123,7 +127,9 @@ class StaleWindows(unittest.TestCase):
     task = support.Workflow.task
 
     def silent(self, state=None):
-        rows = readiness(state or self.store.view(), now())['silent_windows']
+        # Seats registered by setUp become silent only SILENT_DAYS after their registration.
+        later = dt.datetime.fromisoformat(now()) + dt.timedelta(days=SILENT_DAYS)
+        rows = readiness(state or self.store.view(), later)['silent_windows']
         return {row['agent']: row for row in rows}
 
     def test_a_silent_window_holding_nothing_is_archivable_with_its_command(self):
@@ -171,3 +177,33 @@ class StaleWindows(unittest.TestCase):
         self.assertFalse(rows['C-build']['archivable'] or rows['A-alias']['archivable'])
         self.assertNotIn('command', rows['C-build'])
         self.assertTrue(rows['R']['archivable'])
+
+
+class StaleWindowsReview(unittest.TestCase):
+    """Two minor defects of the stale-windows rule found on the real registry (2026-10-31)."""
+    setUp = support.Workflow.setUp
+    git = support.Workflow.git
+    task = support.Workflow.task
+    silent = StaleWindows.silent
+
+    def seat(self, name, identity, role='executor'):
+        self.store.append('agent', name, {'id': name, 'role': role, 'identity': identity, 'client': 'codex',
+                                          'repo': str(self.repo), 'skills': [], 'session': ''})
+
+    def test_a_seat_registered_now_that_never_answered_is_not_silent(self):
+        self.seat('fresh', 'fresh-identity')
+        rows = {r['agent'] for r in readiness(self.store.view(), now())['silent_windows']}
+        self.assertNotIn('fresh', rows)
+        later = dt.datetime.fromisoformat(now()) + dt.timedelta(days=SILENT_DAYS)
+        rows = {r['agent']: r for r in readiness(self.store.view(), later)['silent_windows']}
+        self.assertEqual(rows['fresh']['days'], SILENT_DAYS)
+        self.assertIsNone(rows['fresh']['last_answer'])
+
+    def test_one_standby_command_per_identity(self):
+        self.seat('P1', 'parked'); self.seat('P2', 'parked'); self.seat('P3', 'parked')
+        rows = self.silent()
+        commands = [name for name in ('P1', 'P2', 'P3') if 'command' in rows[name]]
+        self.assertEqual(commands, ['P1'])
+        self.assertEqual((rows['P2']['parked_with'], rows['P3']['parked_with']), ('P1', 'P1'))
+        self.assertTrue(all(rows[name]['archivable'] for name in ('P1', 'P2', 'P3')))
+        self.assertIn('command', rows['R'])

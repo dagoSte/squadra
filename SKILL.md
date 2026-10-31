@@ -144,11 +144,13 @@ Follow the [known reds guide](references/skills/rossi-noti.md).
 **Windows that stopped answering are parked in stand-by, so the board, the composition
 advice and the waits show only the squad that is really there** (owner, 2026-10-31).
 
-- `squadra doctor --resume` lists every active window silent for two days or more, with
+- `squadra doctor --resume` lists every active window silent for two days or more (since
+  its last answer or, if later, its registration), with
   `archivable` and, when it is not, what `keeps` it: a coordinator role (reconcile it with
   Rule 0), open tasks it owns or reads (reviewer or pool), resources it holds. Stand-by
   parks every seat of an identity, so these checks cover every seat sharing it. An
-  archivable window carries the exact `standby` command.
+  archivable identity carries one exact `standby` command; its other seats name it in
+  `parked_with`.
 - **Only the owner's word parks a window.** The coordinator shows the list, records the
   question with `ask` or the owner's words with `decision --owner-words`, then runs one
   `standby --reason "<owner's words>"` per window. Nothing is parked automatically.
