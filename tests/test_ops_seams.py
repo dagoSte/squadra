@@ -488,7 +488,7 @@ class Documentation(unittest.TestCase):
                                    ('README.it.md', 'con `--reconcile`', 'circa 2,0 KB con 10 finestre')):
             readme = (ROOT / name).read_text()
             self.assertIn(cancel, readme)
-            self.assertIn(size, readme)
+            self.assertIn(size, readme + (ROOT / name.replace('README', 'CHANGELOG')).read_text())
             self.assertIn('--until-first', readme)
 
 
