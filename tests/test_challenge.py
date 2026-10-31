@@ -14,9 +14,14 @@ class Challenge(unittest.TestCase):
     task=support.Workflow.task
 
     def copies(self):
-        original=self.base/'original';shutil.copytree(self.repo,original)
+        # A commit starts Git's background auto-maintenance, which creates and deletes .git/objects/maintenance.lock
+        # while copytree walks the tree. Turn it off for the fix commit, and never copy transient locks (one may come
+        # from a maintenance run setUp's commits already started).
+        self.git('config','maintenance.auto','false');self.git('config','gc.auto','0')
+        locks=shutil.ignore_patterns('*.lock')
+        original=self.base/'original';shutil.copytree(self.repo,original,ignore=locks)
         (self.repo/'code.py').write_text('VALUE = 2\n');self.git('add','code.py');self.git('commit','-qm','fix')
-        positive=self.base/'positive';shutil.copytree(self.repo,positive)
+        positive=self.base/'positive';shutil.copytree(self.repo,positive,ignore=locks)
         oracle=self.base/'oracle.py';oracle.write_text('def check(repo):\n assert "VALUE = 2" in (repo/"code.py").read_text(), "wrong value"\n')
         return oracle,original,positive
 
