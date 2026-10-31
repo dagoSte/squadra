@@ -100,6 +100,24 @@ no deadline, budget or stand-by suspends it.
 
 Follow the [overlap check](references/skills/sovrapposizioni.md) at each of those moments.
 
+## Resume rule — one readiness check before any assignment
+
+**At every resume, and whenever coordination passes to another window, the coordinator runs
+`squadra doctor --resume` before assigning work** (owner, 2026-10-30). It is read-only:
+the quick registry checks plus, in one report, the interpreter in use, every checkout of
+open tasks and active windows (exists, Git, branch, head, uncommitted changes, commits after
+the last tag, distance from upstream at the last fetch) and the active windows silent for
+two days or more.
+
+- **A blocker stops the resume** (exit 1): an open task whose checkout is missing or not a
+  Git checkout. Restore or re-clone it, or supersede the task, before assigning anything.
+- **Notices are reconciled, not ignored**: ping silent windows or record their stand-by,
+  fetch before trusting the release distance, and say which notices remain open.
+- The report changes nothing: it never fetches, stops, reassigns or archives. Its
+  checkouts feed the [overlap check](references/skills/sovrapposizioni.md).
+
+Follow the [resume check](references/skills/ripresa.md).
+
 ## Rule 1 — parallel work
 
 The squad's value is parallelism. The coordinator immediately assigns independent work
@@ -247,7 +265,7 @@ Announce the skill when you apply it. Read the project's mandate and the owner's
 instructions first. Keep the authorizations already given and the release boundaries:
 an accepted review does not grant a new authorization to publish.
 
-1. Look for an existing registry and read `status`, `doctor --quick`, tasks, the latest delivery
+1. Look for an existing registry and read `status`, `doctor --resume`, tasks, the latest delivery
    and mail before assigning work. Do not replay old queues blindly.
    All windows of the same squad use a single shared registry; separate clones do not
    create separate mailboxes. `posta/exchange-YYYY-MM-DD.md` is the daily projection

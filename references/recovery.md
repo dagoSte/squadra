@@ -43,7 +43,7 @@ cache has already been folded.
 | `doctor`, `export`, `checkpoint`, `save`, `restore-check`, and a release-gate task's `close` | The complete event chain and referenced artifacts/manifests, plus full replay to compare or rebuild the derived cache. |
 | Dashboard startup | The ordinary verified path serves data while a full chain/artifact/replay audit runs in the background on a private copy of the registry. A visible status marks the pending audit; failure stops data responses and removes the displayed data. |
 
-Use read-only `doctor --quick` when resuming. Run `doctor` without that flag for
+Use read-only `doctor --quick` when resuming; a coordinator runs `doctor --resume`, the same checks plus resume readiness ([resume check](skills/ripresa.md)). Run `doctor` without that flag for
 the complete audit. A full audit reports cache/journal disagreement as a mismatch:
 default doctor exits nonzero and the dashboard refuses data. Explicit
 `doctor --repair` rebuilds the stored derived cache and re-audits; it refuses a

@@ -606,6 +606,7 @@ def parser():
     mode = a.add_mutually_exclusive_group()
     mode.add_argument('--quick', action='store_true', help='Read-only anchor, suffix and demanded-cache checks; not a full audit')
     mode.add_argument('--repair', action='store_true', help='Full audit and explicit derived-cache repair; refuses saved packages')
+    mode.add_argument('--resume', action='store_true', help='Quick checks plus resume readiness: checkouts, release drift, silent windows; exits 1 on a blocker')
     sub.add_parser("export")
     a = sub.add_parser("board"); a.add_argument("--lang", choices=["it", "en"], help="Override the workspace board language")
     a = sub.add_parser("dash"); a.add_argument("--port", type=int, default=0); a.add_argument("--open", action="store_true")
@@ -1216,6 +1217,7 @@ def dispatch(a, store):
         from registry_prepare import wal_state
         # Read before doctor's own read begins, so its snapshot is not among the readers reported.
         wal = wal_state(store.root)
+        a.quick = a.quick or a.resume
         if a.quick:
             from registry_prepare import quick
             store.db.execute('BEGIN')
@@ -1251,6 +1253,9 @@ def dispatch(a, store):
                         if a.quick else {'verification': 'full', 'integrity': 'passed'})
         from frozen_candidate import inventory
         candidates = inventory(store) if not a.quick else None
+        if a.resume:
+            from ripresa import readiness
+            verification['resume'] = readiness(state, now())
         return {**compatibility, **git_warning, **verification,
                 'candidate_integrity': 'not_checked' if a.quick else 'degraded' if any(r['status'] in {'missing', 'damaged'} for r in candidates) else 'passed',
                 'candidates': candidates, "events": count, "cache": checked["cache"], "unknown_running": [r["id"] for r in state["runs"].values() if r["status"] in {"running", "cleanup-unknown"}],
@@ -1456,7 +1461,7 @@ def main(argv=None):
         result = dispatch(a, store)
         if a.command == 'doctor':
             print(json.dumps(plain(result), ensure_ascii=False, indent=2))
-            return 0
+            return 0 if result.get('resume', {}).get('ready', True) else 1
         committed = type(before) is int and store.commit_count > before
         if a.command == 'transport' and a.via == 'codex-queue' and result.get('delivered') is not True:
             result_rc = 1
