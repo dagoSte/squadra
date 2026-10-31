@@ -951,6 +951,7 @@ Controlli statici, comportamentali e delle dipendenze, con `tests/` esclusa. Il 
 - **Checklist.** `squadra checklist --moment resume|assign|deliver|push` controlla in sola lettura i momenti critici: al push, un'email di autore o committer mai vista prima fa fallire.
 - **Perimetro del giro.** Fissato il perimetro di un giro, ciò che emerge aspetta il giro successivo, salvo che blocchi una chiusura.
 - **Correzioni.** `test_rf4a_upgrade` gira su una fixture verificata di 5099f0c; `test_challenge` non entra più in corsa con la manutenzione di Git.
+- **Audit delle skill non aggiornati.** Le scansioni registrate in `assets/skill-audits.json` precedono le modifiche di questa versione a `SKILL.md` e `scripts/squadra.py`; la pagina System skills mostra ogni skill come non verificata (file cambiati) fino a una nuova scansione.
 
 **3.11.1 — sostituzione delle finestre, permessi all’ingresso, una posta per finestra e contesto di rientro**
 
@@ -962,7 +963,7 @@ Controlli statici, comportamentali e delle dipendenze, con `tests/` esclusa. Il 
 - **Correzioni.** `transport` non riconsegna più in silenzio un messaggio vecchio con un ID riusato; `save --repo` segnala come avvisi i repository non selezionati mancanti.
 - Plugin: memoranda 1.0.10, Playwright 1.0.11, Sentry 0.1.8.
 
-**Guarda il film delle novità, due minuti — attiva l'audio nel lettore:**
+**Guarda il film delle novità della 3.10.2, due minuti — attiva l'audio nel lettore:**
 
 https://github.com/user-attachments/assets/8f38a443-b738-48f8-b562-9b072419b5f0
 
