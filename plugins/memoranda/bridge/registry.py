@@ -3939,8 +3939,8 @@ def composition_roles(state):
 def composition_message(counts, en, roles=None):
     """The advice for a count of Claude and Codex windows, and its case.
 
-    roles, when the registry knows them, keeps the bottleneck advice only where it holds: the larger model builds
-    and the smaller one reads. Otherwise the advice states who builds and who reads."""
+    roles, when the registry knows them, keeps the bottleneck advice only where it holds: every larger-model window
+    builds and every smaller-model window reads. Otherwise the advice states who builds and who reads."""
     claude, codex = counts["claude"], counts["codex"]
     if claude + codex == 0:
         return "none", ("No Claude or Codex window can build or read yet: open one of each, so that one model "
@@ -3962,7 +3962,11 @@ def composition_message(counts, en, roles=None):
         return "one-client", text
     if claude != codex:
         few, many = ("claude", "codex") if claude < codex else ("codex", "claude")
-        if roles is not None and not (roles[many]["builder"] and roles[few]["reviewer"]):
+        # The bottleneck sentence counts windows, so it holds only when every larger-model window builds and
+        # every smaller-model window reads; mixed roles get the role summary with the real counts.
+        pure = (roles is None or roles[many] == {"builder": counts[many], "reviewer": 0}
+                and roles[few] == {"builder": 0, "reviewer": counts[few]})
+        if not pure:
             def side(role):
                 named = [str(roles[m][role]) + " " + MODEL_NAMES[m] for m in MODEL_CLIENTS if roles[m][role]]
                 return ", ".join(named) or ("no window" if en else "nessuna finestra")

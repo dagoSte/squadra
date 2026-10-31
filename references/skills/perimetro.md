@@ -44,5 +44,8 @@ withdrawn by a decision.
 
 - The rule bounds new scope, not the fixes a task needs to close: Rule 10's bounded fix
   tasks are part of the round.
-- It is not enforced by a command yet: `squadra checklist --moment assign` does not
-  know about a scope decision. Until it does, the coordinator applies it at every `task`.
+- It is advisory, not enforced: `squadra checklist --moment assign` reads the latest
+  decision whose reason starts with exactly `Round scope:`. A task created after it whose
+  ID is not named in that reason as a whole token gets `round_scope` = `unverifiable`,
+  never `fail`, because the registry cannot tell the owner's word or a blocking fix from
+  prose. The coordinator still reconciles it at every `task`.

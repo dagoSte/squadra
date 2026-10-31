@@ -61,6 +61,26 @@ class AfterStandby(unittest.TestCase):
         self.assertTrue(value["message"].startswith("L'unica finestra Claude rileggerà"))
         self.assertEqual(value["pairs"], [])
 
+    def test_mixed_roles_on_the_larger_side_are_summarised_not_counted_as_builders(self):
+        # Codex review of 3.12-rc1: 1 Claude reader; 3 Codex, of which 1 builder and 2 readers.
+        state = squad(COORD, ("r1", "reviewer", "claude"), ("y1", "builder", "codex"),
+                      ("x1", "reviewer", "codex"), ("x2", "reviewer", "codex"))
+        value = composition(state)
+        self.assertEqual((value["case"], value["claude"], value["codex"]), ("imbalance", 1, 3))
+        self.assertNotIn("collo di bottiglia", value["message"])
+        self.assertEqual(value["message"], "Squilibrio: 1 Claude e 3 Codex. Costruiscono: 1 Codex; rileggono: 1 "
+                         "Claude, 2 Codex. Abbina a ogni costruttore un lettore dell'altro modello.")
+        self.assertEqual(composition(state, lang="en")["message"],
+                         "Imbalance: 1 Claude and 3 Codex. Building: 1 Codex; reading: 1 Claude, 2 Codex. Pair each "
+                         "builder with a reader of the other model.")
+
+    def test_mixed_roles_on_the_smaller_side_are_summarised_too(self):
+        state = squad(COORD, ("r1", "reviewer", "claude"), ("b1", "builder", "claude"), ("y1", "builder", "codex"),
+                      ("y2", "builder", "codex"), ("y3", "builder", "codex"))
+        self.assertEqual(composition(state, lang="en")["message"],
+                         "Imbalance: 2 Claude and 3 Codex. Building: 1 Claude, 3 Codex; reading: 1 Claude. Pair each "
+                         "builder with a reader of the other model.")
+
 
 if __name__ == "__main__":
     unittest.main()
