@@ -391,6 +391,10 @@ def parser():
     p.add_argument("--root", help="Shared persistent workspace; or SQUADRA_ROOT")
     p.add_argument("--version", action="version", version=VERSION)
     sub = p.add_subparsers(dest="command", required=True)
+    a = sub.add_parser('checklist', help='Read-only checks before resume, assignment, delivery or push')
+    a.add_argument('--moment', choices=['resume', 'assign', 'deliver', 'push'], required=True)
+    a.add_argument('--actor'); a.add_argument('--task'); a.add_argument('--repo')
+    a.add_argument('--range', dest='revision_range', help='Commit interval A..B (default @{upstream}..HEAD)')
     a = sub.add_parser("forecast", help="Read-only comparison with similar completed tasks; no estimate below three samples")
     a.add_argument("--task", required=True)
     a = sub.add_parser("balance", help="Read-only advice on windows and models by load, quota and history; assigns nothing")
@@ -1314,6 +1318,13 @@ def main(argv=None):
     root = Path(a.root or os.environ.get('SQUADRA_ROOT') or Path.cwd() / '.squadra')
     try:
         root = workspace_path(a.root)
+        if a.command == 'checklist':
+            from checklist import run
+            store = Store(root, read_only=True)
+            result = run(store, a.moment, actor=a.actor, task_id=a.task, repo=a.repo,
+                         revision_range=a.revision_range)
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+            return 0 if result['ready'] else 1
         if a.command == "inbox":
             import math
             require(a.follow or (a.timeout is None and a.since is None and not a.until_first and a.cursor_file is None and not a.no_cursor),

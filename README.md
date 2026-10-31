@@ -507,7 +507,7 @@ The sections below keep the full working examples. Open the topic you need; the 
 | Follow a task from assignment to closure | [Task workflow](#workflow) |
 | Trace an instruction or record a decision | [Briefs, messages and decisions](#decision-reference) |
 | Save work or resume a session | [Checkpoints and recovery](#checkpoints) |
-| Look up a command or its plain-language prompt | [All 58 commands](#commands) |
+| Look up a command or its plain-language prompt | [All 59 commands](#commands) |
 
 [Skill](SKILL.md) · [Setup](references/start.md) · [Work/proof/review](references/work.md) · [Native runners](references/runtime.md) · [Recovery/context handover](references/recovery.md) · [Challenges/benchmark](references/benchmark.md) · [Plugins](references/plugins.md) · [Plugin authoring](references/plugin-authoring.md)
 
@@ -569,6 +569,8 @@ The coordinator gives independent work to every available window at once (Codex,
 Every update to the owner shows the table from `squadra board`: **In progress**, **To do** and **Done**, columns **Window | Work | State | Time (approx.)**, «Done X of Y» at the end, then “Your next step: …”. Times are measured; estimates are marked as estimates; no made-up percentages.
 
 ### Rules 3–10: method
+
+At resume, assignment, completed delivery and push, the window runs `squadra checklist`: a `fail` stops the step; every `unverifiable` limit stays explicit. [Guide and optional pre-push hook](references/skills/checklist.md).
 
 Windows silent for two days are listed by `doctor --resume` as archivable or not, and parked with `standby` only on the owner's word. Tests already red on clean `main` live in `tests/known_reds.json`: the parallel runner separates them from new reds, `--accept-known` lets a task proof pass on known reds only, and a release proof stays strict. At every resume the coordinator first runs `squadra doctor --resume`: missing checkouts of open tasks block, release drift and silent windows are listed. Fundamental: the coordinator always checks that coordinated windows do not overlap (tree, branch, files, resources, commits) before assigning work. Read before you cite; record a decision before a pinned test changes; parallel lanes own their files; state the cost and a cap before spending. The default is one final block: shared contract first, merge green deliveries, record every delta and freeze a candidate for Claude/Codex non-author reads, then one fix round and one re-read block. Only grave findings block; carry-overs get tasks at the next milestone's kickoff. Every close says how the next task can go faster. The release keeps its cut-off two hours after scope is fixed, unless the owner sets another time; proofs bind the release head and stalled reads move to a free reader. Per-lane reads remain an option on the owner's word. Every rule in full: [the skill](SKILL.md).
 
@@ -804,10 +806,10 @@ manual deletion of an active cache degrades candidate integrity. See
 
 You do not have to type these commands: **asking your window in plain words is the recommended way**, as in the *Or just ask* column and the [example prompts](#prompts), and the window runs the command for you. The commands are what the windows run, and what you can type yourself to check.
 
-Every command, grouped by purpose: **58 subcommands**, plus `--version`. Use `squadra <command> --help` for the flags; registry commands accept `--root` or `SQUADRA_ROOT`. «Coordinator only» marks what only the coordinator can record: `task`, `route`, `supersede`, `reassign`, `replace`, `brief`, `close`, `ask`, `decision`, `settings`, `pause`, `resume`, `save`, `standby`, `ping --all`, `ping --sweep`, and the receipt that `restore-check` writes into the live registry. Without installing, the same commands run as `python3 -B scripts/squadra.py <command>`.
+Every command, grouped by purpose: **59 subcommands**, plus `--version`. Use `squadra <command> --help` for the flags; registry commands accept `--root` or `SQUADRA_ROOT`. «Coordinator only» marks what only the coordinator can record: `task`, `route`, `supersede`, `reassign`, `replace`, `brief`, `close`, `ask`, `decision`, `settings`, `pause`, `resume`, `save`, `standby`, `ping --all`, `ping --sweep`, and the receipt that `restore-check` writes into the live registry. Without installing, the same commands run as `python3 -B scripts/squadra.py <command>`.
 
 <details>
-<summary><strong>All 58 commands and their prompts, grouped by purpose</strong></summary>
+<summary><strong>All 59 commands and their prompts, grouped by purpose</strong></summary>
 
 ### Start and team
 
@@ -898,6 +900,7 @@ Every command, grouped by purpose: **58 subcommands**, plus `--version`. Use `sq
 | Command | What it does | Or just ask |
 |---|---|---|
 | `status` | Show tasks, what needs the owner, the grouped waits and the progress tables; `--all` prints every wait and the full detailed table. | “Where are we? Show me the progress table and what needs my decision.” |
+| `checklist` | Read-only checks for resume, assignment, completed delivery and push; lists unverifiable limits. | “Check the checklist before the next step.” |
 | `doctor` | Check the hash chain and the artifacts; report pending ACKs and uncertain runs. | “Check that the registry is intact and tell me which ACKs are pending.” |
 | `export` | Regenerate complete structured, readable and mail/history exports from the registry. | “Export the registry in readable form, mail history included.” |
 | `legacy` | Import old records as historical, unverified copies. | “Import our old records as historical, unverified copies.” |

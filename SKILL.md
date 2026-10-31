@@ -163,6 +163,18 @@ advice and the waits show only the squad that is really there** (owner, 2026-10-
 
 Follow the [stale windows guide](references/skills/finestre-ferme.md).
 
+## Checklist rule — check at the critical moments
+
+**Run `squadra checklist --moment resume|assign|deliver|push` at the corresponding
+moment** (owner, 2026-10-31). Pass `--actor` for resume, `--task` for assignment and
+completed delivery, and `--repo` for push; add `--task` at push to check its closure
+and candidate ancestry. Run the delivery checklist after the reader ACKs the handoff.
+Read every item: `fail` stops the dependent action; `unverifiable` names a limit that
+must be reported and reconciled. `ready` means no failed item, not complete verification.
+The command reads the registry and local Git only. It grants no permission to publish.
+Follow the [checklist guide](references/skills/checklist.md), including its optional
+pre-push hook example; no hook is installed automatically.
+
 ## Rule 1 — parallel work
 
 The squad's value is parallelism. The coordinator immediately assigns independent work

@@ -509,7 +509,7 @@ Le sezioni seguenti conservano gli esempi operativi completi. Apri l’argomento
 | Seguire un incarico dall’assegnazione alla chiusura | [Flusso di lavoro](#workflow) |
 | Ricostruire un’istruzione o registrare una decisione | [Briefing, messaggi e decisioni](#decision-reference) |
 | Salvare il lavoro o riprendere una sessione | [Checkpoint e ripristino](#checkpoints) |
-| Cercare un comando o il suo prompt in parole semplici | [Tutti i 58 comandi](#commands) |
+| Cercare un comando o il suo prompt in parole semplici | [Tutti i 59 comandi](#commands) |
 
 [Skill](SKILL.md) · [Avvio](references/start.md) · [Lavoro/prova/lettura](references/work.md) · [Runner nativi](references/runtime.md) · [Ripristino/passaggio di contesto](references/recovery.md) · [Sfide/confronto](references/benchmark.md) · [Plugin](references/plugins.md) · [Creare un plugin](references/plugin-authoring.md)
 
@@ -571,6 +571,8 @@ Il coordinatore affida subito lavoro indipendente a ogni finestra disponibile (C
 Ogni aggiornamento al proprietario mostra la tabella di `squadra board`: **In corso**, **Da fare** e **Fatti**, colonne **Finestra | Lavoro | Stato | Tempo (circa)**, «Realizzati X su Y» in fondo, poi «Tu adesso: …». I tempi sono misurati, le stime sono segnate come stime, nessuna percentuale inventata.
 
 ### Regole 3–10: metodo
+
+Ai momenti di ripresa, assegnazione, consegna e push, la finestra esegue `squadra checklist`: un `fail` ferma il passo; ogni limite `unverifiable` resta esplicito. [Guida e hook pre-push facoltativo](references/skills/checklist.md), in inglese.
 
 Le finestre silenziose da due giorni sono elencate da `doctor --resume` come archiviabili o no, e messe in stand-by con `standby` solo su parola del proprietario. I test già rossi su `main` pulito stanno in `tests/known_reds.json`: il runner parallelo li separa dai rossi nuovi, `--accept-known` fa passare una prova d'incarico solo sui rossi noti e la prova di rilascio resta rigorosa. A ogni ripresa il coordinatore lancia prima `squadra doctor --resume`: i checkout mancanti di incarichi aperti bloccano, distanza dal rilascio e finestre silenziose sono elencate. Fondamentale: il coordinatore controlla sempre che le finestre coordinate non si sovrappongano (albero, ramo, file, risorse, commit) prima di assegnare lavoro. Leggi prima di citare; registra la decisione prima di cambiare un test che fissa un requisito; ogni corsia parallela ha i suoi file; dichiara costo e tetto prima di spendere. Il metodo predefinito è un blocco finale: contratto comune prima del lavoro, unione delle consegne verdi, registro di ogni delta e candidato congelato per letture non autrici Claude/Codex, poi un giro di correzione e un blocco di rilettura. Bloccano solo i reperti gravi; i rinvii diventano incarichi all'avvio della tappa successiva. Ogni chiusura dice come accelerare il prossimo incarico. Resta l'ora limite due ore dopo che il perimetro è fissato, salvo altro orario scelto dal proprietario; le prove riguardano la testa del rilascio e le letture ferme passano a lettori liberi. Le letture per corsia restano un'opzione su parola del proprietario. Tutte le regole per intero: la [skill](SKILL.md).
 
@@ -807,10 +809,10 @@ attiva degrada l'integrita del candidato. Vedi la
 
 Non serve scrivere questi comandi: **il modo consigliato è chiedere alla finestra in parole semplici**, come nella colonna *Oppure chiedi* e nei [prompt di esempio](#prompts); il comando lo esegue la finestra. I comandi sono quello che eseguono le finestre, e quello che puoi scrivere tu per controllare.
 
-Ogni comando, raggruppato per scopo: **58 sottocomandi**, più `--version`. Usa `squadra <comando> --help` per le opzioni; i comandi del registro accettano `--root` o `SQUADRA_ROOT`. «Solo il coordinatore» segna ciò che solo il coordinatore può registrare: `task`, `route`, `supersede`, `reassign`, `replace`, `brief`, `close`, `ask`, `decision`, `settings`, `pause`, `resume`, `save`, `standby`, `ping --all`, `ping --sweep`, e la ricevuta che `restore-check` scrive nel registro vivo. Senza installare, gli stessi comandi girano come `python3 -B scripts/squadra.py <comando>`.
+Ogni comando, raggruppato per scopo: **59 sottocomandi**, più `--version`. Usa `squadra <comando> --help` per le opzioni; i comandi del registro accettano `--root` o `SQUADRA_ROOT`. «Solo il coordinatore» segna ciò che solo il coordinatore può registrare: `task`, `route`, `supersede`, `reassign`, `replace`, `brief`, `close`, `ask`, `decision`, `settings`, `pause`, `resume`, `save`, `standby`, `ping --all`, `ping --sweep`, e la ricevuta che `restore-check` scrive nel registro vivo. Senza installare, gli stessi comandi girano come `python3 -B scripts/squadra.py <comando>`.
 
 <details>
-<summary><strong>Tutti i 58 comandi con i loro prompt, raggruppati per scopo</strong></summary>
+<summary><strong>Tutti i 59 comandi con i loro prompt, raggruppati per scopo</strong></summary>
 
 ### Avvio e squadra
 
@@ -901,6 +903,7 @@ Ogni comando, raggruppato per scopo: **58 sottocomandi**, più `--version`. Usa 
 | Comando | Cosa fa | Oppure chiedi |
 |---|---|---|
 | `status` | Mostra incarichi, richieste per il proprietario, le attese raggruppate e le tabelle dell'avanzamento; `--all` stampa tutte le attese e la tabella completa. | «A che punto siamo? Mostrami la tabella dell'avanzamento e cosa aspetta una mia decisione.» |
+| `checklist` | Controlla in sola lettura ripresa, assegnazione, consegna e push; elenca i limiti non verificabili. | «Verifica la checklist prima del prossimo passo.» |
 | `doctor` | Controlla la catena di hash e gli artefatti; segnala ACK in sospeso ed esecuzioni incerte. | «Controlla che il registro sia integro e dimmi quali ACK sono in sospeso.» |
 | `export` | Rigenera dal registro le esportazioni complete strutturate, leggibili e della storia della posta. | «Esporta il registro in forma leggibile, con la storia della posta.» |
 | `legacy` | Importa vecchi record come copie storiche non verificate. | «Importa i nostri vecchi record come copie storiche non verificate.» |
