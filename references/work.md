@@ -679,7 +679,8 @@ tracked files, and a live name-only refusal still needs `--allow-name`.
 Restored readers resolve candidates relative to the restored registry. Repeating the same packet does
 not duplicate events. New proofs change the packet and require a new message/ACK,
 even when returning to an earlier candidate. Without `--reviewer`, the manual
-protocol remains.
+protocol remains, and `task` warns on stderr that a delivery without a reader cannot get one later with
+`reassign`: pass `--reviewer` when creating the task (a `--read-at-gate` task is not warned).
 
 `advance --actor builder --task T1` reconciles an existing delivery: it can create
 the missing handoff for the same proven candidate; the coordinator can inspect

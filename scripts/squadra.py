@@ -761,6 +761,10 @@ def dispatch(a, store):
         assignment = "assign-" + a.id
         store.batch([("task", actor, task, None), ("message", actor, {"id": assignment, "to": a.owner,
                      "task": a.id, "body": f"Assignment {a.id}: {a.title}\nBase {base['head']}\nScope {task['scope']['sha256']}\nACK required before starting."}, None)])
+        if not task["reviewer"] and not task.get("pool") and not task.get("read_at_gate"):
+            warning("no reader: a delivery without a reader cannot get one later with reassign; pass --reviewer now"
+                    if state["workspace"].get("lang", "it") == "en" else
+                    "nessun lettore: una consegna senza lettore non potrà riceverne uno dopo con reassign; passa --reviewer ora")
     elif command == "route":
         from light_route import contract
         require(a.task in state["tasks"], "Unknown task")
@@ -807,8 +811,8 @@ def dispatch(a, store):
         bindings(store, a.task, require_review=False)
         where = ''
         if old.get('frozen'):
-            copy, warning = frozen_copy(store.root, old['frozen'], task['repo'])
-            where = ': ' + copy + '. ' + warning
+            copy, copy_note = frozen_copy(store.root, old['frozen'], task['repo'])
+            where = ': ' + copy + '. ' + copy_note
         store.batch([('reassign', actor, data, 'reassign:' + handoff),
                      ('message', actor, {'id': handoff, 'to': a.reviewer, 'related_task': a.task,
                       'body': 'Read reassigned on the same proved candidate' + (where or '.') + ' ACK this exact handoff.\n' +
@@ -1311,8 +1315,31 @@ def warning(text):
         pass
 
 
+def proof_tail(argv):
+    """Split `task ... --proof -- argv`: everything after that `--` is the proof argv verbatim."""
+    if 'task' not in argv:
+        return argv, None
+    for i in range(argv.index('task') + 1, len(argv) - 1):
+        if argv[i] == '--':
+            break
+        if argv[i] == '--proof' and argv[i + 1] == '--':
+            return argv[:i], argv[i + 2:]
+    return argv, None
+
+
+def parse_cli(argv=None):
+    argv = list(sys.argv[1:] if argv is None else argv)
+    head, tail = proof_tail(argv)
+    if tail is not None:
+        a = parser().parse_args([*head, '--proof', 'proof-tail'])
+        if a.command == 'task':
+            a.proof = ['--', *tail]  # the task handler drops the marker and skips the option check
+            return a
+    return parser().parse_args(argv)
+
+
 def main(argv=None):
-    a = parser().parse_args(argv)
+    a = parse_cli(argv)
     store = None
     result_rc = 0
     root = Path(a.root or os.environ.get('SQUADRA_ROOT') or Path.cwd() / '.squadra')
