@@ -1,9 +1,13 @@
 """Read-only checks of recorded workflow facts and local Git history."""
 from pathlib import Path
+import re
 import subprocess
 
-from registry import Error, candidate_checks, git_process, now, require, standby
+from registry import Error, candidate_checks, decision_id, git_process, now, require, standby
 from ripresa import readiness
+
+# A round scope is the latest decision whose reason starts with exactly this text.
+ROUND_SCOPE = 'Round scope:'
 
 
 def _git(repo, *args):
@@ -110,7 +114,36 @@ def _assignment(state, task):
     return 'Transport recorded; delivery observation: ' + str(message['transport'].get('delivered')) + '; this is not an ACK'
 
 
-def _assign(state, task, items):
+def _named(task_id, text):
+    """The exact task ID as a whole token: R1 is not named by R1-B, XR1 or R10."""
+    return re.search(r'(?<![\w-])' + re.escape(task_id) + r'(?![\w-])', text) is not None
+
+
+def _round_scope(store, task):
+    """Never fail: the registry cannot tell a blocking fix or the owner's word from prose."""
+    created = scope = None
+    for row in store.db.execute("SELECT * FROM events WHERE kind IN ('task', 'decision') ORDER BY seq"):
+        event = store.decode_event(row)
+        data = event['data']
+        if event['kind'] == 'task' and data.get('id') == task['id'] and created is None:
+            created = event['seq']
+        elif event['kind'] == 'decision' and isinstance(data.get('reason'), str) \
+                and data['reason'].startswith(ROUND_SCOPE):
+            scope = (event['seq'], decision_id(data, event['seq']), data['reason'])
+    if scope is None:
+        return 'No round scope recorded (a decision whose reason starts with "' + ROUND_SCOPE + '")'
+    seq, name, reason = scope
+    if created is None:
+        return 'unverifiable', task['id'] + ': task event not found; round scope ' + name + ' not compared'
+    if _named(task['id'], reason):
+        return task['id'] + ': named in round scope ' + name
+    if created < seq:
+        return task['id'] + ': created before round scope ' + name
+    return ('unverifiable', task['id'] + ': task created after the round scope and not named in it: '
+            "owner's word or a blocking fix needed (round scope " + name + ')')
+
+
+def _assign(store, state, task, items):
     _add(items, 'task_open', lambda: _expect(task['status'] != 'done' and not task.get('superseded_by'),
                                            task['id'] + ': must be open and not superseded'))
     _add(items, 'brief', lambda: _expect(bool(task.get('brief')), task['id'] + ': recorded brief required'))
@@ -120,9 +153,15 @@ def _assign(state, task, items):
     _add(items, 'checkout', lambda: _checkout_overlap(task, others))
     _add(items, 'branch', lambda: _branch_overlap(task, others))
     _add(items, 'assignment', lambda: _assignment(state, task))
+    _add(items, 'round_scope', lambda: _round_scope(store, task))
 
 
 def _deliver(store, state, task, items):
+    def task_state():
+        require(task['status'] != 'done', task['id'] + ': task already closed: nothing to deliver')
+        return task['id'] + ': not closed'
+
+    _add(items, 'task_state', task_state)
     _add(items, 'delivery', lambda: _expect(bool(task.get('delivery')), task['id'] + ': recorded delivery required'))
 
     def proof():
@@ -163,6 +202,11 @@ def _emails(repo, revision_range):
         if revision_range is None:
             return 'unverifiable', 'Default upstream range is unavailable: ' + str(exc)
         raise
+    if revision_range is not None:
+        ancestry = git_process(repo, 'merge-base', '--is-ancestor', start, end, timeout=10)
+        require(ancestry.returncode in (0, 1),
+                ancestry.stderr.decode(errors='replace').strip() or 'Git ancestry check failed')
+        require(ancestry.returncode == 0, 'range start is not an ancestor of its end: ' + interval)
     previous = {email for _, author, committer in _commit_emails(repo, start) for email in (author, committer)}
     commits = _commit_emails(repo, end, '^' + start)
     new = sorted({email for _, author, committer in commits for email in (author, committer)} - previous)
@@ -216,7 +260,7 @@ def run(store, moment, *, actor=None, task_id=None, repo=None, revision_range=No
         _add(items, 'task', lambda: _expect(task is not None, f'Registered --task required: {task_id}'))
         if task is not None:
             if moment == 'assign':
-                _assign(state, task, items)
+                _assign(store, state, task, items)
             else:
                 _deliver(store, state, task, items)
     return {'moment': moment, 'items': items, 'ready': not any(item['status'] == 'fail' for item in items)}

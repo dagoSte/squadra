@@ -173,6 +173,51 @@ class Checklist(unittest.TestCase):
         state = self.state(); state['messages'].pop('assign-T')
         self.assertEqual(self.check('assign', state, task_id='T')['assignment']['status'], 'fail')
 
+    def decide_scope(self, reason):
+        self.store.append('decision', 'C', {'reason': reason})
+
+    def test_assign_without_round_scope_is_ok(self):
+        self.decide_scope('Owner instruction unrelated to any round')
+        item = self.check('assign', task_id='T')['round_scope']
+        self.assertEqual(item['status'], 'ok'); self.assertIn('No round scope recorded', item['detail'])
+
+    def test_assign_task_created_after_round_scope_and_not_named_is_unverifiable(self):
+        self.decide_scope('Round scope: T only')
+        self.task('T2')
+        items = self.check('assign', task_id='T2')
+        self.assertEqual(items['round_scope']['status'], 'unverifiable')
+        self.assertIn("task created after the round scope and not named in it: owner's word or a blocking fix needed",
+                      items['round_scope']['detail'])
+        self.assertEqual(self.invoke('--moment', 'assign', '--task', 'T2')[1]['items'][-1]['id'], 'round_scope')
+
+    def test_assign_round_scope_names_the_exact_task_id(self):
+        self.decide_scope('Round scope: T2-EXTRA and XT2')
+        self.task('T2')
+        self.assertEqual(self.check('assign', task_id='T2')['round_scope']['status'], 'unverifiable')
+        self.decide_scope('Round scope: T2, T2-EXTRA')
+        self.task('T3')
+        self.assertEqual(self.check('assign', task_id='T3')['round_scope']['status'], 'unverifiable')
+        self.assertEqual(self.check('assign', task_id='T2')['round_scope']['status'], 'ok')
+        self.decide_scope('Round scope: (T5), T5-EXTRA.')
+        self.task('T5')
+        item = self.check('assign', task_id='T5')['round_scope']
+        self.assertEqual(item['status'], 'ok'); self.assertIn('named in round scope', item['detail'])
+
+    def test_assign_task_named_after_its_creation_or_created_before_scope_is_ok(self):
+        self.task('T2')
+        self.decide_scope('Round scope: T2 only')
+        self.assertEqual(self.check('assign', task_id='T2')['round_scope']['status'], 'ok')
+        self.assertEqual(self.check('assign', task_id='T')['round_scope']['status'], 'ok')
+
+    def test_assign_round_scope_uses_only_the_latest_prefixed_decision(self):
+        self.decide_scope('Round scope: T2')
+        self.task('T2')
+        self.decide_scope('Owner note: Round scope: nothing else, prefix not at the start')
+        self.assertEqual(self.check('assign', task_id='T2')['round_scope']['status'], 'ok')
+        self.decide_scope('Round scope: T3')
+        self.task('T4')
+        self.assertEqual(self.check('assign', task_id='T4')['round_scope']['status'], 'unverifiable')
+
     def test_git_timeout_in_the_middle_is_unverifiable(self):
         from checklist import git_process
         def slow(repo, *args, **kwargs):
@@ -302,6 +347,37 @@ class Checklist(unittest.TestCase):
         self.assertEqual(self.cli('review', '--actor', 'R', '--task', 'T', '--verdict', 'accepted',
                                   '--report', str(self.report)), 0)
         self.assertEqual(self.cli('close', '--actor', 'C', '--task', 'T'), 0)
+
+    def test_deliver_open_task_state_ok(self):
+        self.deliver_and_ack()
+        self.assertEqual(self.check('deliver', task_id='T')['task_state']['status'], 'ok')
+
+    def test_deliver_closed_task_fails_task_state(self):
+        self.closed_task()
+        item = self.check('deliver', task_id='T')['task_state']
+        self.assertEqual(item['status'], 'fail')
+        self.assertEqual(item['detail'], 'T: task already closed: nothing to deliver')
+        self.assertEqual(self.invoke('--moment', 'deliver', '--task', 'T')[0], 1)
+
+    def test_push_reversed_range_fails_emails(self):
+        self.upstream(); first = self.git('rev-parse', 'HEAD').decode().strip(); second = self.commit()
+        item = self.check('push', repo=str(self.repo), revision_range=f'{second}..{first}')['emails']
+        self.assertEqual(item['status'], 'fail')
+        self.assertEqual(item['detail'], 'range start is not an ancestor of its end: ' + f'{second}..{first}')
+
+    def test_push_diverged_range_fails_emails(self):
+        self.upstream(); branch = self.git('branch', '--show-current').decode().strip()
+        self.git('checkout', '-qb', 'side'); side = self.commit(marker='side branch')
+        self.git('checkout', '-q', branch); main = self.commit(marker='main branch')
+        self.assertNotEqual(side, main)
+        item = self.check('push', repo=str(self.repo), revision_range=f'{side}..{main}')['emails']
+        self.assertEqual(item['status'], 'fail'); self.assertIn('range start is not an ancestor of its end', item['detail'])
+
+    def test_push_empty_range_detail_says_zero_commits(self):
+        self.upstream()
+        item = self.check('push', repo=str(self.repo), revision_range='HEAD..HEAD')['emails']
+        self.assertEqual(item['status'], 'ok'); self.assertIn('0 commits', item['detail'])
+        self.assertNotIn('ancestor of its end', item['detail'])
 
     def test_push_closed_task_and_candidate_in_head_ok(self):
         self.upstream(); self.closed_task(); self.commit()

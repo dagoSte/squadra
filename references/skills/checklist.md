@@ -21,8 +21,8 @@ Read and reconcile those limits before taking the dependent action.
 | Moment | Recorded or local facts |
 | --- | --- |
 | `resume` | Required registered `--actor`, coordinator role, outside stand-by; the blockers from `readiness()`; listening for mail is always unverifiable |
-| `assign` | Required open `--task`, recorded brief, registered independent reviewer or pool of another client (or recorded same-client reason), distinct checkout and branch from other open tasks, assignment with recorded transport or ACK |
-| `deliver` | Required `--task`, existing delivery, current native proof bound to its candidate using the registry's existing checks, ACK of a current review handoff |
+| `assign` | Required open `--task`, recorded brief, registered independent reviewer or pool of another client (or recorded same-client reason), distinct checkout and branch from other open tasks, assignment with recorded transport or ACK; round scope (below) |
+| `deliver` | Required `--task` not already closed, existing delivery, current native proof bound to its candidate using the registry's existing checks, ACK of a current review handoff |
 | `push` | Required Git `--repo`, author and committer emails already present before the chosen interval, local upstream ancestor of HEAD; with `--task`, a closed task whose candidate commit is contained in HEAD |
 
 The `deliver` moment checks an already recorded delivery **after its recipient ACK**;
@@ -36,13 +36,24 @@ calls are reported as unverifiable; file ownership in prose still needs the coor
 [overlap check](sovrapposizioni.md). A JSON result never gives another window permission
 to write an area it does not own.
 
+## Round scope
+
+The round scope is the latest decision whose reason starts with exactly `Round scope:`.
+A task created after it whose ID does not appear in that reason as a whole token
+(`R1` is not named by `R1-B` or `XR1`) makes `round_scope` unverifiable: the task
+entered after the scope was fixed, so it needs the owner's word or must be a fix that
+blocks a close. The item never fails, because the registry cannot tell a blocking fix
+from prose; reconcile it before assigning. Without such a decision the item is ok.
+
 ## Before a push
 
 `--range A..B` selects the commits to inspect; the default is `@{upstream}..HEAD`.
 Both boundaries must name commits. Known emails are the exact author and committer
 emails in the ancestry of `A`, fixed before checking any selected commit. An email first
 introduced inside the interval is not learned from another commit in that interval.
-An empty interval has no new email to check.
+With an explicit `--range`, `A` must be an ancestor of `B`; otherwise `emails` fails
+with "range start is not an ancestor of its end". A valid empty interval such as
+`HEAD..HEAD` stays ok and its detail reports 0 commits.
 
 This detects a new address such as the observed contributor-attribution error; it
 does not check whether an address belongs to a GitHub account. Legitimate new authors
