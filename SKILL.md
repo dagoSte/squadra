@@ -74,6 +74,32 @@ run by any CLI command.
 Read [startup and presentation](references/start.md) for the complete commands and
 [keep-alive and return](references/work.md#keep-alive-e-stand-by) during the work.
 
+## Fundamental rule — no overlap between coordinated windows
+
+**The coordinator always checks that the windows it coordinates do not overlap**, so that
+their work and their commits never collide (owner, 2026-10-30). It is a fundamental rule:
+no deadline, budget or stand-by suspends it.
+
+- **Before every assignment** (`task`, `reassign`, a fix round, a resume) the coordinator
+  compares the new work with every open task and every window's declared next step:
+  repository and checkout, branch, owned files and parts of shared files, Git base,
+  reserved resources (gates, ports, databases, `cpu-heavy`) and the commits each window
+  is expected to make.
+- **One writer per tree and per branch.** Two windows never build in the same checkout or
+  commit to the same branch; two lanes never own the same file or the same part of a
+  shared file. Shared contracts are written first and then frozen (Rule 1).
+- **An overlap found is resolved before work starts**: split the scope, sequence it with
+  `--depends`, move one lane to its own checkout, or reassign. The choice is recorded with
+  `decision --task`; an overlap is never left for the merge to sort out.
+- **During the work** the coordinator rechecks at every delivery, merge and mail that
+  changes a scope; a window that needs another lane's area asks the coordinator (Rule 5).
+  A commit outside a window's owned paths is a finding, raised at once.
+- When the coordinator cannot see a window's tree or branch, the overlap check is
+  **not done**: it says so and asks that window for its checkout, branch and changed paths
+  before assigning.
+
+Follow the [overlap check](references/skills/sovrapposizioni.md) at each of those moments.
+
 ## Rule 1 — parallel work
 
 The squad's value is parallelism. The coordinator immediately assigns independent work
