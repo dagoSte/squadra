@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "known_reds": [
+    {
+      "id": "test_rf4a_upgrade.PublishedRegistryUpgrade.test_published_delivery_needs_no_repair_and_its_old_sha_can_be_retired",
+      "reason": "The upgrade fixture needs the published 5099f0c as an ancestor of HEAD; the recovered 3.11.1 history (10325a8) no longer contains it.",
+      "since": "v3.11.1",
+      "retire_when": "The fixture reads 5099f0c from an archived bundle or SQ_RF4A_BASE_REPO in CI, and the test passes on clean main."
+    }
+  ]
+}

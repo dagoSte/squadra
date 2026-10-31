@@ -421,6 +421,9 @@ uses unittest discovery, including `load_tests`, and runs modules in fresh
 processes with separate synthetic HOME, CODEX_HOME, CLAUDE_CONFIG_DIR and temporary
 directories. It compares collected and executed IDs including multiplicity;
 missing tests, worker crashes and skips cannot yield a passing complete proof.
+Failures listed in `tests/known_reds.json` are reported as `KNOWN RED`; a task proof
+agreed with `--accept-known` passes only when they are the sole failures, and a release
+proof never uses it ([known reds](skills/rossi-noti.md)).
 
 The default is `min(cpu count, 8)` concurrent modules; `--jobs N` overrides it.
 Each module and the discovery process has a **300-second timeout**, overridden

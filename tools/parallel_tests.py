@@ -104,7 +104,9 @@ def child(args):
     receipt = {'collected': collected, 'executed': result.testsRun,
                'failed': len(result.failures) + len(result.unexpectedSuccesses),
                'errors': len(result.errors), 'skipped': len(result.skipped),
-               'expected_failures': len(result.expectedFailures), 'passed': result.wasSuccessful()}
+               'expected_failures': len(result.expectedFailures), 'passed': result.wasSuccessful(),
+               'failing': sorted(test.id() for test, _ in result.failures + result.errors)
+                          + sorted(test.id() for test in result.unexpectedSuccesses)}
     (folder / 'result.json').write_text(json.dumps(receipt), encoding='utf-8')
     return 0 if result.wasSuccessful() and not result.skipped else 1
 
@@ -216,6 +218,8 @@ def read_json(path):
 def reconcile(folder, expected, process):
     problems = []
     started = []
+    failing = []
+    hard = bool(process['problem'] or process['native_rc'] not in (0, 1))
     counts = dict(failed=0, errors=0, skipped=0, expected_failures=0)
     if process['problem'] or process['native_rc'] != 0:
         problems.append(process['problem'] or f"worker exited with native rc {process['native_rc']}")
@@ -226,10 +230,15 @@ def reconcile(folder, expected, process):
     except (OSError, ValueError) as exc:
         problems.append(f'missing or invalid execution journal: {exc}')
         started = []
+        hard = True
     try:
         receipt = read_json(folder / 'result.json')
         if receipt['collected'] != expected or receipt['executed'] != len(started):
             problems.append('worker collection/count receipt differs from expected execution')
+            hard = True
+        failing = receipt.get('failing', [])
+        if not isinstance(failing, list) or not all(isinstance(item, str) for item in failing):
+            raise ValueError('invalid failing-test IDs')
         for name in counts:
             value = receipt[name]
             if type(value) is not int or value < 0:
@@ -237,11 +246,34 @@ def reconcile(folder, expected, process):
             counts[name] = value
         if receipt['passed'] is not True or any(counts[name] for name in ('failed', 'errors', 'skipped')):
             problems.append('module did not pass every required test (skips are not a complete proof)')
+        # A worker that fails only by named failing tests is a test result, not an instrument error.
+        hard = hard or bool(counts['skipped']) or (process['native_rc'] == 1 and not failing) or (
+            len(failing) != counts['failed'] + counts['errors'])
     except (OSError, ValueError, KeyError, TypeError) as exc:
         problems.append(f'missing or invalid completion receipt: {exc}')
+        hard = True
     if started != expected:
         problems.append(f'ID/count mismatch: collected={len(expected)} executed={len(started)}')
-    return started, counts, problems
+        hard = True
+    return started, counts, problems, failing, hard
+
+
+def known_reds(path):
+    """Read the known reds of the clean main branch; every entry names why and when it retires."""
+    if path is None or not path.exists():
+        return {}
+    data = read_json(path)
+    if not isinstance(data, dict) or data.get('version') != 1 or not isinstance(data.get('known_reds'), list):
+        raise ValueError(f'{path}: expected {{"version": 1, "known_reds": [...]}}')
+    entries = {}
+    for entry in data['known_reds']:
+        fields = ('id', 'reason', 'since', 'retire_when')
+        if not isinstance(entry, dict) or not all(isinstance(entry.get(k), str) and entry[k].strip() for k in fields):
+            raise ValueError(f'{path}: every known red needs non-empty {", ".join(fields)}')
+        if entry['id'] in entries:
+            raise ValueError(f"{path}: duplicate known red {entry['id']}")
+        entries[entry['id']] = entry
+    return entries
 
 
 def positive(value):
@@ -260,6 +292,9 @@ def parser():
     result.add_argument('--timeout', type=positive, default=300,
                         help='seconds per module and discovery process (default: 300)')
     result.add_argument('--output', help='new log/profile directory outside the source tree (default: system temp)')
+    result.add_argument('--known-reds', help='known reds of clean main (default: known_reds.json in the start directory)')
+    result.add_argument('--accept-known', action='store_true',
+                        help='exit 0 when the only failures are listed known reds; never for a release proof')
     result.add_argument('--_mode', choices=['collect', 'worker'], help=argparse.SUPPRESS)
     result.add_argument('--_module', help=argparse.SUPPRESS)
     result.add_argument('--_folder', help=argparse.SUPPRESS)
@@ -270,6 +305,7 @@ def run(args):
     sys.path.insert(0, str(ROOT / 'scripts'))
     start = time.monotonic()
     args.start_directory = str(Path(args.start_directory).resolve())
+    known = known_reds(Path(args.known_reds) if args.known_reds else Path(args.start_directory) / 'known_reds.json')
     if args.output:
         output = Path(args.output).resolve()
         if output.is_relative_to(ROOT) or output.is_relative_to(Path(args.start_directory)):
@@ -288,6 +324,7 @@ def run(args):
     collected, executed = [], []
     totals = dict(failed=0, errors=0, skipped=0, expected_failures=0)
     worker_errors = 0
+    failing, hard_errors = [], 0
     manifest = {}
     try:
         manifest = read_json(output / 'discovery/result.json')
@@ -298,6 +335,7 @@ def run(args):
         print(f'DISCOVERY FAILED: {exc}')
         print((output / 'discovery/stderr.log').read_text(errors='replace'))
         worker_errors += 1
+        hard_errors += 1
     if not worker_errors:
         modules = [(name, ids) for name, ids in manifest['modules'].items() if ids]
         parallel = [(name, ids) for name, ids in modules if name not in SERIAL_MODULES]
@@ -309,9 +347,11 @@ def run(args):
             print(f'SERIAL {name}: {SERIAL_MODULES[name]}', flush=True)
 
         def consume(folder, name, ids, outcome):
-            nonlocal worker_errors
-            found, counts, problems = reconcile(folder, ids, outcome)
+            nonlocal worker_errors, hard_errors
+            found, counts, problems, red, hard = reconcile(folder, ids, outcome)
             executed.extend(found)
+            failing.extend(red)
+            hard_errors += hard
             for key, value in counts.items():
                 totals[key] += value
             worker_errors += bool(problems)
@@ -344,12 +384,30 @@ def run(args):
     if mismatch:
         print(f'COUNT/ID MISMATCH: collected={len(collected)} executed={len(executed)}')
     passed = not (worker_errors or mismatch or any(totals[k] for k in ('failed', 'errors', 'skipped')))
+    new_red = sorted(set(failing) - set(known))
+    known_red = sorted(set(failing) & set(known))
+    stale = sorted(set(known) - set(failing))
+    for name in known_red:
+        print(f"KNOWN RED {name}: {known[name]['reason']} (since {known[name]['since']})")
+    for name in new_red:
+        print(f'NEW RED {name}')
+    for name in stale:
+        print(f"STALE KNOWN RED {name}: {'passes now' if name in executed else 'not collected'}; remove it from the list")
+    only_known = not (passed or hard_errors or mismatch or totals['skipped'] or new_red or stale)
     elapsed = time.monotonic() - start
     summary = {'collected': len(collected), 'executed': len(executed), **totals,
-               'worker_errors': worker_errors, 'wall_seconds': round(elapsed, 3), 'passed': passed}
+               'worker_errors': worker_errors, 'wall_seconds': round(elapsed, 3), 'passed': passed,
+               'known_red': len(known_red), 'new_red': len(new_red), 'stale_known': len(stale),
+               'only_known_reds': only_known}
     (output / 'summary.json').write_text(json.dumps(summary, indent=2), encoding='utf-8')
     print(f"\nRan {len(executed)} tests in {elapsed:.3f}s\n\n{'OK' if passed else 'FAILED'}")
     print('SUMMARY ' + ' '.join(f'{key}={value}' for key, value in summary.items()))
+    if args.accept_known and stale:
+        print('REFUSED: a listed known red no longer fails; remove it before accepting known reds.')
+        return 1
+    if args.accept_known and only_known:
+        print('ACCEPTED: every failure is a listed known red of main; not a release proof.')
+        return 0
     return 0 if passed else 1
 
 

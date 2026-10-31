@@ -202,3 +202,68 @@ def load_tests(loader, tests, pattern): return Omit([Example('test_pass')])
 
 if __name__ == '__main__':
     unittest.main()
+
+
+RED = '''
+import unittest
+class Red(unittest.TestCase):
+    def test_red(self): self.assertEqual(1, 2)
+'''
+RED_ID = 'test_red.Red.test_red'
+
+
+class KnownReds(unittest.TestCase):
+    """Known reds of main are named and separated; only --accept-known turns them into exit 0."""
+    setUp = ParallelProof.setUp
+    write = ParallelProof.write
+    run_suite = ParallelProof.run_suite
+
+    def known(self, *ids, **fields):
+        entry = {'reason': 'Synthetic fixture lost', 'since': 'v0.0.1', 'retire_when': 'Fixture restored'} | fields
+        (self.tests / 'known_reds.json').write_text(json.dumps(
+            {'version': 1, 'known_reds': [{'id': name, **entry} for name in ids]}), encoding='utf-8')
+
+    def test_only_known_reds_pass_with_accept_known_and_stay_red_without(self):
+        self.write('test_ok.py', PASS); self.write('test_red.py', RED); self.known(RED_ID)
+        self.assertEqual(self.run_suite(), 1, self.log)
+        self.assertFalse(self.summary['passed'])
+        self.assertTrue(self.summary['only_known_reds'])
+        self.assertIn(f'KNOWN RED {RED_ID}: Synthetic fixture lost (since v0.0.1)', self.log)
+        self.output = self.folder / 'receipts-accept'
+        self.assertEqual(self.run_suite('--accept-known'), 0, self.log)
+        self.assertEqual((self.summary['known_red'], self.summary['new_red']), (1, 0))
+        self.assertFalse(self.summary['passed'], 'the strict verdict never changes')
+        self.assertIn('not a release proof', self.log)
+
+    def test_a_new_red_always_fails(self):
+        self.write('test_red.py', RED)
+        self.write('test_other.py', RED.replace('Red', 'Other'))
+        self.known(RED_ID)
+        self.assertEqual(self.run_suite('--accept-known'), 1, self.log)
+        self.assertEqual(self.summary['new_red'], 1)
+        self.assertIn('NEW RED test_other.Other.test_red', self.log)
+
+    def test_a_known_red_that_passes_or_vanishes_must_be_removed(self):
+        self.write('test_ok.py', PASS); self.known('test_ok.Example.test_pass', 'test_gone.Gone.test_gone')
+        self.assertEqual(self.run_suite(), 0, self.log)
+        self.assertEqual(self.summary['stale_known'], 2)
+        self.assertIn('STALE KNOWN RED test_gone.Gone.test_gone: not collected', self.log)
+        self.output = self.folder / 'receipts-accept'
+        self.assertEqual(self.run_suite('--accept-known'), 1, self.log)
+        self.assertIn('REFUSED: a listed known red no longer fails', self.log)
+
+    def test_instrument_errors_and_skips_are_never_accepted(self):
+        self.write('test_red.py', RED)
+        self.write('test_crash.py', 'import os, unittest\nclass C(unittest.TestCase):\n    def test_a(self): os._exit(1)\n')
+        self.write('test_skip.py', 'import unittest\nclass S(unittest.TestCase):\n    @unittest.skip("x")\n    def test_s(self): pass\n')
+        self.known(RED_ID)
+        self.assertEqual(self.run_suite('--accept-known'), 1, self.log)
+        self.assertFalse(self.summary['only_known_reds'])
+
+    def test_an_entry_without_a_reason_refuses_the_run(self):
+        self.write('test_red.py', RED); self.known(RED_ID, reason=' ')
+        result = subprocess.run([sys.executable, '-B', str(RUNNER), '-s', str(self.tests), '--output', str(self.output),
+                                 '--accept-known'], cwd=self.folder, capture_output=True, text=True, timeout=45)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn('every known red needs non-empty id, reason, since, retire_when', result.stderr)
+        self.assertFalse((self.output / 'summary.json').exists())
