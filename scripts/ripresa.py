@@ -104,13 +104,18 @@ def readiness(state, at):
         if row.get('commits_since_tag'):
             notices.append(f"{path}: {row['commits_since_tag']} commits after {row['last_tag']}")
     clock = dt.datetime.fromisoformat(at) if isinstance(at, str) else at
+    registrations = {}
+    for agent in state['agents'].values():
+        if stamp := agent.get('updated'):
+            identity = agent['identity']
+            registrations[identity] = max(registrations.get(identity, stamp), stamp, key=dt.datetime.fromisoformat)
     silent, parked_by = [], {}
     for row in presence(state, clock):
         if row['availability'] != 'active':
             continue
         last = row['last_answer']
-        # The latest sign of life: an answer, or the seat's (re)registration for a seat that never answered.
-        signs = [stamp for stamp in (last, state['agents'][row['agent']].get('updated')) if stamp]
+        # Stand-by affects the whole identity, so its latest sign of life covers every seat.
+        signs = [stamp for stamp in (last, registrations.get(row['identity'])) if stamp]
         days = (clock - max(dt.datetime.fromisoformat(stamp) for stamp in signs)).days if signs else None
         if days is None or days >= SILENT_DAYS:
             keeps = holds(state, row['agent'], open_tasks)

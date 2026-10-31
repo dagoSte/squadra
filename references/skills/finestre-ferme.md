@@ -8,14 +8,14 @@ procedure for the
 
 ## Finding them
 
-`squadra doctor --resume` lists in `resume.silent_windows` every active window with no
-sign of life for two days or more: no recorded answer and no (re)registration. A window
-registered a moment ago is not silent:
+`squadra doctor --resume` lists in `resume.silent_windows` every active seat whose identity
+has no sign of life for two days or more: no recorded answer and no (re)registration of
+any seat of that identity. Registering one seat refreshes the whole identity:
 
 | Field | Meaning |
 | --- | --- |
 | `agent`, `identity` | the window and the identity that `standby` parks as a whole |
-| `last_answer`, `days` | its last recorded answer (`null` if it never answered) and the days since its latest sign of life: that answer or, if later, its registration |
+| `last_answer`, `days` | the identity's last recorded answer (`null` if it never answered) and the days since its latest sign of life: that answer or, if later, the most recent (re)registration across all its seats |
 | `archivable` | `true` when nothing keeps it |
 | `keeps` | why it cannot be parked yet: coordinator role, open tasks it owns or reads (reviewer or pool), resources it holds — for every seat of the same identity, prefixed `same identity as <seat>:` |
 | `command` | for archivable windows only, one per identity: the `standby` command to run after the owner's word |
@@ -45,7 +45,8 @@ window with open work is kept by that other seat.
 
 ## Limits
 
-- Silence is measured from recorded ACKs, not from processes: a silent window may still
-  be working. Stand-by stops no process and moves no work.
+- Signs of life are recorded ACKs and (re)registrations across the whole identity;
+  processes are not measured. A silent window may still be working. Stand-by stops no
+  process and moves no work.
 - A parked window returns when it answers a new `ping` (Rule 0) or with
   `standby --resume`.

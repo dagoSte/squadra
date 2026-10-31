@@ -199,6 +199,26 @@ class StaleWindowsReview(unittest.TestCase):
         self.assertEqual(rows['fresh']['days'], SILENT_DAYS)
         self.assertIsNone(rows['fresh']['last_answer'])
 
+    def test_registration_of_any_seat_keeps_the_whole_identity_recent(self):
+        from unittest.mock import patch
+        clock = dt.datetime.fromisoformat(now())
+        stale = clock - dt.timedelta(days=SILENT_DAYS + 1)
+        with patch('registry.now', return_value=stale.isoformat()):
+            self.seat('old-seat', 'shared-identity')
+            self.seat('unrelated', 'unrelated-identity')
+        with patch('registry.now', return_value=(clock - dt.timedelta(minutes=1)).isoformat()):
+            self.seat('new-seat', 'shared-identity')
+        before = len(self.store.events())
+        rows = {r['agent']: r for r in readiness(self.store.view(), clock)['silent_windows']}
+        self.assertNotIn('old-seat', rows)
+        self.assertNotIn('new-seat', rows)
+        self.assertEqual(rows['unrelated']['days'], SILENT_DAYS + 1)
+        later = clock + dt.timedelta(days=SILENT_DAYS)
+        rows = {r['agent']: r for r in readiness(self.store.view(), later)['silent_windows']}
+        self.assertEqual(rows['old-seat']['days'], SILENT_DAYS)
+        self.assertEqual(rows['new-seat']['days'], SILENT_DAYS)
+        self.assertEqual(len(self.store.events()), before, 'the identity check never writes')
+
     def test_one_standby_command_per_identity(self):
         self.seat('P1', 'parked'); self.seat('P2', 'parked'); self.seat('P3', 'parked')
         rows = self.silent()
