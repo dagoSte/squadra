@@ -1907,30 +1907,33 @@ def task_progress(events):
     """
     state, facts, runs = initial(), {}, {}
     for position, event in enumerate(events):
-        kind, d, utc = event["kind"], event["data"], event["utc"]
-        mark = {"utc": utc, "seq": event.get("seq", position + 1)}
-        if kind == "task":
-            facts[d["id"]] = {"created": utc, "plans": [], "plan_reads": [], "starts": [], "proofs": [],
-                              "deliveries": [], "refusals": [], "code_reads": [], "closes": []}
-        fact = facts.get(d.get("task")) if isinstance(d.get("task"), str) else None
-        if fact is not None and kind == "plan":
-            fact["plans"].append({**mark, "sha": d["artifact"]["sha256"]})
-        elif fact is not None and kind == "review":
-            fact["plan_reads" if d["stage"] == "plan" else "code_reads"].append({**mark, "verdict": d["verdict"], "binding": d.get("binding")})
-        elif fact is not None and kind == "start":
-            fact["starts"].append(mark)
-        elif kind == "run.start":
-            runs[d["id"]] = d
-        elif kind == "run.end" and runs.get(d["id"], {}).get("mode") == "proof":
-            for member in completed_members(runs[d['id']], d):
-                if member in facts:
-                    facts[member]['proofs'].append({**d, **mark})
-        elif fact is not None and kind == "deliver":
-            fact["deliveries"].append({**mark, "sha": d["snapshot"].get("sha256")})
-        elif fact is not None and kind == "diagnostic" and d.get("command") in {"deliver", "advance"}:
-            fact["refusals"].append({**mark, "error": d.get("error")})
-        elif fact is not None and kind == "close":
-            fact["closes"].append(mark)
+        # A replace event nests operations that apply() applies in order; their facts are read the same way.
+        nested = event["data"]["operations"] if event["kind"] == "replace" else None
+        for row in ([{**event, **operation} for operation in nested] if nested is not None else [event]):
+            kind, d, utc = row["kind"], row["data"], row["utc"]
+            mark = {"utc": utc, "seq": event.get("seq", position + 1)}
+            if kind == "task":
+                facts[d["id"]] = {"created": utc, "plans": [], "plan_reads": [], "starts": [], "proofs": [],
+                                  "deliveries": [], "refusals": [], "code_reads": [], "closes": []}
+            fact = facts.get(d.get("task")) if isinstance(d.get("task"), str) else None
+            if fact is not None and kind == "plan":
+                fact["plans"].append({**mark, "sha": d["artifact"]["sha256"]})
+            elif fact is not None and kind == "review":
+                fact["plan_reads" if d["stage"] == "plan" else "code_reads"].append({**mark, "verdict": d["verdict"], "binding": d.get("binding")})
+            elif fact is not None and kind == "start":
+                fact["starts"].append(mark)
+            elif kind == "run.start":
+                runs[d["id"]] = d
+            elif kind == "run.end" and runs.get(d["id"], {}).get("mode") == "proof":
+                for member in completed_members(runs[d['id']], d):
+                    if member in facts:
+                        facts[member]['proofs'].append({**d, **mark})
+            elif fact is not None and kind == "deliver":
+                fact["deliveries"].append({**mark, "sha": d["snapshot"].get("sha256")})
+            elif fact is not None and kind == "diagnostic" and d.get("command") in {"deliver", "advance"}:
+                fact["refusals"].append({**mark, "error": d.get("error")})
+            elif fact is not None and kind == "close":
+                fact["closes"].append(mark)
         apply(state, event)
     result = {}
     for task_id, task in state["tasks"].items():
