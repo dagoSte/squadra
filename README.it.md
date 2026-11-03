@@ -13,7 +13,7 @@ Coordina Claude Code, Codex e Cursor con incarichi condivisi, revisioni indipend
 
 **Gratuita e open source** — licenza MIT, nessun account, tutto gira sul tuo computer.
 
-**Versione 3.12.0** · Python 3.12+ · macOS / POSIX
+**Versione 3.12.1** · Python 3.12+ · macOS / POSIX
 
 [English](README.md) · **Italiano** · [Privacy](PRIVACY.it.md)
 
@@ -942,6 +942,18 @@ Controlli statici, comportamentali e delle dipendenze, con `tests/` esclusa. Il 
 <a id="news"></a>
 ## Novità
 
+**3.12.1 — la dashboard apre i registri con finestre sostituite**
+
+- **Correzione della dashboard.** Dalla 3.11.1 `replace` registra incarichi successori, letture e avvii dentro un solo evento `replace`. L'avanzamento degli incarichi della dashboard ignorava queste operazioni annidate, e ogni registro con una sostituzione andava in errore con `KeyError: '<incarico>-takeover-…'`. Ora l'avanzamento le applica come fa il registro, e un test di regressione lo fissa.
+- Le copie bridge dei plugin di `scripts/registry.py` hanno la stessa correzione; il pin di lettura di memoranda accetta i byte della 3.12.1.
+
+**Guarda il film delle novità della 3.10.2, due minuti — attiva l'audio nel lettore:**
+
+https://github.com/user-attachments/assets/8f38a443-b738-48f8-b562-9b072419b5f0
+
+<details>
+<summary><strong>Versioni precedenti</strong></summary>
+
 **3.12.0 — la checklist conosce il giro, avvisi e consigli più chiari, e una storia delle versioni**
 
 - **Perimetro del giro nella checklist.** `checklist --moment assign` aggiunge `round_scope`: un incarico creato dopo l'ultima decisione la cui motivazione inizia con `Round scope:`, e non nominato in essa, risulta `unverifiable` con il motivo (consultivo, mai `fail`).
@@ -951,13 +963,6 @@ Controlli statici, comportamentali e delle dipendenze, con `tests/` esclusa. Il 
 - **Consiglio di composizione secondo i ruoli veri.** `status`, tabella e dashboard dicono chi costruisce e chi rilegge; con ruoli misti mostrano i conteggi reali, e le righe di abbinamento restano visibili quando la squadra è sbilanciata.
 - **Storia delle versioni.** La storia completa è passata in [CHANGELOG.it.md](CHANGELOG.it.md); il README tiene la versione più nuova e le tre precedenti.
 - **Audit delle skill non aggiornati.** Come nella 3.11.2, le scansioni registrate in `assets/skill-audits.json` precedono questa versione; la pagina System skills mostra ogni skill come non verificata (file cambiati) fino a una nuova scansione.
-
-**Guarda il film delle novità della 3.10.2, due minuti — attiva l'audio nel lettore:**
-
-https://github.com/user-attachments/assets/8f38a443-b738-48f8-b562-9b072419b5f0
-
-<details>
-<summary><strong>Versioni precedenti</strong></summary>
 
 **3.11.2 — regole che si controllano da sole: nessuna sovrapposizione, ripresa in un passo, rossi noti, finestre ferme, checklist e perimetro del giro**
 
@@ -979,17 +984,6 @@ https://github.com/user-attachments/assets/8f38a443-b738-48f8-b562-9b072419b5f0
 - **Contesto di rientro.** `context --for FINESTRA --since SEQ:HASH` mostra cosa è cambiato per una finestra e conserva sempre vincoli, ACK dovuti, budget e prove attuali.
 - **Correzioni.** `transport` non riconsegna più in silenzio un messaggio vecchio con un ID riusato; `save --repo` segnala come avvisi i repository non selezionati mancanti.
 - Plugin: memoranda 1.0.10, Playwright 1.0.11, Sentry 0.1.8.
-
-**3.11.0 — consegne congelate, letture riassegnabili e migliora**
-
-Aggiornamento: l’avvio della dashboard libera la lettura del WAL; risposte JSON e transport brevi, deroghe registrate per singolo percorso e rifiuti di recupero più chiari.
-
-- **Il costruttore può continuare dopo la consegna.** La copia del candidato verificato resta nel registro e contiene anche le modifiche non committate.
-- **Cambia lettore senza rifare la prova.** `reassign` conserva candidato, prove e budget, richiedendo il nuovo ACK.
-- **Posta e risorse più leggibili.** Il cursore della posta si salva; `resource status` mostra titolare e coda. Le prenotazioni possono indicare l’incarico.
-- **Comandi più brevi.** Verdetti identici senza duplicati, note a consegna e chiusura, prova dichiarabile con argomenti diretti e risposta breve di `send`.
-- **Migliora.** Una skill automatica per gli attriti dimostrati: regole circoscritte, verifica e commit locale dei propri file dopo le letture richieste dal progetto.
-- Plugin: memoranda 1.0.9, Playwright 1.0.10, Sentry 0.1.7.
 
 </details>
 

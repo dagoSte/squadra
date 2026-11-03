@@ -13,7 +13,7 @@ Coordinate Claude Code, Codex and Cursor with shared tasks, independent reviews 
 
 **Free and open source** — MIT licence, no account, everything runs on your machine.
 
-**Version 3.12.0** · Python 3.12+ · macOS / POSIX
+**Version 3.12.1** · Python 3.12+ · macOS / POSIX
 
 **English** · [Italiano](README.it.md) · [Privacy](PRIVACY.md)
 
@@ -939,6 +939,18 @@ Static, behavioral and dependency checks, excluding `tests/`. Passing means no H
 <a id="news"></a>
 ## What's new
 
+**3.12.1 — the dashboard opens registries that replaced windows**
+
+- **Dashboard fix.** Since 3.11.1, `replace` records the successor tasks, reads and starts inside one `replace` event. The dashboard's task progress ignored those nested operations, so every registry with a replacement failed with `KeyError: '<task>-takeover-…'`. Task progress now applies them the way the registry does, and a regression test pins it.
+- The plugin bridge copies of `scripts/registry.py` carry the same fix; the memoranda reader pin accepts the 3.12.1 bytes.
+
+**Watch the two-minute film of what's new in 3.10.2 — turn the sound on in the player:**
+
+https://github.com/user-attachments/assets/6ea747a5-a993-4aa7-a58d-1b2b7f908720
+
+<details>
+<summary><strong>Earlier versions</strong></summary>
+
 **3.12.0 — the checklist knows the round, clearer warnings and advice, and a changelog**
 
 - **Round scope in the checklist.** `checklist --moment assign` adds `round_scope`: a task created after the latest decision whose reason starts with `Round scope:`, and not named in it, is reported `unverifiable` with the reason (advisory, never `fail`).
@@ -948,13 +960,6 @@ Static, behavioral and dependency checks, excluding `tests/`. Passing means no H
 - **Composition advice by real roles.** `status`, board and dashboard name who builds and who reads; with mixed roles they show the real counts, and pairing rows stay visible when the squad is unbalanced.
 - **Changelog.** The full release history moved to [CHANGELOG.md](CHANGELOG.md); the README keeps the newest release and the three before it.
 - **Skill audits not refreshed.** As in 3.11.2, the recorded scans in `assets/skill-audits.json` predate this release; the System skills page shows every skill as not audited (files changed) until a fresh scan.
-
-**Watch the two-minute film of what's new in 3.10.2 — turn the sound on in the player:**
-
-https://github.com/user-attachments/assets/6ea747a5-a993-4aa7-a58d-1b2b7f908720
-
-<details>
-<summary><strong>Earlier versions</strong></summary>
 
 **3.11.2 — rules that check themselves: no overlaps, one-step resume, known reds, stale windows, checklist and round scope**
 
@@ -976,17 +981,6 @@ https://github.com/user-attachments/assets/6ea747a5-a993-4aa7-a58d-1b2b7f908720
 - **Re-entry context.** `context --for WINDOW --since SEQ:HASH` shows what changed for one window and always keeps the current constraints, pending ACKs, budgets and proofs.
 - **Fixes.** `transport` no longer silently re-delivers an older message under a reused ID; `save --repo` reports missing unselected repositories as warnings.
 - Plugins: memoranda 1.0.10, Playwright 1.0.11, Sentry 0.1.8.
-
-**3.11.0 — frozen delivery, reader transfers and migliora**
-
-Refresh: dashboard startup releases its WAL read; JSON and transport replies are concise, and recovery supports recorded per-path name exceptions with clearer refusals.
-
-- **Builders can continue after delivery.** A copy of the proved candidate stays in the registry, including uncommitted changes.
-- **Change readers without rerunning the proof.** `reassign` preserves candidate, proofs and budgets and requires the new ACK.
-- **Clearer mail and resources.** The inbox cursor is saved; `resource status` shows the holder and queue. Reservations can name their task.
-- **Shorter commands.** Identical verdict retries do not duplicate reads; delivery and close take notes, task proofs accept direct argv, and `send` returns a short receipt.
-- **Migliora.** An automatic skill for demonstrated friction: scoped rules, a check and local commits of owned files after the project’s required reviews.
-- Plugins: memoranda 1.0.9, Playwright 1.0.10, Sentry 0.1.7.
 
 </details>
 

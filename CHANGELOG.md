@@ -3,6 +3,15 @@
 Every Squadra release, newest first. The README keeps the newest release and the three before it.
 
 
+**3.12.1 — the dashboard opens registries that replaced windows**
+
+- **Dashboard fix.** Since 3.11.1, `replace` records the successor tasks, reads and starts inside one `replace` event. The dashboard's task progress ignored those nested operations, so every registry with a replacement failed with `KeyError: '<task>-takeover-…'`. Task progress now applies them the way the registry does, and a regression test pins it.
+- The plugin bridge copies of `scripts/registry.py` carry the same fix; the memoranda reader pin accepts the 3.12.1 bytes.
+
+**Watch the two-minute film of what's new in 3.10.2 — turn the sound on in the player:**
+
+https://github.com/user-attachments/assets/6ea747a5-a993-4aa7-a58d-1b2b7f908720
+
 **3.12.0 — the checklist knows the round, clearer warnings and advice, and a changelog**
 
 - **Round scope in the checklist.** `checklist --moment assign` adds `round_scope`: a task created after the latest decision whose reason starts with `Round scope:`, and not named in it, is reported `unverifiable` with the reason (advisory, never `fail`).
@@ -12,10 +21,6 @@ Every Squadra release, newest first. The README keeps the newest release and the
 - **Composition advice by real roles.** `status`, board and dashboard name who builds and who reads; with mixed roles they show the real counts, and pairing rows stay visible when the squad is unbalanced.
 - **Changelog.** The full release history moved to [CHANGELOG.md](CHANGELOG.md); the README keeps the newest release and the three before it.
 - **Skill audits not refreshed.** As in 3.11.2, the recorded scans in `assets/skill-audits.json` predate this release; the System skills page shows every skill as not audited (files changed) until a fresh scan.
-
-**Watch the two-minute film of what's new in 3.10.2 — turn the sound on in the player:**
-
-https://github.com/user-attachments/assets/6ea747a5-a993-4aa7-a58d-1b2b7f908720
 
 **3.11.2 — rules that check themselves: no overlaps, one-step resume, known reds, stale windows, checklist and round scope**
 
