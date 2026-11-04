@@ -189,6 +189,24 @@ class StorageFrozen(unittest.TestCase):
         with self.assertRaisesRegex(reuse.ReuseError, 'not archived'):
             reuse.compact(self.root, [path], dry_run=False)
 
+    def test_unreconciled_run_is_refused_before_any_log_is_replaced(self):
+        self.ack(); run = self.proof()
+        path = self.root / 'runs' / run['id']
+        identities = {p.name: (p.stat().st_ino, p.read_bytes()) for p in path.iterdir() if p.is_file()}
+        original_view = Store.view
+
+        def unreconciled(store, *args, **kwargs):
+            view = plain(original_view(store, *args, **kwargs))
+            view['runs'][run['id']] = {**view['runs'][run['id']], 'status': 'cleanup-unknown', 'cleanup': 'not verified'}
+            return view
+
+        with patch.object(Store, 'view', unreconciled), \
+                self.assertRaisesRegex(reuse.ReuseError, 'unreconciled'):
+            reuse.compact(self.root, [path], dry_run=False)
+        self.assertEqual(identities, {p.name: (p.stat().st_ino, p.read_bytes()) for p in path.iterdir() if p.is_file()})
+        result = reuse.compact(self.root, [path], dry_run=False)
+        self.assertEqual(result['dry_run'], False)
+
     def test_freeze_and_checkpoint_serialize_without_partial_candidate(self):
         self.prepare()
         self.ack(); self.assertEqual(self.proof()['status'], 'passed')

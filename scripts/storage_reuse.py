@@ -378,8 +378,10 @@ def compact(root, targets, *, dry_run=True):
                         check = lambda tree=tree: _check_checksums(tree)
                     elif tree.parent == root / 'runs':
                         run = store.view()['runs'].get(tree.name)
-                        if run is None or not run.get('ended'):
-                            raise ReuseError('Cannot compact a live or unknown run')
+                        # cleanup-unknown also records ended: its producer may still hold the log open.
+                        if (run is None or not run.get('ended') or run.get('status') in {'running', 'cleanup-unknown'}
+                                or run.get('cleanup') == 'not verified'):
+                            raise ReuseError('Cannot compact a live, unreconciled or unknown run')
 
                         def check(tree=tree):
                             for file in _files(tree):
