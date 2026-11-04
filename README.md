@@ -507,7 +507,7 @@ The sections below keep the full working examples. Open the topic you need; the 
 | Follow a task from assignment to closure | [Task workflow](#workflow) |
 | Trace an instruction or record a decision | [Briefs, messages and decisions](#decision-reference) |
 | Save work or resume a session | [Checkpoints and recovery](#checkpoints) |
-| Look up a command or its plain-language prompt | [All 59 commands](#commands) |
+| Look up a command or its plain-language prompt | [All 60 commands](#commands) |
 
 [Skill](SKILL.md) · [Setup](references/start.md) · [Work/proof/review](references/work.md) · [Native runners](references/runtime.md) · [Recovery/context handover](references/recovery.md) · [Challenges/benchmark](references/benchmark.md) · [Plugins](references/plugins.md) · [Plugin authoring](references/plugin-authoring.md)
 
@@ -730,7 +730,8 @@ Thresholds, presence calls and why every window should run the same version: [de
 | WIP at risk, owner stop, or context pressure | Complete `save`, then an actual `restore-check`. |
 
 ```sh
-squadra checkpoint --to /durable/checkpoint-001
+squadra storage purge --dry-run
+squadra checkpoint --actor WINDOW --compact --to /durable/checkpoint-001
 squadra save --actor coord --to /durable/recovery-001
 squadra restore-check --actor coord --from /durable/recovery-001 --to /durable/restore-test-001
 squadra pause --actor coord --reason "Owner requested stop"
@@ -739,6 +740,16 @@ squadra resume --actor coord --reason "Owner explicitly resumed"
 ```
 
 `checkpoint` copies **only the registry**; `save`, coordinator only, adds every registered Git repository and its unfinished work; `restore-check` proves a package by actually restoring it into a new folder. When context fills up, the agent saves a handover **before continuing**. [Details](references/recovery.md#checkpoint-details).
+
+Automatic checkpoints use `--compact`: recoverable views are omitted and rebuilt
+after verification when the copy is opened with `--root`. Identical bytes of the
+newest recorded checkpoint on the same device are reused automatically (COW clone,
+or a hardlink of read-only files); `--reuse PREVIOUS` names it explicitly, and
+`storage compact --dry-run` previews the same sharing for data already on disk. Defaults retain three checkpoints, three
+saves, the last successfully restored save, 24 hours and `storage keep` paths.
+Only explicit coordinator `storage purge --apply --actor COORD --reason TEXT`
+deletes previewed targets; unknown folders stay. Without `--actor`, the legacy
+checkpoint succeeds but is unregistered. Never `cp -R` the live registry.
 
 **Limits of recovery:** the secret filters are partial, **not** a full scan of history and artifacts; a copy on the same disk does not survive a disk failure; `--declared-offsite` is a declaration, not verified remote storage. The complete contract is in [recovery and context handover](references/recovery.md).
 
@@ -806,10 +817,10 @@ manual deletion of an active cache degrades candidate integrity. See
 
 You do not have to type these commands: **asking your window in plain words is the recommended way**, as in the *Or just ask* column and the [example prompts](#prompts), and the window runs the command for you. The commands are what the windows run, and what you can type yourself to check.
 
-Every command, grouped by purpose: **59 subcommands**, plus `--version`. Use `squadra <command> --help` for the flags; registry commands accept `--root` or `SQUADRA_ROOT`. «Coordinator only» marks what only the coordinator can record: `task`, `route`, `supersede`, `reassign`, `replace`, `brief`, `close`, `ask`, `decision`, `settings`, `pause`, `resume`, `save`, `standby`, `ping --all`, `ping --sweep`, and the receipt that `restore-check` writes into the live registry. Without installing, the same commands run as `python3 -B scripts/squadra.py <command>`.
+Every command, grouped by purpose: **60 subcommands**, plus `--version`. Use `squadra <command> --help` for the flags; registry commands accept `--root` or `SQUADRA_ROOT`. «Coordinator only» marks what only the coordinator can record: `task`, `route`, `supersede`, `reassign`, `replace`, `brief`, `close`, `ask`, `decision`, `settings`, `pause`, `resume`, `save`, `standby`, `ping --all`, `ping --sweep`, and the receipt that `restore-check` writes into the live registry. Without installing, the same commands run as `python3 -B scripts/squadra.py <command>`.
 
 <details>
-<summary><strong>All 59 commands and their prompts, grouped by purpose</strong></summary>
+<summary><strong>All 60 commands and their prompts, grouped by purpose</strong></summary>
 
 ### Start and team
 
@@ -884,7 +895,8 @@ Every command, grouped by purpose: **59 subcommands**, plus `--version`. Use `sq
 |---|---|---|
 | `pause` | Coordinator only: stop new work, reviews and runs, keeping consultation and recovery. | To the coordinator: “Pause the squad: no new work until I say so.” |
 | `resume` | Coordinator only: resume after the owner's explicit word and a reconciliation. | To the coordinator: “Resume the squad: reconcile first, then tell me the next step.” |
-| `checkpoint` | Copy the registry, its artifacts and projections to a new folder. | “Take a checkpoint of the registry in a new folder.” |
+| `checkpoint` | Copy the registry, its artifacts and projections to a new folder; `--actor` records it for retention, `--compact` omits regenerable views, identical bytes of the newest recorded checkpoint are reused. | “Take a compact checkpoint of the registry in a new folder.” |
+| `storage` | `status`, `purge` (`--dry-run` by default; `--apply` coordinator only, with a reason), `keep` and `compact` of registered recovery points, candidates and archived runs; unknown folders are never removed. | “Show me what storage purge would remove, without deleting anything.” |
 | `save` | Coordinator only: package the registry with every registered Git repository and its unfinished work; `--repo ROOT --allow-name REL --reason TEXT` records a one-save name exception. | To the coordinator: “Save the registry and the code of every repository, unfinished work included.” |
 | `restore-check` | Prove a package by actually restoring it into a new folder; recording the receipt in the live registry is coordinator only. | “Prove the save works by restoring it into a new folder.” |
 

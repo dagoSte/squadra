@@ -116,8 +116,8 @@ monitor of Codex/Claude/Cursor memory.
 
 | When | Action |
 |---|---|
-| Increment completed or review accepted | Registry `checkpoint`, to a new destination |
-| Before publishing or changing sessions | `checkpoint`, handover report and receipt in the output |
+| Increment completed or review accepted | `checkpoint --actor WINDOW --compact`, reusing a verified previous checkpoint |
+| Before publishing or changing sessions | Compact registered checkpoint, handover report and receipt in the output |
 | WIP to preserve, a stop or context at risk | `save` the registry and repositories, then `restore-check` |
 
 A backup does not require a new test suite run. Use existing evidence when the candidate
@@ -130,7 +130,10 @@ The coordinator performs it within the already authorized scope, without asking 
 owner for permission again.
 
 ```sh
-squadra checkpoint --to /durable/path/checkpoint-001
+squadra storage purge --dry-run
+squadra checkpoint --actor WINDOW --compact --to /durable/path/checkpoint-001
+# Later points on the same filesystem reuse the newest recorded one automatically:
+squadra checkpoint --actor WINDOW --compact --to /durable/path/checkpoint-002
 squadra output --actor coord --file /evidence/checkpoint-update.md \
   --next "Continue from the saved point" --artifact /evidence/checkpoint-receipt.json
 ```
@@ -225,6 +228,48 @@ the selected current checkouts.
 It does not automatically copy full conversations, client authentication, installed
 dependencies or ignored files not explicitly included. Content-addressed logs are in
 the registry; keep an explicit copy of any additional external evidence.
+
+### Compact checkpoints and retention
+
+Use `checkpoint --actor WINDOW --compact --to NEW` for automatic checkpoints.
+`COMPACT.json` records the journal boundary and the omitted regenerable views:
+`state.json`, `posta/`, `squadra-posta.md`, `stato.md`. The CLI's `--root` verifies
+the copy's checksums and boundary before rebuilding them; recovery also rebuilds
+a compact registry member of a save. Without `--compact` the 3.12 layout remains.
+Without `--actor` the legacy command succeeds with an unregistered warning, and
+purge never treats that directory as a known recovery point.
+
+Without `--reuse`, the CLI reuses the newest valid recorded checkpoint on the
+destination's device when the reuse primitives are installed; `--reuse PREVIOUS`
+names verified paths explicitly and is refused without those primitives. `save` finds the
+previous verified registered package on the same device and reuses its registry
+and identical history bundles where supported; MANIFEST schema 1 stays unchanged.
+Copies remain self-contained. Never chmod a shared file or use `cp -R` on a live
+registry; `cp -c` is only for disposable COW test copies.
+
+Before a long round run `storage status` and `storage purge --dry-run`. Defaults
+retain three valid registered checkpoints, three saves, the last save with a
+successful recorded restore-check, everything younger than 24 hours and paths
+marked `storage keep --actor WINDOW --path PATH --reason TEXT`. Options
+`--checkpoints N --saves N --hours N` preview another policy; applying it records
+the policy. Open task sources/candidates, live runs/leases and the active registry
+stay protected. Unknown directories and unrecorded stages are never deleted.
+
+Only `storage purge --apply --actor COORD --reason TEXT` deletes. It recomputes
+the plan under the candidate lock, refuses drift, records intent before deletion
+and the actual result afterwards. `--expect-plan HASH` additionally binds an
+earlier preview. `storage compact --dry-run` previews physical reuse of data
+already on disk (candidates, recorded checkpoints and saves, archived run logs)
+without retention deletion and without changing bytes, modes or paths; applying it also needs the coordinator and a reason.
+Allocated-byte estimates are upper bounds; COW sharing may free fewer bytes.
+
+`tools/storage_growth.py --dir /dedicated/volume/run --count 5 --baseline
+/checkout/3.12.1` (one command line, run with Python) measures concurrent synthetic
+append/deliver work and checkpoints for both versions, with CSV/JSON and a real
+restore-check of a save from a sampled checkpoint. macOS `--image APFS` or
+`--image HFS+` creates and detaches a private image; existing paths are refused.
+Physical deltas use volume-level `df`; ordinary `--dir` explicitly reports
+possible shared-volume noise. Summed `st_blocks` never proves exclusive savings.
 
 <a id="esclusioni-e-destinazione"></a>
 

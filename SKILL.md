@@ -604,14 +604,22 @@ and commits in task outputs, while its inspections are computed on demand.
   clear provider cache or guarantee savings. Existing protocol/version stays frozen.
 - **Autonomous checkpoints:** do not wait for the owner to ask for them. After a
   completed increment, an accepted review and before a session change or
-  publication, run `checkpoint --to <new-durable-folder>` and record the
+  publication, run `checkpoint --actor WINDOW --compact --to <new-durable-folder>` and record the
   receipt in the output. The checkpoint keeps the registry; to also protect
   sources and WIP use `save` and a real `restore-check`. Do not rerun tests that are
   already valid just to create a resume point. Read the handover protocol in
-  `references/recovery.md`.
+  `references/recovery.md`. Before every new long round run `storage purge --dry-run`.
+  Retain three checkpoints, three saves, the last successfully restored save,
+  everything younger than 24 hours and explicit `storage keep` points. Only the
+  coordinator's explicit `storage purge --apply --actor COORD --reason TEXT`
+  deletes files. Identical bytes of the newest recorded checkpoint on the same
+  filesystem are reused automatically (`--reuse PREVIOUS` names one); for data
+  already on disk preview `storage compact --dry-run`. Never `cp -R` a live registry; `cp -c` is only for disposable tests.
 - **Context under pressure:** if the client signals compaction/a limit, or you
   can no longer reliably reconstruct task, constraints and proofs, save
-  before continuing. Do not invent a percentage of remaining tokens. Prepare a
+  before continuing. Use a registered compact checkpoint with reuse, plus `save`
+  and `restore-check` for sources/WIP. Avoid repeated full registry exports and
+  inspect retention before the next long round. Do not invent a percentage of remaining tokens. Prepare a
   durable summary and consider a session with a clean context; if the client
   allows it, start it within the task and budget already authorized. The new session
   must reread the mandate, the registry and the handover, confirm receipt and

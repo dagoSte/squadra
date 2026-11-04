@@ -3589,7 +3589,7 @@ class Store:
                 if os.name == "nt":
                     f.seek(0); msvcrt.locking(f.fileno(), msvcrt.LK_UNLCK, 1)
 
-    def checkpoint(self, destination, *, audit_source=True, report=None):
+    def checkpoint(self, destination, *, audit_source=True, report=None, reuse=(), compact=False):
         from registry_checkpoint import CheckpointError, copy_immutable_tree, verify_tree
         from frozen_candidate import cache_lock, checkpoint as copy_candidates
         require(not self._cache_mismatch, 'Cache mismatch; run squadra doctor --repair')
@@ -3611,12 +3611,14 @@ class Store:
                     source = self.root / name
                     if os.path.lexists(source):
                         copied[name] = copy_immutable_tree(source, destination / name,
-                                                           skip_lease_locks=name == "run-leases")
+                                                           skip_lease_locks=name == "run-leases",
+                                                           **({'reuse': [Path(p) / name for p in reuse]} if reuse else {}))
             except (OSError, CheckpointError) as exc:
                 raise Error("Checkpoint file copy refused: " + str(exc)) from exc
             boundary = Store(destination, read_only=True)
             try:
-                candidates = copy_candidates(boundary, destination, source_root=self.root, locked=True)
+                candidates = copy_candidates(boundary, destination, source_root=self.root, locked=True,
+                                             **({'reuse': reuse} if reuse else {}))
             finally:
                 boundary.close()
         if report is not None:
@@ -3630,7 +3632,13 @@ class Store:
                 report.update(event_count=len(events), event_head=events[-1]["hash"] if events else "0" * 64)
                 if checked["scrubbed"]:
                     report["scrubbed"] = checked["scrubbed"]
-            check.project(audited=True)
+            if compact:
+                atomic(destination / 'events.jsonl', b''.join((canonical(e) + '\n').encode() for e in events))
+                from storage_policy import compact_marker
+                compact_marker(destination, {'event_count': len(events),
+                                            'event_head': events[-1]['hash'] if events else '0' * 64})
+            else:
+                check.project(audited=True)
         finally:
             check.close()
         try:

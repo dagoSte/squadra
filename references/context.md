@@ -1,5 +1,13 @@
 # Smaller working context
 
+Preserve the registry with `checkpoint --actor WINDOW --compact --to NEW`; it
+reuses the newest recorded checkpoint on the same device (`--reuse PREVIOUS`
+names one explicitly). Before the
+next long round inspect `storage purge --dry-run`; retain the default three
+checkpoints, three saves, last successful restore, 24 hours and explicit keeps.
+Sources/WIP still need `save` and an actual `restore-check`. Do not repeat full
+registry copies or use `cp -R`; disposable COW test copies may use `cp -c`.
+
 Use this when a conversation grows or work crosses a task/phase boundary. The aim
 is smaller requests and reliable continuation. A high cache-read total is not a
 single growing cache: it accumulates reuse across requests. Do not delete sessions

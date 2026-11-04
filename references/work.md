@@ -1,5 +1,14 @@
 # Task, proof, review and output
 
+Before a long round inspect `squadra storage purge --dry-run`. Preserve each
+completed increment with `checkpoint --actor WINDOW --compact --to NEW`; it
+reuses the newest recorded checkpoint on the same device (`--reuse PREVIOUS`
+names one explicitly). Defaults keep
+three checkpoints, three saves, the last successful restore, 24 hours and explicit
+keeps. Only a coordinator's explicit `--apply` deletes; unknown folders stay.
+Sources and WIP still require `save` and a real `restore-check`. See
+[recovery](recovery.md#compact-checkpoints-and-retention).
+
 Ordinary command output shows the board, every owner request, wait counts by kind
 and at most five grouped waits. Waits of the same kind and task share a line with
 their count and oldest age. Assignments and current delivery/read handoffs come
