@@ -207,6 +207,25 @@ class StorageFrozen(unittest.TestCase):
         result = reuse.compact(self.root, [path], dry_run=False)
         self.assertEqual(result['dry_run'], False)
 
+    def test_compact_inside_the_callers_candidate_lock_does_not_wait_on_itself(self):
+        self.ack(); run = self.proof()
+        path = self.root / 'runs' / run['id']
+        store, outcome = Store(self.root), []
+        self.addCleanup(store.close)
+
+        def locked_compact():
+            try:
+                outcome.append(reuse.compact(self.root, [path], dry_run=False, locked=True))
+            except Exception as exc:
+                outcome.append(exc)
+
+        with frozen.cache_lock(store):
+            worker = threading.Thread(target=locked_compact, daemon=True)
+            worker.start()
+            worker.join(30)
+            self.assertFalse(worker.is_alive(), 'compact waited for the lock its caller already holds')
+        self.assertIsInstance(outcome[0], dict)
+
     def test_freeze_and_checkpoint_serialize_without_partial_candidate(self):
         self.prepare()
         self.ack(); self.assertEqual(self.proof()['status'], 'passed')

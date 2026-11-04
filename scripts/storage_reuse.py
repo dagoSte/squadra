@@ -337,7 +337,7 @@ def _tree_manifest(tree):
                                      stat.S_IMODE(p.lstat().st_mode)) for p in _files(tree)}
 
 
-def compact(root, targets, *, dry_run=True):
+def compact(root, targets, *, dry_run=True, locked=False):
     """Share recognized trees under the candidate lock, retaining their complete bytes and modes.
 
     Dry-run savings are potential allocations avoided, not exclusive COW blocks.
@@ -350,7 +350,8 @@ def compact(root, targets, *, dry_run=True):
     root = Path(root).resolve()
     store = Store(root, read_only=True)
     try:
-        with nullcontext() if dry_run else cache_lock(store):
+        # locked=True: the caller already holds candidates/.lock (a second flock on another fd would wait forever).
+        with nullcontext() if dry_run or locked else cache_lock(store):
             candidates = {Path(row['path']).resolve(): task for row, task in inventory_records(store)
                           if row['status'] == 'available'}
             trees = []
