@@ -221,7 +221,16 @@ def test_counts(text):
 
 def writable_copy(source, target):
     """A private writable copy of a frozen candidate, so a probe can run without touching the sealed original."""
-    shutil.copytree(source, target, symlinks=True)
+    from storage_reuse import place
+    import hashlib
+
+    def copy_file(src, dst):
+        with open(src, 'rb') as stream:
+            sha = hashlib.file_digest(stream, 'sha256').hexdigest()
+        place(src, dst, sha256=sha, readonly=False, prefer=('clone', 'copy'))
+        return dst
+
+    shutil.copytree(source, target, symlinks=True, copy_function=copy_file)
     for parent, _, files in os.walk(target):
         os.chmod(parent, 0o700)
         for name in files:
