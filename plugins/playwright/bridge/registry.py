@@ -2020,6 +2020,21 @@ def validate_diagnostic(actor, d):
                 "diagnostic_invalid: a refusal receipt carries its command and error, and possibly utc and task, as text")
 
 
+def purging(state, path):
+    """True when path is, or lies inside, a target of the latest purge still in progress."""
+    if not isinstance(path, str) or not path:
+        return False
+    for item in reversed(state["outputs"]):
+        action = item.get("storage_action")
+        if isinstance(action, dict) and action.get("action") == "purge":
+            if action.get("phase") != "started":
+                return False
+            candidate = Path(path)
+            return any(candidate == Path(target) or Path(target) in candidate.parents
+                       for target in action.get("removed", []))
+    return False
+
+
 def validate(state, kind, actor, d, stored_packet=None, *, candidate_history=()):
     require(kind in {"init", "agent", "task", "ack", "message", "transport", "plan", "start", "deliver",
                     "review", "close", "output", "run.start", "run.end", "run.cancel", "run.progress", "run.abandon",
@@ -2122,6 +2137,11 @@ def validate(state, kind, actor, d, stored_packet=None, *, candidate_history=())
         require(d.get('handoff') not in state['messages'] and
                 d.get('handoff') == 'review-' + digest(canonical(stored_packet if stored_packet is not None else packet).encode()),
                 'Reassignment handoff must bind its packet')
+    if (kind == 'output' and isinstance(d.get('storage_action'), dict) and d['storage_action'].get('action') == 'keep') or kind == 'task':
+        # A purge records its targets as started before its last protection check and any removal:
+        # a keep or a task source inside one of them commits only after that purge has ended.
+        target = d['storage_action'].get('path') if kind == 'output' else d.get('repo')
+        require(not purging(state, target), 'Storage path is being purged; retry after the purge ends: ' + str(target))
     if kind == 'output' and d.get('candidate_action'):
         require(coordinator, 'Candidate storage actions require coordinator')
         action = d['candidate_action']
