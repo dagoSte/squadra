@@ -3612,7 +3612,7 @@ class Store:
                     if os.path.lexists(source):
                         copied[name] = copy_immutable_tree(source, destination / name,
                                                            skip_lease_locks=name == "run-leases",
-                                                           **({'reuse': [Path(p) / name for p in reuse]} if reuse else {}))
+                                                           **({'reuse': list(reuse)} if reuse else {}))
             except (OSError, CheckpointError) as exc:
                 raise Error("Checkpoint file copy refused: " + str(exc)) from exc
             boundary = Store(destination, read_only=True)

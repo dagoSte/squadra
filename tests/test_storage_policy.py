@@ -105,7 +105,7 @@ class StoragePolicy(unittest.TestCase):
                 registry_checkpoint, 'copy_immutable_tree', immutable):
             self.store.checkpoint(self.base / 'reused', reuse=[previous])
         self.assertIn(('candidate', [previous]), seen)
-        self.assertIn(('artifacts', [previous / 'artifacts']), seen)
+        self.assertIn(('artifacts', [previous]), seen)
 
     def test_cli_unknown_actor_and_reuse_without_module_refuse_before_copying(self):
         target = self.base / 'refused'
@@ -273,7 +273,7 @@ class StoragePolicy(unittest.TestCase):
             shutil.copy2(source, target)
             return 'copy'
 
-        with patch.dict(sys.modules, {'storage_reuse': types.SimpleNamespace(place=place)}), patch.object(
+        with patch.dict(sys.modules, {'storage_reuse': types.SimpleNamespace(place=place, ReuseError=OSError)}), patch.object(
                 Store, 'checkpoint', checkpoint):
             save(self.store, self.base / 'second', temporary=True)
         self.assertIn(('registry', [path / 'registry']), seen)

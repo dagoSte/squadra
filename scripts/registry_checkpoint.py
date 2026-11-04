@@ -147,6 +147,11 @@ def _copy_file(source_dir_fd, destination_dir_fd, name, expected):
         os.close(source_fd)
 
 
+def _in_flight(name):
+    """Names registry.atomic() uses before its rename; published names are hex digests."""
+    return name.startswith("tmp")
+
+
 def copy_immutable_tree(source, destination, *, skip_lease_locks=False, reuse=()):
     """Copy a tree to a new private folder; preserve failure evidence on error.
 
@@ -175,7 +180,16 @@ def copy_immutable_tree(source, destination, *, skip_lease_locks=False, reuse=()
 
         def visit(source_dir_fd, destination_dir_fd, prefix):
             for name in sorted(os.listdir(source_dir_fd)):
-                info = os.stat(name, dir_fd=source_dir_fd, follow_symlinks=False)
+                try:
+                    info = os.stat(name, dir_fd=source_dir_fd, follow_symlinks=False)
+                except FileNotFoundError:
+                    if _in_flight(name):
+                        continue
+                    raise
+                if _in_flight(name) and not stat.S_ISDIR(info.st_mode):
+                    # An unpublished atomic() temporary: its bytes reach the tree only by rename,
+                    # under the final name a later checkpoint copies.
+                    continue
                 relative = (prefix + "/" if prefix else "") + name
                 if stat.S_ISDIR(info.st_mode):
                     _owned(info, directory=True)
@@ -224,11 +238,11 @@ def copy_immutable_tree(source, destination, *, skip_lease_locks=False, reuse=()
 
 def _reuse_clones(destination, files, uncloned, reuse):
     """Replace plain copies with verified clones of identical earlier checkpoint files."""
-    from storage_reuse import ReuseError, place
     result = {"clone": 0, "checked": 0}
     roots = [Path(root) / Path(destination).name for root in reuse]
     if not roots or not uncloned:
         return result
+    from storage_reuse import ReuseError, place
     for relative in uncloned:
         record, target = files[relative], Path(destination) / relative
         for root in roots:
