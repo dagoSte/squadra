@@ -69,6 +69,9 @@ def _clone_api():
 
 
 def _native_clone(source_fd, destination_dir_fd, name):
+    if sys.platform == 'linux':
+        from storage_reuse import _clone
+        return _clone(source_fd, destination_dir_fd, name)
     function = _clone_api()
     if function is None:
         return False
@@ -144,7 +147,7 @@ def _copy_file(source_dir_fd, destination_dir_fd, name, expected):
         os.close(source_fd)
 
 
-def copy_immutable_tree(source, destination, *, skip_lease_locks=False):
+def copy_immutable_tree(source, destination, *, skip_lease_locks=False, reuse=()):
     """Copy a tree to a new private folder; preserve failure evidence on error.
 
     skip_lease_locks excludes only regular names ending in .lock. Lease metadata
@@ -201,6 +204,11 @@ def copy_immutable_tree(source, destination, *, skip_lease_locks=False):
         if _identity(source.lstat()) != _identity(original):
             raise CheckpointError("Source directory was replaced")
         os.fsync(destination_fd)
+        from storage_reuse import dedupe_tree, tree_index
+        # These 0600 files stay independent, including live lease metadata.
+        summary['reuse'] = dedupe_tree(destination, tree_index(reuse), readonly=False)
+        summary['allocated_bytes'] = sum(p.stat().st_blocks * 512 for p in Path(destination).rglob('*')
+                                         if p.is_file())
         return summary
     finally:
         if destination_fd is not None:
