@@ -1,5 +1,6 @@
 """Materialize a proved candidate without retaining the builder's working tree."""
 from contextlib import contextmanager
+import hashlib
 import os
 import stat
 import uuid
@@ -9,7 +10,7 @@ import tempfile
 
 from registry import (Error, canonical, digest, git, git_probe, git_process, git_blob_id,
                       git_blobs, git_object_format, plain, require, snapshot)
-from storage_reuse import ReuseError, dedupe_tree, place, tree_index
+from storage_reuse import ReuseError, dedupe_tree, place, reuse_index
 
 
 def repository(task, root):
@@ -229,10 +230,21 @@ def validate_candidate(repo, files=None, *, working_only=False, label='Frozen ca
                 require(not private_key(body), label + ' private-key index blob refused: ' + rel)
 
 
-def tree_bytes(repo, revisions):
-    return sum(int(row.split(b'\t', 1)[0].split()[-1]) for revision in set(revisions) for row in
-               git(repo, 'ls-tree', '-rlz', revision).split(b'\0')
-               if row and row.split(b'\t', 1)[0].split()[-1].isdigit())
+def tree_bytes(repo, revisions, shared_objects=()):
+    """Logical blob bytes of the revisions; a blob already stored loose in another candidate is shared."""
+    total = 0
+    for revision in set(revisions):
+        for row in git(repo, 'ls-tree', '-rlz', revision).split(b'\0'):
+            if not row:
+                continue
+            meta = row.split(b'\t', 1)[0].split()
+            if not meta[-1].isdigit():
+                continue
+            oid = meta[2].decode()
+            if any((Path(root) / oid[:2] / oid[2:]).is_file() for root in shared_objects):
+                continue
+            total += int(meta[-1])
+    return total
 
 
 def fetch(repo, source, revisions):
@@ -244,16 +256,37 @@ def fetch(repo, source, revisions):
     require(result.returncode == 0, 'Cannot fetch the delivered commit or required light base')
 
 
+def _available(store, exclude=None):
+    rows = []
+    for row, task in inventory_records(store):
+        if row['status'] == 'available' and (exclude is None or Path(row['path']) != Path(exclude)):
+            rows.append((Path(row['path']), task))
+    return rows
+
+
+def working_hints(available):
+    """sha256 -> files of available candidates, from their recorded manifests (no hashing here)."""
+    hints = {}
+    for path, task in available:
+        for row in task['candidate'].get('files', []):
+            if row.get('kind') == 'file':
+                hints.setdefault(row['sha256'], []).append(path / row['path'])
+    return reuse_index(hints)
+
+
+def object_hints(available):
+    """Loose Git objects have content-derived names; the same name in another candidate is the hint."""
+    return reuse_index({}, roots=[path / '.git' / 'objects' for path, _ in available])
+
+
 def retain_base(store, task, repo):
     if task.get('route') != 'light':
         return
     base = task['base']
     if git_probe('-C', str(repo), 'cat-file', '-e', base + '^{tree}').returncode == 0:
         return
-    extra = 2 * tree_bytes(task['repo'], [base]) + 16 * 1024 * 1024
     max_copy, max_total = limits(store)
-    require(size(repo.parent) + extra <= max_copy and size(store.root / 'candidates') + extra <= max_total,
-            'Frozen storage limit for light base' + QUOTA_HELP)
+    index = object_hints(_available(store, exclude=repo))
     metadata = repo / '.git'
     require(metadata.is_dir() and not metadata.is_symlink(), 'Frozen Git metadata must be a directory')
     try:
@@ -262,6 +295,8 @@ def retain_base(store, task, repo):
             Path(parent).chmod(0o755)
             require(all(not (Path(parent) / name).is_symlink() for name in dirs), 'Linked frozen Git directory')
         fetch(repo, task['repo'], [base])
+        readonly(metadata)
+        dedupe_tree(metadata / 'objects', index)
         require(size(repo.parent) <= max_copy and size(store.root / 'candidates') <= max_total,
                 'Frozen storage limit exceeded while retaining light base' + QUOTA_HELP)
     finally:
@@ -286,11 +321,18 @@ def _freeze(store, task, candidate):
     if task.get('route') == 'light':
         revisions.append(task['base'])
     max_copy, max_total = limits(store)
-    # New allocations are checked after sharing: a logical-byte estimate would
-    # reject a fully shared candidate. Existing COW usage remains an upper bound.
-    existing = [Path(row['path']) for row, _ in inventory_records(store) if row['status'] == 'available']
-    index = tree_index(existing)
+    available = _available(store)
+    index, objects = working_hints(available), object_hints(available)
+    # Quotas count new allocations, not bytes shared with other candidates. Before any
+    # fetch, refuse on an upper bound: working files without a recorded twin plus the
+    # Git trees, which may still turn out to be shared after the fetch.
+    unshared = sum((Path(task['repo']) / row['path']).lstat().st_size for row in candidate['files']
+                   if row['kind'] == 'file' and not any(True for _ in index.candidates(
+                       row['sha256'], 0o555 if row['executable'] else 0o444)))
+    estimate = unshared + tree_bytes(task['repo'], revisions, shared_objects=objects.roots)
     retained_bytes, new_working_bytes = size(parent), 0
+    require(estimate <= max_copy and retained_bytes + estimate <= max_total,
+            'Frozen storage limit (new bytes; per-copy/total including quarantine)' + QUOTA_HELP)
     stage = Path(tempfile.mkdtemp(prefix='.freeze-', dir=parent))
     try:
         copied = stage / 'repo'
@@ -352,7 +394,7 @@ def _freeze(store, task, candidate):
         require(measured(task, copied) == candidate,
                 'Frozen copy does not match the proved source')
         readonly(stage)
-        sharing = dedupe_tree(copied / '.git', index)
+        sharing = dedupe_tree(copied / '.git' / 'objects', objects)
         new_bytes = new_working_bytes + sharing['new_physical_estimate']
         require(new_bytes <= max_copy and retained_bytes + new_bytes <= max_total,
                 'Frozen storage limit exceeded' + QUOTA_HELP)
@@ -376,7 +418,7 @@ def checkpoint(store, destination, *, source_root=None, locked=False, reuse=()):
             return checkpoint(store, destination, locked=True, reuse=reuse)
     root = Path(source_root) if source_root is not None else store.root
     records = inventory_records(store, root)
-    index = tree_index([Path(p) / 'candidates' for p in reuse])
+    shared = reuse_index({})  # content placed in this checkpoint so far, across candidates
     for row, task in records:
         if row['status'] != 'available':
             continue
@@ -384,20 +426,25 @@ def checkpoint(store, destination, *, source_root=None, locked=False, reuse=()):
         validate_candidate(source, label='Frozen candidate ' + row['sha256'])
         target = Path(destination) / 'candidates' / row['sha256'] / 'repo'
         target.parent.mkdir(parents=True, mode=0o700)
+        # Previous checkpoints hold the same candidate at the same relative path.
+        index = reuse_index({}, roots=[Path(p) / 'candidates' / row['sha256'] / 'repo' for p in reuse])
+        index.paths = shared.paths
         try:
-            def copy_file(src, dst):
-                info = Path(src).stat()
-                sha = digest(Path(src).read_bytes())
+            def copy_file(src, dst, index=index, source=source):
+                info = Path(src).lstat()
+                with open(src, 'rb') as stream:
+                    sha = hashlib.file_digest(stream, 'sha256').hexdigest()
                 mode = stat.S_IMODE(info.st_mode)
-                for hint in index.candidates(sha, mode):
+                sealed = mode in (0o444, 0o555)
+                for hint in index.candidates(sha, mode, Path(src).relative_to(source), info.st_size):
                     try:
-                        place(hint, dst, sha256=sha, readonly=mode in (0o444, 0o555))
+                        place(hint, dst, sha256=sha, readonly=sealed)
                         break
                     except (OSError, ReuseError):
                         continue
                 else:
-                    place(src, dst, sha256=sha, readonly=mode in (0o444, 0o555))
-                index.add(sha, dst)
+                    place(src, dst, sha256=sha, readonly=sealed, prefer=('clone', 'copy'))
+                shared.add(sha, dst)
                 return dst
             shutil.copytree(source, target, symlinks=True, copy_function=copy_file)
         except (OSError, ReuseError) as exc:

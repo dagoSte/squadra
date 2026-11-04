@@ -55,11 +55,13 @@ def _clone(source_fd, directory_fd, name):
     return _native_clone(source_fd, directory_fd, name)
 
 
-def place(source, target, *, sha256, readonly, prefer=('clone', 'hardlink', 'copy')):
+def place(source, target, *, sha256, readonly, prefer=('clone', 'hardlink', 'copy'), mode=None):
     """Create a new verified file, preserving executable class on readonly output.
 
     An exclusive empty destination reserves the name until the verified temporary
     file replaces it. Neither failure cleanup nor a mode change touches the input.
+    mode, when given, is the exact mode of an independent result (clone or copy);
+    a hardlink is then refused unless the source already has that mode.
     """
     if (not isinstance(sha256, str) or len(sha256) != 64
             or any(c not in '0123456789abcdef' for c in sha256)):
@@ -78,7 +80,12 @@ def place(source, target, *, sha256, readonly, prefer=('clone', 'hardlink', 'cop
         _regular(before)
         if _hash_fd(source_fd) != sha256 or _version(os.fstat(source_fd)) != _version(before):
             raise ReuseError('Source checksum or metadata changed')
+        wanted = mode
         mode = (0o555 if before.st_mode & 0o111 else 0o444) if readonly else stat.S_IMODE(before.st_mode)
+        if wanted is not None:
+            if wanted & ~0o777:
+                raise ReuseError('Invalid file mode')
+            mode = wanted
         reservation = os.open(target.name, os.O_CREAT | os.O_EXCL | os.O_RDWR | os.O_NOFOLLOW,
                               0o600, dir_fd=target_parent)
         reserved = _identity(os.fstat(reservation))
@@ -168,10 +175,37 @@ def capabilities(directory):
     return result
 
 
+def _capabilities_near(path, cache):
+    """Probe the nearest writable ancestor on the same device; a sealed tree is never written."""
+    path = Path(path)
+    device = path.lstat().st_dev
+    if device in cache:
+        return cache[device]
+    result = {'clone': False, 'hardlink': False, 'device': device}
+    for folder in (path, *path.parents):
+        try:
+            if folder.lstat().st_dev != device:
+                break
+            if os.access(folder, os.W_OK | os.X_OK):
+                result = capabilities(folder)
+                break
+        except OSError:
+            continue
+    cache[device] = result
+    return result
+
+
 class ReuseIndex:
-    def __init__(self, paths):
+    """Hints for verified reuse: content entries by sha256, plus roots probed at the same relative path.
+
+    Roots let a caller offer the previous candidate or checkpoint without hashing it first;
+    place() still opens and hashes the chosen hint before sharing it.
+    """
+
+    def __init__(self, paths=None, roots=()):
         self.paths = defaultdict(list)
-        for sha, values in paths.items():
+        self.roots = [Path(root) for root in roots]
+        for sha, values in (paths or {}).items():
             for path in ([values] if isinstance(values, (str, Path)) else values):
                 self.add(sha, path)
 
@@ -180,18 +214,24 @@ class ReuseIndex:
         if path not in self.paths[sha]:
             self.paths[sha].append(path)
 
-    def candidates(self, sha, mode):
-        for path in tuple(self.paths.get(sha, ())):
+    def candidates(self, sha, mode, relative=None, size=None):
+        roots = (root / relative for root in self.roots) if relative is not None else ()
+        seen = set()
+        for path in (*tuple(self.paths.get(sha, ())), *roots):
+            if path in seen:
+                continue
+            seen.add(path)
             try:
                 info = path.lstat()
-                if stat.S_ISREG(info.st_mode) and stat.S_IMODE(info.st_mode) == mode:
-                    yield path
             except OSError:
                 continue
+            if (stat.S_ISREG(info.st_mode) and (mode is None or stat.S_IMODE(info.st_mode) == mode)
+                    and (size is None or info.st_size == size)):
+                yield path
 
 
-def reuse_index(paths_by_sha):
-    return ReuseIndex(paths_by_sha)
+def reuse_index(paths_by_sha, roots=()):
+    return ReuseIndex(paths_by_sha, roots)
 
 
 def _files(tree):
@@ -236,7 +276,8 @@ def dedupe_tree(tree, index, *, readonly=True):
         summary['files'] += 1
         summary['logical_bytes'] += info.st_size
         method = None
-        for source in index.candidates(sha, mode):
+        can_link = readonly and mode in (0o444, 0o555) and not _mutable(path)
+        for source in index.candidates(sha, mode if can_link else None, path.relative_to(tree), info.st_size):
             if source == path:
                 continue
             temporary = None
@@ -248,9 +289,9 @@ def dedupe_tree(tree, index, *, readonly=True):
                 temporary = path.with_name('.reuse-swap-' + uuid.uuid4().hex)
                 if not parent_mode & 0o200:
                     path.parent.chmod(parent_mode | 0o700)
-                can_link = readonly and mode in (0o444, 0o555) and not _mutable(path)
                 method = place(source, temporary, sha256=sha, readonly=can_link,
-                               prefer=('clone', 'hardlink') if can_link else ('clone',))
+                               prefer=('clone', 'hardlink') if can_link else ('clone',),
+                               mode=None if can_link else mode)
                 if _version(path.lstat()) != _version(info):
                     raise ReuseError('Dedupe target changed')
                 os.replace(temporary, path)
@@ -356,17 +397,29 @@ def compact(root, targets, *, dry_run=True):
             # hints; each selected hint is still rehashed by place().
             index = tree_index([])
             total = {**_summary(), 'dry_run': dry_run, 'targets': []}
+            probes = {}
             for tree in trees:
                 before = _tree_manifest(tree)
+                if tree.parent == root / 'runs':
+                    # An archived run file has its twin at artifacts/<sha256> (mode 0600).
+                    for sha, _ in before.values():
+                        index.add(sha, root / 'artifacts' / sha)
                 if dry_run:
                     summary = _summary()
+                    caps = _capabilities_near(tree, probes)
                     for path in _files(tree):
                         sha, mode = before[str(path.relative_to(tree))]
                         info = path.lstat()
                         summary['files'] += 1
                         summary['logical_bytes'] += info.st_size
                         matched = False
-                        for hint in index.candidates(sha, mode):
+                        linkable = mode in (0o444, 0o555) and not _mutable(path) and caps['hardlink']
+                        if not (caps['clone'] or linkable):
+                            linkable = False
+                        for hint in [] if not (caps['clone'] or linkable) else index.candidates(sha, mode if linkable else None,
+                                                     path.relative_to(tree), info.st_size):
+                            if hint == path:
+                                continue
                             if hashlib.sha256(hint.read_bytes()).hexdigest() == sha:
                                 matched = True
                                 if _identity(hint.stat()) != _identity(info) and info.st_nlink == 1:

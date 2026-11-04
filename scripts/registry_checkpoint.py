@@ -152,6 +152,10 @@ def copy_immutable_tree(source, destination, *, skip_lease_locks=False, reuse=()
 
     skip_lease_locks excludes only regular names ending in .lock. Lease metadata
     and terminal .json files remain self-contained in the checkpoint.
+    reuse names previous checkpoint root folders: a file that could not be cloned
+    from its source is cloned instead from the same relative path under
+    <reuse>/<destination name> when the bytes match. Files stay 0600 and
+    single-link: never a hardlink, so a later write to one copy cannot reach another.
     """
     source, destination = Path(source), Path(destination)
     original = source.lstat()
@@ -167,6 +171,7 @@ def copy_immutable_tree(source, destination, *, skip_lease_locks=False, reuse=()
             raise CheckpointError("Checkpoint source directory changed")
         destination.mkdir(mode=0o700)
         destination_fd = _open_directory(destination)
+        uncloned = []
 
         def visit(source_dir_fd, destination_dir_fd, prefix):
             for name in sorted(os.listdir(source_dir_fd)):
@@ -199,21 +204,58 @@ def copy_immutable_tree(source, destination, *, skip_lease_locks=False, reuse=()
                     summary["logical_bytes"] += record["bytes"]
                     summary["allocated_bytes"] += blocks
                     summary["cloned" if cloned else "copied"] += 1
+                    if not cloned:
+                        uncloned.append(relative)
 
         visit(source_fd, destination_fd, "")
         if _identity(source.lstat()) != _identity(original):
             raise CheckpointError("Source directory was replaced")
         os.fsync(destination_fd)
-        from storage_reuse import dedupe_tree, tree_index
-        # These 0600 files stay independent, including live lease metadata.
-        summary['reuse'] = dedupe_tree(destination, tree_index(reuse), readonly=False)
-        summary['allocated_bytes'] = sum(p.stat().st_blocks * 512 for p in Path(destination).rglob('*')
-                                         if p.is_file())
+        summary["reuse"] = _reuse_clones(destination, summary["files"], uncloned, reuse)
+        if summary["reuse"]["clone"]:
+            summary["allocated_bytes"] = sum(p.lstat().st_blocks * 512 for p in Path(destination).rglob("*")
+                                             if p.is_file() and not p.is_symlink())
         return summary
     finally:
         if destination_fd is not None:
             os.close(destination_fd)
         os.close(source_fd)
+
+
+def _reuse_clones(destination, files, uncloned, reuse):
+    """Replace plain copies with verified clones of identical earlier checkpoint files."""
+    from storage_reuse import ReuseError, place
+    result = {"clone": 0, "checked": 0}
+    roots = [Path(root) / Path(destination).name for root in reuse]
+    if not roots or not uncloned:
+        return result
+    for relative in uncloned:
+        record, target = files[relative], Path(destination) / relative
+        for root in roots:
+            hint = root / relative
+            try:
+                info = hint.lstat()
+                if (info.st_dev, info.st_ino) == _identity(target.lstat()):
+                    continue
+            except OSError:
+                continue
+            if not stat.S_ISREG(info.st_mode) or info.st_size != record["bytes"] or info.st_dev != target.lstat().st_dev:
+                continue
+            result["checked"] += 1
+            swap = target.with_name(".reuse-" + target.name)
+            try:
+                if place(hint, swap, sha256=record["sha256"], readonly=False, prefer=("clone",)) != "clone":
+                    continue
+                os.chmod(swap, 0o600)
+                os.replace(swap, target)
+                result["clone"] += 1
+                break
+            except (OSError, ReuseError):
+                continue
+            finally:
+                if swap.exists():
+                    swap.unlink()
+    return result
 
 
 def verify_tree(destination, manifest):

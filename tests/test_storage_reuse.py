@@ -180,6 +180,46 @@ class StorageReuse(unittest.TestCase):
         self.assertEqual(payload.read_bytes(), self.source.read_bytes())
         frozen_candidate.remove(tree)
 
+    def test_mode_override_gives_an_independent_copy_and_refuses_a_mismatched_link(self):
+        for prefer in (('clone', 'copy'), ('copy',)):
+            target = self.root / ('override-' + prefer[0])
+            method = reuse.place(self.source, target, sha256=self.sha, readonly=False, prefer=prefer, mode=0o640)
+            self.assertIn(method, prefer)
+            self.assertEqual(stat.S_IMODE(target.stat().st_mode), 0o640)
+            self.assertNotEqual(target.stat().st_ino, self.source.stat().st_ino)
+        self.assertEqual(stat.S_IMODE(self.source.stat().st_mode), 0o444)
+        with self.no_clone(), self.assertRaises(OSError):
+            reuse.place(self.source, self.root / 'mismatch', sha256=self.sha, readonly=True,
+                        prefer=('hardlink',), mode=0o555)
+        self.assertFalse((self.root / 'mismatch').exists())
+        with self.assertRaises(reuse.ReuseError):
+            reuse.place(self.source, self.root / 'bad-mode', sha256=self.sha, readonly=False, mode=0o4755)
+
+    def test_index_roots_offer_the_same_relative_path_filtered_by_mode_and_size(self):
+        previous = self.write('previous/sub/file', mode=0o444)
+        other = self.write('other/sub/file', body=b'different size', mode=0o444)
+        self.write('writable/sub/file', mode=0o644)
+        index = reuse.reuse_index({}, roots=[self.root / 'previous', self.root / 'other', self.root / 'writable'])
+        size = previous.stat().st_size
+        self.assertEqual(list(index.candidates(self.sha, 0o444, Path('sub/file'), size)), [previous])
+        self.assertEqual(list(index.candidates(self.sha, 0o444, Path('sub/missing'), size)), [])
+        self.assertEqual(len(list(index.candidates(self.sha, None, Path('sub/file'), size))), 2)
+        self.assertNotIn(other, list(index.candidates(self.sha, None, Path('sub/file'), size)))
+        self.assertIn(other, list(index.candidates(self.sha, None, Path('sub/file'))))
+
+    def test_dedupe_clones_a_writable_file_from_a_hint_with_another_mode(self):
+        hint = self.write('hint', mode=0o600)
+        target = self.write('tree/log', mode=0o644)
+        index = reuse.reuse_index({self.sha: [hint]})
+        clone = reuse.capabilities(self.root)['clone']
+        result = reuse.dedupe_tree(self.root / 'tree', index, readonly=False)
+        self.assertEqual(result['clone'], 1 if clone else 0)
+        self.assertEqual(result['hardlink'], 0)
+        self.assertEqual(stat.S_IMODE(target.stat().st_mode), 0o644)
+        self.assertEqual(target.stat().st_nlink, 1)
+        self.assertEqual(hashlib.sha256(target.read_bytes()).hexdigest(), self.sha)
+        self.assertEqual(stat.S_IMODE(hint.stat().st_mode), 0o600)
+
 
 if __name__ == '__main__':
     unittest.main()

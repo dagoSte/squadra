@@ -236,6 +236,42 @@ class StorageFrozen(unittest.TestCase):
         finally:
             copied.close()
 
+    def test_archived_run_files_are_cloned_from_artifacts_when_the_volume_clones(self):
+        self.ack(); run = self.proof()
+        path = self.root / 'runs' / run['id']
+        before = {p.name: (p.read_bytes(), stat.S_IMODE(p.stat().st_mode)) for p in path.iterdir() if p.is_file()}
+        clone = reuse.capabilities(self.base)['clone']
+        plan = reuse.compact(self.root, [path])
+        self.assertEqual(plan['reused'] > 0, clone)
+        result = reuse.compact(self.root, [path], dry_run=False)
+        self.assertEqual(result['clone'] > 0, clone)
+        self.assertEqual(result['hardlink'], 0)
+        self.assertEqual(before, {p.name: (p.read_bytes(), stat.S_IMODE(p.stat().st_mode))
+                                  for p in path.iterdir() if p.is_file()})
+        self.assertTrue(all(p.stat().st_nlink == 1 for p in path.iterdir() if p.is_file()))
+
+    def test_uncloned_artifact_copy_is_recloned_from_the_previous_checkpoint(self):
+        source, first, second = self.base / 'files', self.base / 'copy1', self.base / 'copy2'
+        source.mkdir()
+        payload = source / 'artifact'; payload.write_bytes(b'archived content' * 1000)
+        payload.chmod(0o600)
+        registry_checkpoint.copy_immutable_tree(source, first)
+        clone = reuse.capabilities(self.base)['clone']
+        with patch.object(registry_checkpoint, '_native_clone', return_value=False):
+            result = registry_checkpoint.copy_immutable_tree(source, second, reuse=(self.base,))
+        self.assertEqual(result['reuse']['clone'], 0)  # base/copy2 is the destination itself: never its own hint
+        (self.base / 'prev').mkdir(); os.rename(first, self.base / 'prev' / 'copy3')
+        third = self.base / 'copy3'
+        with patch.object(registry_checkpoint, '_native_clone', return_value=False):
+            result = registry_checkpoint.copy_immutable_tree(source, third, reuse=(self.base / 'prev',))
+        target = third / 'artifact'
+        self.assertEqual(result['reuse']['clone'], 1 if clone else 0)
+        self.assertEqual(target.stat().st_nlink, 1)
+        self.assertEqual(stat.S_IMODE(target.stat().st_mode), 0o600)
+        self.assertTrue(registry_checkpoint.verify_tree(third, result['files']))
+        payload.write_bytes(b'changed source')
+        self.assertEqual(target.read_bytes(), b'archived content' * 1000)
+
 
 if __name__ == '__main__':
     unittest.main()
