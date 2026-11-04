@@ -364,9 +364,14 @@ def purge(store, actor=None, reason=None, *, apply=False, policy=None, expected=
 
 def keep(store, actor, path, reason):
     require(actor in store.view()['agents'] and reason and reason.strip(), 'Registered actor and keep reason required')
-    path = safe_path(path)
-    require(path.is_dir(), 'Keep path must be an existing regular directory')
-    record(store, actor, 'keep', path=str(path), reason=reason)
+    store.release_views()
+    from frozen_candidate import cache_lock
+    # purge --apply holds this lock from its replan to its last removal: a keep either lands before it
+    # (and the replan refuses a changed plan) or after it, when a removed path no longer exists.
+    with cache_lock(store):
+        path = safe_path(path)
+        require(path.is_dir(), 'Keep path must be an existing regular directory')
+        record(store, actor, 'keep', path=str(path), reason=reason)
     return {'kept': str(path), 'reason': reason}
 
 
