@@ -90,5 +90,30 @@ class ReuseRoots(unittest.TestCase):
         self.assertEqual(result["reuse"]["clone"], 0)
 
 
+class RealCompactLock(unittest.TestCase):
+    """storage compact --apply with the real lane A primitive: one owner of candidates/.lock."""
+
+    def test_policy_compact_apply_finishes_with_the_real_primitive(self):
+        import json
+        import subprocess
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        import test_storage_policy as support
+
+        case = support.StoragePolicy("test_retention_keeps_three_recent_age_keep_and_never_unknown")
+        case.setUp()
+        self.addCleanup(case.doCleanups)
+        case.checkpoint("compact-me")
+        script = Path(__file__).resolve().parents[1] / "scripts" / "squadra.py"
+        try:
+            done = subprocess.run([sys.executable, "-B", str(script), "--root", str(case.store.root), "storage", "compact",
+                                   "--apply", "--actor", "C", "--reason", "Integrated compact"],
+                                  capture_output=True, timeout=90, start_new_session=True)
+        except subprocess.TimeoutExpired:
+            self.fail("storage compact --apply waited on its own candidate lock")
+        self.assertEqual(done.returncode, 0, done.stderr.decode())
+        result, _ = json.JSONDecoder().raw_decode(done.stdout.decode())
+        self.assertFalse(result["dry_run"])
+
+
 if __name__ == "__main__":
     unittest.main()
