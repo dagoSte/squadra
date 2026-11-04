@@ -581,6 +581,24 @@ def parser():
     a.add_argument("--evidence", action="append", default=[])
     a = sub.add_parser("legacy"); a.add_argument("--actor", required=True); a.add_argument("--path", required=True)
     a = sub.add_parser("checkpoint"); a.add_argument("--to", required=True)
+    a.add_argument('--actor'); a.add_argument('--compact', action='store_true')
+    a.add_argument('--reuse', action='append', default=[], metavar='CHECKPOINT')
+    a = sub.add_parser('storage', help='Inspect registered storage; deletion requires an explicit apply')
+    actions = a.add_subparsers(dest='action', required=True)
+    for action in ('status', 'purge', 'compact', 'keep'):
+        item = actions.add_parser(action)
+        item.add_argument('--actor'); item.add_argument('--reason')
+        if action == 'keep':
+            item.add_argument('--path', required=True)
+        if action in {'purge', 'compact'}:
+            modes = item.add_mutually_exclusive_group()
+            modes.add_argument('--dry-run', action='store_true')
+            modes.add_argument('--apply', action='store_true')
+        if action in {'status', 'purge'}:
+            item.add_argument('--checkpoints', type=int); item.add_argument('--saves', type=int)
+            item.add_argument('--hours', type=int)
+        if action == 'purge':
+            item.add_argument('--expect-plan', help='Refuse if the dry-run plan hash changed')
     a = sub.add_parser("save"); a.add_argument("--actor", required=True); a.add_argument("--to", required=True)
     a.add_argument("--repo", action="append", default=[]); a.add_argument("--include", action="append", default=[])
     a.add_argument("--temporary", action="store_true"); a.add_argument("--declared-offsite")
@@ -1166,10 +1184,37 @@ def dispatch(a, store):
         store.append("legacy", actor, {"path": str(path), "files": files,
                      "notice": "Historical snapshot only; not a new assignment, ACK or independently verified acceptance"})
     elif command == "checkpoint":
+        from storage_policy import record, tree_facts
         report = {}
-        return {"checkpoint": store.checkpoint(a.to, report=report), "canonical_events_and_artifacts": True,
+        path = store.checkpoint(a.to, report=report, **({'reuse': a.reuse} if a.reuse else {}),
+                                **({'compact': True} if a.compact else {}))
+        if a.actor:
+            record(store, a.actor, 'checkpoint', path=path, event_count=report['event_count'],
+                   event_head=report['event_head'], bytes={k: v for k, v in tree_facts(path).items() if k != 'signature'},
+                   reuse=a.reuse)
+        else:
+            warning('Checkpoint not registered; use --actor WINDOW to include it in storage retention.')
+        return {"checkpoint": path, 'registered': bool(a.actor), "canonical_events_and_artifacts": True,
                 "source_code": "Not included: preserve worktree and Git bundle separately",
                 **({"scrubbed": report["scrubbed"]} if report.get("scrubbed") else {})}
+    elif command == 'storage':
+        import storage_policy
+        if a.action in {'status', 'purge'}:
+            overrides = {k: getattr(a, k) for k in ('checkpoints', 'saves', 'hours') if getattr(a, k) is not None}
+            configured = storage_policy.records(store)[3]
+            policy = storage_policy.policy_values({**configured, **overrides})
+            if a.action == 'status':
+                return storage_policy.plan(store, policy=policy)
+            return storage_policy.purge(store, a.actor, a.reason, apply=a.apply,
+                                        policy=policy if overrides else None, expected=a.expect_plan)
+        if a.action == 'keep':
+            return storage_policy.keep(store, a.actor, a.path, a.reason)
+        try:
+            return storage_policy.compact(store, a.actor, a.reason, apply=a.apply)
+        except ModuleNotFoundError as exc:
+            if exc.name != 'storage_reuse':
+                raise
+            raise Error('Storage compact requires the storage_reuse module from the integrated release') from exc
     elif command == "save":
         from recovery import save, allow_names, DestinationRefused
         require(state["agents"][actor]["role"] == "coordinator", "Coordinator role required")
@@ -1345,6 +1390,8 @@ def main(argv=None):
     root = Path(a.root or os.environ.get('SQUADRA_ROOT') or Path.cwd() / '.squadra')
     try:
         root = workspace_path(a.root)
+        from storage_policy import restore_projections
+        restore_projections(root)
         if a.command == 'checklist':
             from checklist import run
             store = Store(root, read_only=True)
@@ -1489,6 +1536,8 @@ def main(argv=None):
             print(json.dumps(result, ensure_ascii=False, indent=2))
             return 0
         read_only = (a.command in {'status', 'inbox', 'check', 'doctor', 'dash'} or
+                     (a.command == 'storage' and (a.action == 'status' or
+                      (a.action in {'purge', 'compact'} and not a.apply))) or
                      (a.command in {'resource', 'candidate'} and a.action == 'status') or
                      (a.command == 'migliora' and a.action == 'inspect') or
                      (a.command == 'lesson' and a.list) or (a.command == 'replace' and a.dry_run))

@@ -730,7 +730,8 @@ Thresholds, presence calls and why every window should run the same version: [de
 | WIP at risk, owner stop, or context pressure | Complete `save`, then an actual `restore-check`. |
 
 ```sh
-squadra checkpoint --to /durable/checkpoint-001
+squadra storage purge --dry-run
+squadra checkpoint --actor WINDOW --compact --to /durable/checkpoint-001
 squadra save --actor coord --to /durable/recovery-001
 squadra restore-check --actor coord --from /durable/recovery-001 --to /durable/restore-test-001
 squadra pause --actor coord --reason "Owner requested stop"
@@ -739,6 +740,14 @@ squadra resume --actor coord --reason "Owner explicitly resumed"
 ```
 
 `checkpoint` copies **only the registry**; `save`, coordinator only, adds every registered Git repository and its unfinished work; `restore-check` proves a package by actually restoring it into a new folder. When context fills up, the agent saves a handover **before continuing**. [Details](references/recovery.md#checkpoint-details).
+
+Automatic checkpoints use `--compact`: recoverable views are omitted and rebuilt
+after verification when the copy is opened with `--root`. Use `--reuse PREVIOUS`
+for a verified point on the same device. Defaults retain three checkpoints, three
+saves, the last successfully restored save, 24 hours and `storage keep` paths.
+Only explicit coordinator `storage purge --apply --actor COORD --reason TEXT`
+deletes previewed targets; unknown folders stay. Without `--actor`, the legacy
+checkpoint succeeds but is unregistered. Never `cp -R` the live registry.
 
 **Limits of recovery:** the secret filters are partial, **not** a full scan of history and artifacts; a copy on the same disk does not survive a disk failure; `--declared-offsite` is a declaration, not verified remote storage. The complete contract is in [recovery and context handover](references/recovery.md).
 
