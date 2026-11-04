@@ -612,8 +612,9 @@ and commits in task outputs, while its inspections are computed on demand.
   Retain three checkpoints, three saves, the last successfully restored save,
   everything younger than 24 hours and explicit `storage keep` points. Only the
   coordinator's explicit `storage purge --apply --actor COORD --reason TEXT`
-  deletes files. Use `--reuse PREVIOUS` for a verified checkpoint on the same
-  filesystem. Never `cp -R` a live registry; `cp -c` is only for disposable tests.
+  deletes files. Identical bytes of the newest recorded checkpoint on the same
+  filesystem are reused automatically (`--reuse PREVIOUS` names one); for data
+  already on disk preview `storage compact --dry-run`. Never `cp -R` a live registry; `cp -c` is only for disposable tests.
 - **Context under pressure:** if the client signals compaction/a limit, or you
   can no longer reliably reconstruct task, constraints and proofs, save
   before continuing. Use a registered compact checkpoint with reuse, plus `save`

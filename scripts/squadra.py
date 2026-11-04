@@ -587,6 +587,7 @@ def parser():
     actions = a.add_subparsers(dest='action', required=True)
     for action in ('status', 'purge', 'compact', 'keep'):
         item = actions.add_parser(action)
+        item.add_argument('--root', default=argparse.SUPPRESS, help='Shared persistent workspace')
         item.add_argument('--actor'); item.add_argument('--reason')
         if action == 'keep':
             item.add_argument('--path', required=True)
@@ -1184,17 +1185,27 @@ def dispatch(a, store):
         store.append("legacy", actor, {"path": str(path), "files": files,
                      "notice": "Historical snapshot only; not a new assignment, ACK or independently verified acceptance"})
     elif command == "checkpoint":
-        from storage_policy import record, tree_facts
+        from storage_policy import previous, record, reuse_available, tree_facts
+        if a.actor:
+            # A recorded checkpoint needs a registered seat; refuse before copying anything.
+            require(a.actor in state["agents"], "Unknown checkpoint actor: " + a.actor)
+        reuse = list(a.reuse)
+        if reuse:
+            require(reuse_available(), "Checkpoint --reuse requires the storage_reuse module of the integrated release")
+        elif reuse_available():
+            prior = previous(store, 'checkpoint', a.to)
+            reuse = [str(prior)] if prior is not None else []
         report = {}
-        path = store.checkpoint(a.to, report=report, **({'reuse': a.reuse} if a.reuse else {}),
+        path = store.checkpoint(a.to, report=report, **({'reuse': reuse} if reuse else {}),
                                 **({'compact': True} if a.compact else {}))
         if a.actor:
             record(store, a.actor, 'checkpoint', path=path, event_count=report['event_count'],
-                   event_head=report['event_head'], bytes={k: v for k, v in tree_facts(path).items() if k != 'signature'},
-                   reuse=a.reuse)
+                   event_head=report['event_head'], compact=bool(a.compact),
+                   bytes={k: v for k, v in tree_facts(path).items() if k != 'signature'}, reuse=reuse)
         else:
-            warning('Checkpoint not registered; use --actor WINDOW to include it in storage retention.')
-        return {"checkpoint": path, 'registered': bool(a.actor), "canonical_events_and_artifacts": True,
+            warning('Checkpoint not registered: storage purge will never remove it. Use --actor WINDOW to include it in retention.')
+        return {"checkpoint": path, 'registered': bool(a.actor), 'compact': bool(a.compact), 'reuse': reuse,
+                "canonical_events_and_artifacts": True,
                 "source_code": "Not included: preserve worktree and Git bundle separately",
                 **({"scrubbed": report["scrubbed"]} if report.get("scrubbed") else {})}
     elif command == 'storage':

@@ -186,6 +186,12 @@ def supported(repo, entries=None):
             "Git LFS checkout not qualified")
 
 
+def file_sha256(path):
+    """Stream large bundles instead of holding them in memory."""
+    with open(path, 'rb') as handle:
+        return hashlib.file_digest(handle, 'sha256').hexdigest()
+
+
 def record_file(path, root):
     rel = str(path.relative_to(root))
     parts = Path(rel).parts
@@ -243,14 +249,12 @@ def save(store, destination, repos=None, includes=None, temporary=False, declare
     require(os.name != "nt", "Windows full recovery not qualified")
     state = store.state()
     destination, selected = save_destination(store, state, destination, repos, temporary)
-    from storage_policy import previous
-    prior = previous(store, 'save', destination)
-    try:
+    from storage_policy import previous, reuse_available
+    place, prior, prior_rows = None, None, []
+    if reuse_available():
         from storage_reuse import place
-    except ModuleNotFoundError as exc:
-        if exc.name != 'storage_reuse':
-            raise
-        place = None
+        prior = previous(store, 'save', destination)
+        prior_rows = verify_package(prior)['repositories'] if prior is not None else []
     allowance = None
     if name_allowance is not None:
         decision = next((d for d in state['decisions'] if d.get('id') == name_allowance), None)
@@ -317,14 +321,13 @@ def save(store, destination, repos=None, includes=None, temporary=False, declare
             name = "repo-" + str(n); folder = destination / name; folder.mkdir(mode=0o700)
             git(repo, "bundle", "create", str(folder / "history.bundle"), "--all", "HEAD", timeout=LONG_GIT_SECONDS)
             git(repo, "bundle", "verify", str(folder / "history.bundle"), timeout=LONG_GIT_SECONDS)
-            if prior is not None and place is not None:
-                old = next((row for row in verify_package(prior)['repositories']
-                            if row['original'] == str(repo)), None)
+            if prior is not None:
+                old = next((row for row in prior_rows if row['original'] == str(repo)), None)
                 if old:
                     source = prior / old['folder'] / 'history.bundle'
                     bundle = folder / 'history.bundle'
-                    sha = digest(bundle.read_bytes())
-                    if digest(source.read_bytes()) == sha:
+                    sha = file_sha256(bundle)
+                    if source.stat().st_size == bundle.stat().st_size and file_sha256(source) == sha:
                         temporary_bundle = folder / 'history.reuse'
                         place(source, temporary_bundle, sha256=sha, readonly=True)
                         os.replace(temporary_bundle, bundle)
@@ -354,7 +357,7 @@ def save(store, destination, repos=None, includes=None, temporary=False, declare
                     {str(p.relative_to(repo)): record_file(p, repo) for p in extra} == extra_before, "Torn source/index snapshot")
         report = {}
         store.checkpoint(destination / "registry", audit_source=False, report=report,
-                         **({'reuse': [prior / 'registry']} if prior is not None and place is not None else {}))
+                         **({'reuse': [prior / 'registry']} if prior is not None else {}))
         if not report:
             check = Store(destination / "registry")
             try:

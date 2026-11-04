@@ -1,8 +1,9 @@
 # Task, proof, review and output
 
 Before a long round inspect `squadra storage purge --dry-run`. Preserve each
-completed increment with `checkpoint --actor WINDOW --compact --to NEW`, adding
-`--reuse PREVIOUS` for a verified checkpoint on the same device. Defaults keep
+completed increment with `checkpoint --actor WINDOW --compact --to NEW`; it
+reuses the newest recorded checkpoint on the same device (`--reuse PREVIOUS`
+names one explicitly). Defaults keep
 three checkpoints, three saves, the last successful restore, 24 hours and explicit
 keeps. Only a coordinator's explicit `--apply` deletes; unknown folders stay.
 Sources and WIP still require `save` and a real `restore-check`. See

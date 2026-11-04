@@ -742,8 +742,10 @@ squadra resume --actor coord --reason "Owner explicitly resumed"
 `checkpoint` copies **only the registry**; `save`, coordinator only, adds every registered Git repository and its unfinished work; `restore-check` proves a package by actually restoring it into a new folder. When context fills up, the agent saves a handover **before continuing**. [Details](references/recovery.md#checkpoint-details).
 
 Automatic checkpoints use `--compact`: recoverable views are omitted and rebuilt
-after verification when the copy is opened with `--root`. Use `--reuse PREVIOUS`
-for a verified point on the same device. Defaults retain three checkpoints, three
+after verification when the copy is opened with `--root`. Identical bytes of the
+newest recorded checkpoint on the same device are reused automatically (COW clone,
+or a hardlink of read-only files); `--reuse PREVIOUS` names it explicitly, and
+`storage compact --dry-run` previews the same sharing for data already on disk. Defaults retain three checkpoints, three
 saves, the last successfully restored save, 24 hours and `storage keep` paths.
 Only explicit coordinator `storage purge --apply --actor COORD --reason TEXT`
 deletes previewed targets; unknown folders stay. Without `--actor`, the legacy

@@ -132,8 +132,8 @@ owner for permission again.
 ```sh
 squadra storage purge --dry-run
 squadra checkpoint --actor WINDOW --compact --to /durable/path/checkpoint-001
-# After the first point, on the same filesystem:
-squadra checkpoint --actor WINDOW --compact --reuse /durable/path/checkpoint-001 --to /durable/path/checkpoint-002
+# Later points on the same filesystem reuse the newest recorded one automatically:
+squadra checkpoint --actor WINDOW --compact --to /durable/path/checkpoint-002
 squadra output --actor coord --file /evidence/checkpoint-update.md \
   --next "Continue from the saved point" --artifact /evidence/checkpoint-receipt.json
 ```
@@ -239,7 +239,9 @@ a compact registry member of a save. Without `--compact` the 3.12 layout remains
 Without `--actor` the legacy command succeeds with an unregistered warning, and
 purge never treats that directory as a known recovery point.
 
-`--reuse PREVIOUS` sends verified paths to the copy primitives. `save` finds the
+Without `--reuse`, the CLI reuses the newest valid recorded checkpoint on the
+destination's device when the reuse primitives are installed; `--reuse PREVIOUS`
+names verified paths explicitly and is refused without those primitives. `save` finds the
 previous verified registered package on the same device and reuses its registry
 and identical history bundles where supported; MANIFEST schema 1 stays unchanged.
 Copies remain self-contained. Never chmod a shared file or use `cp -R` on a live
@@ -256,8 +258,9 @@ stay protected. Unknown directories and unrecorded stages are never deleted.
 Only `storage purge --apply --actor COORD --reason TEXT` deletes. It recomputes
 the plan under the candidate lock, refuses drift, records intent before deletion
 and the actual result afterwards. `--expect-plan HASH` additionally binds an
-earlier preview. `storage compact --dry-run` previews physical reuse without
-retention deletion; applying it also needs the coordinator and a reason.
+earlier preview. `storage compact --dry-run` previews physical reuse of data
+already on disk (candidates, recorded checkpoints and saves, archived run logs)
+without retention deletion and without changing bytes, modes or paths; applying it also needs the coordinator and a reason.
 Allocated-byte estimates are upper bounds; COW sharing may free fewer bytes.
 
 `tools/storage_growth.py --dir /dedicated/volume/run --count 5 --baseline

@@ -107,6 +107,36 @@ class StoragePolicy(unittest.TestCase):
         self.assertIn(('candidate', [previous]), seen)
         self.assertIn(('artifacts', [previous / 'artifacts']), seen)
 
+    def test_cli_unknown_actor_and_reuse_without_module_refuse_before_copying(self):
+        target = self.base / 'refused'
+        code, _, err = self.cli('checkpoint', '--actor', 'nobody', '--to', str(target))
+        self.assertNotEqual(code, 0)
+        self.assertFalse(target.exists())
+        previous = self.checkpoint('previous')
+        with patch.object(policy, 'reuse_available', return_value=False):
+            code, _, err = self.cli('checkpoint', '--actor', 'C', '--to', str(target), '--reuse', str(previous))
+        self.assertNotEqual(code, 0)
+        self.assertIn('storage_reuse', err)
+        self.assertFalse(target.exists())
+
+    def test_cli_reuses_the_newest_recorded_checkpoint_only_when_primitives_exist(self):
+        first = self.checkpoint('first')
+        seen = []
+        original = Store.checkpoint
+
+        def spy(store, destination, **kwargs):
+            seen.append(kwargs.get('reuse'))
+            kwargs.pop('reuse', None)
+            return original(store, destination, **kwargs)
+
+        with patch.object(Store, 'checkpoint', spy), patch.object(policy, 'reuse_available', return_value=True):
+            self.checkpoint('second')
+        with patch.object(Store, 'checkpoint', spy), patch.object(policy, 'reuse_available', return_value=False):
+            self.checkpoint('third')
+        self.assertEqual(seen, [[str(first)], None])
+        recorded = self.store.events()[-2]['data']['storage_action']
+        self.assertEqual(recorded['reuse'], [str(first)])
+
     def test_retention_keeps_three_recent_age_keep_and_never_unknown(self):
         paths = [self.checkpoint('point-' + str(i)) for i in range(6)]
         policy.keep(self.store, 'A', paths[0], 'Owner keeps this recovery point')
@@ -189,6 +219,29 @@ class StoragePolicy(unittest.TestCase):
         result = policy.plan(self.store)
         self.assertEqual(result['entries'], [])
         self.assertIn('symlink', result['ignored'][0]['reason'])
+
+    def test_storage_root_after_subcommand_and_dry_run_never_records_a_write(self):
+        before = self.store.events()
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = main(['storage', 'purge', '--dry-run', '--root', str(self.root)])
+        self.assertEqual(code, 0)
+        result = json.JSONDecoder().raw_decode(out.getvalue())[0]
+        self.assertTrue(result['dry_run'])
+        self.assertEqual(self.store.events(), before)
+
+    def test_purge_removal_leaves_a_shared_readonly_inode_mode_unchanged(self):
+        parent = self.base / 'removable'
+        parent.mkdir()
+        source = self.base / 'retained'
+        source.write_text('Immutable bytes')
+        source.chmod(0o444)
+        import os
+        os.link(source, parent / 'shared')
+        parent.chmod(0o555)
+        policy.remove_tree(parent)
+        self.assertEqual(source.stat().st_mode & 0o777, 0o444)
+        self.assertEqual(source.read_text(), 'Immutable bytes')
 
     def test_saved_package_with_last_successful_restore_is_kept(self):
         paths = []

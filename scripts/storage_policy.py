@@ -15,6 +15,15 @@ DEFAULTS = {'checkpoints': 3, 'saves': 3, 'hours': 24}
 LIVE = {'running', 'cleanup-unknown'}
 
 
+def reuse_available():
+    """Lane-A primitives are optional: callers forward reuse only when they exist."""
+    import importlib.util
+    import sys
+    if sys.modules.get('storage_reuse') is not None:
+        return True
+    return importlib.util.find_spec('storage_reuse') is not None
+
+
 def safe_path(value):
     """Refuse symlinks in every existing component, including the final name."""
     path = Path(os.path.abspath(value))

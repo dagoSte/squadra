@@ -744,8 +744,11 @@ squadra resume --actor coord --reason "Il proprietario ha ripreso esplicitamente
 `checkpoint` copia **solo il registro**; `save`, solo per il coordinatore, aggiunge ogni repository Git registrato con il suo lavoro non finito; `restore-check` dimostra un pacchetto ripristinandolo davvero in una cartella nuova. Quando il contesto si riempie, l'agente salva un passaggio di consegne **prima di continuare**. [Dettagli](references/recovery.md#checkpoint-details), in inglese.
 
 I checkpoint automatici usano `--compact`: le viste rigenerabili sono omesse e
-ricostruite dopo verifica aprendo la copia con `--root`. Usa `--reuse PREVIOUS`
-per un punto verificato sullo stesso dispositivo. Si conservano tre checkpoint,
+ricostruite dopo verifica aprendo la copia con `--root`. I byte identici
+dell'ultimo checkpoint registrato sullo stesso dispositivo sono riusati da soli
+(clone COW, o hardlink dei file in sola lettura); `--reuse PREVIOUS` lo indica
+esplicitamente, e `storage compact --dry-run` mostra la stessa condivisione per i
+dati già su disco. Si conservano tre checkpoint,
 tre salvataggi, l'ultimo salvataggio ripristinato con successo, 24 ore e i percorsi
 `storage keep`. Solo `storage purge --apply --actor COORD --reason TEXT` del
 coordinatore cancella i bersagli del piano; le cartelle sconosciute restano.

@@ -1,7 +1,8 @@
 # Smaller working context
 
-Preserve the registry with `checkpoint --actor WINDOW --compact --to NEW` and
-`--reuse PREVIOUS` for a verified previous point on the same device. Before the
+Preserve the registry with `checkpoint --actor WINDOW --compact --to NEW`; it
+reuses the newest recorded checkpoint on the same device (`--reuse PREVIOUS`
+names one explicitly). Before the
 next long round inspect `storage purge --dry-run`; retain the default three
 checkpoints, three saves, last successful restore, 24 hours and explicit keeps.
 Sources/WIP still need `save` and an actual `restore-check`. Do not repeat full
