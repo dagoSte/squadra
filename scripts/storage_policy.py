@@ -6,6 +6,7 @@ from pathlib import Path
 import shutil
 import sqlite3
 import stat
+import uuid
 
 from registry import Error, Store, atomic, canonical, digest, now, plain, require
 
@@ -191,7 +192,8 @@ def latest_restore(store, state):
     return None
 
 
-def plan(store, *, policy=None, at=None):
+def protections(store, *, policy=None, at=None):
+    """Reasons that keep a path, read from the registry as it is now."""
     state, points, keeps, configured = records(store)
     configured = policy_values(policy or configured)
     at = at or now()
@@ -211,34 +213,45 @@ def plan(store, *, policy=None, at=None):
                            key=lambda r: r['utc'], reverse=True)
         retained.update(r['path'] for r in available[:count])
     protected = {store.root}
-    live_shas = set()
     for task in state['tasks'].values():
         if task['status'] != 'done' and not task.get('superseded_by'):
             protected.add(Path(task['repo']).resolve())
             sha = task.get('delivery', {}).get('frozen', {}).get('sha256')
             if sha:
-                live_shas.add(sha)
                 protected.add(store.root / 'candidates' / sha)
     for run in state['runs'].values():
         if run['status'] in LIVE:
             protected.add(store.root / 'runs' / run['id'])
             protected.add(store.root / 'run-leases')
+
+    def reasons(path, utc=None):
+        path = Path(path)
+        found = []
+        if any(path == p or path in p.parents for p in protected):
+            found.append('active registry, task source, candidate or run')
+        if any(p != store.root and p in path.parents for p in protected):
+            found.append('inside an active task source or run')
+        if str(path) in retained or any(path == Path(p) or path in Path(p).parents or Path(p) in path.parents for p in keeps):
+            found.append('retention or explicit keep')
+        if utc is not None and (clock - dt.datetime.fromisoformat(utc)).total_seconds() < configured['hours'] * 3600:
+            found.append('younger than retention age')
+        return found
+
+    return {'state': state, 'points': points, 'configured': configured, 'at': at,
+            'verified': verified, 'ignored': ignored, 'reasons': reasons}
+
+
+def plan(store, *, policy=None, at=None):
+    guard = protections(store, policy=policy, at=at)
+    state, points, configured, at = guard['state'], guard['points'], guard['configured'], guard['at']
+    verified, ignored = guard['verified'], guard['ignored']
     rows = []
 
     def add(path, kind, utc, extra=None):
         path = safe_path(path)
         if not path.is_dir() or any(row['path'] == str(path) for row in rows):
             return
-        reasons = []
-        if any(path == p or path in p.parents for p in protected):
-            reasons.append('active registry, task source, candidate or run')
-        if any(p != store.root and p in path.parents for p in protected):
-            reasons.append('inside an active task source or run')
-        if str(path) in retained or any(path == Path(p) or path in Path(p).parents or Path(p) in path.parents for p in keeps):
-            reasons.append('retention or explicit keep')
-        age = (clock - dt.datetime.fromisoformat(utc)).total_seconds()
-        if age < configured['hours'] * 3600:
-            reasons.append('younger than retention age')
+        reasons = guard['reasons'](path, utc)
         facts = tree_facts(path)
         rows.append({'path': str(path), 'kind': kind, 'eligible': not reasons, 'protected': reasons,
                      **facts, **(extra or {})})
@@ -320,23 +333,33 @@ def purge(store, actor=None, reason=None, *, apply=False, policy=None, expected=
         paths = [r for r in current['entries'] if r['eligible']]
         record(store, actor, 'purge', phase='started', removed=[r['path'] for r in paths],
                reason=reason, plan_hash=current['plan_hash'])
-        removed, error = [], None
+        removed, kept, error = [], [], None
         try:
             for row in paths:
                 require(tree_facts(row['path'])['signature'] == row['signature'], 'Storage target changed')
+                target = Path(row['path'])
+                # Barrier: once renamed, a keep or a task naming this path refers to a missing directory
+                # and is refused; protections recorded before the rename are read again here.
+                hidden = target.with_name('.purging-' + target.name + '-' + uuid.uuid4().hex[:12])
+                os.rename(target, hidden)
+                late = protections(store, policy=policy, at=current['at'])['reasons'](target)
+                if late:
+                    os.rename(hidden, target)
+                    kept.append({'path': row['path'], 'protected': late})
+                    continue
                 if row['kind'] == 'candidate':
                     store.append('output', actor, {'task': row['task'], 'text': 'Retire frozen candidate ' + row['sha256'],
                                  'next': 'Historical proofs remain.', 'artifacts': [],
                                  'candidate_action': {'action': 'retire', 'sha256': row['sha256'], 'reason': reason}})
-                remove_tree(row['path'])
+                remove_tree(hidden)
                 removed.append(row['path'])
         except BaseException as exc:
             error = str(exc)
             raise
         finally:
             record(store, actor, 'purge', phase='completed' if error is None else 'failed',
-                   removed=removed, reason=reason, error=error)
-        return {**current, 'dry_run': False, 'removed': removed}
+                   removed=removed, kept=kept, reason=reason, error=error)
+        return {**current, 'dry_run': False, 'removed': removed, 'kept': kept}
 
 
 def keep(store, actor, path, reason):
@@ -359,7 +382,7 @@ def compact(store, actor=None, reason=None, *, apply=False):
         require(plan(store, at=preview['at']) == preview, 'Storage plan changed; inspect a new dry-run')
         record(store, actor, 'compact', phase='started', targets=targets, reason=reason)
         try:
-            result = reuse_compact(store.root, targets, dry_run=False)
+            result = reuse_compact(store.root, targets, dry_run=False, locked=True)
         except BaseException as exc:
             record(store, actor, 'compact', phase='failed', reason=reason, error=str(exc))
             raise

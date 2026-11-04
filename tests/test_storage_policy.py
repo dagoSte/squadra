@@ -164,7 +164,8 @@ class StoragePolicy(unittest.TestCase):
         def remove(target):
             action = self.store.events()[-1]['data']['storage_action']
             self.assertEqual(action['phase'], 'started')
-            self.assertIn(str(target), action['removed'])
+            self.assertTrue(Path(target).name.startswith('.purging-'))
+            self.assertIn(str(Path(target).with_name(Path(target).name[len('.purging-'):].rsplit('-', 1)[0])), action['removed'])
             return original(target)
 
         with patch.object(policy, 'remove_tree', remove):
