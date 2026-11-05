@@ -3,6 +3,15 @@
 Tutte le versioni di Squadra, dalla più nuova. Il README tiene la più nuova e le tre precedenti.
 
 
+**3.13.1 — una copia del registro non cancella mai i punti di recupero dell'originale**
+
+- **Correzione.** Nella 3.13.0 i punti di recupero erano registrati solo con il percorso assoluto, quindi una copia del registro (clone, ripristino, copia aperta con `--root`) ereditava checkpoint e salvataggi dell'originale, e `storage purge --apply` lanciato nella copia poteva cancellarli. Ora ogni checkpoint, adozione e salvataggio registra la radice del registro che l'ha creato; altrove è elencato come estraneo e non è mai un bersaglio di purge. Le registrazioni senza radice valgono solo dentro il proprio registro. Un test di regressione cancella il checkpoint dell'originale con la 3.13.0 e lo conserva ora.
+- Trovato compattando un registro reale da 7,2 GB con la 3.13.0: `storage adopt` ha registrato 7 vecchi checkpoint, e `storage compact` ha condiviso 163 794 file su 166 663 e liberato 2,62 GB misurati su disco, con l'audit completo superato dopo.
+
+**Guarda il film delle novità della 3.10.2, due minuti — attiva l'audio nel lettore:**
+
+https://github.com/user-attachments/assets/8f38a443-b738-48f8-b562-9b072419b5f0
+
 **3.13.0 — checkpoint che condividono i byte, una politica di conservazione e la compattazione dei dati che hai già**
 
 - **Riuso dei contenuti immutabili.** Nuovi candidati congelati e checkpoint condividono i file identici invece di copiarli: clone copy-on-write (APFS, o `FICLONE` su Linux), hardlink solo per file in sola lettura verificati dove il clone non esiste, copia normale come ultima scelta. Byte, percorsi, impronte e formati dei pacchetti non cambiano, e le versioni precedenti continuano a ripristinarli. Misurato su una copia di un registro reale, 10 checkpoint consecutivi con scritture concorrenti: 8,97 GB → 0,60 GB su APFS (−93%), 9,22 GB → 3,60 GB senza copy-on-write (−61%).
@@ -11,10 +20,6 @@ Tutte le versioni di Squadra, dalla più nuova. Il README tiene la più nuova e 
 - **Checkpoint registrati e compatti.** `checkpoint --actor FINESTRA --compact` registra il punto di recupero e omette le viste ricostruite all'apertura; `save` riusa il pacchetto precedente. Un checkpoint non fallisce più quando un file temporaneo di uno scrittore concorrente sparisce durante la copia.
 - **Basta una frase.** Dopo l'aggiornamento di' a una finestra Claude: «Usa squadra: compatta lo spazio del registro /percorso/del/registro». A ogni ripresa `doctor --resume` segnala i vecchi checkpoint non registrati o più di 1 GB di candidati, e il coordinatore te la propone.
 - **Le istruzioni della skill** non chiedono più copie complete ripetute: i checkpoint sono compatti e registrati, e ogni giro lungo comincia con `storage purge --dry-run`.
-
-**Guarda il film delle novità della 3.10.2, due minuti — attiva l'audio nel lettore:**
-
-https://github.com/user-attachments/assets/8f38a443-b738-48f8-b562-9b072419b5f0
 
 **3.12.1 — la dashboard apre i registri con finestre sostituite**
 

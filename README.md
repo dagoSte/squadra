@@ -13,7 +13,7 @@ Coordinate Claude Code, Codex and Cursor with shared tasks, independent reviews 
 
 **Free and open source** — MIT licence, no account, everything runs on your machine.
 
-**Version 3.13.0** · Python 3.12+ · macOS / POSIX
+**Version 3.13.1** · Python 3.12+ · macOS / POSIX
 
 **English** · [Italiano](README.it.md) · [Privacy](PRIVACY.md)
 
@@ -952,6 +952,18 @@ Static, behavioral and dependency checks, excluding `tests/`. Passing means no H
 <a id="news"></a>
 ## What's new
 
+**3.13.1 — a copy of a registry never purges the original's recovery points**
+
+- **Fix.** In 3.13.0, recovery points were recorded by absolute path only, so a copy of a registry (a clone, a restore, a backup opened with `--root`) inherited the original's checkpoints and saves, and `storage purge --apply` run in the copy could remove them. Every checkpoint, adoption and save now records the root of the registry that made it; elsewhere it is listed as foreign and is never a purge target. Records without a root count only inside their own registry. A regression test removes the original's checkpoint on 3.13.0 and keeps it now.
+- Found while compacting a real 7.2 GB registry with 3.13.0: `storage adopt` registered 7 old checkpoints, and `storage compact` shared 163,794 of 166,663 files and freed 2.62 GB measured on disk, with a full audit passing afterwards.
+
+**Watch the two-minute film of what's new in 3.10.2 — turn the sound on in the player:**
+
+https://github.com/user-attachments/assets/6ea747a5-a993-4aa7-a58d-1b2b7f908720
+
+<details>
+<summary><strong>Earlier versions</strong></summary>
+
 **3.13.0 — checkpoints that share their bytes, a retention policy and compaction of the data you already have**
 
 - **Reuse of immutable content.** New frozen candidates and checkpoints share identical files instead of copying them: a copy-on-write clone (APFS, or `FICLONE` on Linux), a hardlink only for verified read-only files where clones do not exist, a plain copy last. Bytes, paths, fingerprints and package formats are unchanged, so older versions still restore them. Measured on a copy of a real registry, 10 consecutive checkpoints with concurrent writes: 8.97 GB → 0.60 GB on APFS (−93%), 9.22 GB → 3.60 GB without copy-on-write (−61%).
@@ -960,13 +972,6 @@ Static, behavioral and dependency checks, excluding `tests/`. Passing means no H
 - **Recorded, compact checkpoints.** `checkpoint --actor WINDOW --compact` records the recovery point and omits views that are rebuilt on opening; `save` reuses the previous package. A checkpoint no longer fails when a concurrent writer's temporary file disappears mid-copy.
 - **Ask for it in one sentence.** After updating, tell a Claude window: «Use squadra to compact the storage of the registry at /path/to/registry». At every resume `doctor --resume` notices old unregistered checkpoints or more than 1 GB of candidates, and the coordinator proposes that sentence.
 - **Skill instructions** no longer ask for repeated full copies: checkpoints are compact and recorded, and every long round starts with `storage purge --dry-run`.
-
-**Watch the two-minute film of what's new in 3.10.2 — turn the sound on in the player:**
-
-https://github.com/user-attachments/assets/6ea747a5-a993-4aa7-a58d-1b2b7f908720
-
-<details>
-<summary><strong>Earlier versions</strong></summary>
 
 **3.12.1 — the dashboard opens registries that replaced windows**
 
@@ -982,17 +987,6 @@ https://github.com/user-attachments/assets/6ea747a5-a993-4aa7-a58d-1b2b7f908720
 - **Composition advice by real roles.** `status`, board and dashboard name who builds and who reads; with mixed roles they show the real counts, and pairing rows stay visible when the squad is unbalanced.
 - **Changelog.** The full release history moved to [CHANGELOG.md](CHANGELOG.md); the README keeps the newest release and the three before it.
 - **Skill audits not refreshed.** As in 3.11.2, the recorded scans in `assets/skill-audits.json` predate this release; the System skills page shows every skill as not audited (files changed) until a fresh scan.
-
-**3.11.2 — rules that check themselves: no overlaps, one-step resume, known reds, stale windows, checklist and round scope**
-
-- **No overlap between windows.** The coordinator checks checkout, branch, owned files, base, reserved resources and expected commits before every assignment ([guide](references/skills/sovrapposizioni.md)).
-- **One-step resume.** `doctor --resume` reports the interpreter, every checkout of open tasks and active windows, release drift and silent windows; a missing checkout of an open task blocks with exit 1.
-- **Known reds of main.** `tests/known_reds.json` names tests already red on clean main; the parallel runner separates `KNOWN RED` from `NEW RED`, and `--accept-known` passes a task proof only on known reds. The release proof stays strict, and the list is empty again.
-- **Stale windows.** `doctor --resume` marks silent windows `archivable` or says what `keeps` them, across every seat of an identity; only the owner's word parks them with `standby`.
-- **Checklist.** `squadra checklist --moment resume|assign|deliver|push` checks the critical moments read-only: at push, an author or committer email never seen before fails.
-- **Round scope.** Once a round's scope is fixed, what it finds waits for the next round unless it blocks a close.
-- **Fixes.** `test_rf4a_upgrade` runs on a verified 5099f0c fixture; `test_challenge` no longer races Git maintenance.
-- **Skill audits not refreshed.** The recorded scans in `assets/skill-audits.json` predate this release's changes to `SKILL.md` and `scripts/squadra.py`; the System skills page shows every skill as not audited (files changed) until a fresh scan.
 
 </details>
 
