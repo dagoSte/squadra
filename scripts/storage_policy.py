@@ -132,7 +132,8 @@ def records(store):
     for item in state['outputs']:
         data = item.get('storage_action', {})
         if data.get('action') == 'checkpoint':
-            points[data['path']] = {**data, 'kind': 'checkpoint', 'utc': item['utc']}
+            # An adopted checkpoint keeps the time of its last copied event, not the adoption time.
+            points[data['path']] = {**data, 'kind': 'checkpoint', 'utc': data.get('made', item['utc'])}
         elif data.get('action') == 'keep':
             keeps[data['path']] = data['reason']
         elif data.get('action') == 'policy':
@@ -360,6 +361,45 @@ def purge(store, actor=None, reason=None, *, apply=False, policy=None, expected=
             record(store, actor, 'purge', phase='completed' if error is None else 'failed',
                    removed=removed, kept=kept, reason=reason, error=error)
         return {**current, 'dry_run': False, 'removed': removed, 'kept': kept}
+
+
+def adopt(store, actor=None, reason=None, *, paths=(), scan=None, apply=False):
+    """Record unregistered checkpoints made from THIS registry so retention can see them.
+
+    A folder qualifies only when its CHECKSUMS.json verifies and its last event (seq and hash)
+    is the event at the same position of this journal; anything else is reported, never adopted.
+    """
+    candidates = [safe_path(p) for p in paths]
+    if scan is not None:
+        folder = safe_path(scan)
+        require(folder.is_dir(), 'Scan path must be an existing directory')
+        candidates += sorted(p for p in folder.iterdir() if p.is_dir() and not p.is_symlink())
+    _, points, _, _ = records(store)
+    events = {e['seq']: e for e in store.events()}
+    store.release_views()
+    rows = []
+    for path in dict.fromkeys(candidates):
+        row = {'path': str(path)}
+        try:
+            require(str(path) not in points, 'Already registered')
+            require(path != store.root, 'The active registry is not a checkpoint')
+            boundary = verify_checkpoint(path)
+            event = events.get(boundary['event_count'])
+            require(event is not None and event['hash'] == boundary['event_head'],
+                    'Not a checkpoint of this registry (its last event is not in this journal)')
+            rows.append({**row, 'adoptable': True, **boundary, 'made': event['utc']})
+        except (Error, OSError, ValueError, sqlite3.Error) as exc:
+            rows.append({**row, 'adoptable': False, 'reason': str(exc)})
+    if not apply:
+        return {'dry_run': True, 'entries': rows}
+    coordinator(store, actor, reason)
+    adopted = []
+    for row in rows:
+        if row['adoptable']:
+            record(store, actor, 'checkpoint', path=row['path'], event_count=row['event_count'],
+                   event_head=row['event_head'], made=row['made'], adopted=True, reason=reason)
+            adopted.append(row['path'])
+    return {'dry_run': False, 'entries': rows, 'adopted': adopted}
 
 
 def keep(store, actor, path, reason):

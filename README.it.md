@@ -752,8 +752,9 @@ dati già su disco. Si conservano tre checkpoint,
 tre salvataggi, l'ultimo salvataggio ripristinato con successo, 24 ore e i percorsi
 `storage keep`. Solo `storage purge --apply --actor COORD --reason TEXT` del
 coordinatore cancella i bersagli del piano; le cartelle sconosciute restano.
-Senza `--actor` il vecchio checkpoint riesce ma non è registrato. Mai `cp -R`
-del registro attivo.
+Senza `--actor` il vecchio checkpoint riesce ma non è registrato; `storage adopt
+--scan CARTELLA` mostra i checkpoint precedenti di questo registro e `--apply` li
+porta sotto la conservazione. Mai `cp -R` del registro attivo.
 
 **Limiti del ripristino:** i filtri per i segreti sono parziali, **non** una scansione completa di storia e artefatti; una copia sullo stesso disco non sopravvive a un guasto del disco; `--declared-offsite` è una dichiarazione, non un archivio remoto verificato. Il contratto completo è in [ripristino e passaggio di contesto](references/recovery.md).
 

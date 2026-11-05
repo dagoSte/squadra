@@ -255,6 +255,13 @@ marked `storage keep --actor WINDOW --path PATH --reason TEXT`. Options
 the policy. Open task sources/candidates, live runs/leases and the active registry
 stay protected. Unknown directories and unrecorded stages are never deleted.
 
+Checkpoints made without `--actor` (every checkpoint before 3.13) are unknown to
+retention. `storage adopt --path P` (repeatable) or `--scan DIR` previews them;
+`--apply --actor COORD --reason TEXT` records only folders whose CHECKSUMS.json
+verifies and whose last event, seq and hash, is the event at the same position of
+this journal. An adopted checkpoint keeps the time of that event, so retention ranks
+it by when it was made. Anything else is reported with its reason and left alone.
+
 Only `storage purge --apply --actor COORD --reason TEXT` deletes. It recomputes
 the plan under the candidate lock, refuses drift, records intent before deletion
 and the actual result afterwards. `--expect-plan HASH` additionally binds an

@@ -749,7 +749,8 @@ or a hardlink of read-only files); `--reuse PREVIOUS` names it explicitly, and
 saves, the last successfully restored save, 24 hours and `storage keep` paths.
 Only explicit coordinator `storage purge --apply --actor COORD --reason TEXT`
 deletes previewed targets; unknown folders stay. Without `--actor`, the legacy
-checkpoint succeeds but is unregistered. Never `cp -R` the live registry.
+checkpoint succeeds but is unregistered; `storage adopt --scan DIR` previews older
+checkpoints of this registry and `--apply` brings them under retention. Never `cp -R` the live registry.
 
 **Limits of recovery:** the secret filters are partial, **not** a full scan of history and artifacts; a copy on the same disk does not survive a disk failure; `--declared-offsite` is a declaration, not verified remote storage. The complete contract is in [recovery and context handover](references/recovery.md).
 

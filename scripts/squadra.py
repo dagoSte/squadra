@@ -585,13 +585,16 @@ def parser():
     a.add_argument('--reuse', action='append', default=[], metavar='CHECKPOINT')
     a = sub.add_parser('storage', help='Inspect registered storage; deletion requires an explicit apply')
     actions = a.add_subparsers(dest='action', required=True)
-    for action in ('status', 'purge', 'compact', 'keep'):
+    for action in ('status', 'purge', 'compact', 'keep', 'adopt'):
         item = actions.add_parser(action)
         item.add_argument('--root', default=argparse.SUPPRESS, help='Shared persistent workspace')
         item.add_argument('--actor'); item.add_argument('--reason')
         if action == 'keep':
             item.add_argument('--path', required=True)
-        if action in {'purge', 'compact'}:
+        if action == 'adopt':
+            item.add_argument('--path', action='append', default=[], help='Unregistered checkpoint folder; repeatable')
+            item.add_argument('--scan', help='Directory whose checkpoint folders are considered')
+        if action in {'purge', 'compact', 'adopt'}:
             modes = item.add_mutually_exclusive_group()
             modes.add_argument('--dry-run', action='store_true')
             modes.add_argument('--apply', action='store_true')
@@ -1220,6 +1223,9 @@ def dispatch(a, store):
                                         policy=policy if overrides else None, expected=a.expect_plan)
         if a.action == 'keep':
             return storage_policy.keep(store, a.actor, a.path, a.reason)
+        if a.action == 'adopt':
+            require(a.path or a.scan, 'storage adopt needs --path or --scan')
+            return storage_policy.adopt(store, a.actor, a.reason, paths=a.path, scan=a.scan, apply=a.apply)
         try:
             return storage_policy.compact(store, a.actor, a.reason, apply=a.apply)
         except ModuleNotFoundError as exc:
@@ -1548,7 +1554,7 @@ def main(argv=None):
             return 0
         read_only = (a.command in {'status', 'inbox', 'check', 'doctor', 'dash'} or
                      (a.command == 'storage' and (a.action == 'status' or
-                      (a.action in {'purge', 'compact'} and not a.apply))) or
+                      (a.action in {'purge', 'compact', 'adopt'} and not a.apply))) or
                      (a.command in {'resource', 'candidate'} and a.action == 'status') or
                      (a.command == 'migliora' and a.action == 'inspect') or
                      (a.command == 'lesson' and a.list) or (a.command == 'replace' and a.dry_run))
