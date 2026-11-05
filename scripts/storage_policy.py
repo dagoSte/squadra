@@ -193,8 +193,13 @@ def latest_restore(store, state):
     return None
 
 
-def protections(store, *, policy=None, at=None):
-    """Reasons that keep a path, read from the registry as it is now."""
+def protections(store, *, policy=None, at=None, verified=None):
+    """Reasons that keep a path, read from the registry as it is now.
+
+    verified: recovery points already verified under the same lock; passing them skips re-hashing
+    every checkpoint for each purge target. Points recorded later are left out, which only makes
+    older points less likely to be removed.
+    """
     state, points, keeps, configured = records(store)
     configured = policy_values(policy or configured)
     at = at or now()
@@ -203,12 +208,14 @@ def protections(store, *, policy=None, at=None):
     restored = latest_restore(store, state)
     if restored:
         retained.add(restored)
-    verified, ignored = {}, []
-    for point in points.values():
-        try:
-            verified[point['path']] = recognized(point)
-        except (Error, OSError, ValueError, sqlite3.Error) as exc:
-            ignored.append({'path': point['path'], 'reason': str(exc)})
+    ignored = []
+    if verified is None:
+        verified = {}
+        for point in points.values():
+            try:
+                verified[point['path']] = recognized(point)
+            except (Error, OSError, ValueError, sqlite3.Error) as exc:
+                ignored.append({'path': point['path'], 'reason': str(exc)})
     for kind, count in (('checkpoint', configured['checkpoints']), ('save', configured['saves'])):
         available = sorted((r for r in points.values() if r['kind'] == kind and r['path'] in verified),
                            key=lambda r: r['utc'], reverse=True)
@@ -332,6 +339,7 @@ def purge(store, actor=None, reason=None, *, apply=False, policy=None, expected=
         if policy is not None:
             record(store, actor, 'policy', policy=current['policy'], reason=reason)
         paths = [r for r in current['entries'] if r['eligible']]
+        checked = protections(store, policy=policy, at=current['at'])['verified']
         record(store, actor, 'purge', phase='started', removed=[r['path'] for r in paths],
                reason=reason, plan_hash=current['plan_hash'])
         removed, kept, error = [], [], None
@@ -343,7 +351,7 @@ def purge(store, actor=None, reason=None, *, apply=False, policy=None, expected=
                 # and is refused; protections recorded before the rename are read again here.
                 hidden = target.with_name('.purging-' + target.name + '-' + uuid.uuid4().hex[:12])
                 os.rename(target, hidden)
-                late = protections(store, policy=policy, at=current['at'])['reasons'](target)
+                late = protections(store, policy=policy, at=current['at'], verified=checked)['reasons'](target)
                 if late:
                     os.rename(hidden, target)
                     kept.append({'path': row['path'], 'protected': late})
