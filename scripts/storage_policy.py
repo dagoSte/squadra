@@ -371,6 +371,35 @@ def purge(store, actor=None, reason=None, *, apply=False, policy=None, expected=
         return {**current, 'dry_run': False, 'removed': removed, 'kept': kept}
 
 
+SUGGEST_CANDIDATE_BYTES = 1024 ** 3
+
+
+def resume_hint(root, state):
+    """Cheap storage signal for doctor --resume: counts and stat sizes only, no hashing, no writes."""
+    root = Path(root)
+    recorded = {item['storage_action']['path'] for item in state['outputs']
+                if isinstance(item.get('storage_action'), dict) and item['storage_action'].get('action') == 'checkpoint'}
+    unregistered = []
+    folder = root / 'checkpoints'
+    if folder.is_dir() and not folder.is_symlink():
+        for path in sorted(folder.iterdir()):
+            if path.is_dir() and not path.is_symlink() and (path / 'CHECKSUMS.json').is_file() and str(path) not in recorded:
+                unregistered.append(str(path))
+    candidate_bytes = 0
+    for parent, dirs, files in os.walk(root / 'candidates', followlinks=False):
+        for name in files:
+            try:
+                candidate_bytes += os.lstat(os.path.join(parent, name)).st_size
+            except OSError:
+                pass
+    suggest = bool(unregistered) or candidate_bytes >= SUGGEST_CANDIDATE_BYTES
+    hint = {'unregistered_checkpoints': unregistered, 'candidate_logical_bytes': candidate_bytes, 'suggest': suggest}
+    if suggest:
+        hint['say'] = 'Use squadra to compact the storage of the registry at ' + str(root)
+        hint['steps'] = ['storage adopt --scan ' + str(folder), 'storage compact', 'storage purge --dry-run']
+    return hint
+
+
 def adopt(store, actor=None, reason=None, *, paths=(), scan=None, apply=False):
     """Record unregistered checkpoints made from THIS registry so retention can see them.
 

@@ -115,6 +115,11 @@ two days or more.
   fetch before trusting the release distance, and say which notices remain open.
 - The report changes nothing: it never fetches, stops, reassigns or archives. Its
   checkouts feed the [overlap check](references/skills/sovrapposizioni.md).
+- **Storage notice.** When the report carries `storage.suggest` (checkpoints made before 3.13
+  that are not registered, or more than 1 GB of frozen candidates), tell the owner, in the
+  owner's language, the sentence it names ("Use squadra to compact the storage of the registry
+  at <path>") and what it does: `storage adopt`, `storage compact` and `storage purge`, each
+  previewed first. Run any `--apply` only on the owner's word; nothing is compacted at opening.
 
 Follow the [resume check](references/skills/ripresa.md).
 

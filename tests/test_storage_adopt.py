@@ -91,5 +91,22 @@ class Adopt(unittest.TestCase):
         self.assertTrue(second.is_dir())
 
 
+    def test_resume_suggests_the_sentence_for_unregistered_checkpoints_and_stops_once_adopted(self):
+        import json
+        inside = self.root / 'checkpoints'
+        inside.mkdir()
+        self.store.checkpoint(inside / 'old')
+        code, out, err = self.cli('doctor', '--resume')
+        report = json.JSONDecoder().raw_decode(out)[0]['resume']
+        self.assertEqual(report['storage']['unregistered_checkpoints'], [str(inside / 'old')])
+        self.assertTrue(any('Use squadra to compact the storage of the registry at ' + str(self.root) in n
+                            for n in report['notices']))
+        policy.adopt(self.store, 'C', 'Adopt', paths=[inside / 'old'], apply=True)
+        code, out, err = self.cli('doctor', '--resume')
+        report = json.JSONDecoder().raw_decode(out)[0]['resume']
+        self.assertFalse(report['storage']['suggest'])
+        self.assertFalse(any('compact the storage' in n for n in report['notices']))
+
+
 if __name__ == '__main__':
     unittest.main()

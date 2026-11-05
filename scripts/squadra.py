@@ -1326,6 +1326,15 @@ def dispatch(a, store):
         if a.resume:
             from ripresa import readiness
             verification['resume'] = readiness(state, now())
+            from storage_policy import resume_hint
+            hint = resume_hint(store.root, state)
+            verification['resume']['storage'] = hint
+            if hint['suggest']:
+                verification['resume']['notices'].append(
+                    'Storage: %d unregistered checkpoints, %.1f GB of frozen candidates; propose to the owner: "%s" '
+                    '(previews first: %s; nothing is compacted or deleted without --apply)'
+                    % (len(hint['unregistered_checkpoints']), hint['candidate_logical_bytes'] / 1e9, hint['say'],
+                       ', '.join(hint['steps'])))
         return {**compatibility, **git_warning, **verification,
                 'candidate_integrity': 'not_checked' if a.quick else 'degraded' if any(r['status'] in {'missing', 'damaged'} for r in candidates) else 'passed',
                 'candidates': candidates, "events": count, "cache": checked["cache"], "unknown_running": [r["id"] for r in state["runs"].values() if r["status"] in {"running", "cleanup-unknown"}],
