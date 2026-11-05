@@ -143,7 +143,8 @@ def records(store):
             body = (store.root / 'artifacts' / item['manifest']['sha256']).read_bytes()
             require(digest(body) == item['manifest']['sha256'], 'Save manifest artifact changed')
             saved = json.loads(body)
-            points[item['path']] = {'path': item['path'], 'kind': 'save', 'utc': item['utc'], **saved['registry']}
+            points[item['path']] = {'path': item['path'], 'kind': 'save', 'utc': item['utc'], **saved['registry'],
+                                    **({'root': item['root']} if item.get('root') else {})}
         except (OSError, KeyError, ValueError):
             continue
     return state, points, keeps, policy
@@ -193,6 +194,20 @@ def latest_restore(store, state):
     return None
 
 
+def owned(root, point):
+    """A recovery point belongs to the registry that recorded it.
+
+    A copy of a registry (clone, restore, backup) inherits absolute paths of the original's points:
+    those must never become purge targets of the copy. Points recorded since this check carry their
+    registry root; older records count only when they lie inside this registry.
+    """
+    root = Path(root).resolve()
+    if point.get('root') is not None:
+        return Path(point['root']).resolve() == root
+    path = Path(point['path'])
+    return path == root or root in path.parents
+
+
 def protections(store, *, policy=None, at=None, verified=None):
     """Reasons that keep a path, read from the registry as it is now.
 
@@ -201,6 +216,9 @@ def protections(store, *, policy=None, at=None, verified=None):
     older points less likely to be removed.
     """
     state, points, keeps, configured = records(store)
+    foreign = [{'path': p['path'], 'reason': 'Recorded by another registry (or a copy of this one); never a purge target here'}
+               for p in points.values() if not owned(store.root, p)]
+    points = {path: p for path, p in points.items() if owned(store.root, p)}
     configured = policy_values(policy or configured)
     at = at or now()
     clock = dt.datetime.fromisoformat(at)
@@ -208,7 +226,7 @@ def protections(store, *, policy=None, at=None, verified=None):
     restored = latest_restore(store, state)
     if restored:
         retained.add(restored)
-    ignored = []
+    ignored = list(foreign)
     if verified is None:
         verified = {}
         for point in points.values():
@@ -434,7 +452,7 @@ def adopt(store, actor=None, reason=None, *, paths=(), scan=None, apply=False):
     for row in rows:
         if row['adoptable']:
             record(store, actor, 'checkpoint', path=row['path'], event_count=row['event_count'],
-                   event_head=row['event_head'], made=row['made'], adopted=True, reason=reason)
+                   event_head=row['event_head'], made=row['made'], adopted=True, reason=reason, root=str(store.root))
             adopted.append(row['path'])
     return {'dry_run': False, 'entries': rows, 'adopted': adopted}
 

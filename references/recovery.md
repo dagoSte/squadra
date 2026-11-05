@@ -254,6 +254,9 @@ marked `storage keep --actor WINDOW --path PATH --reason TEXT`. Options
 `--checkpoints N --saves N --hours N` preview another policy; applying it records
 the policy. Open task sources/candidates, live runs/leases and the active registry
 stay protected. Unknown directories and unrecorded stages are never deleted.
+Recovery points record the root of the registry that made them: in a copy of a
+registry (clone, restore, backup) the original's points are listed as foreign and
+are never purge targets. Records without a root count only inside this registry.
 
 Checkpoints made without `--actor` (every checkpoint before 3.13) are unknown to
 retention. `storage adopt --path P` (repeatable) or `--scan DIR` previews them;

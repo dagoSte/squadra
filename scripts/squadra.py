@@ -1204,7 +1204,8 @@ def dispatch(a, store):
         if a.actor:
             record(store, a.actor, 'checkpoint', path=path, event_count=report['event_count'],
                    event_head=report['event_head'], compact=bool(a.compact),
-                   bytes={k: v for k, v in tree_facts(path).items() if k != 'signature'}, reuse=reuse)
+                   bytes={k: v for k, v in tree_facts(path).items() if k != 'signature'}, reuse=reuse,
+                   root=str(store.root))
         else:
             warning('Checkpoint not registered: storage purge will never remove it. Use --actor WINDOW to include it in retention.')
         return {"checkpoint": path, 'registered': bool(a.actor), 'compact': bool(a.compact), 'reuse': reuse,
@@ -1241,7 +1242,8 @@ def dispatch(a, store):
             result = save(store, a.to, a.repo, a.include, a.temporary, a.declared_offsite, name_allowance=allowance)
         except DestinationRefused as exc:
             raise InputRefusal(str(exc)) from exc
-        store.append("save", actor, {"path": str(Path(a.to).resolve()), "manifest": store.artifact(Path(a.to) / "MANIFEST.json")})
+        store.append("save", actor, {"path": str(Path(a.to).resolve()), "manifest": store.artifact(Path(a.to) / "MANIFEST.json"),
+                                     "root": str(store.root)})
         return {"saved": str(Path(a.to).resolve()), "repositories": len(result["repositories"]),
                 "scope": result["scope"], "destination": result["destination"], "offsite_verified": False,
                 **({"scrubbed": result["scrubbed"]} if result.get("scrubbed") else {})}

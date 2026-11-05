@@ -249,7 +249,7 @@ class StoragePolicy(unittest.TestCase):
         for i in range(4):
             path = self.base / ('save-' + str(i))
             save(self.store, path, temporary=True)
-            self.store.append('save', 'C', {'path': str(path), 'manifest': self.store.artifact(path / 'MANIFEST.json')})
+            self.store.append('save', 'C', {'path': str(path), 'manifest': self.store.artifact(path / 'MANIFEST.json'), 'root': str(self.root)})
             paths.append(path)
         result = restore_check(paths[0], self.base / 'restored')
         self.assertEqual(result['status'], 'passed')
@@ -261,7 +261,7 @@ class StoragePolicy(unittest.TestCase):
     def test_save_reuses_previous_bundle_and_registry_with_integrated_primitives(self):
         path = self.base / 'first'
         save(self.store, path, temporary=True)
-        self.store.append('save', 'C', {'path': str(path), 'manifest': self.store.artifact(path / 'MANIFEST.json')})
+        self.store.append('save', 'C', {'path': str(path), 'manifest': self.store.artifact(path / 'MANIFEST.json'), 'root': str(self.root)})
         original = Store.checkpoint
         seen = []
 
