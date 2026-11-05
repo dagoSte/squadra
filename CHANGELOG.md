@@ -3,14 +3,23 @@
 Every Squadra release, newest first. The README keeps the newest release and the three before it.
 
 
-**3.12.1 — the dashboard opens registries that replaced windows**
+**3.13.0 — checkpoints that share their bytes, a retention policy and compaction of the data you already have**
 
-- **Dashboard fix.** Since 3.11.1, `replace` records the successor tasks, reads and starts inside one `replace` event. The dashboard's task progress ignored those nested operations, so every registry with a replacement failed with `KeyError: '<task>-takeover-…'`. Task progress now applies them the way the registry does, and a regression test pins it.
-- The plugin bridge copies of `scripts/registry.py` carry the same fix; the memoranda reader pin accepts the 3.12.1 bytes.
+- **Reuse of immutable content.** New frozen candidates and checkpoints share identical files instead of copying them: a copy-on-write clone (APFS, or `FICLONE` on Linux), a hardlink only for verified read-only files where clones do not exist, a plain copy last. Bytes, paths, fingerprints and package formats are unchanged, so older versions still restore them. Measured on a copy of a real registry, 10 consecutive checkpoints with concurrent writes: 8.97 GB → 0.60 GB on APFS (−93%), 9.22 GB → 3.60 GB without copy-on-write (−61%).
+- **Compaction of existing data.** `storage adopt --scan DIR` registers checkpoints made before 3.13, but only those whose last event matches this journal. `storage compact` then shares the bytes of candidates, checkpoints, saves and archived run logs in place. On a 4.25 GB copy of a real registry with six old checkpoints, 89,485 of 93,684 files were shared and the registry shrank to 0.98 GB (−77%) in 7 minutes. Nothing is compacted at opening: every step previews first, and `--apply` belongs to the coordinator.
+- **Retention policy.** `storage status` and `storage purge --dry-run` show what can go. By default the newest three checkpoints and three saves are kept, along with the last restored save, anything under 24 hours and `storage keep` paths. Open tasks, live runs and the active registry are always protected, and unknown folders are never touched. `storage purge --apply` is coordinator only. A keep or a task that arrives during a purge stops the deletion or is refused, never recorded for deleted data. On the same copy: 0.88 GB after the default purge (−79%).
+- **Recorded, compact checkpoints.** `checkpoint --actor WINDOW --compact` records the recovery point and omits views that are rebuilt on opening; `save` reuses the previous package. A checkpoint no longer fails when a concurrent writer's temporary file disappears mid-copy.
+- **Ask for it in one sentence.** After updating, tell a Claude window: «Use squadra to compact the storage of the registry at /path/to/registry». At every resume `doctor --resume` notices old unregistered checkpoints or more than 1 GB of candidates, and the coordinator proposes that sentence.
+- **Skill instructions** no longer ask for repeated full copies: checkpoints are compact and recorded, and every long round starts with `storage purge --dry-run`.
 
 **Watch the two-minute film of what's new in 3.10.2 — turn the sound on in the player:**
 
 https://github.com/user-attachments/assets/6ea747a5-a993-4aa7-a58d-1b2b7f908720
+
+**3.12.1 — the dashboard opens registries that replaced windows**
+
+- **Dashboard fix.** Since 3.11.1, `replace` records the successor tasks, reads and starts inside one `replace` event. The dashboard's task progress ignored those nested operations, so every registry with a replacement failed with `KeyError: '<task>-takeover-…'`. Task progress now applies them the way the registry does, and a regression test pins it.
+- The plugin bridge copies of `scripts/registry.py` carry the same fix; the memoranda reader pin accepts the 3.12.1 bytes.
 
 **3.12.0 — the checklist knows the round, clearer warnings and advice, and a changelog**
 

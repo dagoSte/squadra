@@ -13,7 +13,7 @@ Coordinate Claude Code, Codex and Cursor with shared tasks, independent reviews 
 
 **Free and open source** — MIT licence, no account, everything runs on your machine.
 
-**Version 3.12.1** · Python 3.12+ · macOS / POSIX
+**Version 3.13.0** · Python 3.12+ · macOS / POSIX
 
 **English** · [Italiano](README.it.md) · [Privacy](PRIVACY.md)
 
@@ -952,10 +952,14 @@ Static, behavioral and dependency checks, excluding `tests/`. Passing means no H
 <a id="news"></a>
 ## What's new
 
-**3.12.1 — the dashboard opens registries that replaced windows**
+**3.13.0 — checkpoints that share their bytes, a retention policy and compaction of the data you already have**
 
-- **Dashboard fix.** Since 3.11.1, `replace` records the successor tasks, reads and starts inside one `replace` event. The dashboard's task progress ignored those nested operations, so every registry with a replacement failed with `KeyError: '<task>-takeover-…'`. Task progress now applies them the way the registry does, and a regression test pins it.
-- The plugin bridge copies of `scripts/registry.py` carry the same fix; the memoranda reader pin accepts the 3.12.1 bytes.
+- **Reuse of immutable content.** New frozen candidates and checkpoints share identical files instead of copying them: a copy-on-write clone (APFS, or `FICLONE` on Linux), a hardlink only for verified read-only files where clones do not exist, a plain copy last. Bytes, paths, fingerprints and package formats are unchanged, so older versions still restore them. Measured on a copy of a real registry, 10 consecutive checkpoints with concurrent writes: 8.97 GB → 0.60 GB on APFS (−93%), 9.22 GB → 3.60 GB without copy-on-write (−61%).
+- **Compaction of existing data.** `storage adopt --scan DIR` registers checkpoints made before 3.13, but only those whose last event matches this journal. `storage compact` then shares the bytes of candidates, checkpoints, saves and archived run logs in place. On a 4.25 GB copy of a real registry with six old checkpoints, 89,485 of 93,684 files were shared and the registry shrank to 0.98 GB (−77%) in 7 minutes. Nothing is compacted at opening: every step previews first, and `--apply` belongs to the coordinator.
+- **Retention policy.** `storage status` and `storage purge --dry-run` show what can go. By default the newest three checkpoints and three saves are kept, along with the last restored save, anything under 24 hours and `storage keep` paths. Open tasks, live runs and the active registry are always protected, and unknown folders are never touched. `storage purge --apply` is coordinator only. A keep or a task that arrives during a purge stops the deletion or is refused, never recorded for deleted data. On the same copy: 0.88 GB after the default purge (−79%).
+- **Recorded, compact checkpoints.** `checkpoint --actor WINDOW --compact` records the recovery point and omits views that are rebuilt on opening; `save` reuses the previous package. A checkpoint no longer fails when a concurrent writer's temporary file disappears mid-copy.
+- **Ask for it in one sentence.** After updating, tell a Claude window: «Use squadra to compact the storage of the registry at /path/to/registry». At every resume `doctor --resume` notices old unregistered checkpoints or more than 1 GB of candidates, and the coordinator proposes that sentence.
+- **Skill instructions** no longer ask for repeated full copies: checkpoints are compact and recorded, and every long round starts with `storage purge --dry-run`.
 
 **Watch the two-minute film of what's new in 3.10.2 — turn the sound on in the player:**
 
@@ -963,6 +967,11 @@ https://github.com/user-attachments/assets/6ea747a5-a993-4aa7-a58d-1b2b7f908720
 
 <details>
 <summary><strong>Earlier versions</strong></summary>
+
+**3.12.1 — the dashboard opens registries that replaced windows**
+
+- **Dashboard fix.** Since 3.11.1, `replace` records the successor tasks, reads and starts inside one `replace` event. The dashboard's task progress ignored those nested operations, so every registry with a replacement failed with `KeyError: '<task>-takeover-…'`. Task progress now applies them the way the registry does, and a regression test pins it.
+- The plugin bridge copies of `scripts/registry.py` carry the same fix; the memoranda reader pin accepts the 3.12.1 bytes.
 
 **3.12.0 — the checklist knows the round, clearer warnings and advice, and a changelog**
 
@@ -984,16 +993,6 @@ https://github.com/user-attachments/assets/6ea747a5-a993-4aa7-a58d-1b2b7f908720
 - **Round scope.** Once a round's scope is fixed, what it finds waits for the next round unless it blocks a close.
 - **Fixes.** `test_rf4a_upgrade` runs on a verified 5099f0c fixture; `test_challenge` no longer races Git maintenance.
 - **Skill audits not refreshed.** The recorded scans in `assets/skill-audits.json` predate this release's changes to `SKILL.md` and `scripts/squadra.py`; the System skills page shows every skill as not audited (files changed) until a fresh scan.
-
-**3.11.1 — replacing windows, access checks, one mailbox per window and re-entry context**
-
-- **Replace closed windows in one step.** `replace` (or `--map`) hands tasks, reads, mail and resources from old windows to new ones in one recorded event, keeping authors, budgets, plan gates and the reservations of live runs. `--dry-run` previews it and reruns are safe; `census --unregistered` lists new sessions.
-- **Service limits are visible.** `wait --until TIME --cause 429|outage` shows in status, board and dashboard that a window is waiting for its model service.
-- **Permission check at entry.** `access probe` records, from inside the window, whether it can write the registry and its clone; `access status` shows verified, denied or not verified.
-- **One mailbox per window.** `inbox` and its follower read every role of the same window and keep the recipient of each ACK; `ready` shows a reader waiting for a delivery.
-- **Re-entry context.** `context --for WINDOW --since SEQ:HASH` shows what changed for one window and always keeps the current constraints, pending ACKs, budgets and proofs.
-- **Fixes.** `transport` no longer silently re-delivers an older message under a reused ID; `save --repo` reports missing unselected repositories as warnings.
-- Plugins: memoranda 1.0.10, Playwright 1.0.11, Sentry 0.1.8.
 
 </details>
 

@@ -13,7 +13,7 @@ Coordina Claude Code, Codex e Cursor con incarichi condivisi, revisioni indipend
 
 **Gratuita e open source** — licenza MIT, nessun account, tutto gira sul tuo computer.
 
-**Versione 3.12.1** · Python 3.12+ · macOS / POSIX
+**Versione 3.13.0** · Python 3.12+ · macOS / POSIX
 
 [English](README.md) · **Italiano** · [Privacy](PRIVACY.it.md)
 
@@ -957,10 +957,14 @@ Controlli statici, comportamentali e delle dipendenze, con `tests/` esclusa. Il 
 <a id="news"></a>
 ## Novità
 
-**3.12.1 — la dashboard apre i registri con finestre sostituite**
+**3.13.0 — checkpoint che condividono i byte, una politica di conservazione e la compattazione dei dati che hai già**
 
-- **Correzione della dashboard.** Dalla 3.11.1 `replace` registra incarichi successori, letture e avvii dentro un solo evento `replace`. L'avanzamento degli incarichi della dashboard ignorava queste operazioni annidate, e ogni registro con una sostituzione andava in errore con `KeyError: '<incarico>-takeover-…'`. Ora l'avanzamento le applica come fa il registro, e un test di regressione lo fissa.
-- Le copie bridge dei plugin di `scripts/registry.py` hanno la stessa correzione; il pin di lettura di memoranda accetta i byte della 3.12.1.
+- **Riuso dei contenuti immutabili.** Nuovi candidati congelati e checkpoint condividono i file identici invece di copiarli: clone copy-on-write (APFS, o `FICLONE` su Linux), hardlink solo per file in sola lettura verificati dove il clone non esiste, copia normale come ultima scelta. Byte, percorsi, impronte e formati dei pacchetti non cambiano, e le versioni precedenti continuano a ripristinarli. Misurato su una copia di un registro reale, 10 checkpoint consecutivi con scritture concorrenti: 8,97 GB → 0,60 GB su APFS (−93%), 9,22 GB → 3,60 GB senza copy-on-write (−61%).
+- **Compattazione dei dati esistenti.** `storage adopt --scan CARTELLA` registra i checkpoint fatti prima della 3.13, solo se il loro ultimo evento coincide con questo registro. `storage compact` poi condivide sul posto i byte di candidati, checkpoint, salvataggi e log delle corse archiviati. Su una copia da 4,25 GB di un registro reale con sei vecchi checkpoint, 89 485 file su 93 684 sono stati condivisi e il registro è sceso a 0,98 GB (−77%) in 7 minuti. All'apertura non si compatta nulla: ogni passo mostra prima un'anteprima, e `--apply` spetta al coordinatore.
+- **Politica di conservazione.** `storage status` e `storage purge --dry-run` mostrano cosa si può togliere. Per impostazione predefinita restano i tre checkpoint e i tre salvataggi più recenti, l'ultimo salvataggio ripristinato, tutto ciò che ha meno di 24 ore e i percorsi `storage keep`. Incarichi aperti, corse vive e il registro attivo sono sempre protetti, e le cartelle sconosciute non si toccano mai. `storage purge --apply` è solo del coordinatore. Un keep o un incarico che arriva durante una purge ferma la cancellazione o viene rifiutato, mai registrato su dati cancellati. Sulla stessa copia: 0,88 GB dopo la purge predefinita (−79%).
+- **Checkpoint registrati e compatti.** `checkpoint --actor FINESTRA --compact` registra il punto di recupero e omette le viste ricostruite all'apertura; `save` riusa il pacchetto precedente. Un checkpoint non fallisce più quando un file temporaneo di uno scrittore concorrente sparisce durante la copia.
+- **Basta una frase.** Dopo l'aggiornamento di' a una finestra Claude: «Usa squadra: compatta lo spazio del registro /percorso/del/registro». A ogni ripresa `doctor --resume` segnala i vecchi checkpoint non registrati o più di 1 GB di candidati, e il coordinatore te la propone.
+- **Le istruzioni della skill** non chiedono più copie complete ripetute: i checkpoint sono compatti e registrati, e ogni giro lungo comincia con `storage purge --dry-run`.
 
 **Guarda il film delle novità della 3.10.2, due minuti — attiva l'audio nel lettore:**
 
@@ -968,6 +972,11 @@ https://github.com/user-attachments/assets/8f38a443-b738-48f8-b562-9b072419b5f0
 
 <details>
 <summary><strong>Versioni precedenti</strong></summary>
+
+**3.12.1 — la dashboard apre i registri con finestre sostituite**
+
+- **Correzione della dashboard.** Dalla 3.11.1 `replace` registra incarichi successori, letture e avvii dentro un solo evento `replace`. L'avanzamento degli incarichi della dashboard ignorava queste operazioni annidate, e ogni registro con una sostituzione andava in errore con `KeyError: '<incarico>-takeover-…'`. Ora l'avanzamento le applica come fa il registro, e un test di regressione lo fissa.
+- Le copie bridge dei plugin di `scripts/registry.py` hanno la stessa correzione; il pin di lettura di memoranda accetta i byte della 3.12.1.
 
 **3.12.0 — la checklist conosce il giro, avvisi e consigli più chiari, e una storia delle versioni**
 
@@ -989,16 +998,6 @@ https://github.com/user-attachments/assets/8f38a443-b738-48f8-b562-9b072419b5f0
 - **Perimetro del giro.** Fissato il perimetro di un giro, ciò che emerge aspetta il giro successivo, salvo che blocchi una chiusura.
 - **Correzioni.** `test_rf4a_upgrade` gira su una fixture verificata di 5099f0c; `test_challenge` non entra più in corsa con la manutenzione di Git.
 - **Audit delle skill non aggiornati.** Le scansioni registrate in `assets/skill-audits.json` precedono le modifiche di questa versione a `SKILL.md` e `scripts/squadra.py`; la pagina System skills mostra ogni skill come non verificata (file cambiati) fino a una nuova scansione.
-
-**3.11.1 — sostituzione delle finestre, permessi all’ingresso, una posta per finestra e contesto di rientro**
-
-- **Sostituisci in un passo le finestre chiuse.** `replace` (o `--map`) passa incarichi, letture, posta e risorse dalle finestre vecchie alle nuove in un solo evento registrato, conservando autori, budget, il vincolo di approvazione del piano (il successore lo fa riapprovare) e le prenotazioni dei processi ancora vivi. `--dry-run` mostra l’anteprima e ripetere è sicuro; `census --unregistered` elenca le sessioni nuove.
-- **Limiti del servizio visibili.** `wait --until ORA --cause 429|outage` mostra in stato, tabella e dashboard che una finestra aspetta il servizio del modello.
-- **Permessi verificati all’ingresso.** `access probe` registra, dall’interno della finestra, se può scrivere nel registro e nel suo clone; `access status` mostra verificato, negato o non verificato.
-- **Una posta per finestra.** `inbox` e il suo follower leggono tutti i ruoli della stessa finestra e conservano il destinatario di ogni ACK; `ready` mostra un lettore in attesa della consegna.
-- **Contesto di rientro.** `context --for FINESTRA --since SEQ:HASH` mostra cosa è cambiato per una finestra e conserva sempre vincoli, ACK dovuti, budget e prove attuali.
-- **Correzioni.** `transport` non riconsegna più in silenzio un messaggio vecchio con un ID riusato; `save --repo` segnala come avvisi i repository non selezionati mancanti.
-- Plugin: memoranda 1.0.10, Playwright 1.0.11, Sentry 0.1.8.
 
 </details>
 

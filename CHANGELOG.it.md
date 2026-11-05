@@ -3,14 +3,23 @@
 Tutte le versioni di Squadra, dalla più nuova. Il README tiene la più nuova e le tre precedenti.
 
 
-**3.12.1 — la dashboard apre i registri con finestre sostituite**
+**3.13.0 — checkpoint che condividono i byte, una politica di conservazione e la compattazione dei dati che hai già**
 
-- **Correzione della dashboard.** Dalla 3.11.1 `replace` registra incarichi successori, letture e avvii dentro un solo evento `replace`. L'avanzamento degli incarichi della dashboard ignorava queste operazioni annidate, e ogni registro con una sostituzione andava in errore con `KeyError: '<incarico>-takeover-…'`. Ora l'avanzamento le applica come fa il registro, e un test di regressione lo fissa.
-- Le copie bridge dei plugin di `scripts/registry.py` hanno la stessa correzione; il pin di lettura di memoranda accetta i byte della 3.12.1.
+- **Riuso dei contenuti immutabili.** Nuovi candidati congelati e checkpoint condividono i file identici invece di copiarli: clone copy-on-write (APFS, o `FICLONE` su Linux), hardlink solo per file in sola lettura verificati dove il clone non esiste, copia normale come ultima scelta. Byte, percorsi, impronte e formati dei pacchetti non cambiano, e le versioni precedenti continuano a ripristinarli. Misurato su una copia di un registro reale, 10 checkpoint consecutivi con scritture concorrenti: 8,97 GB → 0,60 GB su APFS (−93%), 9,22 GB → 3,60 GB senza copy-on-write (−61%).
+- **Compattazione dei dati esistenti.** `storage adopt --scan CARTELLA` registra i checkpoint fatti prima della 3.13, solo se il loro ultimo evento coincide con questo registro. `storage compact` poi condivide sul posto i byte di candidati, checkpoint, salvataggi e log delle corse archiviati. Su una copia da 4,25 GB di un registro reale con sei vecchi checkpoint, 89 485 file su 93 684 sono stati condivisi e il registro è sceso a 0,98 GB (−77%) in 7 minuti. All'apertura non si compatta nulla: ogni passo mostra prima un'anteprima, e `--apply` spetta al coordinatore.
+- **Politica di conservazione.** `storage status` e `storage purge --dry-run` mostrano cosa si può togliere. Per impostazione predefinita restano i tre checkpoint e i tre salvataggi più recenti, l'ultimo salvataggio ripristinato, tutto ciò che ha meno di 24 ore e i percorsi `storage keep`. Incarichi aperti, corse vive e il registro attivo sono sempre protetti, e le cartelle sconosciute non si toccano mai. `storage purge --apply` è solo del coordinatore. Un keep o un incarico che arriva durante una purge ferma la cancellazione o viene rifiutato, mai registrato su dati cancellati. Sulla stessa copia: 0,88 GB dopo la purge predefinita (−79%).
+- **Checkpoint registrati e compatti.** `checkpoint --actor FINESTRA --compact` registra il punto di recupero e omette le viste ricostruite all'apertura; `save` riusa il pacchetto precedente. Un checkpoint non fallisce più quando un file temporaneo di uno scrittore concorrente sparisce durante la copia.
+- **Basta una frase.** Dopo l'aggiornamento di' a una finestra Claude: «Usa squadra: compatta lo spazio del registro /percorso/del/registro». A ogni ripresa `doctor --resume` segnala i vecchi checkpoint non registrati o più di 1 GB di candidati, e il coordinatore te la propone.
+- **Le istruzioni della skill** non chiedono più copie complete ripetute: i checkpoint sono compatti e registrati, e ogni giro lungo comincia con `storage purge --dry-run`.
 
 **Guarda il film delle novità della 3.10.2, due minuti — attiva l'audio nel lettore:**
 
 https://github.com/user-attachments/assets/8f38a443-b738-48f8-b562-9b072419b5f0
+
+**3.12.1 — la dashboard apre i registri con finestre sostituite**
+
+- **Correzione della dashboard.** Dalla 3.11.1 `replace` registra incarichi successori, letture e avvii dentro un solo evento `replace`. L'avanzamento degli incarichi della dashboard ignorava queste operazioni annidate, e ogni registro con una sostituzione andava in errore con `KeyError: '<incarico>-takeover-…'`. Ora l'avanzamento le applica come fa il registro, e un test di regressione lo fissa.
+- Le copie bridge dei plugin di `scripts/registry.py` hanno la stessa correzione; il pin di lettura di memoranda accetta i byte della 3.12.1.
 
 **3.12.0 — la checklist conosce il giro, avvisi e consigli più chiari, e una storia delle versioni**
 
