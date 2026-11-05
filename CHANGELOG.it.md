@@ -7,6 +7,7 @@ Tutte le versioni di Squadra, dalla più nuova. Il README tiene la più nuova e 
 
 - **Correzione.** Nella 3.13.0 i punti di recupero erano registrati solo con il percorso assoluto, quindi una copia del registro (clone, ripristino, copia aperta con `--root`) ereditava checkpoint e salvataggi dell'originale, e `storage purge --apply` lanciato nella copia poteva cancellarli. Ora ogni checkpoint, adozione e salvataggio registra la radice del registro che l'ha creato; altrove è elencato come estraneo e non è mai un bersaglio di purge. Le registrazioni senza radice valgono solo dentro il proprio registro. Un test di regressione cancella il checkpoint dell'originale con la 3.13.0 e lo conserva ora.
 - Trovato compattando un registro reale da 7,2 GB con la 3.13.0: `storage adopt` ha registrato 7 vecchi checkpoint, e `storage compact` ha condiviso 163 794 file su 166 663 e liberato 2,62 GB misurati su disco, con l'audit completo superato dopo.
+- **Recupera lo spazio dopo l'aggiornamento:** di' a una finestra Claude «Usa squadra: compatta lo spazio del registro /percorso/del/registro». Il coordinatore mostra in anteprima adopt, compact e purge e applica solo con il tuo via libera.
 
 **Guarda il film delle novità della 3.10.2, due minuti — attiva l'audio nel lettore:**
 

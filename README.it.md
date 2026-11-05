@@ -164,6 +164,8 @@ La prima finestra che scrive su un registro precedente o spostato costruisce la 
 
 </details>
 
+**Aggiornamento alla 3.13.x: recupera lo spazio che hai già.** All'aggiornamento e all'apertura non si compatta né si cancella nulla. Dopo aver aggiornato tutte le finestre, di' al coordinatore «Usa squadra: compatta lo spazio del registro /percorso/del/registro»: mostra in anteprima `storage adopt` (checkpoint fatti prima della 3.13), `storage compact` (byte condivisi, nessuna cancellazione) e `storage purge --dry-run`, e applica ogni passo solo con il tuo via libera. `doctor --resume` propone la stessa frase quando c'è spazio da recuperare.
+
 **Aggiornamento alla 3.11.1:** aggiorna insieme tutte le finestre e reinstalla i plugin. `replace`, `wait`, `access probe`, `ready` e le impostazioni di onboarding scrivono il formato 4 del giornale, che la 3.11.0 e i client precedenti rifiutano invece di ignorarlo.
 
 **Aggiornamento alla 3.11.0:** aggiorna tutte le finestre e reinstalla i plugin prima di creare nuovi incarichi o riassegnare letture. I nuovi incarichi usano consegne congelate e il formato 3 del giornale; i client precedenti lo rifiutano. Gli incarichi storici mantengono il comportamento precedente. Il programma di installazione aggiunge anche la skill `migliora`.
@@ -250,6 +252,14 @@ Poi scrivi un briefing del progetto in parole semplici e mostrami la tabella del
 Usa la skill squadra. Registro comune: ~/.local/state/squadra/atlas.
 Registra questa finestra, presentati al coordinatore e aspetta un ruolo.
 Non prendere incarichi né risorse finché il tuo incarico non è confermato.
+```
+
+**Recuperare spazio su disco (coordinatore, dalla 3.13)**
+
+```text
+Usa squadra: compatta lo spazio del registro ~/.local/state/squadra/atlas.
+Adotta i vecchi checkpoint, compatta e mostrami l'anteprima della purge;
+fammi vedere ogni anteprima e non applicare nulla senza il mio via libera.
 ```
 
 **Affidare un lavoro (coordinatore)**
@@ -902,7 +912,7 @@ Ogni comando, raggruppato per scopo: **60 sottocomandi**, più `--version`. Usa 
 | `pause` | Solo il coordinatore: ferma nuovo lavoro, letture ed esecuzioni, lasciando possibili consultazione e ripristino. | Al coordinatore: «Metti in pausa la squadra: niente lavoro nuovo finché non te lo dico.» |
 | `resume` | Solo il coordinatore: riprende dopo la parola esplicita del proprietario e una riconciliazione. | Al coordinatore: «Riprendi il lavoro: prima riconcilia, poi dimmi il prossimo passo.» |
 | `checkpoint` | Copia il registro, i suoi artefatti e le viste derivate in una cartella nuova; `--actor` lo registra per la conservazione, `--compact` omette le viste rigenerabili, i byte identici dell'ultimo checkpoint registrato sono riusati. | «Fai un checkpoint compatto del registro in una cartella nuova.» |
-| `storage` | `status`, `purge` (`--dry-run` predefinito; `--apply` solo il coordinatore, con un motivo), `keep` e `compact` di punti di recupero registrati, candidati e corse archiviate; le cartelle sconosciute non vengono mai rimosse. | «Mostrami cosa toglierebbe storage purge, senza cancellare niente.» |
+| `storage` | `status`, `purge` (`--dry-run` predefinito; `--apply` solo il coordinatore, con un motivo), `keep`, `compact` e `adopt` (checkpoint fatti prima della 3.13) di punti di recupero registrati, candidati e corse archiviate; le cartelle sconosciute e i punti di altri registri non vengono mai rimossi. | «Usa squadra: compatta lo spazio del registro /percorso/del/registro.» |
 | `save` | Solo il coordinatore: impacchetta il registro con ogni repository Git registrato e il lavoro in corso; `--repo ROOT --allow-name REL --reason TEXT` registra una deroga al nome per un solo salvataggio. | Al coordinatore: «Salva il registro e il codice di ogni repository, compreso il lavoro non finito.» |
 | `restore-check` | Dimostra un pacchetto ripristinandolo davvero in una cartella nuova; registrare la ricevuta nel registro vivo spetta solo al coordinatore. | «Dimostra che il salvataggio funziona ripristinandolo in una cartella nuova.» |
 
@@ -961,6 +971,7 @@ Controlli statici, comportamentali e delle dipendenze, con `tests/` esclusa. Il 
 
 - **Correzione.** Nella 3.13.0 i punti di recupero erano registrati solo con il percorso assoluto, quindi una copia del registro (clone, ripristino, copia aperta con `--root`) ereditava checkpoint e salvataggi dell'originale, e `storage purge --apply` lanciato nella copia poteva cancellarli. Ora ogni checkpoint, adozione e salvataggio registra la radice del registro che l'ha creato; altrove è elencato come estraneo e non è mai un bersaglio di purge. Le registrazioni senza radice valgono solo dentro il proprio registro. Un test di regressione cancella il checkpoint dell'originale con la 3.13.0 e lo conserva ora.
 - Trovato compattando un registro reale da 7,2 GB con la 3.13.0: `storage adopt` ha registrato 7 vecchi checkpoint, e `storage compact` ha condiviso 163 794 file su 166 663 e liberato 2,62 GB misurati su disco, con l'audit completo superato dopo.
+- **Recupera lo spazio dopo l'aggiornamento:** di' a una finestra Claude «Usa squadra: compatta lo spazio del registro /percorso/del/registro». Il coordinatore mostra in anteprima adopt, compact e purge e applica solo con il tuo via libera.
 
 **Guarda il film delle novità della 3.10.2, due minuti — attiva l'audio nel lettore:**
 

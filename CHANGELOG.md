@@ -7,6 +7,7 @@ Every Squadra release, newest first. The README keeps the newest release and the
 
 - **Fix.** In 3.13.0, recovery points were recorded by absolute path only, so a copy of a registry (a clone, a restore, a backup opened with `--root`) inherited the original's checkpoints and saves, and `storage purge --apply` run in the copy could remove them. Every checkpoint, adoption and save now records the root of the registry that made it; elsewhere it is listed as foreign and is never a purge target. Records without a root count only inside their own registry. A regression test removes the original's checkpoint on 3.13.0 and keeps it now.
 - Found while compacting a real 7.2 GB registry with 3.13.0: `storage adopt` registered 7 old checkpoints, and `storage compact` shared 163,794 of 166,663 files and freed 2.62 GB measured on disk, with a full audit passing afterwards.
+- **Reclaim your space after updating:** tell a Claude window «Use squadra to compact the storage of the registry at /path/to/registry». The coordinator previews adopt, compact and purge and applies only on your word.
 
 **Watch the two-minute film of what's new in 3.10.2 — turn the sound on in the player:**
 

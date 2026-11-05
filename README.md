@@ -133,6 +133,8 @@ squadra --version
 
 Every release raises the version number, except a refresh that adds to a release under the same number, as 3.10.2 did on 17 October 2026. Plugins installed from the Store keep their version until `squadra plugin install <name>` runs again from the new release ([Plugins bundled in your release](#plugin-store)). Open windows keep the version they read until they restart, and a running squad keeps its protocol until you switch it explicitly.
 
+**Updating to 3.13.x: reclaim the space you already have.** Nothing is compacted or deleted at update or at opening. After updating every window, tell the coordinator «Use squadra to compact the storage of the registry at /path/to/registry»: it previews `storage adopt` (checkpoints made before 3.13), `storage compact` (shared bytes, nothing deleted) and `storage purge --dry-run`, and applies each step only on your word. `doctor --resume` proposes the same sentence when there is space to reclaim.
+
 **Updating to 3.11.1:** upgrade every window together and reinstall bundled plugins. `replace`, `wait`, `access probe`, `ready` and onboarding settings write journal format 4, which 3.11.0 and older clients refuse instead of ignoring it.
 
 **Updating to 3.11.0:** upgrade every window and reinstall bundled plugins before creating new tasks or reassigning reads. New tasks use frozen delivery and journal format 3; older clients refuse it. Historical tasks retain their previous behavior. The installer also adds the `migliora` skill.
@@ -250,6 +252,14 @@ Then write a plain-words brief of the project and show me the progress table.
 Use the squadra skill. Shared registry: ~/.local/state/squadra/atlas.
 Register this window, introduce yourself to the coordinator and wait for a role.
 Do not take any task or resource until your assignment is confirmed.
+```
+
+**Reclaim disk space (coordinator, from 3.13)**
+
+```text
+Use squadra to compact the storage of the registry at ~/.local/state/squadra/atlas.
+Adopt the old checkpoints, compact and preview the purge; show me each preview
+and apply nothing without my word.
 ```
 
 **Assign work (coordinator)**
@@ -897,7 +907,7 @@ Every command, grouped by purpose: **60 subcommands**, plus `--version`. Use `sq
 | `pause` | Coordinator only: stop new work, reviews and runs, keeping consultation and recovery. | To the coordinator: “Pause the squad: no new work until I say so.” |
 | `resume` | Coordinator only: resume after the owner's explicit word and a reconciliation. | To the coordinator: “Resume the squad: reconcile first, then tell me the next step.” |
 | `checkpoint` | Copy the registry, its artifacts and projections to a new folder; `--actor` records it for retention, `--compact` omits regenerable views, identical bytes of the newest recorded checkpoint are reused. | “Take a compact checkpoint of the registry in a new folder.” |
-| `storage` | `status`, `purge` (`--dry-run` by default; `--apply` coordinator only, with a reason), `keep` and `compact` of registered recovery points, candidates and archived runs; unknown folders are never removed. | “Show me what storage purge would remove, without deleting anything.” |
+| `storage` | `status`, `purge` (`--dry-run` by default; `--apply` coordinator only, with a reason), `keep`, `compact` and `adopt` (checkpoints made before 3.13) of registered recovery points, candidates and archived runs; unknown folders and other registries' points are never removed. | “Use squadra to compact the storage of the registry at /path/to/registry.” |
 | `save` | Coordinator only: package the registry with every registered Git repository and its unfinished work; `--repo ROOT --allow-name REL --reason TEXT` records a one-save name exception. | To the coordinator: “Save the registry and the code of every repository, unfinished work included.” |
 | `restore-check` | Prove a package by actually restoring it into a new folder; recording the receipt in the live registry is coordinator only. | “Prove the save works by restoring it into a new folder.” |
 
@@ -956,6 +966,7 @@ Static, behavioral and dependency checks, excluding `tests/`. Passing means no H
 
 - **Fix.** In 3.13.0, recovery points were recorded by absolute path only, so a copy of a registry (a clone, a restore, a backup opened with `--root`) inherited the original's checkpoints and saves, and `storage purge --apply` run in the copy could remove them. Every checkpoint, adoption and save now records the root of the registry that made it; elsewhere it is listed as foreign and is never a purge target. Records without a root count only inside their own registry. A regression test removes the original's checkpoint on 3.13.0 and keeps it now.
 - Found while compacting a real 7.2 GB registry with 3.13.0: `storage adopt` registered 7 old checkpoints, and `storage compact` shared 163,794 of 166,663 files and freed 2.62 GB measured on disk, with a full audit passing afterwards.
+- **Reclaim your space after updating:** tell a Claude window «Use squadra to compact the storage of the registry at /path/to/registry». The coordinator previews adopt, compact and purge and applies only on your word.
 
 **Watch the two-minute film of what's new in 3.10.2 — turn the sound on in the player:**
 
