@@ -464,6 +464,13 @@ def parser():
     a.add_argument("--route", choices=["full", "light"], default="full", help="Explicit light-v1 small-change contract; default full")
     a.add_argument("--supersedes", help="Existing open task this one replaces; its history stays")
     a.add_argument("--same-client-reason", help="Recorded reason to let a reader of the owner's client be the read that counts")
+    a.add_argument('--paths', action='append', default=[], help='Files/globs to partition into automatic lanes')
+    a.add_argument('--lanes', choices=['auto', 'none'], default='auto', help='Automatic lanes with --paths; none keeps one task')
+    a = sub.add_parser('lanes', help='Preview assignments for independent groups of files; apply as coordinator')
+    a.add_argument('--task', required=True); a.add_argument('--paths', action='append', required=True)
+    a.add_argument('--max-lanes', type=int, default=4); a.add_argument('--actor')
+    mode = a.add_mutually_exclusive_group()
+    mode.add_argument('--apply', action='store_true'); mode.add_argument('--dry-run', action='store_true')
     a = sub.add_parser("route", help="Coordinator promotes light to full, retaining base, history and budgets")
     a.add_argument("--actor", required=True); a.add_argument("--task", required=True)
     a.add_argument("--full", action="store_true", required=True)
@@ -744,6 +751,7 @@ def dispatch(a, store):
         store.append("agent", a.id, {"id": a.id, "identity": a.identity, "role": a.role, "client": a.client,
                     "model": a.model, "session": a.session, "repo": str(Path(a.repo).resolve(strict=True)), "skills": skills})
     elif command == "task":
+        require(a.id not in state['tasks'], 'Task ID already exists')
         if a.proof:
             if a.proof[0] == '--':
                 a.proof = a.proof[1:]
@@ -780,13 +788,26 @@ def dispatch(a, store):
         task["cross_client"] = True
         if a.same_client_reason is not None:
             task["same_client_reason"] = a.same_client_reason
-        assignment = "assign-" + a.id
-        store.batch([("task", actor, task, None), ("message", actor, {"id": assignment, "to": a.owner,
-                     "task": a.id, "body": f"Assignment {a.id}: {a.title}\nBase {base['head']}\nScope {task['scope']['sha256']}\nACK required before starting."}, None)])
+        result = None
+        if getattr(a, 'paths', []) and getattr(a, 'lanes', 'auto') != 'none':
+            from lanes_apply import apply, propose
+            result = apply(store, actor, task, propose(store, task, a.paths))
+        else:
+            assignment = "assign-" + a.id
+            store.batch([("task", actor, task, None), ("message", actor, {"id": assignment, "to": a.owner,
+                         "task": a.id, "body": f"Assignment {a.id}: {a.title}\nBase {base['head']}\nScope {task['scope']['sha256']}\nACK required before starting."}, None)])
         if not task["reviewer"] and not task.get("pool") and not task.get("read_at_gate"):
             warning("no reader: a delivery without a reader cannot get one later with reassign; pass --reviewer now"
                     if state["workspace"].get("lang", "it") == "en" else
                     "nessun lettore: una consegna senza lettore non potrà riceverne uno dopo con reassign; passa --reviewer ora")
+        return result
+    elif command == 'lanes':
+        from lanes_apply import apply, propose
+        require(not a.apply or (a.actor and state['agents'][actor]['role'] == 'coordinator'), 'Coordinator role required for --apply')
+        if a.apply:
+            require(state['tasks'][a.task]['owner'] == actor, 'Parent must be owned by the coordinator applying lanes')
+        planned = propose(store, a.task, a.paths, max_lanes=a.max_lanes)
+        return apply(store, actor, a.task, planned) if a.apply else {**planned, 'dry_run': True}
     elif command == "route":
         from light_route import contract
         require(a.task in state["tasks"], "Unknown task")
@@ -1564,6 +1585,7 @@ def main(argv=None):
             print(json.dumps(result, ensure_ascii=False, indent=2))
             return 0
         read_only = (a.command in {'status', 'inbox', 'check', 'doctor', 'dash'} or
+                     (a.command == 'lanes' and not a.apply) or
                      (a.command == 'storage' and (a.action == 'status' or
                       (a.action in {'purge', 'compact', 'adopt'} and not a.apply))) or
                      (a.command in {'resource', 'candidate'} and a.action == 'status') or

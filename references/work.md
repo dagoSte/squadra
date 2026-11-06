@@ -193,6 +193,50 @@ block, or individual corrective re-reads, instead.
 <a id="lettori-disponibili-lavoro-parallelo-e-capacità"></a>
 ## Available readers, parallel work and capability
 
+### Automatic lanes
+
+The coordinator can add repeated `--paths GLOB` to `task`. The parent remains its
+integration task (`--owner COORD`); it is never silently reassigned. At least two
+independent groups and two available builders are needed. `--lanes none` disables
+the split and does not load the analysis module. Without that module, requesting
+analysis refuses clearly before creating the parent.
+
+```sh
+squadra task --actor coord --owner coord --reviewer reader --id FEATURE \
+  --title "Independent changes" --repo /checkout/integration \
+  --scope-file /evidence/scope.md --proof-file /evidence/proof.json \
+  --paths 'scripts/*.py' --paths 'tests/test_*.py'
+squadra lanes --task FEATURE --paths 'scripts/*.py' --max-lanes 4
+squadra lanes --actor coord --task FEATURE --paths 'scripts/*.py' --apply
+```
+
+`lanes` previews without writing by default; `--dry-run` is explicit. Apply is for
+an existing parent owned by the applying coordinator, before lanes already exist.
+Analysis must match that parent's repository and base; a drifted checkout refuses.
+The plan names excluded windows and the reasons for no split. A builder's registered
+repository must be a separate Git checkout of the same project (same root commits),
+containing the parent's base. No checkout, branch or window is created or changed.
+
+Balance ranks the registered windows. Stand-by, unknown models, busy builder identities
+and duplicate checkouts are excluded; aliases never create another builder or independent
+reader. Each lane gets a reader of the other model. When builders are fewer than groups,
+the two smallest groups merge first. File ownership stays disjoint, tests stay with
+their module, and fixture data is excluded. Shared files belong to `FEATURE.L0`, the
+coordinator's contract task with an independent Codex reader; other lanes depend on L0.
+If no valid reader exists, that lane is not created and the reason remains in the plan.
+
+All tasks, assignment messages and the `lanes-FEATURE` decision referencing the JSON plan
+are registered with one Store batch, or none are. Scopes are immutable artifacts; a
+failed batch may leave unreferenced artifacts, never partial tasks or assignments.
+Concurrent automatic applications serialize the availability recheck and batch;
+a stale plan refuses instead of assigning the same builders twice. The coordinator
+still checks overlap with manual assignments and work outside this protocol.
+External delivery follows that commit: Codex assignments use `codex-queue`, other
+recipients have a manual receipt. A queue refusal does not undo committed tasks or
+prove absence; inspect its receipt before retrying transport. Only the recipient's
+ACK permits starting. Proofs and bases are inherited from the parent; independent
+reads and existing release rules still apply.
+
 When creating a read task, use `task --reviewer` to choose an available non-author reader by
 real identity; an alias does not create independence. **Codex writes and Claude reads;
 Claude writes and Codex reads** (owner, 2026-10-23): the read that counts comes from the

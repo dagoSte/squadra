@@ -519,7 +519,7 @@ Le sezioni seguenti conservano gli esempi operativi completi. Apri l’argomento
 | Seguire un incarico dall’assegnazione alla chiusura | [Flusso di lavoro](#workflow) |
 | Ricostruire un’istruzione o registrare una decisione | [Briefing, messaggi e decisioni](#decision-reference) |
 | Salvare il lavoro o riprendere una sessione | [Checkpoint e ripristino](#checkpoints) |
-| Cercare un comando o il suo prompt in parole semplici | [Tutti i 60 comandi](#commands) |
+| Cercare un comando o il suo prompt in parole semplici | [Tutti i 61 comandi](#commands) |
 
 [Skill](SKILL.md) · [Avvio](references/start.md) · [Lavoro/prova/lettura](references/work.md) · [Runner nativi](references/runtime.md) · [Ripristino/passaggio di contesto](references/recovery.md) · [Sfide/confronto](references/benchmark.md) · [Plugin](references/plugins.md) · [Creare un plugin](references/plugin-authoring.md)
 
@@ -593,6 +593,16 @@ Le finestre silenziose da due giorni sono elencate da `doctor --resume` come arc
 <summary><strong>Flusso di lavoro: incarico, prova, lettura indipendente e chiusura</strong></summary>
 
 ### Incarico, prova, lettura indipendente e chiusura
+
+**Corsie automatiche.** Aggiungi `task --paths GLOB`, ripetibile, all'incarico di
+integrazione del coordinatore (`--owner coord`): con almeno due costruttori disponibili,
+Squadra divide i file indipendenti, assegna lettori dell'altro modello e registra piano
+e incarichi. Usa i checkout separati dello stesso progetto già registrati dalle finestre;
+non crea checkout o finestre. I file condivisi vanno alla corsia del contratto del
+coordinatore, da cui dipendono le altre. `--lanes none` mantiene un solo incarico;
+`squadra lanes --task ID --paths 'scripts/*.py'` mostra l'anteprima per un padre esistente,
+e `--apply --actor coord` la applica. Il piano spiega finestre occupate e lettori mancanti.
+[Comandi e limiti](references/work.md#automatic-lanes).
 
 **Scegli il percorso.** Il costruttore propone e il coordinatore registra la scelta usando le cinque domande della [pagina di triage IT/EN](references/work.md#triage-in-una-pagina); il lettore non autore la controlla nel blocco assegnato. Nessuna regex, nessun modello di percorso e nessun punteggio sceglie il percorso. Le tappe coordinate usano il [blocco finale predefinito](references/work.md#final-block); i comandi seguenti illustrano un incarico isolato o una lettura per corsia scelta dal proprietario.
 
@@ -833,10 +843,10 @@ attiva degrada l'integrita del candidato. Vedi la
 
 Non serve scrivere questi comandi: **il modo consigliato è chiedere alla finestra in parole semplici**, come nella colonna *Oppure chiedi* e nei [prompt di esempio](#prompts); il comando lo esegue la finestra. I comandi sono quello che eseguono le finestre, e quello che puoi scrivere tu per controllare.
 
-Ogni comando, raggruppato per scopo: **60 sottocomandi**, più `--version`. Usa `squadra <comando> --help` per le opzioni; i comandi del registro accettano `--root` o `SQUADRA_ROOT`. «Solo il coordinatore» segna ciò che solo il coordinatore può registrare: `task`, `route`, `supersede`, `reassign`, `replace`, `brief`, `close`, `ask`, `decision`, `settings`, `pause`, `resume`, `save`, `standby`, `ping --all`, `ping --sweep`, e la ricevuta che `restore-check` scrive nel registro vivo. Senza installare, gli stessi comandi girano come `python3 -B scripts/squadra.py <comando>`.
+Ogni comando, raggruppato per scopo: **61 sottocomandi**, più `--version`. Usa `squadra <comando> --help` per le opzioni; i comandi del registro accettano `--root` o `SQUADRA_ROOT`. «Solo il coordinatore» segna ciò che solo il coordinatore può registrare: `task`, `route`, `supersede`, `reassign`, `replace`, `brief`, `close`, `ask`, `decision`, `settings`, `pause`, `resume`, `save`, `standby`, `ping --all`, `ping --sweep`, e la ricevuta che `restore-check` scrive nel registro vivo. Senza installare, gli stessi comandi girano come `python3 -B scripts/squadra.py <comando>`.
 
 <details>
-<summary><strong>Tutti i 60 comandi con i loro prompt, raggruppati per scopo</strong></summary>
+<summary><strong>Tutti i 61 comandi con i loro prompt, raggruppati per scopo</strong></summary>
 
 ### Avvio e squadra
 
@@ -859,6 +869,7 @@ Ogni comando, raggruppato per scopo: **60 sottocomandi**, più `--version`. Usa 
 | Comando | Cosa fa | Oppure chiedi |
 |---|---|---|
 | `task` | Solo il coordinatore: assegna un incarico: responsabile, lettore, checkout, perimetro, prova, requisiti, dipendenze; `--supersedes` sostituisce un incarico aperto. | Al coordinatore: «Affida "Servizio di rotazione delle chiavi" alla finestra costruttrice, con la finestra revisora come lettore indipendente e l'intera suite di test come prova.» |
+| `lanes` | Mostra l'anteprima delle corsie da `--paths`, ripetibile; `--apply --actor COORD` la applica al padre esistente del coordinatore. `task --paths` applica automaticamente; `task --lanes none` disattiva. | «Dividi queste modifiche indipendenti fra i costruttori disponibili e mostra il piano.» |
 | `route` | Solo coordinatore: promuove con `--full`, conservando base/storia/budget; nuove prova e lettura. | Al coordinatore: «T3 non è più una piccola modifica: passalo al percorso completo.» |
 | `supersede` | Solo il coordinatore: registra dopo che un incarico esistente e più recente sostituisce uno aperto, con lo stesso effetto di `--supersedes`. | Al coordinatore: «T7 sostituisce T5: registralo, conservando la storia di T5.» |
 | `reassign` | Solo il coordinatore: cambia il lettore sulla stessa consegna, conservando prove e budget; serve un nuovo ACK. `--same-client-reason` motiva il passaggio allo stesso client; passando a un altro client la vecchia motivazione viene tolta. | «Affida la stessa consegna a un altro lettore libero.» |
