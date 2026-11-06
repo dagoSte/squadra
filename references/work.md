@@ -228,6 +228,9 @@ If no valid reader exists, that lane is not created and the reason remains in th
 All tasks, assignment messages and the `lanes-FEATURE` decision referencing the JSON plan
 are registered with one Store batch, or none are. Scopes are immutable artifacts; a
 failed batch may leave unreferenced artifacts, never partial tasks or assignments.
+Concurrent automatic applications serialize the availability recheck and batch;
+a stale plan refuses instead of assigning the same builders twice. The coordinator
+still checks overlap with manual assignments and work outside this protocol.
 External delivery follows that commit: Codex assignments use `codex-queue`, other
 recipients have a manual receipt. A queue refusal does not undo committed tasks or
 prove absence; inspect its receipt before retrying transport. Only the recipient's

@@ -1,5 +1,6 @@
 """Lane assignment uses real Store transactions and synthetic analysis, never real queues."""
 import contextlib
+import concurrent.futures
 import io
 import json
 import os
@@ -7,6 +8,7 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import threading
 import types
 import unittest
 from unittest.mock import patch
@@ -242,6 +244,31 @@ class LaneApplication(unittest.TestCase):
         for name in result['created']:
             self.assertIsNone(state['messages']['assign-' + name]['ack'])
         self.assertFalse(state['messages']['assign-P.L1']['transport']['delivered'])
+
+    def test_LB3_concurrent_applications_cannot_assign_the_same_free_builders_twice(self):
+        self.store.append('task', 'C', {**self.task, 'id': 'Q'})
+        plans = {name: lanes_apply.plan(self.store, name, self.partition(shared=False)) for name in ['P', 'Q']}
+        start = threading.Barrier(2, timeout=15)
+
+        def worker(name):
+            connection = Store(self.store.root)
+            try:
+                start.wait()
+                try:
+                    lanes_apply.apply(connection, 'C', name, plans[name])
+                    return 'applied'
+                except Error as exc:
+                    return str(exc)
+            finally:
+                connection.close()
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
+            results = list(pool.map(worker, ['P', 'Q']))
+        self.assertEqual(results.count('applied'), 1, results)
+        self.assertTrue(any('plan changed' in r for r in results), results)
+        children = [t for name, t in self.store.view()['tasks'].items() if '.L' in name]
+        self.assertEqual(len(children), 2)
+        self.assertEqual(len({t['owner'] for t in children}), 2)
 
     def test_LB5_preview_is_read_only_and_apply_requires_the_parent_coordinator(self):
         before = self.store.events()

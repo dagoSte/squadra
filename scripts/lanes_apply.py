@@ -151,8 +151,8 @@ def assignment(task):
                     f"Scope {task['scope']['sha256']}\nACK required before starting."}
 
 
-def apply(store, actor, parent_task, planned):
-    """Commit tasks/assignments/decision together; external delivery follows the commit."""
+def _commit(store, actor, parent_task, planned):
+    """Recheck availability and register tasks while the caller holds the storage lock."""
     task = parent(store, parent_task)
     state = store.view()
     require(state['agents'][actor]['role'] == 'coordinator', 'Coordinator role required')
@@ -189,6 +189,14 @@ def apply(store, actor, parent_task, planned):
                           'tasks': [task['id'], *(r['id'] for r in planned['lanes'])], 'plan': artifact}, None))
     if operations:
         store.batch(operations)
+    return messages
+
+
+def apply(store, actor, parent_task, planned):
+    """Commit the entire plan under one lock; release it before external delivery."""
+    from frozen_candidate import cache_lock
+    with cache_lock(store):
+        messages = _commit(store, actor, parent_task, planned)
     from squadra import dispatch
     transports = []
     for message in messages:
