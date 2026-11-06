@@ -133,7 +133,7 @@ squadra --version
 
 Every release raises the version number, except a refresh that adds to a release under the same number, as 3.10.2 did on 17 October 2026. Plugins installed from the Store keep their version until `squadra plugin install <name>` runs again from the new release ([Plugins bundled in your release](#plugin-store)). Open windows keep the version they read until they restart, and a running squad keeps its protocol until you switch it explicitly.
 
-**Updating to 3.13.x: reclaim the space you already have.** Nothing is compacted or deleted at update or at opening. After updating every window, tell the coordinator «Use squadra to compact the storage of the registry at /path/to/registry»: it previews `storage adopt` (checkpoints made before 3.13), `storage compact` (shared bytes, nothing deleted) and `storage purge --dry-run`, and applies each step only on your word. `doctor --resume` proposes the same sentence when there is space to reclaim.
+**Updating to 3.13.x: reclaim the space you already have.** Nothing is compacted or deleted at update or at opening. After updating every window, tell the coordinator «Use squadra to compact the storage of the registry at /path/to/registry»: it previews `storage adopt` (checkpoints and saves made before 3.13), `storage compact` (shared bytes, legacy candidates sealed read-only, nothing deleted) and `storage purge --dry-run`, and applies each step only on your word. `doctor --resume` proposes the same sentence when there is space to reclaim.
 
 **Updating to 3.11.1:** upgrade every window together and reinstall bundled plugins. `replace`, `wait`, `access probe`, `ready` and onboarding settings write journal format 4, which 3.11.0 and older clients refuse instead of ignoring it.
 
@@ -838,7 +838,7 @@ manual deletion of an active cache degrades candidate integrity. See
 
 You do not have to type these commands: **asking your window in plain words is the recommended way**, as in the *Or just ask* column and the [example prompts](#prompts), and the window runs the command for you. The commands are what the windows run, and what you can type yourself to check.
 
-Every command, grouped by purpose: **61 subcommands**, plus `--version`. Use `squadra <command> --help` for the flags; registry commands accept `--root` or `SQUADRA_ROOT`. «Coordinator only» marks what only the coordinator can record: `task`, `route`, `supersede`, `reassign`, `replace`, `brief`, `close`, `ask`, `decision`, `settings`, `pause`, `resume`, `save`, `standby`, `ping --all`, `ping --sweep`, and the receipt that `restore-check` writes into the live registry. Without installing, the same commands run as `python3 -B scripts/squadra.py <command>`.
+Every command, grouped by purpose: **61 subcommands**, plus `--version`. Use `squadra <command> --help` for the flags; registry commands accept `--root` or `SQUADRA_ROOT`. «Coordinator only» marks what only the coordinator can record: `task`, `route`, `supersede`, `reassign`, `replace`, `brief`, `close`, `ask`, `decision` (including `--extend-budget`), `lanes --apply`, `settings`, `pause`, `resume`, `save`, `standby`, `ping --all`, `ping --sweep`, and the receipt that `restore-check` writes into the live registry. Without installing, the same commands run as `python3 -B scripts/squadra.py <command>`.
 
 <details>
 <summary><strong>All 61 commands and their prompts, grouped by purpose</strong></summary>
@@ -864,7 +864,7 @@ Every command, grouped by purpose: **61 subcommands**, plus `--version`. Use `sq
 | Command | What it does | Or just ask |
 |---|---|---|
 | `task` | Coordinator only: assign a task: owner, reviewer, checkout, scope, proof, requirements, dependencies; `--supersedes` replaces an open task. | To the coordinator: “Assign ‘Key rotation service’ to the builder window, with the reviewer window as independent reader and the whole test suite as proof.” |
-| `lanes` | Preview automatic lane assignments from repeated `--paths`; `--apply --actor COORD` applies them to the coordinator's existing parent. `task --paths` applies automatically; `task --lanes none` opts out. | “Split these independent changes across the available builders and show the plan.” |
+| `lanes` | Preview automatic lane assignments from repeated `--paths`; `--apply --actor COORD` applies them to the coordinator's existing parent. `task --paths` applies automatically; `task --lanes none` opts out. Silent windows are skipped, the parent's reader never builds a lane, and each lane gets its own brief. | “Split these independent changes across the available builders and show the plan.” |
 | `route` | Coordinator only: promote with `--full`, keeping the base/history/budgets; new proof and read. | To the coordinator: “T3 is no longer a small change: move it to the full route.” |
 | `supersede` | Coordinator only: record afterwards that an existing, later task replaces an open one, with the same effect as `--supersedes`. | To the coordinator: “T7 replaces T5: record it, keeping the history of T5.” |
 | `reassign` | Coordinator only: change the reader on the same delivery, preserving proofs and budgets; needs a new ACK. `--same-client-reason` records a same-client transfer; switching clients clears the old reason. | “Give this same delivery to another free reader.” |
@@ -887,7 +887,7 @@ Every command, grouped by purpose: **61 subcommands**, plus `--version`. Use `sq
 
 | Command | What it does | Or just ask |
 |---|---|---|
-| `prove` | Run the agreed proof in the builder's checkout on the exact fingerprinted files, before they are frozen, and keep its native result. | “Run the agreed proof on your exact change.” |
+| `prove` | Run the agreed proof in the builder's checkout on the exact fingerprinted files, before they are frozen, and keep its native result. Without arguments it runs the agreed proof; the local-bind check applies only to the full suite (`tools/parallel_tests.py`), other proofs run with a warning. | “Run the agreed proof on your exact change.” |
 | `probe` | Record an independent test, including a negative control that must fail; a reader's probe of a frozen delivery runs on a private copy of the frozen candidate. | To the reviewer: “Run your own test on the candidate, with a negative control that must fail, and record it.” |
 | `deliver` | Hand over an immutable packet of the proven candidate to its reviewer. | “Deliver the proven candidate to its reviewer.” |
 | `advance` | Reconcile a handoff that was already delivered, without building or approving. | “T1 was already delivered: reconcile the handoff, without building or approving anything.” |
@@ -903,7 +903,7 @@ Every command, grouped by purpose: **61 subcommands**, plus `--version`. Use `sq
 | Command | What it does | Or just ask |
 |---|---|---|
 | `ask` | Coordinator only: record a question for the owner, with options and a recommendation, before showing it. | To the coordinator: “Before you ask me, record the question with its options and your recommendation.” |
-| `decision` | Coordinator only: record an answer, a withdrawal, an owner instruction (`--owner-words`, `--channel`) or a reason, linked with `--task` and `--follows`. | To the coordinator: “Record my decision on T1, as typed here: ‘Keep the old keys readable for a month.’” |
+| `decision` | Coordinator only: record an answer, a withdrawal, an owner instruction (`--owner-words`, `--channel`) or a reason, linked with `--task` and `--follows`. `--extend-budget TASK --stage plan|code --by N` (N from 1 to 5, with the owner's words) raises that task's review budget. | To the coordinator: “Record my decision on T1, as typed here: ‘Keep the old keys readable for a month.’” |
 | `output` | Save one substantive update: text, evidence and the next step. | “Save this update with its evidence and the next step before you show it to me.” |
 | `board` | Show progress by window with measured approximate elapsed time, in Italian or English with `--lang`; the coordinator adds labelled estimates of remaining or total task time. | “Show me the progress by window, with the time spent.” |
 | `forecast` | Compare an open task with similar completed work: observed elapsed times and a route suggestion; read-only, no figures below three complete samples. | “How long did work like T5 take before, and does the light route suit it?” |
@@ -918,7 +918,7 @@ Every command, grouped by purpose: **61 subcommands**, plus `--version`. Use `sq
 | `pause` | Coordinator only: stop new work, reviews and runs, keeping consultation and recovery. | To the coordinator: “Pause the squad: no new work until I say so.” |
 | `resume` | Coordinator only: resume after the owner's explicit word and a reconciliation. | To the coordinator: “Resume the squad: reconcile first, then tell me the next step.” |
 | `checkpoint` | Copy the registry, its artifacts and projections to a new folder; `--actor` records it for retention, `--compact` omits regenerable views, identical bytes of the newest recorded checkpoint are reused. | “Take a compact checkpoint of the registry in a new folder.” |
-| `storage` | `status`, `purge` (`--dry-run` by default; `--apply` coordinator only, with a reason), `keep`, `compact` and `adopt` (checkpoints made before 3.13) of registered recovery points, candidates and archived runs; unknown folders and other registries' points are never removed. | “Use squadra to compact the storage of the registry at /path/to/registry.” |
+| `storage` | `status`, `purge` (`--dry-run` by default; `--apply` coordinator only, with a reason), `keep`, `compact` and `adopt` (checkpoints and saves made before 3.13; `compact` also seals legacy writable candidates) of registered recovery points, candidates and archived runs; unknown folders and other registries' points are never removed. | “Use squadra to compact the storage of the registry at /path/to/registry.” |
 | `save` | Coordinator only: package the registry with every registered Git repository and its unfinished work; `--repo ROOT --allow-name REL --reason TEXT` records a one-save name exception. | To the coordinator: “Save the registry and the code of every repository, unfinished work included.” |
 | `restore-check` | Prove a package by actually restoring it into a new folder; recording the receipt in the live registry is coordinator only. | “Prove the save works by restoring it into a new folder.” |
 
@@ -933,9 +933,9 @@ Every command, grouped by purpose: **61 subcommands**, plus `--version`. Use `sq
 
 | Command | What it does | Or just ask |
 |---|---|---|
-| `status` | Show tasks, what needs the owner, the grouped waits and the progress tables; `--all` prints every wait and the full detailed table. | “Where are we? Show me the progress table and what needs my decision.” |
+| `status` | Show tasks, what needs the owner, the grouped waits and the progress tables; `--all` prints every wait and the full detailed table. Accepted tasks idle for 30 minutes are flagged; a parent with open lanes is not. | “Where are we? Show me the progress table and what needs my decision.” |
 | `checklist` | Read-only checks for resume, assignment, completed delivery and push; lists unverifiable limits. | “Check the checklist before the next step.” |
-| `doctor` | Check the hash chain and the artifacts; report pending ACKs and uncertain runs. | “Check that the registry is intact and tell me which ACKs are pending.” |
+| `doctor` | Check the hash chain and the artifacts; report pending ACKs and uncertain runs; with `--resume` also accepted tasks idle for 30 minutes (a parent with open lanes excluded). | “Check that the registry is intact and tell me which ACKs are pending.” |
 | `export` | Regenerate complete structured, readable and mail/history exports from the registry. | “Export the registry in readable form, mail history included.” |
 | `legacy` | Import old records as historical, unverified copies. | “Import our old records as historical, unverified copies.” |
 | `plugin` | List bundled plugins or install one from this release; no download or execution. | To the coordinator: “Which plugins come with this release? Install the Playwright one.” |

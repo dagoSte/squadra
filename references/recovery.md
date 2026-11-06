@@ -263,14 +263,20 @@ retention. `storage adopt --path P` (repeatable) or `--scan DIR` previews them;
 `--apply --actor COORD --reason TEXT` records only folders whose CHECKSUMS.json
 verifies and whose last event, seq and hash, is the event at the same position of
 this journal. An adopted checkpoint keeps the time of that event, so retention ranks
-it by when it was made. Anything else is reported with its reason and left alone.
+it by when it was made. Save packages of this registry are adopted the same way: a
+MANIFEST.json that verifies and a registry boundary present in this journal; once
+adopted they follow the save retention and can become purge targets. Anything else
+is reported with its reason and left alone.
 
 Only `storage purge --apply --actor COORD --reason TEXT` deletes. It recomputes
 the plan under the candidate lock, refuses drift, records intent before deletion
 and the actual result afterwards. `--expect-plan HASH` additionally binds an
 earlier preview. `storage compact --dry-run` previews physical reuse of data
 already on disk (candidates, recorded checkpoints and saves, archived run logs)
-without retention deletion and without changing bytes, modes or paths; applying it also needs the coordinator and a reason.
+without retention deletion and without changing bytes or paths; applying it also needs the coordinator and a reason.
+Applying also seals legacy frozen candidates that still have writable files: modes
+become 0444/0555 (directories 0555), as for candidates frozen since 3.11, with the
+fingerprint verified before and after; the preview does not list this mode change.
 Allocated-byte estimates are upper bounds; COW sharing may free fewer bytes.
 
 `tools/storage_growth.py --dir /dedicated/volume/run --count 5 --baseline

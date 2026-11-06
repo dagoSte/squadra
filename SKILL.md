@@ -209,8 +209,10 @@ the same project and a non-author reader of the other model. Shared files go to
 `<PARENT>.L0`, owned by the coordinator, and other lanes depend on it. Register separate
 checkouts first: no checkout or window is created. Preview an existing parent with
 `lanes --task ID --paths GLOB`; only the coordinator applies it with `--apply --actor COORD`.
-`task --lanes none` keeps a single task. Inspect the reasons when no lanes are created;
-never invent another model, ignore stand-by or reuse a busy window to force a split.
+`task --lanes none` keeps a single task. Windows silent for two days are skipped, the
+parent's reader never builds a lane, and each lane gets its own brief. Inspect the reasons
+when no lanes are created; never invent another model, ignore stand-by or reuse a busy
+window to force a split.
 
 The squad's value is parallelism. The coordinator immediately assigns independent work
 to every available window, Codex, Claude or interactive Cursor: no window stays idle
@@ -467,7 +469,9 @@ For the dashboard plugins' data and declared settings read [folders, schemas and
   reads. An explicit timeout per process. At the limit keep the candidate, the findings
   and the concrete question; do not restart with an alias or an identical task to reset
   the counter. A budget decision must be explicit and recorded; a narrow corrective
-  reread also consumes the same budget, and no new cycle starts.
+  reread also consumes the same budget, and no new cycle starts. On the owner's word the
+  coordinator extends one task with `decision --extend-budget TASK --stage plan|code --by N
+  --owner-words ... --channel ...`; every window must run 3.14+ before it is used.
 - For a small, reversible change after the same triage, the coordinator may declare
   `task --route light`: **light-v1, at most 80 added+deleted lines in 4 files and 16 KiB of changed lines, P2**.
   All operational scripts, security, instruction and normative contract paths stay

@@ -23,6 +23,7 @@ the procedure for the
 | `notices` | checkouts of active windows that are missing, commits after the last tag, commits behind upstream, silent windows |
 | `python` | interpreter path and version actually running Squadra |
 | `checkouts` | per checkout: tasks, windows, branch, short head, uncommitted tracked changes, last tag, commits since it, upstream distance |
+| `idle_tasks` | tasks whose owner ACKed the assignment 30 minutes ago or more without a recorded start, plan, run, proof, candidate or delivery; a parent of open automatic lanes is excluded; read-only advice (also printed by `status`) |
 | `silent_windows` | active seats whose identity has no answer or (re)registration of any seat for two days or more: `archivable`, what `keeps` them, and for archivable ones the `standby` `command` ([stale windows](finestre-ferme.md)) |
 
 If the command refuses with «needs Python 3.12 or newer», run it with a newer interpreter:
@@ -38,6 +39,9 @@ If the command refuses with «needs Python 3.12 or newer», run it with a newer 
    so before choosing the next version.
 3. **Silent windows.** `ping --to <window>` and wait for the ACK, or record their stand-by.
    Never reassign their work only because they are silent.
+   **Idle tasks:** ping the owner first; if the inactivity is confirmed, apply the owner's
+   handoff rule (for a stalled Codex builder, the build passes to Claude) by superseding
+   the task; nothing is moved automatically.
 4. **Overlaps.** Feed the checkouts and branches to the
    [overlap check](sovrapposizioni.md) before the first assignment.
 5. Record what remains open in the resume output.

@@ -23,7 +23,7 @@ Read and reconcile those limits before taking the dependent action.
 | `resume` | Required registered `--actor`, coordinator role, outside stand-by; the blockers from `readiness()`; listening for mail is always unverifiable |
 | `assign` | Required open `--task`, recorded brief, registered independent reviewer or pool of another client (or recorded same-client reason), distinct checkout and branch from other open tasks, assignment with recorded transport or ACK; round scope (below) |
 | `deliver` | Required `--task` not already closed, existing delivery, current native proof bound to its candidate using the registry's existing checks, ACK of a current review handoff |
-| `push` | Required Git `--repo`, author and committer emails already present before the chosen interval, local upstream ancestor of HEAD; with `--task`, a closed task whose candidate commit is contained in HEAD |
+| `push` | Required Git `--repo`, author and committer emails already present before the chosen interval, local upstream ancestor of HEAD; with `--range A..B`, A ancestor of B instead (no upstream needed; B is not compared with HEAD); with `--task`, a closed task whose candidate commit is contained in HEAD |
 
 The `deliver` moment checks an already recorded delivery **after its recipient ACK**;
 it does not replace `deliver`, create a handoff, or start a read. A pool needs one actual

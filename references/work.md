@@ -199,7 +199,9 @@ The coordinator can add repeated `--paths GLOB` to `task`. The parent remains it
 integration task (`--owner COORD`); it is never silently reassigned. At least two
 independent groups and two available builders are needed. `--lanes none` disables
 the split and does not load the analysis module. Without that module, requesting
-analysis refuses clearly before creating the parent.
+analysis refuses clearly before creating the parent; when the analysis itself fails,
+only the parent is created and the reason is printed. While its lanes are open the
+parent is not reported as accepted-but-idle.
 
 ```sh
 squadra task --actor coord --owner coord --reviewer reader --id FEATURE \
@@ -217,16 +219,19 @@ The plan names excluded windows and the reasons for no split. A builder's regist
 repository must be a separate Git checkout of the same project (same root commits),
 containing the parent's base. No checkout, branch or window is created or changed.
 
-Balance ranks the registered windows. Stand-by, unknown models, busy builder identities
-and duplicate checkouts are excluded; aliases never create another builder or independent
+Balance ranks the registered windows. Stand-by, unknown models, busy builder identities,
+identities silent for two days or more (the `doctor --resume` measure) and duplicate
+checkouts are excluded; the identity that reads the parent's integration (its reviewer
+or pool) never builds a lane; aliases never create another builder or independent
 reader. Each lane gets a reader of the other model. When builders are fewer than groups,
 the two smallest groups merge first. File ownership stays disjoint, tests stay with
 their module, and fixture data is excluded. Shared files belong to `FEATURE.L0`, the
 coordinator's contract task with an independent Codex reader; other lanes depend on L0.
 If no valid reader exists, that lane is not created and the reason remains in the plan.
 
-All tasks, assignment messages and the `lanes-FEATURE` decision referencing the JSON plan
-are registered with one Store batch, or none are. Scopes are immutable artifacts; a
+All tasks, a brief per lane, assignment messages and the `lanes-FEATURE` decision
+referencing the JSON plan are registered with one Store batch, or none are. Lanes do
+not inherit the parent's requirements: the parent keeps them for the integration read. Scopes are immutable artifacts; a
 failed batch may leave unreferenced artifacts, never partial tasks or assignments.
 Concurrent automatic applications serialize the availability recheck and batch;
 a stale plan refuses instead of assigning the same builders twice. The coordinator
@@ -393,8 +398,13 @@ a previous acceptance. Keep the original file; if it changes, register and rerea
 the new version. Budgets are set at init (`--plan-rounds`, `--review-rounds`);
 automatic construction allows at most three attempts. Do not create an equivalent
 new task to evade them. `decision` preserves a choice; it does not automatically
-increase counters. An extension requires a newly, explicitly authorized scope;
-all earlier findings are preserved.
+increase counters. On the owner's word the coordinator can extend one task's budget:
+`decision --actor COORD --extend-budget TASK --stage plan|code --by N --owner-words
+"..." --channel typed-here|relayed --reason TEXT` (N from 1 to 5). The task's limit
+becomes the global limit plus its recorded extensions; spent rounds are never reset
+and other tasks are unchanged. Every window must run 3.14 or later before an
+extension is used: older windows still apply only the global limit and refuse the
+extended reads. All earlier findings are preserved.
 
 For a standalone task or owner-selected per-lane read, after the change with frozen
 sources (coordinated lanes use the [final block](#final-block)):
@@ -409,7 +419,10 @@ squadra check --actor coord --task T1
 squadra close --actor coord --task T1
 ```
 
-The argv for `prove` must match the agreed command. `--expected N` on the task
+The argv for `prove` must match the agreed command; without argv, `prove` runs the
+agreed command. When 127.0.0.1 cannot be bound (a sandboxed client), a proof that runs
+`tools/parallel_tests.py` is refused before it starts, with the sandbox reason: run
+that proof process outside the sandbox. Other proofs run with a warning. `--expected N` on the task
 checks the count of executed tests in recognized pytest/unittest summaries; it refuses a
 missing count. Skipped tests never count as executed: `1 passed, 9 skipped` or unittest's
 `OK (skipped=9)` after `Ran 10 tests` executes 1 of 10 and refuses. The receipt records each
@@ -1244,7 +1257,11 @@ resource once without waiting for a holder or passing earlier waiters. Its queue
 bookkeeping tolerates up to 250 ms per mutex acquisition (two acquisitions), so
 a brief concurrent `resource status` does not cause an immediate refusal. Positive
 waits retain their single total deadline. A caller already holding the resource
-(including an alias of its identity) refuses immediately. Without `--wait`, immediate
+(including an alias of its identity) refuses immediately, with one exception for
+reservations that name a task (`--task`): the holder itself asking again for the
+same task gets `already_held`; another seat of the same identity, or the same identity
+for another task, waits for the release (outside the arrival-order line) or refuses
+with `--wait 0`. Only the holder can release. Without `--wait`, immediate
 acquisition/refusal is unchanged; older
 or immediate callers do not join the line and may win a reservation race.
 

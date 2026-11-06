@@ -164,7 +164,7 @@ La prima finestra che scrive su un registro precedente o spostato costruisce la 
 
 </details>
 
-**Aggiornamento alla 3.13.x: recupera lo spazio che hai già.** All'aggiornamento e all'apertura non si compatta né si cancella nulla. Dopo aver aggiornato tutte le finestre, di' al coordinatore «Usa squadra: compatta lo spazio del registro /percorso/del/registro»: mostra in anteprima `storage adopt` (checkpoint fatti prima della 3.13), `storage compact` (byte condivisi, nessuna cancellazione) e `storage purge --dry-run`, e applica ogni passo solo con il tuo via libera. `doctor --resume` propone la stessa frase quando c'è spazio da recuperare.
+**Aggiornamento alla 3.13.x: recupera lo spazio che hai già.** All'aggiornamento e all'apertura non si compatta né si cancella nulla. Dopo aver aggiornato tutte le finestre, di' al coordinatore «Usa squadra: compatta lo spazio del registro /percorso/del/registro»: mostra in anteprima `storage adopt` (checkpoint e salvataggi fatti prima della 3.13), `storage compact` (byte condivisi, candidati legacy sigillati in sola lettura, nessuna cancellazione) e `storage purge --dry-run`, e applica ogni passo solo con il tuo via libera. `doctor --resume` propone la stessa frase quando c'è spazio da recuperare.
 
 **Aggiornamento alla 3.11.1:** aggiorna insieme tutte le finestre e reinstalla i plugin. `replace`, `wait`, `access probe`, `ready` e le impostazioni di onboarding scrivono il formato 4 del giornale, che la 3.11.0 e i client precedenti rifiutano invece di ignorarlo.
 
@@ -843,7 +843,7 @@ attiva degrada l'integrita del candidato. Vedi la
 
 Non serve scrivere questi comandi: **il modo consigliato è chiedere alla finestra in parole semplici**, come nella colonna *Oppure chiedi* e nei [prompt di esempio](#prompts); il comando lo esegue la finestra. I comandi sono quello che eseguono le finestre, e quello che puoi scrivere tu per controllare.
 
-Ogni comando, raggruppato per scopo: **61 sottocomandi**, più `--version`. Usa `squadra <comando> --help` per le opzioni; i comandi del registro accettano `--root` o `SQUADRA_ROOT`. «Solo il coordinatore» segna ciò che solo il coordinatore può registrare: `task`, `route`, `supersede`, `reassign`, `replace`, `brief`, `close`, `ask`, `decision`, `settings`, `pause`, `resume`, `save`, `standby`, `ping --all`, `ping --sweep`, e la ricevuta che `restore-check` scrive nel registro vivo. Senza installare, gli stessi comandi girano come `python3 -B scripts/squadra.py <comando>`.
+Ogni comando, raggruppato per scopo: **61 sottocomandi**, più `--version`. Usa `squadra <comando> --help` per le opzioni; i comandi del registro accettano `--root` o `SQUADRA_ROOT`. «Solo il coordinatore» segna ciò che solo il coordinatore può registrare: `task`, `route`, `supersede`, `reassign`, `replace`, `brief`, `close`, `ask`, `decision` (compreso `--extend-budget`), `lanes --apply`, `settings`, `pause`, `resume`, `save`, `standby`, `ping --all`, `ping --sweep`, e la ricevuta che `restore-check` scrive nel registro vivo. Senza installare, gli stessi comandi girano come `python3 -B scripts/squadra.py <comando>`.
 
 <details>
 <summary><strong>Tutti i 61 comandi con i loro prompt, raggruppati per scopo</strong></summary>
@@ -869,7 +869,7 @@ Ogni comando, raggruppato per scopo: **61 sottocomandi**, più `--version`. Usa 
 | Comando | Cosa fa | Oppure chiedi |
 |---|---|---|
 | `task` | Solo il coordinatore: assegna un incarico: responsabile, lettore, checkout, perimetro, prova, requisiti, dipendenze; `--supersedes` sostituisce un incarico aperto. | Al coordinatore: «Affida "Servizio di rotazione delle chiavi" alla finestra costruttrice, con la finestra revisora come lettore indipendente e l'intera suite di test come prova.» |
-| `lanes` | Mostra l'anteprima delle corsie da `--paths`, ripetibile; `--apply --actor COORD` la applica al padre esistente del coordinatore. `task --paths` applica automaticamente; `task --lanes none` disattiva. | «Dividi queste modifiche indipendenti fra i costruttori disponibili e mostra il piano.» |
+| `lanes` | Mostra l'anteprima delle corsie da `--paths`, ripetibile; `--apply --actor COORD` la applica al padre esistente del coordinatore. `task --paths` applica automaticamente; `task --lanes none` disattiva. Le finestre silenziose sono escluse, il lettore del padre non costruisce mai una corsia e ogni corsia riceve il proprio brief. | «Dividi queste modifiche indipendenti fra i costruttori disponibili e mostra il piano.» |
 | `route` | Solo coordinatore: promuove con `--full`, conservando base/storia/budget; nuove prova e lettura. | Al coordinatore: «T3 non è più una piccola modifica: passalo al percorso completo.» |
 | `supersede` | Solo il coordinatore: registra dopo che un incarico esistente e più recente sostituisce uno aperto, con lo stesso effetto di `--supersedes`. | Al coordinatore: «T7 sostituisce T5: registralo, conservando la storia di T5.» |
 | `reassign` | Solo il coordinatore: cambia il lettore sulla stessa consegna, conservando prove e budget; serve un nuovo ACK. `--same-client-reason` motiva il passaggio allo stesso client; passando a un altro client la vecchia motivazione viene tolta. | «Affida la stessa consegna a un altro lettore libero.» |
@@ -892,7 +892,7 @@ Ogni comando, raggruppato per scopo: **61 sottocomandi**, più `--version`. Usa 
 
 | Comando | Cosa fa | Oppure chiedi |
 |---|---|---|
-| `prove` | Esegue la prova concordata nella copia di lavoro del costruttore, sui file esatti dell'impronta prima che siano congelati, e ne conserva l'esito nativo. | «Esegui la prova concordata sulla tua modifica esatta.» |
+| `prove` | Esegue la prova concordata nella copia di lavoro del costruttore, sui file esatti dell'impronta prima che siano congelati, e ne conserva l'esito nativo. Senza argomenti esegue la prova concordata; il controllo del bind locale vale solo per la suite completa (`tools/parallel_tests.py`), le altre prove partono con un avviso. | «Esegui la prova concordata sulla tua modifica esatta.» |
 | `probe` | Registra un test indipendente, compreso un controllo negativo che deve fallire; la sonda di un lettore su una consegna congelata gira su una copia privata del candidato congelato. | Al revisore: «Esegui un tuo test sul candidato, con un controllo negativo che deve fallire, e registralo.» |
 | `deliver` | Consegna al lettore un pacchetto immutabile del candidato provato. | «Consegna al revisore il candidato provato.» |
 | `advance` | Riconcilia un passaggio già consegnato, senza costruire né approvare. | «T1 è già stato consegnato: riconcilia il passaggio, senza costruire né approvare nulla.» |
@@ -908,7 +908,7 @@ Ogni comando, raggruppato per scopo: **61 sottocomandi**, più `--version`. Usa 
 | Comando | Cosa fa | Oppure chiedi |
 |---|---|---|
 | `ask` | Solo il coordinatore: registra una domanda per il proprietario, con opzioni e una raccomandazione, prima di mostrarla. | Al coordinatore: «Prima di farmi la domanda, registrala con le opzioni e la tua raccomandazione.» |
-| `decision` | Solo il coordinatore: registra una risposta, un ritiro, un'istruzione del proprietario (`--owner-words`, `--channel`) o una motivazione, collegate con `--task` e `--follows`. | Al coordinatore: «Registra la mia decisione su T1, come l'ho scritta qui: "Teniamo leggibili le vecchie chiavi per un mese".» |
+| `decision` | Solo il coordinatore: registra una risposta, un ritiro, un'istruzione del proprietario (`--owner-words`, `--channel`) o una motivazione, collegate con `--task` e `--follows`. `--extend-budget TASK --stage plan|code --by N` (N da 1 a 5, con le parole del proprietario) alza il budget di review di quell'incarico. | Al coordinatore: «Registra la mia decisione su T1, come l'ho scritta qui: "Teniamo leggibili le vecchie chiavi per un mese".» |
 | `output` | Salva un aggiornamento sostanziale: testo, prove e prossimo passo. | «Salva questo aggiornamento con le prove e il prossimo passo, prima di mostrarmelo.» |
 | `board` | Mostra l’avanzamento per finestra con il tempo trascorso misurato e arrotondato, in italiano o in inglese con `--lang`; il coordinatore aggiunge le stime, indicate come tali, del tempo rimanente o dell’intera attività. | «Mostrami l'avanzamento per finestra, con il tempo trascorso.» |
 | `forecast` | Confronta un incarico aperto con lavori simili conclusi: tempi trascorsi osservati e percorso suggerito; sola lettura, nessuna cifra sotto tre esempi completi. | «Quanto tempo hanno richiesto lavori simili a T5? Conviene il percorso leggero?» |
@@ -923,7 +923,7 @@ Ogni comando, raggruppato per scopo: **61 sottocomandi**, più `--version`. Usa 
 | `pause` | Solo il coordinatore: ferma nuovo lavoro, letture ed esecuzioni, lasciando possibili consultazione e ripristino. | Al coordinatore: «Metti in pausa la squadra: niente lavoro nuovo finché non te lo dico.» |
 | `resume` | Solo il coordinatore: riprende dopo la parola esplicita del proprietario e una riconciliazione. | Al coordinatore: «Riprendi il lavoro: prima riconcilia, poi dimmi il prossimo passo.» |
 | `checkpoint` | Copia il registro, i suoi artefatti e le viste derivate in una cartella nuova; `--actor` lo registra per la conservazione, `--compact` omette le viste rigenerabili, i byte identici dell'ultimo checkpoint registrato sono riusati. | «Fai un checkpoint compatto del registro in una cartella nuova.» |
-| `storage` | `status`, `purge` (`--dry-run` predefinito; `--apply` solo il coordinatore, con un motivo), `keep`, `compact` e `adopt` (checkpoint fatti prima della 3.13) di punti di recupero registrati, candidati e corse archiviate; le cartelle sconosciute e i punti di altri registri non vengono mai rimossi. | «Usa squadra: compatta lo spazio del registro /percorso/del/registro.» |
+| `storage` | `status`, `purge` (`--dry-run` predefinito; `--apply` solo il coordinatore, con un motivo), `keep`, `compact` e `adopt` (checkpoint e salvataggi fatti prima della 3.13; `compact` sigilla anche i candidati scrivibili legacy) di punti di recupero registrati, candidati e corse archiviate; le cartelle sconosciute e i punti di altri registri non vengono mai rimossi. | «Usa squadra: compatta lo spazio del registro /percorso/del/registro.» |
 | `save` | Solo il coordinatore: impacchetta il registro con ogni repository Git registrato e il lavoro in corso; `--repo ROOT --allow-name REL --reason TEXT` registra una deroga al nome per un solo salvataggio. | Al coordinatore: «Salva il registro e il codice di ogni repository, compreso il lavoro non finito.» |
 | `restore-check` | Dimostra un pacchetto ripristinandolo davvero in una cartella nuova; registrare la ricevuta nel registro vivo spetta solo al coordinatore. | «Dimostra che il salvataggio funziona ripristinandolo in una cartella nuova.» |
 
@@ -938,9 +938,9 @@ Ogni comando, raggruppato per scopo: **61 sottocomandi**, più `--version`. Usa 
 
 | Comando | Cosa fa | Oppure chiedi |
 |---|---|---|
-| `status` | Mostra incarichi, richieste per il proprietario, le attese raggruppate e le tabelle dell'avanzamento; `--all` stampa tutte le attese e la tabella completa. | «A che punto siamo? Mostrami la tabella dell'avanzamento e cosa aspetta una mia decisione.» |
+| `status` | Mostra incarichi, richieste per il proprietario, le attese raggruppate e le tabelle dell'avanzamento; `--all` stampa tutte le attese e la tabella completa. Segnala gli incarichi accettati e fermi da 30 minuti; non un padre con corsie aperte. | «A che punto siamo? Mostrami la tabella dell'avanzamento e cosa aspetta una mia decisione.» |
 | `checklist` | Controlla in sola lettura ripresa, assegnazione, consegna e push; elenca i limiti non verificabili. | «Verifica la checklist prima del prossimo passo.» |
-| `doctor` | Controlla la catena di hash e gli artefatti; segnala ACK in sospeso ed esecuzioni incerte. | «Controlla che il registro sia integro e dimmi quali ACK sono in sospeso.» |
+| `doctor` | Controlla la catena di hash e gli artefatti; segnala ACK in sospeso ed esecuzioni incerte; con `--resume` anche gli incarichi accettati fermi da 30 minuti (escluso un padre con corsie aperte). | «Controlla che il registro sia integro e dimmi quali ACK sono in sospeso.» |
 | `export` | Rigenera dal registro le esportazioni complete strutturate, leggibili e della storia della posta. | «Esporta il registro in forma leggibile, con la storia della posta.» |
 | `legacy` | Importa vecchi record come copie storiche non verificate. | «Importa i nostri vecchi record come copie storiche non verificate.» |
 | `plugin` | Elenca i plugin inclusi o ne installa uno da questa release; non scarica né esegue codice. | Al coordinatore: «Quali plugin sono inclusi in questa release? Installa quello di Playwright.» |
