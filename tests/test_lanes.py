@@ -1,6 +1,6 @@
 """Lane analysis uses local facts, stable ownership and no registry writes."""
 from copy import deepcopy
-from pathlib import Path
+from pathlib import Path, PurePath
 import subprocess
 import sys
 import tempfile
@@ -100,9 +100,10 @@ const example = "import { ghost } from './ghost'";
         self.assertEqual(lanes.analyze(self.repo, ['*.py'], history=0)['co_changes'], [])
 
     def test_byte_identical_hubs_and_their_copies_are_shared_as_a_unit(self):
-        self.write('core.py', 'VALUE = 1\n')
-        self.write('bridge/core.py', 'VALUE = 1\n')
-        self.write('tests/fixtures/core.py', 'VALUE = 1\n')
+        body = 'VALUE = 1\n# A real copy carries enough bytes to be a twin, unlike an empty marker.\n'
+        self.write('core.py', body)
+        self.write('bridge/core.py', body)
+        self.write('tests/fixtures/core.py', body)
         for i in range(3):
             self.write(f'clients/use{i}.py', f'from core import VALUE\nCLIENT = {i}\n')
         self.commit()
@@ -113,6 +114,42 @@ const example = "import { ghost } from './ghost'";
         self.assertEqual(analysis['fan_in']['core.py'], 3)
         self.assertTrue(all(row == ['L0'] for row in result['depends'].values()))
         self.assertFalse(any('fixtures/' in p for p in result['files']))
+
+    def test_empty_package_markers_are_not_twins_and_do_not_fuse_independent_lanes(self):
+        for package, module in (('alpha', 'util'), ('beta', 'tool')):
+            self.write(f'{package}/__init__.py', '')
+            self.write(f'{package}/core.py', f'from {package} import {module}\n')
+            self.write(f'{package}/{module}.py', 'X = 1\n')
+        self.commit()
+        for package, module in (('alpha', 'util'), ('beta', 'tool')):
+            for name in ('core', module):
+                with (self.repo / package / (name + '.py')).open('a') as handle:
+                    handle.write('# change\n')
+            self.commit()
+        analysis = lanes.analyze(self.repo, ['alpha/*.py', 'beta/*.py'])
+        self.assertEqual(analysis['twins'], [])
+        plan = lanes.partition(analysis)
+        self.assertEqual([sorted({PurePath(p).parts[0] for p in lane['files']}) for lane in plan['lanes']],
+                         [['alpha'], ['beta']])
+
+    def test_only_code_and_selected_files_are_read_and_large_ones_are_skipped(self):
+        self.write('src/a.py', 'A = 1\n')
+        (self.repo / 'assets').mkdir()
+        (self.repo / 'assets/big.bin').write_bytes(b'\0' * (lanes.MAX_BODY_BYTES + 1))
+        (self.repo / 'assets/huge.dat').write_bytes(b'\1' * (lanes.MAX_BODY_BYTES + 1))
+        self.commit()
+        original, read = Path.read_bytes, []
+
+        def spy(path):
+            read.append(Path(path).name)
+            return original(path)
+
+        with patch.object(Path, 'read_bytes', spy):
+            analysis = lanes.analyze(self.repo, ['src/a.py', 'assets/huge.dat'], history=0)
+        self.assertNotIn('big.bin', read)
+        self.assertNotIn('huge.dat', read)
+        self.assertIn('assets/huge.dat', analysis['files'])
+        self.assertTrue(any('Too large to read' in why and 'huge.dat' in why for why in analysis['reasons']))
 
     def test_new_missing_files_are_not_falsely_byte_identical(self):
         self.write('present.py', '# present\n')

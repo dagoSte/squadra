@@ -14,6 +14,10 @@ from registry import Error, git
 
 CODE_SUFFIXES = {'.py', '.js', '.jsx', '.ts', '.tsx', '.mjs', '.cjs'}
 JS_IMPORT = re.compile(r'''(?:\b(?:import|export)\s+(?:[^;'"]*?\bfrom\s*)?|\b(?:require|import)\s*\(\s*)['"](\.[^'"\n]+)['"]''')
+# Files this small (empty __init__.py, one-line markers) say nothing about shared ownership.
+MIN_TWIN_BYTES = 64
+# Larger files are not parsed for imports nor counted; their path still belongs to a lane.
+MAX_BODY_BYTES = 2 * 1024 * 1024
 JS_TOKENS = re.compile(r'''"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|`(?:\\.|[^`\\])*`|//[^\n]*|/\*[\s\S]*?\*/''')
 
 
@@ -106,7 +110,7 @@ def analyze(repo, paths, *, history=400):
             matches = [pattern]
         selected.update(matches)
     selected = {p for p in selected if not excluded(p)}
-    bodies = {}
+    bodies, sizes = {}, {}
     for name in sorted(set(tracked) | selected):
         if excluded(name):
             continue
@@ -115,7 +119,13 @@ def analyze(repo, paths, *, history=400):
             selected.discard(name)
             continue
         if path.is_file():
-            bodies[name] = path.read_bytes()
+            sizes[name] = path.stat().st_size
+            # Only code is read for imports, and selected files for their size; never whole binaries.
+            if PurePosixPath(name).suffix in CODE_SUFFIXES or name in selected:
+                if sizes[name] <= MAX_BODY_BYTES:
+                    bodies[name] = path.read_bytes()
+                elif name in selected:
+                    reasons.append('Too large to read (' + str(sizes[name]) + ' bytes): ' + name)
         elif path.is_dir():
             selected.discard(name)
         elif name in selected:
@@ -132,12 +142,20 @@ def analyze(repo, paths, *, history=400):
                 modules['.'.join(parts[start:])].append(name)
     edges = sorted({(name, target) for name, body in bodies.items()
                     if PurePosixPath(name).suffix in CODE_SUFFIXES
-                    for target in imports(name, body, bodies, modules)})
+                    for target in imports(name, body, sizes, modules)})
+    # Twins: selected files of the same size first, then the same bytes; tiny files never qualify.
+    by_size = defaultdict(list)
+    for name in selected:
+        if name in bodies and sizes[name] >= MIN_TWIN_BYTES:
+            by_size[sizes[name]].append(name)
     hashes = defaultdict(list)
-    for name, body in bodies.items():
-        hashes[hashlib.sha256(body).digest()].append(name)
-    unit = {name: name for name in selected}
-    unit.update({name: min(group) for group in hashes.values() for name in group})
+    for group in by_size.values():
+        if len(group) > 1:
+            for name in group:
+                hashes[hashlib.sha256(bodies[name]).digest()].append(name)
+    twins = sorted(sorted(group) for group in hashes.values() if len(group) > 1)
+    unit = {name: name for name in set(sizes) | wanted}
+    unit.update({name: group[0] for group in twins for name in group})
     fan_in = defaultdict(set)
     for source, target in edges:
         if unit[source] != unit[target]:
@@ -157,8 +175,7 @@ def analyze(repo, paths, *, history=400):
             'co_changes': [[a, b, n] for (a, b), n in sorted(co_changes.items())],
             'commits': dict(sorted(counts.items())), 'hubs': hubs,
             'fan_in': {p: len(fan_in[unit[p]]) for p in selected},
-            'twins': sorted(sorted(p for p in group if p in wanted)
-                            for group in hashes.values() if len(set(group) & wanted) > 1),
+            'twins': twins,
             'reasons': reasons + ['Hub fan-in threshold: ' + str(threshold) + ' (one quarter of maximum, at least 3)']}
 
 
