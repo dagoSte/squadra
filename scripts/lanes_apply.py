@@ -4,7 +4,8 @@ import copy
 from pathlib import Path
 
 import balance
-from registry import Error, canonical, control_free, git, plain, require
+from registry import Error, canonical, control_free, git, now, plain, require
+from ripresa import SILENT_DAYS, silent_windows
 
 
 def parent(store, task):
@@ -67,6 +68,12 @@ def plan(store, parent_task, partition_result):
                                forecast_result={'status': 'scope_unavailable', 'samples': []})['task']
     reasons.extend(row['identity'] + ': ' + row['reason'] for row in ranked['build']['excluded'])
     agents = state['agents']
+    silent = {row['identity'] for row in silent_windows(state, now())}
+    reasons.extend(identity + ': silent for ' + str(SILENT_DAYS) + '+ days; excluded from building and reading'
+                   for identity in sorted(silent))
+    if owner['identity'] in silent:
+        reasons.append('Parent coordinator is silent; reconcile it before creating lanes')
+        return result
 
     def model(window):
         clients = set(window['clients']) & {'codex', 'claude'}
@@ -80,12 +87,15 @@ def plan(store, parent_task, partition_result):
         opposite = {'codex': 'claude', 'claude': 'codex'}.get(builder.get('client'))
         return next((seat(w, balance.READ_ROLES) for w in ranked['read']['rows']
                      if model(w) == opposite and w['identity'] != builder['identity']
+                     and w['identity'] not in silent
                      and seat(w, balance.READ_ROLES)), None)
 
     project_roots = roots(task['repo'])
     checkouts = {Path(task['repo']).resolve()}
     builders = []
     for window in ranked['build']['rows']:
+        if window['identity'] in silent:
+            continue
         builder = seat(window, balance.BUILD_ROLES)
         if builder is None:
             reasons.append('Unknown or ambiguous model for ' + window['identity'])
@@ -181,6 +191,8 @@ def _commit(store, actor, parent_task, planned):
                  'requirements': [], 'delivery_policy': 'frozen-v1', 'cross_client': True,
                  'scope': store.artifact_bytes(scope.encode(), lane['id'] + '-scope.txt', 'generated-lane:' + lane['id'])}
         operations.append(('task', actor, child, None))
+        operations.append(('brief', actor, {'task': lane['id'], 'text': scope,
+                           'artifact': child['scope']}, None))
         messages.append(assignment(child))
         operations.append(('message', actor, messages[-1], None))
     if planned['lanes']:

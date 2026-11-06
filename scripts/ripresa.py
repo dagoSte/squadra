@@ -3,10 +3,11 @@ import datetime as dt
 from pathlib import Path
 import sys
 
-from registry import git_process, presence, standby
+from registry import git_process, presence, require, standby
 
 # A window with no recorded answer for this long is listed for explicit reconciliation, never changed.
 SILENT_DAYS = 2
+IDLE_MINUTES = 30
 # Git could not be asked (timeout, missing binary): unknown, never reported as "not a Git checkout".
 UNREADABLE = object()
 
@@ -74,7 +75,66 @@ def holds(state, agent, open_tasks):
     return keeps
 
 
-def readiness(state, at):
+def silent_windows(state, at):
+    """Identity-wide silence from the latest ACK or registration, without inspecting Git."""
+    clock = dt.datetime.fromisoformat(at) if isinstance(at, str) else at
+    open_tasks = [t for t in state['tasks'].values() if t['status'] != 'done' and not t.get('superseded_by')]
+    registrations = {}
+    for agent in state['agents'].values():
+        if stamp := agent.get('updated'):
+            identity = agent['identity']
+            registrations[identity] = max(registrations.get(identity, stamp), stamp, key=dt.datetime.fromisoformat)
+    silent, parked_by = [], {}
+    for row in presence(state, clock):
+        if row['availability'] != 'active':
+            continue
+        last = row['last_answer']
+        signs = [stamp for stamp in (last, registrations.get(row['identity'])) if stamp]
+        days = (clock - max(dt.datetime.fromisoformat(stamp) for stamp in signs)).days if signs else None
+        if days is None or days >= SILENT_DAYS:
+            keeps = holds(state, row['agent'], open_tasks)
+            entry = {'agent': row['agent'], 'identity': row['identity'], 'last_answer': last, 'days': days,
+                     'archivable': not keeps, 'keeps': keeps}
+            if not keeps:
+                first = parked_by.setdefault(row['identity'], row['agent'])
+                if first == row['agent']:
+                    entry['command'] = (f"squadra standby --actor <coordinator> --agent {row['agent']} "
+                                        f"--reason \"<owner's words>\"")
+                else:
+                    entry['parked_with'] = first
+            silent.append(entry)
+    return silent
+
+
+def idle_tasks(state, at, *, minutes=IDLE_MINUTES):
+    """Accepted assignments without recorded work; the coordinator decides any handoff."""
+    require(type(minutes) is int and minutes >= 0, 'Nonnegative integer idle minutes required')
+    clock = dt.datetime.fromisoformat(at) if isinstance(at, str) else at
+    running = {run['task'] for run in state['runs'].values()}
+    result = []
+    for task in sorted(state['tasks'].values(), key=lambda t: t['id']):
+        if (task['status'] != 'ready' or task.get('superseded_by') or task.get('candidate')
+                or task.get('delivery') or task.get('proofs') or task['id'] in running):
+            continue
+        acknowledgements = [m['ack']['utc'] for m in state['messages'].values()
+                            if m.get('task') == task['id'] and m['to'] == task['owner']
+                            and m.get('ack') and m['ack']['agent'] == task['owner']]
+        if not acknowledgements:
+            continue
+        accepted = max(acknowledgements, key=dt.datetime.fromisoformat)
+        elapsed = (clock - dt.datetime.fromisoformat(accepted)).total_seconds()
+        if elapsed < minutes * 60:
+            continue
+        blocked = [dep for dep in task.get('depends', []) if state['tasks'][dep]['status'] != 'done']
+        result.append({'task': task['id'], 'owner': task['owner'], 'ack': accepted,
+                       'minutes': int(elapsed // 60), 'threshold_minutes': minutes, 'blocked_by': blocked,
+                       'next': ('Attendere le dipendenze: ' + ', '.join(blocked) if blocked else
+                                "Verificare l'inattività; se confermata, il coordinatore registra il passaggio "
+                                'della costruzione a Claude, conservando lo storico.')})
+    return result
+
+
+def readiness(state, at, *, idle_minutes=IDLE_MINUTES):
     """Blockers stop the resume; notices ask for reconciliation. Nothing here writes or reassigns."""
     blockers, notices = [], []
     open_tasks = [t for t in state['tasks'].values() if t['status'] != 'done' and not t.get('superseded_by')]
@@ -104,37 +164,15 @@ def readiness(state, at):
         if row.get('commits_since_tag'):
             notices.append(f"{path}: {row['commits_since_tag']} commits after {row['last_tag']}")
     clock = dt.datetime.fromisoformat(at) if isinstance(at, str) else at
-    registrations = {}
-    for agent in state['agents'].values():
-        if stamp := agent.get('updated'):
-            identity = agent['identity']
-            registrations[identity] = max(registrations.get(identity, stamp), stamp, key=dt.datetime.fromisoformat)
-    silent, parked_by = [], {}
-    for row in presence(state, clock):
-        if row['availability'] != 'active':
-            continue
-        last = row['last_answer']
-        # Stand-by affects the whole identity, so its latest sign of life covers every seat.
-        signs = [stamp for stamp in (last, registrations.get(row['identity'])) if stamp]
-        days = (clock - max(dt.datetime.fromisoformat(stamp) for stamp in signs)).days if signs else None
-        if days is None or days >= SILENT_DAYS:
-            keeps = holds(state, row['agent'], open_tasks)
-            entry = {'agent': row['agent'], 'identity': row['identity'], 'last_answer': last, 'days': days,
-                     'archivable': not keeps, 'keeps': keeps}
-            if not keeps:
-                # standby parks every seat of the identity: one command per identity.
-                first = parked_by.setdefault(row['identity'], row['agent'])
-                if first == row['agent']:
-                    entry['command'] = (f"squadra standby --actor <coordinator> --agent {row['agent']} "
-                                        f"--reason \"<owner's words>\"")
-                else:
-                    entry['parked_with'] = first
-            silent.append(entry)
+    silent = silent_windows(state, clock)
     if silent:
         archivable = sum(entry['archivable'] for entry in silent)
         notices.append(f"{len(silent)} active windows silent for {SILENT_DAYS}+ days, {archivable} archivable "
                        f"after the owner's confirmation: ping them or record stand-by")
+    idle = idle_tasks(state, clock, minutes=idle_minutes)
+    notices.extend(f"{row['task']}: no recorded activity for {row['minutes']} minutes after ACK. {row['next']}"
+                   for row in idle)
     return {'ready': not blockers, 'blockers': blockers, 'notices': notices,
             'python': {'executable': sys.executable, 'version': '%d.%d.%d' % sys.version_info[:3]},
-            'checkouts': checkouts, 'silent_windows': silent,
+            'checkouts': checkouts, 'silent_windows': silent, 'idle_tasks': idle,
             'limits': 'Local refs only, no fetch; windows are only listed, never changed.'}

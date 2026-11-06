@@ -1,6 +1,7 @@
 """Lane assignment uses real Store transactions and synthetic analysis, never real queues."""
 import contextlib
 import concurrent.futures
+import datetime as dt
 import io
 import json
 import os
@@ -18,6 +19,7 @@ import lanes_apply
 import registry
 import squadra
 from registry import Error, Store, plain
+from ripresa import SILENT_DAYS
 
 
 class LaneApplication(unittest.TestCase):
@@ -106,6 +108,11 @@ class LaneApplication(unittest.TestCase):
             self.assertNotEqual(builder['identity'], reader['identity'])
             self.assertEqual(task['proof'], self.task['proof'])
             self.assertEqual(task['base'], self.head)
+            self.assertIn('brief', task)
+            brief = task['brief']
+            self.assertEqual(brief['artifact'], task['scope'])
+            self.assertEqual(brief['text'].splitlines()[0], task['id'] + ': Synthetic parent')
+            self.assertEqual(brief['text'], (self.store.root / 'artifacts' / task['scope']['sha256']).read_text())
             self.assertIsNone(state['messages']['assign-' + name]['ack'])
             if name != 'P.L0':
                 owners.append(builder['identity'])
@@ -165,6 +172,42 @@ class LaneApplication(unittest.TestCase):
         planned = lanes_apply.plan(self.store, 'P', self.partition(shared=False))
         self.assertEqual(planned['lanes'], [])
         self.assertTrue(any('Fewer than two available' in r for r in planned['reasons']))
+
+    def test_D5_silent_reader_is_excluded_with_the_resume_threshold(self):
+        clock = dt.datetime.fromisoformat(registry.now())
+        before = lanes_apply.plan(self.store, 'P', self.partition())
+        self.assertTrue(any(r['reviewer'] == 'R' for r in before['lanes']))
+        with patch('registry.now', return_value=(clock - dt.timedelta(days=SILENT_DAYS)).isoformat()):
+            self.agent('R', 'reviewer', 'reader', 'claude', self.repo)
+        events = self.store.events()
+        with patch('lanes_apply.now', return_value=clock.isoformat(), create=True), \
+                patch('ripresa.checkout', side_effect=AssertionError('Silence must not inspect Git')):
+            planned = lanes_apply.plan(self.store, 'P', self.partition())
+            self.assertEqual(planned, lanes_apply.plan(self.store, 'P', self.partition()))
+        self.assertTrue(planned['lanes'])
+        self.assertFalse(any(r['reviewer'] == 'R' for r in planned['lanes']))
+        self.assertIn('reader: silent for 2+ days; excluded from building and reading', planned['reasons'])
+        self.assertEqual(events, self.store.events())
+
+    def test_D5_silent_builder_aliases_and_coordinator_are_not_assigned(self):
+        clock = dt.datetime.fromisoformat(registry.now())
+        stale = (clock - dt.timedelta(days=SILENT_DAYS)).isoformat()
+        with patch('registry.now', return_value=stale):
+            self.agent('A', 'builder', 'A', 'codex', self.base / 'A')
+            self.agent('A-read', 'reviewer', 'A', 'codex', self.base / 'A')
+        with patch('lanes_apply.now', return_value=clock.isoformat(), create=True):
+            planned = lanes_apply.plan(self.store, 'P', self.partition())
+        self.assertEqual(planned['lanes'], [])
+        self.assertTrue(any('A: silent for 2+' in r for r in planned['reasons']))
+        # A recent registration on either seat keeps the whole identity available.
+        self.agent('A-read', 'reviewer', 'A', 'codex', self.base / 'A')
+        self.assertTrue(lanes_apply.plan(self.store, 'P', self.partition())['lanes'])
+        with patch('registry.now', return_value=stale):
+            self.agent('C', 'coordinator', 'coord', 'claude', self.repo)
+        with patch('lanes_apply.now', return_value=clock.isoformat(), create=True):
+            planned = lanes_apply.plan(self.store, 'P', self.partition())
+        self.assertEqual(planned['lanes'], [])
+        self.assertIn('Parent coordinator is silent; reconcile it before creating lanes', planned['reasons'])
 
     def test_LB4_failure_in_the_middle_of_a_batch_leaves_no_tasks_or_messages(self):
         planned = lanes_apply.plan(self.store, 'P', self.partition())

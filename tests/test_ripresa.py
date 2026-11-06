@@ -7,6 +7,7 @@ import shutil
 import unittest
 
 from registry import now
+import ripresa
 from ripresa import readiness, SILENT_DAYS
 from squadra import main
 import test_squadra as support
@@ -79,6 +80,53 @@ class ResumeReadiness(unittest.TestCase):
         rc, out, _ = self.run_cli('doctor', '--quick')
         self.assertEqual(rc, 0)
         self.assertNotIn('resume', json.loads(out))
+
+    def test_P4_idle_assignment_is_reported_at_the_threshold_without_writes(self):
+        idle_tasks = ripresa.idle_tasks
+        self.assertEqual(idle_tasks(self.store.view(), now(), minutes=0), [], 'Assignment must be ACKed')
+        self.ack()
+        events = self.store.events()
+        accepted = dt.datetime.fromisoformat(self.store.view()['messages']['assign-T']['ack']['utc'])
+        self.assertEqual(idle_tasks(self.store.view(), accepted + dt.timedelta(minutes=9, seconds=59), minutes=10), [])
+        result = readiness(self.store.view(), accepted + dt.timedelta(minutes=10), idle_minutes=10)
+        row, = result['idle_tasks']
+        self.assertEqual((row['task'], row['owner'], row['minutes'], row['threshold_minutes']), ('T', 'A', 10, 10))
+        self.assertIn('Claude', row['next'])
+        self.assertTrue(any('no recorded activity' in n for n in result['notices']))
+        self.assertEqual(self.store.events(), events, 'Observation never reassigns or writes')
+
+    def test_P4_recorded_start_run_commit_or_supersession_clears_idle(self):
+        idle_tasks = ripresa.idle_tasks
+        from registry import plain
+        self.ack()
+        state = plain(self.store.view())
+        later = dt.datetime.fromisoformat(now()) + dt.timedelta(hours=1)
+        for fields in ({'status': 'working'}, {'candidate': {'head': '1' * 40}},
+                       {'superseded_by': 'NEW'}, {'status': 'done'}):
+            with self.subTest(fields=fields):
+                changed = {**state, 'tasks': {'T': {**state['tasks']['T'], **fields}}}
+                self.assertEqual(idle_tasks(changed, later), [])
+        changed = {**state, 'runs': {'run': {'task': 'T', 'status': 'failed'}}}
+        self.assertEqual(idle_tasks(changed, later), [], 'Even a failed run proves actual activity')
+        self.store.append('start', 'A', {'task': 'T'})
+        self.assertEqual(idle_tasks(self.store.view(), later), [])
+
+    def test_P4_idle_dependency_wait_is_not_a_handoff_instruction(self):
+        idle_tasks = ripresa.idle_tasks
+        from registry import plain
+        self.ack()
+        state = plain(self.store.view())
+        state['tasks']['T']['depends'] = ['contract']
+        state['tasks']['contract'] = {'id': 'contract', 'status': 'working'}
+        row, = idle_tasks(state, dt.datetime.fromisoformat(now()) + dt.timedelta(hours=1))
+        self.assertEqual(row['blocked_by'], ['contract'])
+        self.assertNotIn('Claude', row['next'])
+
+    def test_P4_default_resume_reports_an_acknowledged_idle_assignment(self):
+        self.ack()
+        result = readiness(self.store.view(), dt.datetime.fromisoformat(now()) + dt.timedelta(minutes=31))
+        self.assertEqual(len(result.get('idle_tasks', [])), 1)
+        self.assertIn('Claude', result['idle_tasks'][0]['next'])
 
 
 if __name__ == '__main__':

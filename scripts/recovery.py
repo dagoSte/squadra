@@ -112,10 +112,6 @@ def allowed_files(repo, names, *, rows=None, heads=None, facts=None):
     return result
 
 
-def allowed_file(repo, rel):
-    return allowed_files(repo, [rel])[0]
-
-
 def save_destination(store, state, destination, repos, temporary):
     destination = Path(destination).resolve()
     selected = repositories(state, repos)

@@ -34,6 +34,17 @@ class PurgeCost(unittest.TestCase):
         self.assertLessEqual(len(calls), 3 * len(points))
         self.assertTrue(points[-1].is_dir())
 
+    def test_D4_records_are_read_once_per_phase_not_once_per_target(self):
+        for count in (1, 5):
+            with self.subTest(targets=count):
+                points = [self.checkpoint('lot-%d-point-%d' % (count, i)) for i in range(count)]
+                with patch.object(policy, 'records', wraps=policy.records) as reads:
+                    result = policy.purge(self.store, 'C', 'Remove this expired batch', apply=True,
+                                          policy={'checkpoints': 0, 'saves': 0, 'hours': 0})
+                self.assertEqual(set(result['removed']), {str(p) for p in points})
+                # Preview, locked replan, then one post-intent protection snapshot for the batch.
+                self.assertEqual(reads.call_count, 3)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -214,7 +214,14 @@ def _emails(repo, revision_range):
     return f'All {len(commits)} commits use emails already present in the ancestry of {parts[0]}'
 
 
-def _fast_forward(repo):
+def _fast_forward(repo, revision_range=None):
+    if revision_range is not None:
+        parts = revision_range.split('..')
+        require(len(parts) == 2 and all(parts) and not any(p.startswith('.') for p in parts),
+                'Commit range must be A..B: ' + revision_range)
+        start, end = (_commit(repo, ref) for ref in parts)
+        _git(repo, 'merge-base', '--is-ancestor', start, end)
+        return 'Range start is an ancestor of its end: ' + revision_range
     try:
         upstream = _commit(repo, '@{upstream}')
     except Error as exc:
@@ -233,7 +240,7 @@ def _push(state, repo, revision_range, task_id, items):
     if items[-1]['status'] != 'ok':
         return
     _add(items, 'emails', lambda: _emails(repo, revision_range))
-    _add(items, 'fast_forward', lambda: _fast_forward(repo))
+    _add(items, 'fast_forward', lambda: _fast_forward(repo, revision_range))
     if task_id is not None:
         task = state['tasks'].get(task_id)
         _add(items, 'task_closed', lambda: _expect(task is not None and task['status'] == 'done',

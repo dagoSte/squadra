@@ -120,7 +120,7 @@ def analyze(repo, paths, *, history=400):
             continue
         if path.is_file():
             sizes[name] = path.stat().st_size
-            # Only code is read for imports, and selected files for their size; never whole binaries.
+            # Read code and selected files (including binaries) only within the 2 MiB body limit.
             if PurePosixPath(name).suffix in CODE_SUFFIXES or name in selected:
                 if sizes[name] <= MAX_BODY_BYTES:
                     bodies[name] = path.read_bytes()

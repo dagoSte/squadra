@@ -131,9 +131,9 @@ def records(store):
     points, keeps, policy = {}, {}, dict(DEFAULTS)
     for item in state['outputs']:
         data = item.get('storage_action', {})
-        if data.get('action') == 'checkpoint':
-            # An adopted checkpoint keeps the time of its last copied event, not the adoption time.
-            points[data['path']] = {**data, 'kind': 'checkpoint', 'utc': data.get('made', item['utc'])}
+        if data.get('action') in {'checkpoint', 'save'}:
+            # Adopted points keep their copied event time, not the adoption time.
+            points[data['path']] = {**data, 'kind': data['action'], 'utc': data.get('made', item['utc'])}
         elif data.get('action') == 'keep':
             keeps[data['path']] = data['reason']
         elif data.get('action') == 'policy':
@@ -267,8 +267,8 @@ def protections(store, *, policy=None, at=None, verified=None):
             'verified': verified, 'ignored': ignored, 'reasons': reasons}
 
 
-def plan(store, *, policy=None, at=None):
-    guard = protections(store, policy=policy, at=at)
+def plan(store, *, policy=None, at=None, _guard=None):
+    guard = protections(store, policy=policy, at=at) if _guard is None else _guard
     state, points, configured, at = guard['state'], guard['points'], guard['configured'], guard['at']
     verified, ignored = guard['verified'], guard['ignored']
     rows = []
@@ -351,25 +351,27 @@ def purge(store, actor=None, reason=None, *, apply=False, policy=None, expected=
     coordinator(store, actor, reason)
     from frozen_candidate import cache_lock
     with cache_lock(store):
-        current = plan(store, policy=policy, at=preview['at'])
+        guard = protections(store, policy=policy, at=preview['at'])
+        current = plan(store, policy=policy, at=preview['at'], _guard=guard)
         require(current == preview and (expected is None or expected == current['plan_hash']),
                 'Storage plan changed; inspect a new dry-run')
         if policy is not None:
             record(store, actor, 'policy', policy=current['policy'], reason=reason)
         paths = [r for r in current['entries'] if r['eligible']]
-        checked = protections(store, policy=policy, at=current['at'])['verified']
         record(store, actor, 'purge', phase='started', removed=[r['path'] for r in paths],
                reason=reason, plan_hash=current['plan_hash'])
         removed, kept, error = [], [], None
         try:
+            # The journal refuses new keeps/tasks for these targets until completion; the lock
+            # also blocks competing storage operations. Read the batch's protections only once.
+            batch = protections(store, policy=policy, at=current['at'], verified=guard['verified'])
             for row in paths:
                 require(tree_facts(row['path'])['signature'] == row['signature'], 'Storage target changed')
                 target = Path(row['path'])
-                # Barrier: once renamed, a keep or a task naming this path refers to a missing directory
-                # and is refused; protections recorded before the rename are read again here.
+                # The rename barrier also refuses clients that validated before the purge began.
                 hidden = target.with_name('.purging-' + target.name + '-' + uuid.uuid4().hex[:12])
                 os.rename(target, hidden)
-                late = protections(store, policy=policy, at=current['at'], verified=checked)['reasons'](target)
+                late = batch['reasons'](target)
                 if late:
                     os.rename(hidden, target)
                     kept.append({'path': row['path'], 'protected': late})
@@ -419,7 +421,7 @@ def resume_hint(root, state):
 
 
 def adopt(store, actor=None, reason=None, *, paths=(), scan=None, apply=False):
-    """Record unregistered checkpoints made from THIS registry so retention can see them.
+    """Record unregistered checkpoints or saves from THIS registry for retention.
 
     A folder qualifies only when its CHECKSUMS.json verifies and its last event (seq and hash)
     is the event at the same position of this journal; anything else is reported, never adopted.
@@ -438,12 +440,20 @@ def adopt(store, actor=None, reason=None, *, paths=(), scan=None, apply=False):
         try:
             require(str(path) not in points, 'Already registered')
             require(path != store.root, 'The active registry is not a checkpoint')
-            boundary = verify_checkpoint(path)
+            kind = 'checkpoint'
+            if (path / 'MANIFEST.json').exists():
+                from recovery import verify_package
+                manifest = verify_package(path)
+                kind = 'save'
+                boundary = {key: manifest['registry'][key] for key in ('event_count', 'event_head')}
+                require(verify_checkpoint(path / 'registry') == boundary, 'Save registry boundary changed')
+            else:
+                boundary = verify_checkpoint(path)
             event = events.get(boundary['event_count'])
             require(event is not None and event['hash'] == boundary['event_head'],
                     'Not a checkpoint of this registry (its last event is not in this journal)')
-            rows.append({**row, 'adoptable': True, **boundary, 'made': event['utc']})
-        except (Error, OSError, ValueError, sqlite3.Error) as exc:
+            rows.append({**row, 'adoptable': True, 'kind': kind, **boundary, 'made': event['utc']})
+        except (Error, OSError, ValueError, KeyError, TypeError, sqlite3.Error) as exc:
             rows.append({**row, 'adoptable': False, 'reason': str(exc)})
     if not apply:
         return {'dry_run': True, 'entries': rows}
@@ -451,7 +461,7 @@ def adopt(store, actor=None, reason=None, *, paths=(), scan=None, apply=False):
     adopted = []
     for row in rows:
         if row['adoptable']:
-            record(store, actor, 'checkpoint', path=row['path'], event_count=row['event_count'],
+            record(store, actor, row['kind'], path=row['path'], event_count=row['event_count'],
                    event_head=row['event_head'], made=row['made'], adopted=True, reason=reason, root=str(store.root))
             adopted.append(row['path'])
     return {'dry_run': False, 'entries': rows, 'adopted': adopted}

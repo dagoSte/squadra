@@ -16,10 +16,8 @@ from .source import Refusal
 NAME = "memoranda"
 MANIFEST_LIMIT = 64 * 1024
 PANEL_LIMIT = 2 * 1024 * 1024
-ICON_LIMIT = 32 * 1024
 ICON = Path(__file__).resolve().parents[2] / "icon.png"
 AGENTS = Path(__file__).resolve().parents[2] / "AGENTS.md"
-PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 TEXT_LIMIT = 4096
 ITEM_LIMIT = 500
 TOO_LONG = "(troppo lungo da mostrare / too long to show)"
@@ -191,16 +189,6 @@ def build(result, ledger, updated=None, saved=None):
         if len(body) <= PANEL_LIMIT or not kept:
             return body
         kept = kept[:-1]
-
-
-def icon_bytes():
-    """The memoranda.dev site mark shipped with the package: a PNG of at most 32 KiB, 1–256 px a side."""
-    body = ICON.read_bytes()
-    width, height = int.from_bytes(body[16:20], "big"), int.from_bytes(body[20:24], "big")
-    if len(body) > ICON_LIMIT or not body.startswith(PNG_SIGNATURE) or body[12:16] != b"IHDR" \
-            or not (1 <= width <= 256 and 1 <= height <= 256):
-        raise Refusal("E-PANEL")
-    return body
 
 
 def agents_bytes():

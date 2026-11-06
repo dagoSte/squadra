@@ -8,6 +8,7 @@ sys.path[:0] = [str(Path(__file__).resolve().parent), str(Path(__file__).resolve
 import test_storage_policy as support
 import storage_policy as policy
 from registry import Error, Store
+from recovery import save
 
 EXPIRE_ALL = {'checkpoints': 0, 'saves': 0, 'hours': 0}
 
@@ -89,6 +90,65 @@ class Adopt(unittest.TestCase):
                               policy={'checkpoints': 1, 'saves': 0, 'hours': 0})
         self.assertEqual(result['removed'], [str(first)])
         self.assertTrue(second.is_dir())
+
+    def test_D2_legacy_save_is_verified_adopted_with_root_and_retained_by_kind(self):
+        package = self.base / 'legacy-save'
+        manifest = save(self.store, package, temporary=True)
+        events = self.store.events()
+        preview = policy.adopt(self.store, paths=[package])
+        self.assertEqual(self.store.events(), events, 'Preview never records an adoption')
+        self.assertTrue(preview['entries'][0]['adoptable'])
+        self.assertEqual(preview['entries'][0]['kind'], 'save')
+        result = policy.adopt(self.store, 'C', 'Adopt old save', paths=[package], apply=True)
+        self.assertEqual(result['adopted'], [str(package)])
+        point = policy.records(self.store)[1][str(package)]
+        self.assertEqual(point['root'], str(self.root))
+        self.assertEqual(point['kind'], 'save')
+        for key in ('event_count', 'event_head'):
+            self.assertEqual(point[key], manifest['registry'][key])
+        self.assertEqual(point['utc'], events[manifest['registry']['event_count'] - 1]['utc'])
+        # Save retention is separate from checkpoint retention.
+        protected = policy.plan(self.store, policy={'checkpoints': 0, 'saves': 1, 'hours': 0})
+        self.assertFalse(next(r for r in protected['entries'] if r['path'] == str(package))['eligible'])
+        again = policy.adopt(self.store, 'C', 'Again', paths=[package], apply=True)
+        self.assertEqual(again['adopted'], [])
+
+    def test_D2_scan_handles_saves_checkpoints_tampered_and_foreign_saves(self):
+        folder = self.base / 'old-points'
+        folder.mkdir()
+        good = folder / 'save'
+        save(self.store, good, temporary=True)
+        self.store.checkpoint(folder / 'checkpoint')
+        tampered = folder / 'tampered'
+        shutil.copytree(good, tampered, symlinks=True)
+        (tampered / 'MANIFEST.json').write_text('{}')
+        other_root = self.base / 'other-registry'
+        shutil.copytree(self.root, other_root, symlinks=True)
+        other = Store(other_root)
+        try:
+            other.append('output', 'C', {'text': 'Foreign branch', 'next': 'None', 'artifacts': []})
+            save(other, folder / 'foreign', temporary=True)
+        finally:
+            other.close()
+        result = policy.adopt(self.store, 'C', 'Scan old points', scan=folder, apply=True)
+        self.assertEqual({Path(p).name for p in result['adopted']}, {'save', 'checkpoint'})
+        bad = {Path(r['path']).name: r for r in result['entries'] if not r['adoptable']}
+        self.assertIn('tampered', bad['tampered']['reason'])
+        self.assertIn('this registry', bad['foreign']['reason'])
+
+    def test_D2_a_copy_never_purges_an_adopted_save_of_the_original(self):
+        package = self.base / 'old-save'
+        save(self.store, package, temporary=True)
+        policy.adopt(self.store, 'C', 'Adopt own save', paths=[package], apply=True)
+        copy_root = self.base / 'registry-copy'
+        shutil.copytree(self.root, copy_root, symlinks=True)
+        copy = Store(copy_root)
+        try:
+            result = policy.purge(copy, 'C', 'Expired copy data', apply=True, policy=EXPIRE_ALL)
+            self.assertNotIn(str(package), result['removed'])
+            self.assertTrue(package.is_dir())
+        finally:
+            copy.close()
 
 
     def test_resume_suggests_the_sentence_for_unregistered_checkpoints_and_stops_once_adopted(self):
