@@ -580,6 +580,9 @@ def parser():
             a.add_argument("--follows", action="append", default=[], help="Earlier ask:<id> or decision:<id>")
             a.add_argument("--defer-read", help="Outstanding read-at-gate task deferred past --gate")
             a.add_argument("--gate", help="Open release gate the --defer-read task is deferred from")
+            a.add_argument("--extend-budget", metavar="TASK", help="Owner-approved extra review rounds for one task")
+            a.add_argument("--stage", choices=["plan", "code"], help="Review stage the --extend-budget applies to")
+            a.add_argument("--by", type=int, help="Extra review rounds granted by --extend-budget (1-5)")
             a.add_argument("--scrub-artifact", metavar="SHA256",
                            help="Registered artifact whose file may be absent from now on (a leaked secret); coordinator only")
     a = sub.add_parser("ask"); a.add_argument("--actor", required=True); a.add_argument("--id", required=True)
@@ -789,9 +792,19 @@ def dispatch(a, store):
         if a.same_client_reason is not None:
             task["same_client_reason"] = a.same_client_reason
         result = None
+        planned = None
         if getattr(a, 'paths', []) and getattr(a, 'lanes', 'auto') != 'none':
             from lanes_apply import apply, propose
-            result = apply(store, actor, task, propose(store, task, a.paths))
+            try:
+                planned = propose(store, task, a.paths)
+            except Error as exc:
+                if 'analysis module' in str(exc):
+                    raise  # an incomplete installation refuses plainly (pinned by test_lanes_apply)
+                warning('Lane analysis failed; only the parent task is created: ' + str(exc))
+                result = {'parent': a.id, 'lanes': [], 'created': [],
+                          'reasons': ['Lane analysis failed; only the parent task was created: ' + str(exc)]}
+        if planned is not None:
+            result = apply(store, actor, task, planned)
         else:
             assignment = "assign-" + a.id
             store.batch([("task", actor, task, None), ("message", actor, {"id": assignment, "to": a.owner,
@@ -1081,6 +1094,15 @@ def dispatch(a, store):
     elif command in {"prove", "probe", "run"}:
         from runtime import execute
         argv = a.argv[1:] if command != "run" and a.argv and a.argv[0] == "--" else getattr(a, "argv", None)
+        if command == 'prove' and not argv and a.task in state['tasks'] and state['tasks'][a.task].get('proof'):
+            argv = list(state['tasks'][a.task]['proof'])  # the agreed proof, as the task records it
+        if command == 'prove':
+            import runtime
+            probe = getattr(runtime, 'local_bind_available', None)
+            if probe is not None:
+                available = probe()
+                ok, message = available if isinstance(available, tuple) else (bool(available), '')
+                require(ok, message or 'Local bind on 127.0.0.1 is not available: sandbox limit; run the proof process outside the sandbox')
         checked = None
         proof_tasks = [a.task, *getattr(a, 'also', [])]
         if command == 'prove':
@@ -1146,6 +1168,28 @@ def dispatch(a, store):
             return status(store, a.name)
         require(a.actor and a.reason, 'Resource acquire/release requires --actor and --reason')
         require(a.wait is None or a.action == 'acquire', '--wait applies only to resource acquire')
+        if a.action == 'acquire':
+            if state is not None:
+                current = state
+            else:
+                current = plain(store.view())
+                store.release_views()
+            held = current['resources'].get(a.name)
+            if (held and a.task and held.get('task')
+                    and current['agents'].get(held['owner'], {}).get('identity') == current['agents'][actor]['identity']):
+                if held.get('task') == a.task:
+                    return {'name': a.name, 'holder': plain(held), 'already_held': True}
+                # The same identity serving another task (two agents, one seat) waits like any other holder.
+                import time
+                limit = time.monotonic() + (a.wait or 0)
+                while True:
+                    held = plain(store.view()['resources'].get(a.name))
+                    store.release_views()
+                    if not held:
+                        break
+                    require(time.monotonic() < limit, 'Resource already reserved for another task of this identity: ' +
+                            str(held.get('task')) + '; holder: ' + held['owner'])
+                    time.sleep(min(2.0, max(0.05, limit - time.monotonic())))
         if waiting:
             from resource_wait import acquire, CacheUnavailable
             try:
@@ -1165,6 +1209,11 @@ def dispatch(a, store):
             data.update({k: getattr(a, k) for k in ("answers", "choice", "channel", "owner_words", "withdraws", "id")
                          if getattr(a, k) is not None})
             require(bool(a.defer_read) == bool(a.gate), "gate_defer_invalid: --defer-read and --gate go together")
+            require((a.extend_budget is None) == (a.stage is None) == (a.by is None),
+                    "--extend-budget, --stage and --by go together")
+            if a.extend_budget is not None:
+                data["budget_extension"] = {"task": a.extend_budget, "stage": a.stage, "by": a.by}
+                a.task = list(dict.fromkeys(a.task + [a.extend_budget]))
             if a.defer_read:
                 data["defer_read"] = {"task": a.defer_read, "gate": a.gate}
                 a.task = list(dict.fromkeys(a.task + [a.defer_read, a.gate]))

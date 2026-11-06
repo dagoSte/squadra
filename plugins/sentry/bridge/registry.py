@@ -949,7 +949,7 @@ def attention(state):
         exhausted = []
         for stage in ("plan", "code"):
             reads = [r for r in task["reviews"] if r["stage"] == stage]
-            if task["rounds"][stage] >= state["workspace"]["limits"][stage] and (not reads or reads[-1]["verdict"] != "accepted"):
+            if task["rounds"][stage] >= review_limit(state, task["id"], stage) and (not reads or reads[-1]["verdict"] != "accepted"):
                 exhausted.append(stage)
         builds = run_count(state, task["id"], "build")
         last_build = last_run(state, task["id"], "build")
@@ -2229,6 +2229,14 @@ def validate(state, kind, actor, d, stored_packet=None, *, candidate_history=())
                 require(isinstance(d.get("owner_words"), str) and bool(d["owner_words"].strip()),
                         "A channel without an answer needs nonblank owner words")
         require(d.get("owner_words") is None or isinstance(d["owner_words"], str), "Owner words must be text")
+        if "budget_extension" in d:
+            extension = d["budget_extension"]
+            require(isinstance(extension, Mapping) and set(extension) == {"task", "stage", "by"}
+                    and extension["task"] in state["tasks"] and extension["stage"] in ("plan", "code")
+                    and type(extension["by"]) is int and 1 <= extension["by"] <= 5,
+                    "Budget extension needs an existing task, stage plan or code, and 1 to 5 more rounds")
+            require(d.get("channel") in CHANNELS and isinstance(d.get("owner_words"), str) and d["owner_words"].strip(),
+                    "A review budget extension needs the owner's words and their channel")
         if "defer_read" in d:
             check_deferral(state, d)
         if "scrub" in d:
@@ -2366,7 +2374,7 @@ def validate(state, kind, actor, d, stored_packet=None, *, candidate_history=())
                 require(state["agents"][actor]["identity"] not in
                         {state["agents"][a]["identity"] for a in task["authors"]}, "Author cannot be the independent CLI reader")
                 stage = d.get("stage", "code")
-                require(run_count(state, d["task"], "read", stage) < state["workspace"]["limits"][stage],
+                require(run_count(state, d["task"], "read", stage) < review_limit(state, d["task"], stage),
                         "Independent CLI read budget exhausted")
                 delivery = task.get("delivery", {})
                 if (task.get("reviewer") or delivery.get("handoff")) and stage == "code":
@@ -2403,8 +2411,9 @@ def validate(state, kind, actor, d, stored_packet=None, *, candidate_history=())
             require(state["agents"][actor]["identity"] not in author_identities,
                     "Author cannot independently review own changes, even under another seat ID")
             require(state["agents"][actor]["role"] in {"reviewer", "coordinator"}, "Reviewer role required")
-            limit = state["workspace"]["limits"][d["stage"]]
-            require(task["rounds"][d["stage"]] < limit, "Review round budget exhausted; record a decision")
+            limit = review_limit(state, d["task"], d["stage"])
+            require(task["rounds"][d["stage"]] < limit, "Review round budget exhausted; record a decision "
+                    "(decision --extend-budget TASK --stage STAGE --by N with the owner's words)")
             if d["stage"] == "plan":
                 require(task.get("plan", {}).get("sha256") == d["binding"], "Plan approval refers to old bytes")
             else:
@@ -2545,7 +2554,18 @@ def validate(state, kind, actor, d, stored_packet=None, *, candidate_history=())
             require(d['task'] in state['tasks'] and state['tasks'][d['task']]['status'] != 'done' and
                     not state['tasks'][d['task']].get('superseded_by'), 'Resource task must be open')
     if kind == "resource.release":
-        require(state["resources"].get(d["name"], {}).get("owner") == actor, "Only resource owner can release")
+        holder = state["resources"].get(d["name"], {})
+        require(holder.get("owner") == actor, "Only resource owner can release")
+        require(d.get("task") is None or holder.get("task") == d["task"],
+                "Resource is held for another task: " + str(holder.get("task")))
+
+
+def review_limit(state, task_id, stage):
+    """Global review rounds plus owner-recorded extensions for this task; spent rounds are never reset."""
+    extra = sum(d["budget_extension"]["by"] for d in state.get("decisions", [])
+                if isinstance(d.get("budget_extension"), Mapping) and d["budget_extension"].get("task") == task_id
+                and d["budget_extension"].get("stage") == stage)
+    return state["workspace"]["limits"][stage] + extra
 
 
 ABANDON_FORM = "squadra-run-abandon/1"
