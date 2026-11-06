@@ -13,7 +13,7 @@ Coordinate Claude Code, Codex and Cursor with shared tasks, independent reviews 
 
 **Free and open source** — MIT licence, no account, everything runs on your machine.
 
-**Version 3.13.1** · Python 3.12+ · macOS / POSIX
+**Version 3.14.0** · Python 3.12+ · macOS / POSIX
 
 **English** · [Italiano](README.it.md) · [Privacy](PRIVACY.md)
 
@@ -973,11 +973,17 @@ Static, behavioral and dependency checks, excluding `tests/`. Passing means no H
 <a id="news"></a>
 ## What's new
 
-**3.13.1 — a copy of a registry never purges the original's recovery points**
+**3.14.0 — automatic lanes, per-task budgets and a sharper resume**
 
-- **Fix.** In 3.13.0, recovery points were recorded by absolute path only, so a copy of a registry (a clone, a restore, a backup opened with `--root`) inherited the original's checkpoints and saves, and `storage purge --apply` run in the copy could remove them. Every checkpoint, adoption and save now records the root of the registry that made it; elsewhere it is listed as foreign and is never a purge target. Records without a root count only inside their own registry. A regression test removes the original's checkpoint on 3.13.0 and keeps it now.
-- Found while compacting a real 7.2 GB registry with 3.13.0: `storage adopt` registered 7 old checkpoints, and `storage compact` shared 163,794 of 166,663 files and freed 2.62 GB measured on disk, with a full audit passing afterwards.
-- **Reclaim your space after updating:** tell a Claude window «Use squadra to compact the storage of the registry at /path/to/registry». The coordinator previews adopt, compact and purge and applies only on your word.
+- **Automatic lanes.** `task --paths GLOB` (repeatable) analyses the files to change — Git co-changes weigh more than imports, byte-identical copies stay together, shared hubs go to a coordinator contract lane L0 — and, when there are two or more independent groups and free builders, creates the lanes itself: disjoint owned files, a builder per lane chosen by balance in its own checkout of the project, a reader of the other model, dependencies on L0, a brief per lane, one recorded decision and the assignments, all or nothing. Windows silent for two days, in stand-by or reading the parent are never chosen. `lanes --task ID --paths …` previews, `--apply` is coordinator only, `--lanes none` keeps one task. Measured on the real repository: the two lanes of the 3.13 storage round are found again in under a second.
+- **Per-task review budget.** `decision --extend-budget TASK --stage plan|code --by N` with the owner's words adds rounds to one task only; spent rounds are never reset and the extension follows supersede and replace. Upgrade every window to 3.14 before using it: older windows refuse the extended reads.
+- **Resume sees stalled work.** `status` and `doctor --resume` list tasks accepted 30 minutes ago with no recorded work (a parent with open lanes is not stalled).
+- **Proofs and resources.** `prove` without argv runs the agreed proof; the full suite is refused at once, with a clear message, where localhost cannot be bound (sandboxed clients). Reservations name their task: another task of the same identity waits in the normal queue.
+- **Storage.** `storage adopt` also adopts old save packages; `storage compact` seals legacy writable candidates read-only so volumes without copy-on-write can share them; purge reads protections once per batch and again only when another writer moves the journal.
+- **Checklist.** `checklist --moment push --range A..B` checks the fast-forward without an upstream.
+- Found before release by a cross-increment council and code-graph, and fixed with tests: a lane reader that built the code it read, a resource grant an alias could not release, idle advice on integration parents, context packets hiding extensions, and documentation that contradicted the code.
+
+- **For integrators.** `storage_reuse.compact` moved to `storage_compact.compact` (no alias, to keep the storage modules free of import cycles); the CLI `storage compact` is unchanged.
 
 **Watch the two-minute film of what's new in 3.10.2 — turn the sound on in the player:**
 
@@ -985,6 +991,12 @@ https://github.com/user-attachments/assets/6ea747a5-a993-4aa7-a58d-1b2b7f908720
 
 <details>
 <summary><strong>Earlier versions</strong></summary>
+
+**3.13.1 — a copy of a registry never purges the original's recovery points**
+
+- **Fix.** In 3.13.0, recovery points were recorded by absolute path only, so a copy of a registry (a clone, a restore, a backup opened with `--root`) inherited the original's checkpoints and saves, and `storage purge --apply` run in the copy could remove them. Every checkpoint, adoption and save now records the root of the registry that made it; elsewhere it is listed as foreign and is never a purge target. Records without a root count only inside their own registry. A regression test removes the original's checkpoint on 3.13.0 and keeps it now.
+- Found while compacting a real 7.2 GB registry with 3.13.0: `storage adopt` registered 7 old checkpoints, and `storage compact` shared 163,794 of 166,663 files and freed 2.62 GB measured on disk, with a full audit passing afterwards.
+- **Reclaim your space after updating:** tell a Claude window «Use squadra to compact the storage of the registry at /path/to/registry». The coordinator previews adopt, compact and purge and applies only on your word.
 
 **3.13.0 — checkpoints that share their bytes, a retention policy and compaction of the data you already have**
 
@@ -999,16 +1011,6 @@ https://github.com/user-attachments/assets/6ea747a5-a993-4aa7-a58d-1b2b7f908720
 
 - **Dashboard fix.** Since 3.11.1, `replace` records the successor tasks, reads and starts inside one `replace` event. The dashboard's task progress ignored those nested operations, so every registry with a replacement failed with `KeyError: '<task>-takeover-…'`. Task progress now applies them the way the registry does, and a regression test pins it.
 - The plugin bridge copies of `scripts/registry.py` carry the same fix; the memoranda reader pin accepts the 3.12.1 bytes.
-
-**3.12.0 — the checklist knows the round, clearer warnings and advice, and a changelog**
-
-- **Round scope in the checklist.** `checklist --moment assign` adds `round_scope`: a task created after the latest decision whose reason starts with `Round scope:`, and not named in it, is reported `unverifiable` with the reason (advisory, never `fail`).
-- **Stricter checklist.** `checklist --moment deliver` fails on an already closed task; `checklist --moment push --range A..B` fails when `A` is not an ancestor of `B`, and an empty range says `0 commits`.
-- **No silent task without a reader.** `task` without `--reviewer` (or a pool, or `--read-at-gate`) warns that a delivery without a reader cannot get one later with `reassign`.
-- **`task --proof -- argv` works as documented,** also when the proof's argv contains options such as `--root` or `--task`.
-- **Composition advice by real roles.** `status`, board and dashboard name who builds and who reads; with mixed roles they show the real counts, and pairing rows stay visible when the squad is unbalanced.
-- **Changelog.** The full release history moved to [CHANGELOG.md](CHANGELOG.md); the README keeps the newest release and the three before it.
-- **Skill audits not refreshed.** As in 3.11.2, the recorded scans in `assets/skill-audits.json` predate this release; the System skills page shows every skill as not audited (files changed) until a fresh scan.
 
 </details>
 

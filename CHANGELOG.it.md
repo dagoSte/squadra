@@ -3,15 +3,27 @@
 Tutte le versioni di Squadra, dalla più nuova. Il README tiene la più nuova e le tre precedenti.
 
 
+**3.14.0 — corsie automatiche, budget per incarico e una ripresa più attenta**
+
+- **Corsie automatiche.** `task --paths GLOB` (ripetibile) analizza i file da toccare — le co-modifiche Git pesano più degli import, le copie byte-identiche restano insieme, gli hub condivisi vanno in una corsia contratto L0 del coordinatore — e, quando ci sono due o più gruppi indipendenti e costruttori liberi, crea da sola le corsie: file posseduti disgiunti, un costruttore per corsia scelto da balance nel proprio checkout del progetto, un lettore dell'altro modello, dipendenze da L0, un brief per corsia, una decisione registrata e le assegnazioni, tutto o niente. Non sceglie mai finestre silenziose da due giorni, in stand-by o che leggono il padre. `lanes --task ID --paths …` mostra l'anteprima, `--apply` è solo del coordinatore, `--lanes none` tiene un solo incarico. Misurato sul repository reale: ritrova da sola in meno di un secondo le due corsie del giro storage della 3.13.
+- **Budget di lettura per incarico.** `decision --extend-budget INCARICO --stage plan|code --by N` con le parole del proprietario aggiunge letture a un solo incarico; le letture fatte non si azzerano e l'estensione segue supersede e replace. Aggiorna tutte le finestre alla 3.14 prima di usarlo: le finestre più vecchie rifiutano le letture estese.
+- **La ripresa vede il lavoro fermo.** `status` e `doctor --resume` elencano gli incarichi accettati da 30 minuti senza lavoro registrato (un padre con corsie aperte non è fermo).
+- **Prove e risorse.** `prove` senza argomenti esegue la prova concordata; la suite completa è rifiutata subito, con un messaggio chiaro, dove localhost non si può aprire (client in sandbox). Le riserve indicano l'incarico: un altro incarico della stessa identità aspetta nella coda normale.
+- **Spazio.** `storage adopt` adotta anche i vecchi pacchetti save; `storage compact` sigilla in sola lettura i vecchi candidati scrivibili, così anche i volumi senza copy-on-write li condividono; la purge legge le protezioni una volta per lotto e di nuovo solo quando un altro scrittore fa avanzare il registro.
+- **Checklist.** `checklist --moment push --range A..B` verifica l'avanzamento in linea retta senza upstream.
+- Trovati prima del rilascio da un council trasversale e da code-graph, e corretti con test: un lettore di corsia che aveva costruito il codice che leggeva, una riserva che un alias non poteva rilasciare, consigli di inattività sui padri di integrazione, pacchetti di contesto che nascondevano le estensioni e documentazione che contraddiceva il codice.
+
+- **Per chi integra.** `storage_reuse.compact` è passata in `storage_compact.compact` (senza alias, per tenere i moduli storage senza cicli di import); il comando `storage compact` non cambia.
+
+**Guarda il film delle novità della 3.10.2, due minuti — attiva l'audio nel lettore:**
+
+https://github.com/user-attachments/assets/8f38a443-b738-48f8-b562-9b072419b5f0
+
 **3.13.1 — una copia del registro non cancella mai i punti di recupero dell'originale**
 
 - **Correzione.** Nella 3.13.0 i punti di recupero erano registrati solo con il percorso assoluto, quindi una copia del registro (clone, ripristino, copia aperta con `--root`) ereditava checkpoint e salvataggi dell'originale, e `storage purge --apply` lanciato nella copia poteva cancellarli. Ora ogni checkpoint, adozione e salvataggio registra la radice del registro che l'ha creato; altrove è elencato come estraneo e non è mai un bersaglio di purge. Le registrazioni senza radice valgono solo dentro il proprio registro. Un test di regressione cancella il checkpoint dell'originale con la 3.13.0 e lo conserva ora.
 - Trovato compattando un registro reale da 7,2 GB con la 3.13.0: `storage adopt` ha registrato 7 vecchi checkpoint, e `storage compact` ha condiviso 163 794 file su 166 663 e liberato 2,62 GB misurati su disco, con l'audit completo superato dopo.
 - **Recupera lo spazio dopo l'aggiornamento:** di' a una finestra Claude «Usa squadra: compatta lo spazio del registro /percorso/del/registro». Il coordinatore mostra in anteprima adopt, compact e purge e applica solo con il tuo via libera.
-
-**Guarda il film delle novità della 3.10.2, due minuti — attiva l'audio nel lettore:**
-
-https://github.com/user-attachments/assets/8f38a443-b738-48f8-b562-9b072419b5f0
 
 **3.13.0 — checkpoint che condividono i byte, una politica di conservazione e la compattazione dei dati che hai già**
 

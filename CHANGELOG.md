@@ -3,15 +3,27 @@
 Every Squadra release, newest first. The README keeps the newest release and the three before it.
 
 
+**3.14.0 — automatic lanes, per-task budgets and a sharper resume**
+
+- **Automatic lanes.** `task --paths GLOB` (repeatable) analyses the files to change — Git co-changes weigh more than imports, byte-identical copies stay together, shared hubs go to a coordinator contract lane L0 — and, when there are two or more independent groups and free builders, creates the lanes itself: disjoint owned files, a builder per lane chosen by balance in its own checkout of the project, a reader of the other model, dependencies on L0, a brief per lane, one recorded decision and the assignments, all or nothing. Windows silent for two days, in stand-by or reading the parent are never chosen. `lanes --task ID --paths …` previews, `--apply` is coordinator only, `--lanes none` keeps one task. Measured on the real repository: the two lanes of the 3.13 storage round are found again in under a second.
+- **Per-task review budget.** `decision --extend-budget TASK --stage plan|code --by N` with the owner's words adds rounds to one task only; spent rounds are never reset and the extension follows supersede and replace. Upgrade every window to 3.14 before using it: older windows refuse the extended reads.
+- **Resume sees stalled work.** `status` and `doctor --resume` list tasks accepted 30 minutes ago with no recorded work (a parent with open lanes is not stalled).
+- **Proofs and resources.** `prove` without argv runs the agreed proof; the full suite is refused at once, with a clear message, where localhost cannot be bound (sandboxed clients). Reservations name their task: another task of the same identity waits in the normal queue.
+- **Storage.** `storage adopt` also adopts old save packages; `storage compact` seals legacy writable candidates read-only so volumes without copy-on-write can share them; purge reads protections once per batch and again only when another writer moves the journal.
+- **Checklist.** `checklist --moment push --range A..B` checks the fast-forward without an upstream.
+- Found before release by a cross-increment council and code-graph, and fixed with tests: a lane reader that built the code it read, a resource grant an alias could not release, idle advice on integration parents, context packets hiding extensions, and documentation that contradicted the code.
+
+- **For integrators.** `storage_reuse.compact` moved to `storage_compact.compact` (no alias, to keep the storage modules free of import cycles); the CLI `storage compact` is unchanged.
+
+**Watch the two-minute film of what's new in 3.10.2 — turn the sound on in the player:**
+
+https://github.com/user-attachments/assets/6ea747a5-a993-4aa7-a58d-1b2b7f908720
+
 **3.13.1 — a copy of a registry never purges the original's recovery points**
 
 - **Fix.** In 3.13.0, recovery points were recorded by absolute path only, so a copy of a registry (a clone, a restore, a backup opened with `--root`) inherited the original's checkpoints and saves, and `storage purge --apply` run in the copy could remove them. Every checkpoint, adoption and save now records the root of the registry that made it; elsewhere it is listed as foreign and is never a purge target. Records without a root count only inside their own registry. A regression test removes the original's checkpoint on 3.13.0 and keeps it now.
 - Found while compacting a real 7.2 GB registry with 3.13.0: `storage adopt` registered 7 old checkpoints, and `storage compact` shared 163,794 of 166,663 files and freed 2.62 GB measured on disk, with a full audit passing afterwards.
 - **Reclaim your space after updating:** tell a Claude window «Use squadra to compact the storage of the registry at /path/to/registry». The coordinator previews adopt, compact and purge and applies only on your word.
-
-**Watch the two-minute film of what's new in 3.10.2 — turn the sound on in the player:**
-
-https://github.com/user-attachments/assets/6ea747a5-a993-4aa7-a58d-1b2b7f908720
 
 **3.13.0 — checkpoints that share their bytes, a retention policy and compaction of the data you already have**
 

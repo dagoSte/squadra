@@ -13,7 +13,7 @@ Coordina Claude Code, Codex e Cursor con incarichi condivisi, revisioni indipend
 
 **Gratuita e open source** — licenza MIT, nessun account, tutto gira sul tuo computer.
 
-**Versione 3.13.1** · Python 3.12+ · macOS / POSIX
+**Versione 3.14.0** · Python 3.12+ · macOS / POSIX
 
 [English](README.md) · **Italiano** · [Privacy](PRIVACY.it.md)
 
@@ -978,11 +978,17 @@ Controlli statici, comportamentali e delle dipendenze, con `tests/` esclusa. Il 
 <a id="news"></a>
 ## Novità
 
-**3.13.1 — una copia del registro non cancella mai i punti di recupero dell'originale**
+**3.14.0 — corsie automatiche, budget per incarico e una ripresa più attenta**
 
-- **Correzione.** Nella 3.13.0 i punti di recupero erano registrati solo con il percorso assoluto, quindi una copia del registro (clone, ripristino, copia aperta con `--root`) ereditava checkpoint e salvataggi dell'originale, e `storage purge --apply` lanciato nella copia poteva cancellarli. Ora ogni checkpoint, adozione e salvataggio registra la radice del registro che l'ha creato; altrove è elencato come estraneo e non è mai un bersaglio di purge. Le registrazioni senza radice valgono solo dentro il proprio registro. Un test di regressione cancella il checkpoint dell'originale con la 3.13.0 e lo conserva ora.
-- Trovato compattando un registro reale da 7,2 GB con la 3.13.0: `storage adopt` ha registrato 7 vecchi checkpoint, e `storage compact` ha condiviso 163 794 file su 166 663 e liberato 2,62 GB misurati su disco, con l'audit completo superato dopo.
-- **Recupera lo spazio dopo l'aggiornamento:** di' a una finestra Claude «Usa squadra: compatta lo spazio del registro /percorso/del/registro». Il coordinatore mostra in anteprima adopt, compact e purge e applica solo con il tuo via libera.
+- **Corsie automatiche.** `task --paths GLOB` (ripetibile) analizza i file da toccare — le co-modifiche Git pesano più degli import, le copie byte-identiche restano insieme, gli hub condivisi vanno in una corsia contratto L0 del coordinatore — e, quando ci sono due o più gruppi indipendenti e costruttori liberi, crea da sola le corsie: file posseduti disgiunti, un costruttore per corsia scelto da balance nel proprio checkout del progetto, un lettore dell'altro modello, dipendenze da L0, un brief per corsia, una decisione registrata e le assegnazioni, tutto o niente. Non sceglie mai finestre silenziose da due giorni, in stand-by o che leggono il padre. `lanes --task ID --paths …` mostra l'anteprima, `--apply` è solo del coordinatore, `--lanes none` tiene un solo incarico. Misurato sul repository reale: ritrova da sola in meno di un secondo le due corsie del giro storage della 3.13.
+- **Budget di lettura per incarico.** `decision --extend-budget INCARICO --stage plan|code --by N` con le parole del proprietario aggiunge letture a un solo incarico; le letture fatte non si azzerano e l'estensione segue supersede e replace. Aggiorna tutte le finestre alla 3.14 prima di usarlo: le finestre più vecchie rifiutano le letture estese.
+- **La ripresa vede il lavoro fermo.** `status` e `doctor --resume` elencano gli incarichi accettati da 30 minuti senza lavoro registrato (un padre con corsie aperte non è fermo).
+- **Prove e risorse.** `prove` senza argomenti esegue la prova concordata; la suite completa è rifiutata subito, con un messaggio chiaro, dove localhost non si può aprire (client in sandbox). Le riserve indicano l'incarico: un altro incarico della stessa identità aspetta nella coda normale.
+- **Spazio.** `storage adopt` adotta anche i vecchi pacchetti save; `storage compact` sigilla in sola lettura i vecchi candidati scrivibili, così anche i volumi senza copy-on-write li condividono; la purge legge le protezioni una volta per lotto e di nuovo solo quando un altro scrittore fa avanzare il registro.
+- **Checklist.** `checklist --moment push --range A..B` verifica l'avanzamento in linea retta senza upstream.
+- Trovati prima del rilascio da un council trasversale e da code-graph, e corretti con test: un lettore di corsia che aveva costruito il codice che leggeva, una riserva che un alias non poteva rilasciare, consigli di inattività sui padri di integrazione, pacchetti di contesto che nascondevano le estensioni e documentazione che contraddiceva il codice.
+
+- **Per chi integra.** `storage_reuse.compact` è passata in `storage_compact.compact` (senza alias, per tenere i moduli storage senza cicli di import); il comando `storage compact` non cambia.
 
 **Guarda il film delle novità della 3.10.2, due minuti — attiva l'audio nel lettore:**
 
@@ -990,6 +996,12 @@ https://github.com/user-attachments/assets/8f38a443-b738-48f8-b562-9b072419b5f0
 
 <details>
 <summary><strong>Versioni precedenti</strong></summary>
+
+**3.13.1 — una copia del registro non cancella mai i punti di recupero dell'originale**
+
+- **Correzione.** Nella 3.13.0 i punti di recupero erano registrati solo con il percorso assoluto, quindi una copia del registro (clone, ripristino, copia aperta con `--root`) ereditava checkpoint e salvataggi dell'originale, e `storage purge --apply` lanciato nella copia poteva cancellarli. Ora ogni checkpoint, adozione e salvataggio registra la radice del registro che l'ha creato; altrove è elencato come estraneo e non è mai un bersaglio di purge. Le registrazioni senza radice valgono solo dentro il proprio registro. Un test di regressione cancella il checkpoint dell'originale con la 3.13.0 e lo conserva ora.
+- Trovato compattando un registro reale da 7,2 GB con la 3.13.0: `storage adopt` ha registrato 7 vecchi checkpoint, e `storage compact` ha condiviso 163 794 file su 166 663 e liberato 2,62 GB misurati su disco, con l'audit completo superato dopo.
+- **Recupera lo spazio dopo l'aggiornamento:** di' a una finestra Claude «Usa squadra: compatta lo spazio del registro /percorso/del/registro». Il coordinatore mostra in anteprima adopt, compact e purge e applica solo con il tuo via libera.
 
 **3.13.0 — checkpoint che condividono i byte, una politica di conservazione e la compattazione dei dati che hai già**
 
@@ -1004,16 +1016,6 @@ https://github.com/user-attachments/assets/8f38a443-b738-48f8-b562-9b072419b5f0
 
 - **Correzione della dashboard.** Dalla 3.11.1 `replace` registra incarichi successori, letture e avvii dentro un solo evento `replace`. L'avanzamento degli incarichi della dashboard ignorava queste operazioni annidate, e ogni registro con una sostituzione andava in errore con `KeyError: '<incarico>-takeover-…'`. Ora l'avanzamento le applica come fa il registro, e un test di regressione lo fissa.
 - Le copie bridge dei plugin di `scripts/registry.py` hanno la stessa correzione; il pin di lettura di memoranda accetta i byte della 3.12.1.
-
-**3.12.0 — la checklist conosce il giro, avvisi e consigli più chiari, e una storia delle versioni**
-
-- **Perimetro del giro nella checklist.** `checklist --moment assign` aggiunge `round_scope`: un incarico creato dopo l'ultima decisione la cui motivazione inizia con `Round scope:`, e non nominato in essa, risulta `unverifiable` con il motivo (consultivo, mai `fail`).
-- **Checklist più rigorosa.** `checklist --moment deliver` fallisce su un incarico già chiuso; `checklist --moment push --range A..B` fallisce quando `A` non è antenato di `B`, e un intervallo vuoto dice `0 commits`.
-- **Nessun incarico senza lettore in silenzio.** `task` senza `--reviewer` (o un gruppo di lettori, o `--read-at-gate`) avvisa che una consegna senza lettore non potrà riceverne uno dopo con `reassign`.
-- **`task --proof -- argv` funziona come documentato,** anche quando il comando della prova contiene opzioni come `--root` o `--task`.
-- **Consiglio di composizione secondo i ruoli veri.** `status`, tabella e dashboard dicono chi costruisce e chi rilegge; con ruoli misti mostrano i conteggi reali, e le righe di abbinamento restano visibili quando la squadra è sbilanciata.
-- **Storia delle versioni.** La storia completa è passata in [CHANGELOG.it.md](CHANGELOG.it.md); il README tiene la versione più nuova e le tre precedenti.
-- **Audit delle skill non aggiornati.** Come nella 3.11.2, le scansioni registrate in `assets/skill-audits.json` precedono questa versione; la pagina System skills mostra ogni skill come non verificata (file cambiati) fino a una nuova scansione.
 
 </details>
 
