@@ -202,6 +202,16 @@ Follow the [round-scope guide](references/skills/perimetro.md).
 
 ## Rule 1 — parallel work
 
+For automatic lanes, create the coordinator's integration task with repeated
+`task --paths GLOB`. With at least two independent groups and available builders,
+Squadra assigns lanes through balance, using each builder's registered checkout of
+the same project and a non-author reader of the other model. Shared files go to
+`<PARENT>.L0`, owned by the coordinator, and other lanes depend on it. Register separate
+checkouts first: no checkout or window is created. Preview an existing parent with
+`lanes --task ID --paths GLOB`; only the coordinator applies it with `--apply --actor COORD`.
+`task --lanes none` keeps a single task. Inspect the reasons when no lanes are created;
+never invent another model, ignore stand-by or reuse a busy window to force a split.
+
 The squad's value is parallelism. The coordinator immediately assigns independent work
 to every available window, Codex, Claude or interactive Cursor: no window stays idle
 while there is independent work to give it.

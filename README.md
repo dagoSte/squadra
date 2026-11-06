@@ -517,7 +517,7 @@ The sections below keep the full working examples. Open the topic you need; the 
 | Follow a task from assignment to closure | [Task workflow](#workflow) |
 | Trace an instruction or record a decision | [Briefs, messages and decisions](#decision-reference) |
 | Save work or resume a session | [Checkpoints and recovery](#checkpoints) |
-| Look up a command or its plain-language prompt | [All 60 commands](#commands) |
+| Look up a command or its plain-language prompt | [All 61 commands](#commands) |
 
 [Skill](SKILL.md) · [Setup](references/start.md) · [Work/proof/review](references/work.md) · [Native runners](references/runtime.md) · [Recovery/context handover](references/recovery.md) · [Challenges/benchmark](references/benchmark.md) · [Plugins](references/plugins.md) · [Plugin authoring](references/plugin-authoring.md)
 
@@ -591,6 +591,16 @@ Windows silent for two days are listed by `doctor --resume` as archivable or not
 <summary><strong>Task workflow: assignment, proof, independent review and closure</strong></summary>
 
 ### Assignment, proof, independent read, closure
+
+**Automatic lanes.** Add repeated `task --paths GLOB` to the coordinator's integration
+task (`--owner coord`): Squadra splits independent files when at least two builders are
+available, assigns readers of the other model and records the plan and assignments.
+Builders use their already registered, separate checkouts of the same project; Squadra
+creates no checkout or window. Shared files go to the coordinator's contract lane,
+which the other lanes depend on. Use `--lanes none` to keep one task, or preview an
+existing parent with `squadra lanes --task ID --paths 'scripts/*.py'`; applying requires
+`--apply --actor coord`. Busy windows and missing independent readers appear in the
+plan's reasons. [Commands and boundaries](references/work.md#automatic-lanes).
 
 **Choose the path.** The builder proposes a path and the coordinator records the choice using the five questions of [the IT/EN triage page](references/work.md#triage-in-una-pagina); the non-author reader checks it in the assigned block. No regex, path pattern or score chooses the path. Coordinated milestones use the [default final block](references/work.md#final-block); the commands below illustrate a standalone task or an owner-selected per-lane read.
 
@@ -828,10 +838,10 @@ manual deletion of an active cache degrades candidate integrity. See
 
 You do not have to type these commands: **asking your window in plain words is the recommended way**, as in the *Or just ask* column and the [example prompts](#prompts), and the window runs the command for you. The commands are what the windows run, and what you can type yourself to check.
 
-Every command, grouped by purpose: **60 subcommands**, plus `--version`. Use `squadra <command> --help` for the flags; registry commands accept `--root` or `SQUADRA_ROOT`. «Coordinator only» marks what only the coordinator can record: `task`, `route`, `supersede`, `reassign`, `replace`, `brief`, `close`, `ask`, `decision`, `settings`, `pause`, `resume`, `save`, `standby`, `ping --all`, `ping --sweep`, and the receipt that `restore-check` writes into the live registry. Without installing, the same commands run as `python3 -B scripts/squadra.py <command>`.
+Every command, grouped by purpose: **61 subcommands**, plus `--version`. Use `squadra <command> --help` for the flags; registry commands accept `--root` or `SQUADRA_ROOT`. «Coordinator only» marks what only the coordinator can record: `task`, `route`, `supersede`, `reassign`, `replace`, `brief`, `close`, `ask`, `decision`, `settings`, `pause`, `resume`, `save`, `standby`, `ping --all`, `ping --sweep`, and the receipt that `restore-check` writes into the live registry. Without installing, the same commands run as `python3 -B scripts/squadra.py <command>`.
 
 <details>
-<summary><strong>All 60 commands and their prompts, grouped by purpose</strong></summary>
+<summary><strong>All 61 commands and their prompts, grouped by purpose</strong></summary>
 
 ### Start and team
 
@@ -854,6 +864,7 @@ Every command, grouped by purpose: **60 subcommands**, plus `--version`. Use `sq
 | Command | What it does | Or just ask |
 |---|---|---|
 | `task` | Coordinator only: assign a task: owner, reviewer, checkout, scope, proof, requirements, dependencies; `--supersedes` replaces an open task. | To the coordinator: “Assign ‘Key rotation service’ to the builder window, with the reviewer window as independent reader and the whole test suite as proof.” |
+| `lanes` | Preview automatic lane assignments from repeated `--paths`; `--apply --actor COORD` applies them to the coordinator's existing parent. `task --paths` applies automatically; `task --lanes none` opts out. | “Split these independent changes across the available builders and show the plan.” |
 | `route` | Coordinator only: promote with `--full`, keeping the base/history/budgets; new proof and read. | To the coordinator: “T3 is no longer a small change: move it to the full route.” |
 | `supersede` | Coordinator only: record afterwards that an existing, later task replaces an open one, with the same effect as `--supersedes`. | To the coordinator: “T7 replaces T5: record it, keeping the history of T5.” |
 | `reassign` | Coordinator only: change the reader on the same delivery, preserving proofs and budgets; needs a new ACK. `--same-client-reason` records a same-client transfer; switching clients clears the old reason. | “Give this same delivery to another free reader.” |
