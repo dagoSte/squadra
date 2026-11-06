@@ -305,6 +305,16 @@ class LaneApplication(unittest.TestCase):
         self.assertNotIn('Traceback', err)
         self.assertNotIn('bad', self.store.view()['tasks'])
 
+    def test_LB1_unknown_parent_owner_has_a_plain_refusal_and_no_partial_tasks(self):
+        with patch.dict(sys.modules, {'lanes': self.analysis()}):
+            code, _, err = self.cli('task', '--actor', 'C', '--id', 'bad', '--title', 'Unknown owner',
+                '--owner', 'missing', '--repo', str(self.repo), '--scope-file', str(self.scope), '--paths', '*.py')
+        self.assertEqual(code, 1)
+        self.assertIn('Task owner not registered', err)
+        self.assertNotIn('Traceback', err)
+        self.assertEqual(set(self.store.view()['tasks']), {'P'})
+        self.queue.assert_not_called()
+
     def test_LB4_overlap_and_fixture_paths_are_rejected(self):
         for filename in ('a.py', 'tests/fixtures/old.py', './tests/fixtures/old.py', '../outside.py'):
             value = self.partition()

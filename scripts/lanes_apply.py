@@ -50,6 +50,7 @@ def plan(store, parent_task, partition_result):
     reasons = list(partition_result.get('reasons', []))
     result = {'form': 'squadra-lanes-assignment/1', 'parent': task['id'],
               'partition': copy.deepcopy(partition_result), 'lanes': [], 'shared': shared, 'reasons': reasons}
+    require(task['owner'] in state['agents'], 'Task owner not registered')
     owner = state['agents'][task['owner']]
     if owner['role'] != 'coordinator':
         reasons.append('Parent is not owned by the coordinator; only the parent is created')
@@ -97,6 +98,7 @@ def plan(store, parent_task, partition_result):
             reasons.append(builder['id'] + ': no independent reader of the other model')
             continue
         try:
+            require(isinstance(builder.get('repo'), str) and bool(builder['repo']), 'No registered checkout')
             repo = Path(builder['repo']).resolve(strict=True)
             require(roots(repo) == project_roots, 'Checkout belongs to another project')
             git(repo, 'cat-file', '-e', task['base'] + '^{commit}')
