@@ -1698,6 +1698,14 @@ def main(argv=None):
                                 attention_value=attention_value))
                     if a.command == 'supersede':
                         print('- ' + a.task + ' → ' + a.by)
+                    if a.command == 'status':
+                        from ripresa import idle_tasks
+                        idle = idle_tasks(plain(state), now())
+                        if idle:
+                            english = state['workspace'].get('lang', 'it') == 'en'
+                            print('\n' + ('Accepted but idle:' if english else 'Accettati ma fermi:'))
+                            for row in idle:
+                                print('- %s · %s · %d min · %s' % (row['task'], row['owner'], row['minutes'], row['next']))
                 forecast_task = a.id if a.command == 'task' else getattr(a, 'task', None)
                 if a.command in {'task', 'brief', 'start'} and forecast_task:
                     from forecast import calculate
