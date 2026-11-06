@@ -178,7 +178,7 @@ def _commit(store, actor, parent_task, planned):
                  'owner': lane['owner'], 'reviewer': lane['reviewer'], 'repo': lane['repo'], 'base': task['base'],
                  'proof': task.get('proof'), 'expected': task.get('expected'),
                  'full_gate': task.get('full_gate', False), 'depends': lane['depends'],
-                 'requirements': task.get('requirements', []), 'delivery_policy': 'frozen-v1', 'cross_client': True,
+                 'requirements': [], 'delivery_policy': 'frozen-v1', 'cross_client': True,
                  'scope': store.artifact_bytes(scope.encode(), lane['id'] + '-scope.txt', 'generated-lane:' + lane['id'])}
         operations.append(('task', actor, child, None))
         messages.append(assignment(child))

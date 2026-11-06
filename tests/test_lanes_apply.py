@@ -190,6 +190,18 @@ class LaneApplication(unittest.TestCase):
             lanes_apply.apply(self.store, 'C', 'P', planned)
         self.queue.assert_not_called()
 
+    def test_LB4_child_scopes_do_not_inherit_parent_integration_requirements(self):
+        requirements = [{'id': 'RA', 'text': 'Behavior in a.py'}, {'id': 'RB', 'text': 'Behavior in b.py'}]
+        self.store.append('task', 'C', {**self.task, 'id': 'Q', 'requirements': requirements})
+        before = plain(self.store.view()['tasks']['Q'])
+        result = lanes_apply.apply(self.store, 'C', 'Q', lanes_apply.plan(self.store, 'Q', self.partition()))
+        state = plain(self.store.view())
+        self.assertEqual(state['tasks']['Q'], before)
+        self.assertEqual(state['tasks']['Q']['requirements'], requirements)
+        self.assertEqual(result['created'], ['Q.L0', 'Q.L1', 'Q.L2'])
+        for name in result['created']:
+            self.assertEqual(state['tasks'][name]['requirements'], [], name)
+
     def test_LB1_task_paths_creates_parent_and_lanes_with_a_stub_analysis(self):
         with patch.dict(sys.modules, {'lanes': self.analysis()}):
             code, out, err = self.cli('task', '--actor', 'C', '--id', 'NEW', '--title', 'New parent',
