@@ -111,10 +111,14 @@ def idle_tasks(state, at, *, minutes=IDLE_MINUTES):
     require(type(minutes) is int and minutes >= 0, 'Nonnegative integer idle minutes required')
     clock = dt.datetime.fromisoformat(at) if isinstance(at, str) else at
     running = {run['task'] for run in state['runs'].values()}
+    # A parent of automatic lanes waits for them by design: its own idleness is integration, not a stall.
+    lane_parents = {lane['id'].rsplit('.L', 1)[0] for lane in state['tasks'].values()
+                    if '.L' in lane['id'] and lane['status'] != 'done' and not lane.get('superseded_by')}
     result = []
     for task in sorted(state['tasks'].values(), key=lambda t: t['id']):
         if (task['status'] != 'ready' or task.get('superseded_by') or task.get('candidate')
-                or task.get('plan') or task.get('delivery') or task.get('proofs') or task['id'] in running):
+                or task.get('plan') or task.get('delivery') or task.get('proofs') or task['id'] in running
+                or task['id'] in lane_parents):
             continue
         acknowledgements = [m['ack']['utc'] for m in state['messages'].values()
                             if m.get('task') == task['id'] and m['to'] == task['owner']

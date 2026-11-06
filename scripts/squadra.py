@@ -1102,7 +1102,12 @@ def dispatch(a, store):
             if probe is not None:
                 available = probe()
                 ok, message = available if isinstance(available, tuple) else (bool(available), '')
-                require(ok, message or 'Local bind on 127.0.0.1 is not available: sandbox limit; run the proof process outside the sandbox')
+                message = message or 'Local bind on 127.0.0.1 is not available: sandbox limit; run the proof process outside the sandbox'
+                # Only the full-suite runner needs localhost; other proofs keep running with a warning.
+                if not ok and any(Path(part).name == 'parallel_tests.py' for part in (argv or [])):
+                    require(False, message)
+                if not ok:
+                    warning(message)
         checked = None
         proof_tasks = [a.task, *getattr(a, 'also', [])]
         if command == 'prove':
@@ -1177,9 +1182,10 @@ def dispatch(a, store):
             held = current['resources'].get(a.name)
             if (held and a.task and held.get('task')
                     and current['agents'].get(held['owner'], {}).get('identity') == current['agents'][actor]['identity']):
-                if held.get('task') == a.task:
+                # Only the holder itself is idempotent: another seat of the identity could not release it.
+                if held.get('task') == a.task and held['owner'] == actor:
                     return {'name': a.name, 'holder': plain(held), 'already_held': True}
-                # The same identity serving another task (two agents, one seat) waits like any other holder.
+                # Another task of the identity, or another seat on this task, waits like any other holder.
                 import time
                 limit = time.monotonic() + (a.wait or 0)
                 while True:
@@ -1187,8 +1193,11 @@ def dispatch(a, store):
                     store.release_views()
                     if not held:
                         break
-                    require(time.monotonic() < limit, 'Resource already reserved for another task of this identity: ' +
-                            str(held.get('task')) + '; holder: ' + held['owner'])
+                    require(time.monotonic() < limit,
+                            ('Resource already reserved for another task of this identity: ' + str(held.get('task'))
+                             if held.get('task') != a.task else
+                             'Resource already reserved by another seat of this identity for this task')
+                            + '; holder: ' + held['owner'])
                     time.sleep(min(2.0, max(0.05, limit - time.monotonic())))
         if waiting:
             from resource_wait import acquire, CacheUnavailable

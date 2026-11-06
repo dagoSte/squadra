@@ -104,10 +104,23 @@ class L0(unittest.TestCase):
         self.assertEqual(code, 0, err)
         self.assertEqual(plain(self.store.state()["resources"]["cpu-heavy"])["task"], "U")
 
+    def test_K2_another_seat_of_the_identity_never_gets_a_grant_it_cannot_release(self):
+        identity = self.store.state()["agents"]["C"]["identity"]
+        self.store.append("agent", "C-alias", {"id": "C-alias", "role": "builder", "identity": identity, "client": "claude",
+                          "repo": str(self.repo), "skills": [], "session": "synthetic-alias"})
+        self.assertEqual(self.cli("resource", "acquire", "--actor", "C", "--name", "cpu-heavy", "--task", "T",
+                                  "--reason", "Suite for T"), 0)
+        code, out, err = self.run_cli("resource", "acquire", "--actor", "C-alias", "--name", "cpu-heavy", "--task", "T",
+                                      "--reason", "Second suite for T", "--wait", "0")
+        self.assertNotIn("already_held", out)
+        self.assertEqual(code, 1)
+        self.assertIn("another seat of this identity", err)
+        self.assertEqual(plain(self.store.state()["resources"]["cpu-heavy"])["owner"], "C")
+
     # P5
-    def agreed(self, name="P"):
+    def agreed(self, name="P", proof=None):
         data = {"id": name, "title": "Agreed proof", "owner": "A", "repo": str(self.repo), "base": snapshot(self.repo)["head"],
-                "scope": self.store.artifact(self.scope), "proof": [sys.executable, "-c", "print('agreed')"], "expected": 0,
+                "scope": self.store.artifact(self.scope), "proof": proof or [sys.executable, "-c", "print('agreed')"], "expected": 0,
                 "depends": [], "full_gate": False}
         self.store.batch([("task", "C", data, None), ("message", "C", {"id": "assign-" + name, "to": "A", "task": name,
                           "body": "Scoped work"}, None)])
@@ -125,14 +138,23 @@ class L0(unittest.TestCase):
         self.assertIn("differs from agreed", err)
 
     # P3
-    def test_prove_refuses_when_local_bind_is_unavailable(self):
-        self.agreed()
+    def test_prove_refuses_the_full_suite_when_local_bind_is_unavailable(self):
+        self.agreed(proof=[sys.executable, "-B", "tools/parallel_tests.py"])
         with patch.object(runtime, "local_bind_available", create=True,
                           return_value=(False, "Local bind refused: sandbox limit")):
             code, _, err = self.run_cli("prove", "--actor", "A", "--task", "P")
         self.assertEqual(code, 1)
         self.assertIn("sandbox limit", err)
         self.assertFalse([r for r in self.store.state()["runs"].values() if r["task"] == "P"], "no run is recorded")
+
+    def test_K3_a_proof_that_needs_no_localhost_runs_with_a_warning(self):
+        self.agreed()
+        with patch.object(runtime, "local_bind_available", create=True,
+                          return_value=(False, "Local bind refused: sandbox limit")):
+            code, _, err = self.run_cli("prove", "--actor", "A", "--task", "P")
+        self.assertEqual(code, 0, err)
+        self.assertIn("sandbox limit", err)
+        self.assertTrue([r for r in self.store.state()["runs"].values() if r["task"] == "P"], "the targeted proof ran")
 
     # D1
     def test_task_paths_keeps_the_parent_when_the_analysis_fails(self):

@@ -51,12 +51,14 @@ class LaneApplication(unittest.TestCase):
             self.git(self.base, 'clone', '-q', '--no-hardlinks', str(self.repo), str(target))
             self.agent(name, 'builder', name, 'codex', target)
             self.agent(name + '-read', 'reviewer', name, 'codex', target)
+        # The parent's own reader builds nothing (council K1): a Codex identity with no builder seat.
+        self.agent('V-read', 'reviewer', 'V', 'codex', self.repo)
         self.scope = self.base / 'scope.txt'
         self.scope.write_text('Synthetic parent contract\n')
         self.task = {'id': 'P', 'title': 'Synthetic parent', 'owner': 'C', 'repo': str(self.repo),
                      'base': self.head, 'scope': self.store.artifact(self.scope), 'proof': [sys.executable, '-B', '-c', 'print(1)'],
                      'expected': 0, 'full_gate': False, 'depends': [], 'requirements': [],
-                     'reviewer': 'A-read', 'delivery_policy': 'frozen-v1', 'cross_client': True}
+                     'reviewer': 'V-read', 'delivery_policy': 'frozen-v1', 'cross_client': True}
         self.store.batch([('task', 'C', self.task, None),
                           ('message', 'C', lanes_apply.assignment(self.task), None)])
         self.native = patch.object(squadra, 'codex_queue', return_value={'delivered': True, 'native_rc': 0})
@@ -129,6 +131,13 @@ class LaneApplication(unittest.TestCase):
         with self.assertRaisesRegex(Error, 'plan changed|already exist'):
             lanes_apply.apply(self.store, 'C', 'P', planned)
         self.assertEqual(self.queue.call_count, 2)
+
+    def test_K1_the_parents_reader_identity_never_builds_a_lane(self):
+        self.store.append('task', 'C', {**self.task, 'id': 'Q', 'reviewer': 'A-read'})
+        planned = lanes_apply.plan(self.store, 'Q', self.partition())
+        owners = {lane['owner'] for lane in planned['lanes']}
+        self.assertNotIn('A', owners, "The parent's reader would read its own lane at integration")
+        self.assertTrue(any("never a lane builder" in reason for reason in planned['reasons']))
 
     def test_LB3_merges_the_smallest_groups_and_keeps_tests_with_their_module(self):
         planned = lanes_apply.plan(self.store, 'P', self.partition(shared=False, third=True))
@@ -248,7 +257,7 @@ class LaneApplication(unittest.TestCase):
     def test_LB1_task_paths_creates_parent_and_lanes_with_a_stub_analysis(self):
         with patch.dict(sys.modules, {'lanes': self.analysis()}):
             code, out, err = self.cli('task', '--actor', 'C', '--id', 'NEW', '--title', 'New parent',
-                '--owner', 'C', '--reviewer', 'A-read', '--repo', str(self.repo), '--scope-file', str(self.scope),
+                '--owner', 'C', '--reviewer', 'V-read', '--repo', str(self.repo), '--scope-file', str(self.scope),
                 '--paths', '*.py', '--paths', 'tests/*.py')
         self.assertEqual(code, 0, err)
         self.assertTrue({'NEW', 'NEW.L0', 'NEW.L1', 'NEW.L2'} <= set(self.store.view()['tasks']))
@@ -266,7 +275,7 @@ class LaneApplication(unittest.TestCase):
     def test_LB1_task_cannot_reuse_an_existing_parent_id_to_apply_lanes(self):
         with patch.dict(sys.modules, {'lanes': self.analysis()}):
             code, _, err = self.cli('task', '--actor', 'C', '--id', 'P', '--title', 'Duplicate parent',
-                '--owner', 'C', '--reviewer', 'A-read', '--repo', str(self.repo), '--scope-file', str(self.scope), '--paths', '*.py')
+                '--owner', 'C', '--reviewer', 'V-read', '--repo', str(self.repo), '--scope-file', str(self.scope), '--paths', '*.py')
         self.assertEqual(code, 1)
         self.assertIn('Task ID already exists', err)
         self.assertEqual(set(self.store.view()['tasks']), {'P'})
@@ -282,7 +291,7 @@ class LaneApplication(unittest.TestCase):
 
         with patch.dict(sys.modules, {'lanes': self.analysis()}), patch.object(registry, 'validate', side_effect=fail):
             code, _, err = self.cli('task', '--actor', 'C', '--id', 'NEW', '--title', 'New parent',
-                '--owner', 'C', '--reviewer', 'A-read', '--repo', str(self.repo), '--scope-file', str(self.scope), '--paths', '*.py')
+                '--owner', 'C', '--reviewer', 'V-read', '--repo', str(self.repo), '--scope-file', str(self.scope), '--paths', '*.py')
         self.assertEqual(code, 1)
         self.assertIn('later lane fails', err)
         self.assertEqual(set(self.store.view()['tasks']), {'P'})
@@ -354,7 +363,7 @@ class LaneApplication(unittest.TestCase):
     def test_LB5_missing_analysis_has_a_plain_refusal_and_never_creates_a_parent(self):
         with patch.dict(sys.modules, {'lanes': None}):
             code, _, err = self.cli('task', '--actor', 'C', '--id', 'bad', '--title', 'Missing analysis',
-                '--owner', 'C', '--reviewer', 'A-read', '--repo', str(self.repo), '--scope-file', str(self.scope), '--paths', '*.py')
+                '--owner', 'C', '--reviewer', 'V-read', '--repo', str(self.repo), '--scope-file', str(self.scope), '--paths', '*.py')
         self.assertEqual(code, 1)
         self.assertIn('analysis module', err)
         self.assertNotIn('Traceback', err)

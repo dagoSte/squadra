@@ -90,11 +90,17 @@ def plan(store, parent_task, partition_result):
                      and w['identity'] not in silent
                      and seat(w, balance.READ_ROLES)), None)
 
+    # The parent's reader reads the integrated lanes: it must never have built one of them.
+    parent_readers = {agents[name]['identity'] for name in [task.get('reviewer'), *(task.get('pool') or [])]
+                      if name in agents}
     project_roots = roots(task['repo'])
     checkouts = {Path(task['repo']).resolve()}
     builders = []
     for window in ranked['build']['rows']:
         if window['identity'] in silent:
+            continue
+        if window['identity'] in parent_readers:
+            reasons.append(window['identity'] + ": reads the parent's integration; never a lane builder")
             continue
         builder = seat(window, balance.BUILD_ROLES)
         if builder is None:
