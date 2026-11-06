@@ -160,6 +160,52 @@ class StorageFrozen(unittest.TestCase):
             reuse.compact(self.root, [target], dry_run=False)
         self.assertEqual(payload.stat().st_ino, before)
 
+    def test_compact_seals_legacy_writable_candidates_without_chmodding_shared_inputs(self):
+        tool = self.repo / 'tool.sh'
+        tool.write_text('#!/bin/sh\nexit 0\n')
+        tool.chmod(0o755)
+        self.git('add', 'tool.sh'); self.git('commit', '-qm', 'Executable fixture')
+        self.prepare()
+        first = self.send()
+        (self.repo / 'code.py').write_text('VALUE = 314\n')
+        self.git('add', 'code.py'); self.git('commit', '-qm', 'Second legacy candidate')
+        self.task('U')
+        second = self.send('U')
+        self.assertNotEqual(first, second)
+        self.cleanup_readonly(self.root / 'candidates')
+        for tree in (first, second):
+            for path in reuse._files(tree):
+                path.chmod(0o755 if path.stat().st_mode & 0o111 else 0o644)
+        external = self.base / 'external-legacy-link'
+        os.link(first / 'stable.txt', external)
+        original = external.stat()
+        before = {str(p): (p.stat().st_ino, stat.S_IMODE(p.stat().st_mode), p.read_bytes())
+                  for tree in (first, second) for p in reuse._files(tree)}
+        with patch.object(reuse, '_clone', side_effect=OSError(errno.ENOTSUP, 'no COW')):
+            preview = reuse.compact(self.root, [self.root / 'candidates'])
+            self.assertEqual(before, {str(p): (p.stat().st_ino, stat.S_IMODE(p.stat().st_mode), p.read_bytes())
+                                     for tree in (first, second) for p in reuse._files(tree)})
+            applied = reuse.compact(self.root, [self.root / 'candidates'], dry_run=False)
+        self.assertGreater(preview['reused'], 0)
+        self.assertGreater(applied['hardlink'], 0)
+        self.assertEqual((first / 'stable.txt').stat().st_ino, (second / 'stable.txt').stat().st_ino)
+        self.assertNotEqual((first / 'stable.txt').stat().st_ino, original.st_ino)
+        self.assertEqual(external.stat().st_ino, original.st_ino)
+        self.assertEqual(stat.S_IMODE(external.stat().st_mode), 0o644)
+        self.assertEqual(external.read_bytes(), (first / 'stable.txt').read_bytes())
+        for tree in (first, second):
+            for path in reuse._files(tree):
+                mode = stat.S_IMODE(path.stat().st_mode)
+                self.assertEqual(mode, 0o555 if before[str(path)][1] & 0o111 else 0o444)
+                self.assertEqual(path.read_bytes(), before[str(path)][2])
+            self.assertEqual(stat.S_IMODE(tree.stat().st_mode), 0o555)
+        for task in ('T', 'U'):
+            self.assertEqual(frozen.current(self.store.task(task), self.root), self.store.task(task)['candidate'])
+        sealed = {str(p): p.stat().st_ino for tree in (first, second) for p in reuse._files(tree)}
+        with patch.object(reuse, '_clone', side_effect=OSError(errno.ENOTSUP, 'no COW')):
+            reuse.compact(self.root, [self.root / 'candidates'], dry_run=False)
+        self.assertEqual(sealed, {str(p): p.stat().st_ino for tree in (first, second) for p in reuse._files(tree)})
+
     def test_compacted_save_package_still_verifies_and_really_restores(self):
         self.prepare(); self.send()
         self.cleanup_readonly(self.root / 'candidates')

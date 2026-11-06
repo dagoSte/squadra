@@ -7,6 +7,7 @@ from pathlib import Path
 import re
 import shutil
 import signal
+import socket
 import stat
 import subprocess
 import tempfile
@@ -21,6 +22,17 @@ from registry import (Error, require, snapshot, now, atomic, canonical, counts_m
 TEMP_LIMIT = 64
 TEMP_PREFIX = "sq-"
 TEMP_FIX = "set SQUADRA_TMP to a short private folder, for example SQUADRA_TMP=/tmp"
+
+
+def local_bind_available():
+    """Check whether the environment can bind before a proof process starts."""
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+            probe.bind(('127.0.0.1', 0))
+    except OSError as exc:
+        return False, ('limite del sandbox: esegui il processo della prova fuori dal sandbox'
+                       ' (' + str(exc) + ')')
+    return True, ''
 
 
 def _open_to_others(path):

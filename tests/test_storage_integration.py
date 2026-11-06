@@ -1,5 +1,6 @@
 """Seams between verified reuse (lane A) and recorded checkpoints (lane B)."""
 import os
+import errno
 from pathlib import Path
 import sys
 import tempfile
@@ -9,6 +10,33 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 import registry_checkpoint as checkpoint
 import storage_reuse
+import runtime
+
+
+class ProofBindPreflight(unittest.TestCase):
+    def test_ephemeral_loopback_probe_closes_its_socket(self):
+        with patch.object(runtime.socket, 'socket') as factory:
+            self.assertEqual(runtime.local_bind_available(), (True, ''))
+        factory.assert_called_once_with(runtime.socket.AF_INET, runtime.socket.SOCK_STREAM)
+        probe = factory.return_value.__enter__.return_value
+        probe.bind.assert_called_once_with(('127.0.0.1', 0))
+        factory.return_value.__exit__.assert_called_once()
+
+    def test_denied_bind_reports_the_environment_limit_and_closes_the_socket(self):
+        for code in (errno.EPERM, errno.EACCES):
+            with self.subTest(errno=code), patch.object(runtime.socket, 'socket') as factory:
+                probe = factory.return_value.__enter__.return_value
+                probe.bind.side_effect = OSError(code, 'synthetic denied bind')
+                available, message = runtime.local_bind_available()
+                self.assertFalse(available)
+                self.assertIn('limite del sandbox: esegui il processo della prova fuori dal sandbox', message)
+                factory.return_value.__exit__.assert_called_once()
+
+    def test_denied_socket_creation_has_the_same_actionable_error(self):
+        with patch.object(runtime.socket, 'socket', side_effect=PermissionError(errno.EPERM, 'synthetic denied socket')):
+            available, message = runtime.local_bind_available()
+            self.assertFalse(available)
+            self.assertIn('limite del sandbox: esegui il processo della prova fuori dal sandbox', message)
 
 
 class InFlightTemporaries(unittest.TestCase):
