@@ -344,7 +344,8 @@ class Checklist(unittest.TestCase):
         self.git('checkout', '-qb', 'other')
         other = self.commit(marker='other branch')
         self.git('checkout', '-q', branch)
-        self.commit(marker='current branch')
+        local = self.commit(marker='current branch')
+        self.assertNotEqual(other, local)
         for interval in (other + '..HEAD', 'HEAD..HEAD^', 'missing..HEAD', 'HEAD...HEAD', '--all'):
             with self.subTest(interval=interval):
                 self.assertEqual(self.check('push', repo=str(self.repo),
