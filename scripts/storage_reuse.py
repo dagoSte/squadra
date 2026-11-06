@@ -5,7 +5,9 @@ exclusive from shared COW extents, so it is not a measurement of free disk space
 """
 from collections import defaultdict
 from contextlib import nullcontext
+import ctypes
 import errno
+from functools import lru_cache
 import hashlib
 import json
 import os
@@ -15,7 +17,7 @@ import sys
 import tempfile
 import uuid
 
-from registry_checkpoint import _copy_bytes, _hash_fd, _native_clone
+CHUNK_BYTES = 1024 * 1024
 
 
 class ReuseError(ValueError):
@@ -42,17 +44,66 @@ def _mutable(path):
             or 'run-leases' in path.parts or 'runs' in path.parts)
 
 
-def _clone(source_fd, directory_fd, name):
+def _hash_fd(fd):
+    os.lseek(fd, 0, os.SEEK_SET)
+    digest = hashlib.sha256()
+    while True:
+        part = os.read(fd, CHUNK_BYTES)
+        if not part:
+            return digest.hexdigest()
+        digest.update(part)
+
+
+@lru_cache(maxsize=1)
+def _clone_api():
+    if sys.platform != 'darwin':
+        return None
+    try:
+        function = ctypes.CDLL(None, use_errno=True).fclonefileat
+    except AttributeError:
+        return None
+    # Signature and NOOWNERCOPY flag are from the platform's sys/clonefile.h.
+    function.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_char_p, ctypes.c_uint32]
+    function.restype = ctypes.c_int
+    return function
+
+
+def _native_clone(source_fd, destination_dir_fd, name):
     if sys.platform == 'linux':
         import fcntl
         fd = os.open(name, os.O_CREAT | os.O_EXCL | os.O_RDWR | os.O_NOFOLLOW,
-                     0o600, dir_fd=directory_fd)
+                     0o600, dir_fd=destination_dir_fd)
         try:
             fcntl.ioctl(fd, 0x40049409, source_fd)  # Linux FICLONE, include/uapi/linux/fs.h.
         finally:
             os.close(fd)
         return True
+    function = _clone_api()
+    if function is None:
+        return False
+    if function(source_fd, destination_dir_fd, os.fsencode(name), 0x0002) != 0:
+        code = ctypes.get_errno()
+        raise OSError(code, os.strerror(code), name)
+    return True
+
+
+def _clone(source_fd, directory_fd, name):
     return _native_clone(source_fd, directory_fd, name)
+
+
+def _copy_bytes(source_fd, destination_fd):
+    os.lseek(source_fd, 0, os.SEEK_SET)
+    os.ftruncate(destination_fd, 0)
+    while True:
+        part = os.read(source_fd, CHUNK_BYTES)
+        if not part:
+            break
+        view = memoryview(part)
+        while view:
+            written = os.write(destination_fd, view)
+            if not written:
+                raise OSError('Checkpoint copy made no progress')
+            view = view[written:]
 
 
 def place(source, target, *, sha256, readonly, prefer=('clone', 'hardlink', 'copy'), mode=None):
@@ -337,11 +388,41 @@ def _tree_manifest(tree):
                                      stat.S_IMODE(p.lstat().st_mode)) for p in _files(tree)}
 
 
+def _seal_candidate(tree, manifest):
+    """Seal independent replacements; never chmod an input inode that may be shared."""
+    for relative, (sha, mode) in manifest.items():
+        wanted = 0o555 if mode & 0o111 else 0o444
+        if mode == wanted:
+            continue
+        path = tree / relative
+        before = path.lstat()
+        parent_mode = stat.S_IMODE(path.parent.stat().st_mode)
+        temporary = path.with_name('.reuse-seal-' + uuid.uuid4().hex)
+        try:
+            if not parent_mode & 0o200:
+                path.parent.chmod(parent_mode | 0o700)
+            place(path, temporary, sha256=sha, readonly=True, prefer=('clone', 'copy'))
+            if _version(path.lstat()) != _version(before):
+                raise ReuseError('Candidate changed while sealing')
+            os.replace(temporary, path)
+        finally:
+            if temporary.exists():
+                temporary.unlink()
+            if stat.S_IMODE(path.parent.stat().st_mode) != parent_mode:
+                path.parent.chmod(parent_mode)
+    for parent, directories, _ in os.walk(tree, topdown=False, followlinks=False):
+        for name in directories:
+            path = Path(parent) / name
+            if not path.is_symlink():
+                path.chmod(0o555)
+    tree.chmod(0o555)
+
+
 def compact(root, targets, *, dry_run=True, locked=False):
-    """Share recognized trees under the candidate lock, retaining their complete bytes and modes.
+    """Share verified trees, sealing candidates while retaining their source fingerprint.
 
     Dry-run savings are potential allocations avoided, not exclusive COW blocks.
-    Archived runs stay independent: their mutable inode classes are never linked.
+    Recovery packages keep their modes; archived mutable inode classes are never linked.
     """
     from registry import Store
     from frozen_candidate import cache_lock, inventory_records, current
@@ -401,8 +482,13 @@ def compact(root, targets, *, dry_run=True, locked=False):
             index = tree_index([])
             total = {**_summary(), 'dry_run': dry_run, 'targets': []}
             probes = {}
+            planned_modes = {}
             for tree in trees:
                 before = _tree_manifest(tree)
+                expected = ({rel: (sha, 0o555 if mode & 0o111 else 0o444)
+                             for rel, (sha, mode) in before.items()} if tree in candidates else before)
+                if not dry_run and tree in candidates:
+                    _seal_candidate(tree, before)
                 if tree.parent == root / 'runs':
                     # An archived run file has its twin at artifacts/<sha256> (mode 0600).
                     for sha, _ in before.values():
@@ -411,7 +497,7 @@ def compact(root, targets, *, dry_run=True, locked=False):
                     summary = _summary()
                     caps = _capabilities_near(tree, probes)
                     for path in _files(tree):
-                        sha, mode = before[str(path.relative_to(tree))]
+                        sha, mode = expected[str(path.relative_to(tree))]
                         info = path.lstat()
                         summary['files'] += 1
                         summary['logical_bytes'] += info.st_size
@@ -419,9 +505,12 @@ def compact(root, targets, *, dry_run=True, locked=False):
                         linkable = mode in (0o444, 0o555) and not _mutable(path) and caps['hardlink']
                         if not (caps['clone'] or linkable):
                             linkable = False
-                        for hint in [] if not (caps['clone'] or linkable) else index.candidates(sha, mode if linkable else None,
+                        for hint in [] if not (caps['clone'] or linkable) else index.candidates(sha, None,
                                                      path.relative_to(tree), info.st_size):
                             if hint == path:
+                                continue
+                            if not caps['clone'] and (planned_modes.get(hint, stat.S_IMODE(hint.stat().st_mode)) != mode
+                                                      or _mutable(hint)):
                                 continue
                             if hashlib.sha256(hint.read_bytes()).hexdigest() == sha:
                                 matched = True
@@ -432,9 +521,10 @@ def compact(root, targets, *, dry_run=True, locked=False):
                         if not matched:
                             summary['new_physical_estimate'] += info.st_blocks * 512
                         index.add(sha, path)
+                        planned_modes[path] = mode
                 else:
                     summary = dedupe_tree(tree, index)
-                if before != _tree_manifest(tree):
+                if (before if dry_run else expected) != _tree_manifest(tree):
                     raise ReuseError('Compaction changed bytes, paths or modes')
                 verifiers[tree]()
                 total['targets'].append({'path': str(tree), **summary})

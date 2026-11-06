@@ -1,19 +1,13 @@
-"""Self-contained immutable checkpoint files, with optional native COW copies.
+"""Immutable checkpoint files using the verified storage copy primitives.
 
 The Store owns the consistent SQLite backup and complete exports/checksums. These
 helpers copy files only; they never link a checkpoint to an external object store.
 Allocated blocks describe st_blocks, not exclusive physical ownership or savings.
 """
-import ctypes
-from functools import lru_cache
-import hashlib
 import os
 from pathlib import Path, PurePosixPath
 import stat
-import sys
-
-
-CHUNK_BYTES = 1024 * 1024
+from storage_reuse import _copy_bytes, _hash_fd, _native_clone
 
 
 class CheckpointError(ValueError):
@@ -42,58 +36,6 @@ def _open_directory(path, *, dir_fd=None):
     except BaseException:
         os.close(fd)
         raise
-
-
-def _hash_fd(fd):
-    os.lseek(fd, 0, os.SEEK_SET)
-    digest = hashlib.sha256()
-    while True:
-        part = os.read(fd, CHUNK_BYTES)
-        if not part:
-            return digest.hexdigest()
-        digest.update(part)
-
-
-@lru_cache(maxsize=1)
-def _clone_api():
-    if sys.platform != "darwin":
-        return None
-    try:
-        function = ctypes.CDLL(None, use_errno=True).fclonefileat
-    except AttributeError:
-        return None
-    # Signature and NOOWNERCOPY flag are from the platform's sys/clonefile.h.
-    function.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_char_p, ctypes.c_uint32]
-    function.restype = ctypes.c_int
-    return function
-
-
-def _native_clone(source_fd, destination_dir_fd, name):
-    if sys.platform == 'linux':
-        from storage_reuse import _clone
-        return _clone(source_fd, destination_dir_fd, name)
-    function = _clone_api()
-    if function is None:
-        return False
-    if function(source_fd, destination_dir_fd, os.fsencode(name), 0x0002) != 0:
-        code = ctypes.get_errno()
-        raise OSError(code, os.strerror(code), name)
-    return True
-
-
-def _copy_bytes(source_fd, destination_fd):
-    os.lseek(source_fd, 0, os.SEEK_SET)
-    os.ftruncate(destination_fd, 0)
-    while True:
-        part = os.read(source_fd, CHUNK_BYTES)
-        if not part:
-            break
-        view = memoryview(part)
-        while view:
-            written = os.write(destination_fd, view)
-            if not written:
-                raise OSError("Checkpoint copy made no progress")
-            view = view[written:]
 
 
 def _copy_file(source_dir_fd, destination_dir_fd, name, expected):
