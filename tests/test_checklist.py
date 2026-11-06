@@ -327,12 +327,29 @@ class Checklist(unittest.TestCase):
     def test_push_missing_repository_fails(self):
         self.assertEqual(self.check('push', repo=str(self.base / 'absent'))['repository']['status'], 'fail')
 
-    def test_push_missing_upstream_is_explicitly_unverifiable(self):
+    def test_push_explicit_range_checks_fast_forward_without_upstream(self):
         self.commit()
         items = self.check('push', repo=str(self.repo), revision_range='HEAD^..HEAD')
         self.assertEqual(items['emails']['status'], 'ok')
-        self.assertEqual(items['fast_forward']['status'], 'unverifiable')
-        self.assertTrue(items['fast_forward']['detail'])
+        self.assertEqual(items['fast_forward']['status'], 'ok')
+        self.assertIn('Range start', items['fast_forward']['detail'])
+        self.assertEqual(self.invoke('--moment', 'push', '--repo', str(self.repo),
+                                     '--range', 'HEAD^..HEAD')[0], 0)
+
+    def test_push_without_range_and_upstream_remains_unverifiable(self):
+        self.assertEqual(self.check('push', repo=str(self.repo))['fast_forward']['status'], 'unverifiable')
+
+    def test_push_explicit_diverging_or_invalid_ranges_fail_without_upstream(self):
+        branch = self.git('branch', '--show-current').decode().strip()
+        self.git('checkout', '-qb', 'other')
+        other = self.commit(marker='other branch')
+        self.git('checkout', '-q', branch)
+        local = self.commit(marker='current branch')
+        self.assertNotEqual(other, local)
+        for interval in (other + '..HEAD', 'HEAD..HEAD^', 'missing..HEAD', 'HEAD...HEAD', '--all'):
+            with self.subTest(interval=interval):
+                self.assertEqual(self.check('push', repo=str(self.repo),
+                                             revision_range=interval)['fast_forward']['status'], 'fail')
 
     def test_push_diverged_upstream_fails_fast_forward(self):
         self.upstream(); branch = self.git('branch', '--show-current').decode().strip()

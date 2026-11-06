@@ -279,6 +279,33 @@ PACKAGE_SHA256 = 'e1384b92fde5a6a06d4dfd49b5cedbdf17ee2382d4a04e12c3bf9669becbe4
 
 
 class StorageLegacy3121(unittest.TestCase):
+    def test_D2_unmodified_3121_save_can_be_adopted_by_its_registry(self):
+        import shutil
+        import storage_policy
+        from registry import Store
+        body = base64.b64decode(PACKAGE)
+        self.assertEqual(hashlib.sha256(body).hexdigest(), PACKAGE_SHA256)
+        with tempfile.TemporaryDirectory(prefix='legacy-storage-adopt-') as folder:
+            base = Path(folder).resolve()
+            with tarfile.open(fileobj=io.BytesIO(body), mode='r:gz') as archive:
+                archive.extractall(base, filter='data')
+            package = base / 'package'
+            manifest = json.loads((package / 'MANIFEST.json').read_text())
+            self.assertEqual(manifest['version'], '3.12.1')
+            root = base / 'registry'
+            shutil.copytree(package / 'registry', root, symlinks=True)
+            store = Store(root)
+            try:
+                coordinator = next(a['id'] for a in store.view()['agents'].values() if a['role'] == 'coordinator')
+                result = storage_policy.adopt(store, coordinator, 'Adopt a real 3.12.1 save',
+                                               paths=[package], apply=True)
+                self.assertEqual(result['adopted'], [str(package)])
+                point = storage_policy.records(store)[1][str(package)]
+                self.assertEqual(point['kind'], 'save')
+                self.assertEqual(point['root'], str(root.resolve()))
+            finally:
+                store.close()
+
     def test_unmodified_3121_save_restores_with_current_reader(self):
         body = base64.b64decode(PACKAGE)
         self.assertEqual(hashlib.sha256(body).hexdigest(), PACKAGE_SHA256)
