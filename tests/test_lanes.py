@@ -166,6 +166,25 @@ const example = "import { ghost } from './ghost'";
         self.assertIn('ls-files', seen)
         self.assertEqual(seen[-1], 'log')
 
+    def test_history_stays_at_the_captured_base_if_head_moves(self):
+        self.write('a.py', 'A = 1\n')
+        self.write('b.py', 'B = 1\n')
+        self.commit()
+        base = self.git('rev-parse', 'HEAD').decode().strip()
+        git = lanes.git
+
+        def move_head(repo, *args, **kwargs):
+            if args[0] == 'log':
+                self.write('a.py', 'A = 2\n')
+                self.write('b.py', 'B = 2\n')
+                self.commit()
+            return git(repo, *args, **kwargs)
+
+        with patch.object(lanes, 'git', side_effect=move_head):
+            result = lanes.analyze(self.repo, ['*.py'])
+        self.assertEqual(result['base'], base)
+        self.assertEqual(result['co_changes'], [['a.py', 'b.py', 1]])
+
 
 def facts(files, **extra):
     return {'repo': '/synthetic', 'base': 'a' * 40, 'files': files, 'lines': dict.fromkeys(files, 1),

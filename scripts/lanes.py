@@ -146,7 +146,7 @@ def analyze(repo, paths, *, history=400):
     hubs = sorted(p for p in selected if len(fan_in[unit[p]]) >= threshold)
     counts, co_changes = Counter(), Counter()
     if history:
-        log = git(root, 'log', '-' + str(history), '--pretty=format:', '--name-only', '--no-renames', '-z')
+        log = git(root, 'log', '-' + str(history), '--pretty=format:', '--name-only', '--no-renames', '-z', base, '--')
         for commit in log.split(b'\0\0'):
             changed = sorted({os.fsdecode(p) for p in commit.split(b'\0') if p} & wanted)
             counts.update(changed)
