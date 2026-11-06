@@ -361,16 +361,27 @@ def purge(store, actor=None, reason=None, *, apply=False, policy=None, expected=
         record(store, actor, 'purge', phase='started', removed=[r['path'] for r in paths],
                reason=reason, plan_hash=current['plan_hash'])
         removed, kept, error = [], [], None
+
+        def journal_head():
+            return tuple(store.db.execute('SELECT seq,hash FROM events ORDER BY seq DESC LIMIT 1').fetchone()
+                         or (0, '0' * 64))
+
         try:
-            # The journal refuses new keeps/tasks for these targets until completion; the lock
-            # also blocks competing storage operations. Read the batch's protections only once.
+            # Restore checks and ancestor references can still change protections during purge.
+            # Reuse the batch only while the journal is unchanged; mark before reading so a
+            # concurrent append during that read cannot be hidden by a later head sample.
+            boundary = journal_head()
             batch = protections(store, policy=policy, at=current['at'], verified=guard['verified'])
             for row in paths:
                 require(tree_facts(row['path'])['signature'] == row['signature'], 'Storage target changed')
                 target = Path(row['path'])
-                # The rename barrier also refuses clients that validated before the purge began.
+                # Hide the target during the final protection check and removal.
                 hidden = target.with_name('.purging-' + target.name + '-' + uuid.uuid4().hex[:12])
                 os.rename(target, hidden)
+                latest = journal_head()
+                if latest != boundary:
+                    boundary = latest
+                    batch = protections(store, policy=policy, at=current['at'], verified=guard['verified'])
                 late = batch['reasons'](target)
                 if late:
                     os.rename(hidden, target)

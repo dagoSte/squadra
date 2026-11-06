@@ -114,7 +114,7 @@ def idle_tasks(state, at, *, minutes=IDLE_MINUTES):
     result = []
     for task in sorted(state['tasks'].values(), key=lambda t: t['id']):
         if (task['status'] != 'ready' or task.get('superseded_by') or task.get('candidate')
-                or task.get('delivery') or task.get('proofs') or task['id'] in running):
+                or task.get('plan') or task.get('delivery') or task.get('proofs') or task['id'] in running):
             continue
         acknowledgements = [m['ack']['utc'] for m in state['messages'].values()
                             if m.get('task') == task['id'] and m['to'] == task['owner']
@@ -130,7 +130,8 @@ def idle_tasks(state, at, *, minutes=IDLE_MINUTES):
                        'minutes': int(elapsed // 60), 'threshold_minutes': minutes, 'blocked_by': blocked,
                        'next': ('Attendere le dipendenze: ' + ', '.join(blocked) if blocked else
                                 "Verificare l'inattività; se confermata, il coordinatore registra il passaggio "
-                                'della costruzione a Claude, conservando lo storico.')})
+                                "della costruzione a un'altra finestra secondo la regola del proprietario, "
+                                'conservando lo storico.')})
     return result
 
 
