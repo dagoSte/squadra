@@ -28,15 +28,17 @@ jobs:
           tar -xf "$RUNNER_TEMP/source.tar" -C "$RUNNER_TEMP/skill-source"
           test ! -e "$RUNNER_TEMP/skill-source/tests"
           git rev-parse HEAD > "$RUNNER_TEMP/cisco-results/source-commit.txt"
-          printf 'Scope: committed repository, excluding tests/. Static, behavioral and OSV checks; no LLM. Failure threshold: HIGH or CRITICAL.\n' > "$RUNNER_TEMP/cisco-results/scope.txt"
-      - name: Scan and enforce HIGH threshold
+          printf 'Scope: committed repository, excluding tests/. Static, behavioral and OSV checks; no LLM. Failure threshold: HIGH or CRITICAL, with the declared exception in tools/cisco_gate.py.\n' > "$RUNNER_TEMP/cisco-results/scope.txt"
+      - name: Scan
         run: |
           cd "$RUNNER_TEMP/skill-source"
           skill-scanner scan . --policy balanced --use-behavioral --use-osv \
-            --fail-on-severity high --format json --format sarif --format markdown --detailed \
+            --format json --format sarif --format markdown --detailed \
             --output-json "$RUNNER_TEMP/cisco-results/results.json" \
             --output-sarif "$RUNNER_TEMP/cisco-results/results.sarif" \
             --output-markdown "$RUNNER_TEMP/cisco-results/results.md"
+      - name: Enforce HIGH threshold (one declared exception, see tools/cisco_gate.py)
+        run: python "$RUNNER_TEMP/skill-source/tools/cisco_gate.py" "$RUNNER_TEMP/cisco-results/results.json"
       - name: Summarize results
         if: always()
         run: |
@@ -53,7 +55,7 @@ jobs:
               result = json.loads(path.read_text())
               counts = Counter(item['severity'] for item in result['findings'])
               out.write(f"Findings: **{result['findings_count']}**. Maximum severity: **{result['max_severity']}**.\n\n")
-              out.write('The check fails at HIGH or CRITICAL. Lower-severity findings remain in the report.\n\n')
+              out.write('The check fails at HIGH or CRITICAL, except the two cross-file rules while scripts/runtime.py (loopback bind probe) is their only network file: see tools/cisco_gate.py. Lower-severity and excepted findings remain in the report.\n\n')
               out.write('| Severity | Count |\n|---|---:|\n')
               for level in ('CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'INFO'):
                   out.write(f'| {level} | {counts[level]} |\n')
