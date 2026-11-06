@@ -8,6 +8,7 @@ sys.path[:0] = [str(Path(__file__).resolve().parent), str(Path(__file__).resolve
 import test_storage_policy as support
 import storage_policy as policy
 from registry import Error
+from recovery import save, restore_check
 from squadra import deliver
 
 EXPIRE_ALL = {'checkpoints': 0, 'saves': 0, 'hours': 0}
@@ -43,6 +44,42 @@ class PurgeRaces(unittest.TestCase):
         policy.keep(self.store, 'A', checkpoint, 'Preexisting keep')
         policy.purge(self.store, 'C', 'Remove expired synthetic data', apply=True, policy=EXPIRE_ALL)
         self.assertTrue(checkpoint.is_dir())
+
+    def test_successful_restore_recorded_after_batch_read_keeps_the_save(self):
+        for number in range(2):
+            path = self.base / ('save-' + str(number))
+            save(self.store, path, temporary=True)
+            self.store.append('save', 'C', {'path': str(path), 'root': str(self.root),
+                              'manifest': self.store.artifact(path / 'MANIFEST.json')})
+        preview = policy.plan(self.store, policy=EXPIRE_ALL)
+        order = [row['path'] for row in preview['entries'] if row['eligible']]
+        self.assertEqual(len(order), 2)
+        last = Path(order[-1])
+        started, restored = [], []
+        original_facts, original_record = policy.tree_facts, policy.record
+
+        def record(store, actor, action, **data):
+            result = original_record(store, actor, action, **data)
+            if action == 'purge' and data.get('phase') == 'started':
+                started.append(True)
+            return result
+
+        def facts(path):
+            if started and not restored:
+                # First target, after the batch snapshot: protect the later target through the journal.
+                restored.append(True)
+                destination = self.base / 'restored-during-purge'
+                result = restore_check(last, destination)
+                self.assertEqual(result['status'], 'passed')
+                self.store.append('restore.check', 'C', {
+                    'result': self.store.artifact(destination / 'RESTORE-RESULT.json')})
+            return original_facts(path)
+
+        with patch.object(policy, 'tree_facts', side_effect=facts), patch.object(policy, 'record', side_effect=record):
+            result = policy.purge(self.store, 'C', 'Preserve a newly verified restore', apply=True, policy=EXPIRE_ALL)
+        self.assertTrue(last.is_dir(), 'Purge deleted the latest successfully restored save')
+        self.assertEqual(result['removed'], order[:-1])
+        self.assertEqual([row['path'] for row in result['kept']], [str(last)])
 
     def test_keep_recorded_after_the_locked_replan_is_never_recorded_and_lost(self):
         checkpoint = self.checkpoint('must-retain')

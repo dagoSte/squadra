@@ -91,7 +91,8 @@ class ResumeReadiness(unittest.TestCase):
         result = readiness(self.store.view(), accepted + dt.timedelta(minutes=10), idle_minutes=10)
         row, = result['idle_tasks']
         self.assertEqual((row['task'], row['owner'], row['minutes'], row['threshold_minutes']), ('T', 'A', 10, 10))
-        self.assertIn('Claude', row['next'])
+        self.assertIn("un'altra finestra secondo la regola del proprietario", row['next'])
+        self.assertNotIn('Claude', row['next'])
         self.assertTrue(any('no recorded activity' in n for n in result['notices']))
         self.assertEqual(self.store.events(), events, 'Observation never reassigns or writes')
 
@@ -122,11 +123,22 @@ class ResumeReadiness(unittest.TestCase):
         self.assertEqual(row['blocked_by'], ['contract'])
         self.assertNotIn('Claude', row['next'])
 
+    def test_P4_a_recorded_plan_counts_as_activity_while_the_task_stays_ready(self):
+        self.ack()
+        plan = self.base / 'builder-plan.md'
+        plan.write_text('Recorded implementation plan\n')
+        self.store.append('plan', 'A', {'task': 'T', 'artifact': self.store.artifact(plan)})
+        self.assertEqual(self.store.view()['tasks']['T']['status'], 'ready')
+        before = len(self.store.events())
+        later = dt.datetime.fromisoformat(now()) + dt.timedelta(hours=1)
+        self.assertEqual(ripresa.idle_tasks(self.store.view(), later), [])
+        self.assertEqual(len(self.store.events()), before)
+
     def test_P4_default_resume_reports_an_acknowledged_idle_assignment(self):
         self.ack()
         result = readiness(self.store.view(), dt.datetime.fromisoformat(now()) + dt.timedelta(minutes=31))
         self.assertEqual(len(result.get('idle_tasks', [])), 1)
-        self.assertIn('Claude', result['idle_tasks'][0]['next'])
+        self.assertIn("un'altra finestra secondo la regola del proprietario", result['idle_tasks'][0]['next'])
 
 
 if __name__ == '__main__':
