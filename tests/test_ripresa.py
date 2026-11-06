@@ -93,7 +93,7 @@ class ResumeReadiness(unittest.TestCase):
         self.assertEqual((row['task'], row['owner'], row['minutes'], row['threshold_minutes']), ('T', 'A', 10, 10))
         self.assertIn("un'altra finestra secondo la regola del proprietario", row['next'])
         self.assertNotIn('Claude', row['next'])
-        self.assertTrue(any('no recorded activity' in n for n in result['notices']))
+        self.assertTrue(any('nessuna attività registrata' in n for n in result['notices']), 'Italian registry, Italian notice')
         self.assertEqual(self.store.events(), events, 'Observation never reassigns or writes')
 
     def test_P4_recorded_start_run_commit_or_supersession_clears_idle(self):

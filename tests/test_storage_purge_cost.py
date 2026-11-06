@@ -45,6 +45,39 @@ class PurgeCost(unittest.TestCase):
                 # Preview, locked replan, then one post-intent protection snapshot for the batch.
                 self.assertEqual(reads.call_count, 3)
 
+    def candidates(self, prefix, count):
+        """Frozen candidates with distinct bytes, eligible for purge: delivered, then superseded."""
+        from squadra import deliver
+        base = self.git('rev-parse', 'HEAD').decode().strip()
+        for i in range(count):
+            name = '%s%d' % (prefix, i)
+            data = {'id': name, 'title': 'Frozen synthetic task', 'owner': 'A', 'repo': str(self.repo),
+                    'base': base, 'scope': self.store.artifact(self.scope), 'proof': None, 'expected': None,
+                    'depends': [], 'full_gate': False, 'delivery_policy': 'frozen-v1'}
+            self.store.append('task', 'C', data)
+            self.store.append('message', 'C', {'id': 'assign-' + name, 'to': 'A', 'task': name, 'body': 'Synthetic'})
+            self.store.append('ack', 'A', {'message': 'assign-' + name})
+            (self.repo / 'code.py').write_text('VALUE = %r\n' % name)
+            self.proof(task=name)
+            deliver(self.store, 'A', name)
+            self.store.append('task', 'C', {**data, 'id': name + 'N', 'title': 'Synthetic successor'})
+            self.assertEqual(self.cli('supersede', '--actor', 'C', '--task', name, '--by', name + 'N',
+                                      '--reason', 'Synthetic final read owns it')[0], 0)
+
+    def test_R4_own_candidate_retirements_do_not_reread_protections_per_target(self):
+        for count in (1, 3):
+            with self.subTest(candidates=count):
+                self.candidates('lot%d-' % count, count)
+                config = {'checkpoints': 0, 'saves': 0, 'hours': 0}
+                targets = [r for r in policy.plan(self.store, policy=config)['entries']
+                           if r['kind'] == 'candidate' and r['eligible']]
+                self.assertEqual(len(targets), count)
+                with patch.object(policy, 'records', wraps=policy.records) as reads:
+                    result = policy.purge(self.store, 'C', 'Retire superseded candidates', apply=True, policy=config)
+                self.assertTrue({r['path'] for r in targets} <= set(result['removed']))
+                # Preview, locked replan, one batch snapshot: the purge's own retire events never force a reread.
+                self.assertEqual(reads.call_count, 3)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -24,14 +24,16 @@ TEMP_PREFIX = "sq-"
 TEMP_FIX = "set SQUADRA_TMP to a short private folder, for example SQUADRA_TMP=/tmp"
 
 
-def local_bind_available():
-    """Check whether the environment can bind before a proof process starts."""
+def local_bind_available(lang='it'):
+    """Check whether the environment can bind before a proof process starts; the message follows lang."""
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
             probe.bind(('127.0.0.1', 0))
     except OSError as exc:
-        return False, ('limite del sandbox: esegui il processo della prova fuori dal sandbox'
-                       ' (' + str(exc) + ')')
+        return False, (('Local bind on 127.0.0.1 is not available: sandbox limit; run the proof process outside '
+                        'the sandbox' if lang == 'en' else
+                        'Bind locale su 127.0.0.1 non disponibile: limite del sandbox: esegui il processo della prova '
+                        'fuori dal sandbox') + ' (' + str(exc) + ')')
     return True, ''
 
 

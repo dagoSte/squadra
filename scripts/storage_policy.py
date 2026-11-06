@@ -155,7 +155,7 @@ def recognized(point):
     if point['kind'] == 'checkpoint':
         boundary = verify_checkpoint(path)
     else:
-        from recovery import verify_package
+        from recovery_package import verify_package
         boundary = verify_package(path)['registry']
     require(all(point.get(k) == boundary[k] for k in ('event_count', 'event_head')), 'Recorded recovery head changed')
     return path
@@ -388,9 +388,16 @@ def purge(store, actor=None, reason=None, *, apply=False, policy=None, expected=
                     kept.append({'path': row['path'], 'protected': late})
                     continue
                 if row['kind'] == 'candidate':
+                    before = journal_head()
                     store.append('output', actor, {'task': row['task'], 'text': 'Retire frozen candidate ' + row['sha256'],
                                  'next': 'Historical proofs remain.', 'artifacts': [],
                                  'candidate_action': {'action': 'retire', 'sha256': row['sha256'], 'reason': reason}})
+                    after = journal_head()
+                    # Skip the purge's own retire event, and only it: any other writer before or after it
+                    # leaves the boundary behind, so the next target rereads protections.
+                    if (before == boundary and after[0] == before[0] + 1
+                            and (store.last_commit or {}).get('seq') == after[0]):
+                        boundary = after
                 remove_tree(hidden)
                 removed.append(row['path'])
         except BaseException as exc:
@@ -453,7 +460,7 @@ def adopt(store, actor=None, reason=None, *, paths=(), scan=None, apply=False):
             require(path != store.root, 'The active registry is not a checkpoint')
             kind = 'checkpoint'
             if (path / 'MANIFEST.json').exists():
-                from recovery import verify_package
+                from recovery_package import verify_package
                 manifest = verify_package(path)
                 kind = 'save'
                 boundary = {key: manifest['registry'][key] for key in ('event_count', 'event_head')}
@@ -492,7 +499,8 @@ def keep(store, actor, path, reason):
 
 
 def compact(store, actor=None, reason=None, *, apply=False):
-    from storage_reuse import compact as reuse_compact
+    from storage_reuse import ReuseError  # noqa: F401  the optional primitives of the integrated release
+    from storage_compact import compact as reuse_compact
     preview = plan(store)
     targets = [r['path'] for r in preview['entries'] if r['kind'] in {'checkpoint', 'save', 'candidate', 'run'}]
     if not apply:

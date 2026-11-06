@@ -177,7 +177,7 @@ def freeze(store, task, candidate):
 def validate_candidate(repo, files=None, *, working_only=False, label='Frozen candidate'):
     """Check what a frozen checkout adds to its delivered HEAD: untracked or changed rows by name and private-key content,
     staged-only index blobs by content, and every HEAD symlink for confinement. Content committed at HEAD is Git history."""
-    from recovery import record_file, secret, private_key, inside
+    from recovery_package import record_file, secret, private_key, inside
     repo = Path(repo)
     heads = {}
     for row in git(repo, 'ls-tree', '-r', '-z', 'HEAD').split(b'\0'):

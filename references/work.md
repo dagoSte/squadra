@@ -401,7 +401,8 @@ new task to evade them. `decision` preserves a choice; it does not automatically
 increase counters. On the owner's word the coordinator can extend one task's budget:
 `decision --actor COORD --extend-budget TASK --stage plan|code --by N --owner-words
 "..." --channel typed-here|relayed --reason TEXT` (N from 1 to 5). The task's limit
-becomes the global limit plus its recorded extensions; spent rounds are never reset
+becomes the global limit plus its recorded extensions, including those granted to
+the tasks it replaced (supersede or `replace` takeover); spent rounds are never reset
 and other tasks are unchanged. Every window must run 3.14 or later before an
 extension is used: older windows still apply only the global limit and refuse the
 extended reads. All earlier findings are preserved.
@@ -1260,8 +1261,8 @@ waits retain their single total deadline. A caller already holding the resource
 (including an alias of its identity) refuses immediately, with one exception for
 reservations that name a task (`--task`): the holder itself asking again for the
 same task gets `already_held`; another seat of the same identity, or the same identity
-for another task, waits for the release (outside the arrival-order line) or refuses
-with `--wait 0`. Only the holder can release. Without `--wait`, immediate
+for another task, waits in the same arrival-order line, within the single `--wait`
+deadline, or refuses with `--wait 0` (without `--wait` it refuses at once). Only the holder can release. Without `--wait`, immediate
 acquisition/refusal is unchanged; older
 or immediate callers do not join the line and may win a reservation race.
 

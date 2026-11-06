@@ -49,6 +49,7 @@ def plan(store, parent_task, partition_result):
     store.release_views()
     rows, shared = groups(partition_result)
     reasons = list(partition_result.get('reasons', []))
+    english = state['workspace'].get('lang', 'it') == 'en'
     result = {'form': 'squadra-lanes-assignment/1', 'parent': task['id'],
               'partition': copy.deepcopy(partition_result), 'lanes': [], 'shared': shared, 'reasons': reasons}
     require(task['owner'] in state['agents'], 'Task owner not registered')
@@ -100,7 +101,8 @@ def plan(store, parent_task, partition_result):
         if window['identity'] in silent:
             continue
         if window['identity'] in parent_readers:
-            reasons.append(window['identity'] + ": reads the parent's integration; never a lane builder")
+            reasons.append(window['identity'] + (": reads the parent's integration; never a lane builder" if english else
+                                                 ": legge l'integrazione del padre; non costruisce mai una corsia"))
             continue
         builder = seat(window, balance.BUILD_ROLES)
         if builder is None:

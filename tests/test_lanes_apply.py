@@ -137,7 +137,8 @@ class LaneApplication(unittest.TestCase):
         planned = lanes_apply.plan(self.store, 'Q', self.partition())
         owners = {lane['owner'] for lane in planned['lanes']}
         self.assertNotIn('A', owners, "The parent's reader would read its own lane at integration")
-        self.assertTrue(any("never a lane builder" in reason for reason in planned['reasons']))
+        self.assertTrue(any("non costruisce mai una corsia" in reason for reason in planned['reasons']),
+                        'Italian registry, Italian reason')
 
     def test_LB3_merges_the_smallest_groups_and_keeps_tests_with_their_module(self):
         planned = lanes_apply.plan(self.store, 'P', self.partition(shared=False, third=True))

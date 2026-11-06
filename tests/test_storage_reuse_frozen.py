@@ -15,6 +15,7 @@ import frozen_candidate as frozen
 import registry_checkpoint
 from registry import Store, plain, snapshot
 from squadra import deliver
+import storage_compact
 import storage_reuse as reuse
 from recovery import save, verify_package, restore_check
 
@@ -133,13 +134,13 @@ class StorageFrozen(unittest.TestCase):
         original = (first / 'CHECKSUMS.json').read_bytes(), (second / 'CHECKSUMS.json').read_bytes()
         before = {str(p): (p.stat().st_ino, stat.S_IMODE(p.stat().st_mode), p.read_bytes())
                   for folder in (first, second) for p in folder.rglob('*') if p.is_file()}
-        plan = reuse.compact(self.root, [first, second])
+        plan = storage_compact.compact(self.root, [first, second])
         self.assertTrue(plan['dry_run'])
         self.assertGreater(plan['reused'], 0)
         self.assertEqual(before, {str(p): (p.stat().st_ino, stat.S_IMODE(p.stat().st_mode), p.read_bytes())
                                 for folder in (first, second) for p in folder.rglob('*') if p.is_file()})
         with patch.object(reuse, '_clone', side_effect=OSError(errno.ENOTSUP, 'no COW')):
-            result = reuse.compact(self.root, [first, second], dry_run=False)
+            result = storage_compact.compact(self.root, [first, second], dry_run=False)
         self.assertGreater(result['hardlink'], 0)
         self.assertEqual(original, ((first / 'CHECKSUMS.json').read_bytes(), (second / 'CHECKSUMS.json').read_bytes()))
         for path, (_, mode, body) in before.items():
@@ -152,12 +153,12 @@ class StorageFrozen(unittest.TestCase):
         target = self.base / 'unknown'; target.mkdir()
         payload = target / 'file'; payload.write_bytes(b'keep')
         with self.assertRaises(reuse.ReuseError):
-            reuse.compact(self.root, [target], dry_run=False)
+            storage_compact.compact(self.root, [target], dry_run=False)
         self.assertEqual(payload.read_bytes(), b'keep')
         checks = target / 'CHECKSUMS.json'; checks.write_text(json.dumps({'file': '0' * 64}))
         before = payload.stat().st_ino
         with self.assertRaises(reuse.ReuseError):
-            reuse.compact(self.root, [target], dry_run=False)
+            storage_compact.compact(self.root, [target], dry_run=False)
         self.assertEqual(payload.stat().st_ino, before)
 
     def test_compact_seals_legacy_writable_candidates_without_chmodding_shared_inputs(self):
@@ -182,10 +183,10 @@ class StorageFrozen(unittest.TestCase):
         before = {str(p): (p.stat().st_ino, stat.S_IMODE(p.stat().st_mode), p.read_bytes())
                   for tree in (first, second) for p in reuse._files(tree)}
         with patch.object(reuse, '_clone', side_effect=OSError(errno.ENOTSUP, 'no COW')):
-            preview = reuse.compact(self.root, [self.root / 'candidates'])
+            preview = storage_compact.compact(self.root, [self.root / 'candidates'])
             self.assertEqual(before, {str(p): (p.stat().st_ino, stat.S_IMODE(p.stat().st_mode), p.read_bytes())
                                      for tree in (first, second) for p in reuse._files(tree)})
-            applied = reuse.compact(self.root, [self.root / 'candidates'], dry_run=False)
+            applied = storage_compact.compact(self.root, [self.root / 'candidates'], dry_run=False)
         self.assertGreater(preview['reused'], 0)
         self.assertGreater(applied['hardlink'], 0)
         self.assertEqual((first / 'stable.txt').stat().st_ino, (second / 'stable.txt').stat().st_ino)
@@ -203,7 +204,7 @@ class StorageFrozen(unittest.TestCase):
             self.assertEqual(frozen.current(self.store.task(task), self.root), self.store.task(task)['candidate'])
         sealed = {str(p): p.stat().st_ino for tree in (first, second) for p in reuse._files(tree)}
         with patch.object(reuse, '_clone', side_effect=OSError(errno.ENOTSUP, 'no COW')):
-            reuse.compact(self.root, [self.root / 'candidates'], dry_run=False)
+            storage_compact.compact(self.root, [self.root / 'candidates'], dry_run=False)
         self.assertEqual(sealed, {str(p): p.stat().st_ino for tree in (first, second) for p in reuse._files(tree)})
 
     def test_compacted_save_package_still_verifies_and_really_restores(self):
@@ -217,7 +218,7 @@ class StorageFrozen(unittest.TestCase):
         save(self.store, second, temporary=True)
         original = (second / 'MANIFEST.json').read_bytes()
         with patch.object(reuse, '_clone', side_effect=OSError(errno.ENOTSUP, 'no COW')):
-            result = reuse.compact(self.root, [first, second], dry_run=False)
+            result = storage_compact.compact(self.root, [first, second], dry_run=False)
         self.assertGreater(result['hardlink'], 0)
         self.assertEqual((second / 'MANIFEST.json').read_bytes(), original)
         self.assertEqual(verify_package(second)['schema'], 1)
@@ -228,12 +229,12 @@ class StorageFrozen(unittest.TestCase):
         path = self.root / 'runs' / run['id']
         before = {p.name: p.read_bytes() for p in path.iterdir() if p.is_file()}
         with patch.object(reuse, '_clone', side_effect=OSError(errno.ENOTSUP, 'no COW')):
-            result = reuse.compact(self.root, [path], dry_run=False)
+            result = storage_compact.compact(self.root, [path], dry_run=False)
         self.assertEqual(result['hardlink'], 0)
         self.assertEqual(before, {p.name: p.read_bytes() for p in path.iterdir() if p.is_file()})
         (path / 'unarchived').write_bytes(b'not an archived log')
         with self.assertRaisesRegex(reuse.ReuseError, 'not archived'):
-            reuse.compact(self.root, [path], dry_run=False)
+            storage_compact.compact(self.root, [path], dry_run=False)
 
     def test_unreconciled_run_is_refused_before_any_log_is_replaced(self):
         self.ack(); run = self.proof()
@@ -248,9 +249,9 @@ class StorageFrozen(unittest.TestCase):
 
         with patch.object(Store, 'view', unreconciled), \
                 self.assertRaisesRegex(reuse.ReuseError, 'unreconciled'):
-            reuse.compact(self.root, [path], dry_run=False)
+            storage_compact.compact(self.root, [path], dry_run=False)
         self.assertEqual(identities, {p.name: (p.stat().st_ino, p.read_bytes()) for p in path.iterdir() if p.is_file()})
-        result = reuse.compact(self.root, [path], dry_run=False)
+        result = storage_compact.compact(self.root, [path], dry_run=False)
         self.assertEqual(result['dry_run'], False)
 
     def test_compact_inside_the_callers_candidate_lock_does_not_wait_on_itself(self):
@@ -261,7 +262,7 @@ class StorageFrozen(unittest.TestCase):
 
         def locked_compact():
             try:
-                outcome.append(reuse.compact(self.root, [path], dry_run=False, locked=True))
+                outcome.append(storage_compact.compact(self.root, [path], dry_run=False, locked=True))
             except Exception as exc:
                 outcome.append(exc)
 
@@ -324,9 +325,9 @@ class StorageFrozen(unittest.TestCase):
         path = self.root / 'runs' / run['id']
         before = {p.name: (p.read_bytes(), stat.S_IMODE(p.stat().st_mode)) for p in path.iterdir() if p.is_file()}
         clone = reuse.capabilities(self.base)['clone']
-        plan = reuse.compact(self.root, [path])
+        plan = storage_compact.compact(self.root, [path])
         self.assertEqual(plan['reused'] > 0, clone)
-        result = reuse.compact(self.root, [path], dry_run=False)
+        result = storage_compact.compact(self.root, [path], dry_run=False)
         self.assertEqual(result['clone'] > 0, clone)
         self.assertEqual(result['hardlink'], 0)
         self.assertEqual(before, {p.name: (p.read_bytes(), stat.S_IMODE(p.stat().st_mode))

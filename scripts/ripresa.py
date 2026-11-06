@@ -114,10 +114,15 @@ def idle_tasks(state, at, *, minutes=IDLE_MINUTES):
     # A parent of automatic lanes waits for them by design: its own idleness is integration, not a stall.
     lane_parents = {lane['id'].rsplit('.L', 1)[0] for lane in state['tasks'].values()
                     if '.L' in lane['id'] and lane['status'] != 'done' and not lane.get('superseded_by')}
+    english = state.get('workspace', {}).get('lang', 'it') == 'en'
     result = []
     for task in sorted(state['tasks'].values(), key=lambda t: t['id']):
+        # A plan carried over by a takeover is the previous owner's work, not activity of the successor.
+        origin = task.get('taken_over_from')
+        previous = (state['tasks'].get(origin) if isinstance(origin, str) else None) or {}
+        own_plan = task.get('plan') and not (previous and task['plan'] == previous.get('plan'))
         if (task['status'] != 'ready' or task.get('superseded_by') or task.get('candidate')
-                or task.get('plan') or task.get('delivery') or task.get('proofs') or task['id'] in running
+                or own_plan or task.get('delivery') or task.get('proofs') or task['id'] in running
                 or task['id'] in lane_parents):
             continue
         acknowledgements = [m['ack']['utc'] for m in state['messages'].values()
@@ -132,10 +137,14 @@ def idle_tasks(state, at, *, minutes=IDLE_MINUTES):
         blocked = [dep for dep in task.get('depends', []) if state['tasks'][dep]['status'] != 'done']
         result.append({'task': task['id'], 'owner': task['owner'], 'ack': accepted,
                        'minutes': int(elapsed // 60), 'threshold_minutes': minutes, 'blocked_by': blocked,
-                       'next': ('Attendere le dipendenze: ' + ', '.join(blocked) if blocked else
-                                "Verificare l'inattività; se confermata, il coordinatore registra il passaggio "
-                                "della costruzione a un'altra finestra secondo la regola del proprietario, "
-                                'conservando lo storico.')})
+                       'next': (('Wait for the dependencies: ' if english else 'Attendere le dipendenze: ')
+                                + ', '.join(blocked) if blocked else
+                                ('Check the inactivity; if confirmed, the coordinator records the handoff of the '
+                                 "build to another window under the owner's rule, keeping the history."
+                                 if english else
+                                 "Verificare l'inattività; se confermata, il coordinatore registra il passaggio "
+                                 "della costruzione a un'altra finestra secondo la regola del proprietario, "
+                                 'conservando lo storico.'))})
     return result
 
 
@@ -175,7 +184,10 @@ def readiness(state, at, *, idle_minutes=IDLE_MINUTES):
         notices.append(f"{len(silent)} active windows silent for {SILENT_DAYS}+ days, {archivable} archivable "
                        f"after the owner's confirmation: ping them or record stand-by")
     idle = idle_tasks(state, clock, minutes=idle_minutes)
-    notices.extend(f"{row['task']}: no recorded activity for {row['minutes']} minutes after ACK. {row['next']}"
+    english = state.get('workspace', {}).get('lang', 'it') == 'en'
+    notices.extend((f"{row['task']}: no recorded activity for {row['minutes']} minutes after ACK. {row['next']}"
+                    if english else
+                    f"{row['task']}: nessuna attività registrata da {row['minutes']} minuti dopo l'ACK. {row['next']}")
                    for row in idle)
     return {'ready': not blockers, 'blockers': blockers, 'notices': notices,
             'python': {'executable': sys.executable, 'version': '%d.%d.%d' % sys.version_info[:3]},

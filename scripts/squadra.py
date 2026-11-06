@@ -1100,9 +1100,13 @@ def dispatch(a, store):
             import runtime
             probe = getattr(runtime, 'local_bind_available', None)
             if probe is not None:
-                available = probe()
+                english = state['workspace'].get('lang', 'it') == 'en'
+                available = probe(lang='en' if english else 'it')
                 ok, message = available if isinstance(available, tuple) else (bool(available), '')
-                message = message or 'Local bind on 127.0.0.1 is not available: sandbox limit; run the proof process outside the sandbox'
+                message = message or ('Local bind on 127.0.0.1 is not available: sandbox limit; run the proof '
+                                      'process outside the sandbox' if english else
+                                      'Bind locale su 127.0.0.1 non disponibile: limite del sandbox: esegui il '
+                                      'processo della prova fuori dal sandbox')
                 # Only the full-suite runner needs localhost; other proofs keep running with a warning.
                 if not ok and any(Path(part).name == 'parallel_tests.py' for part in (argv or [])):
                     require(False, message)
@@ -1185,24 +1189,22 @@ def dispatch(a, store):
                 # Only the holder itself is idempotent: another seat of the identity could not release it.
                 if held.get('task') == a.task and held['owner'] == actor:
                     return {'name': a.name, 'holder': plain(held), 'already_held': True}
-                # Another task of the identity, or another seat on this task, waits like any other holder.
-                import time
-                limit = time.monotonic() + (a.wait or 0)
-                while True:
-                    held = plain(store.view()['resources'].get(a.name))
-                    store.release_views()
-                    if not held:
-                        break
-                    require(time.monotonic() < limit,
-                            ('Resource already reserved for another task of this identity: ' + str(held.get('task'))
-                             if held.get('task') != a.task else
+                # Another task of the identity, or another seat on this task, waits like any other holder:
+                # in the same FIFO queue, with the one --wait deadline.
+                def refusal(holder):
+                    return (('Resource already reserved for another task of this identity: ' + str(holder.get('task'))
+                             if holder.get('task') != a.task else
                              'Resource already reserved by another seat of this identity for this task')
-                            + '; holder: ' + held['owner'])
-                    time.sleep(min(2.0, max(0.05, limit - time.monotonic())))
+                            + '; holder: ' + holder['owner'])
+                if not waiting:
+                    require(False, refusal(held))
+                same_identity = refusal
+            else:
+                same_identity = None
         if waiting:
             from resource_wait import acquire, CacheUnavailable
             try:
-                acquire(store, actor, a.name, a.reason, a.wait, task=a.task)
+                acquire(store, actor, a.name, a.reason, a.wait, task=a.task, same_identity=same_identity)
             except CacheUnavailable as exc:
                 raise InputRefusal(str(exc)) from exc
         else:
@@ -1309,7 +1311,7 @@ def dispatch(a, store):
         try:
             return storage_policy.compact(store, a.actor, a.reason, apply=a.apply)
         except ModuleNotFoundError as exc:
-            if exc.name != 'storage_reuse':
+            if exc.name not in {'storage_reuse', 'storage_compact'}:
                 raise
             raise Error('Storage compact requires the storage_reuse module from the integrated release') from exc
     elif command == "save":

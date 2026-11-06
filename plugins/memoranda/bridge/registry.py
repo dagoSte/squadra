@@ -2561,10 +2561,27 @@ def validate(state, kind, actor, d, stored_packet=None, *, candidate_history=())
 
 
 def review_limit(state, task_id, stage):
-    """Global review rounds plus owner-recorded extensions for this task; spent rounds are never reset."""
-    extra = sum(d["budget_extension"]["by"] for d in state.get("decisions", [])
-                if isinstance(d.get("budget_extension"), Mapping) and d["budget_extension"].get("task") == task_id
-                and d["budget_extension"].get("stage") == stage)
+    """Global review rounds plus owner-recorded extensions for this task and the tasks it replaced
+    (supersede or takeover); spent rounds are never reset."""
+    grants = [d["budget_extension"] for d in state.get("decisions", [])
+              if isinstance(d.get("budget_extension"), Mapping) and d["budget_extension"].get("stage") == stage]
+    if not grants:
+        return state["workspace"]["limits"][stage]
+    tasks = state.get("tasks", {})
+    replaced = {}
+    for old, other in tasks.items():
+        if isinstance(other.get("superseded_by"), str):
+            replaced.setdefault(other["superseded_by"], []).append(old)
+    chain, pending = set(), [task_id]
+    while pending:
+        name = pending.pop()
+        if name in chain:
+            continue
+        chain.add(name)
+        task = tasks.get(name) or {}
+        pending.extend(p for p in (task.get("supersedes"), task.get("taken_over_from")) if isinstance(p, str))
+        pending.extend(replaced.get(name, ()))
+    extra = sum(grant["by"] for grant in grants if grant.get("task") in chain)
     return state["workspace"]["limits"][stage] + extra
 
 

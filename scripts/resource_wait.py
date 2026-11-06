@@ -137,7 +137,9 @@ def queue_lock(fd, deadline):
         fcntl.flock(fd, fcntl.LOCK_UN)
 
 
-def acquire(store, actor, name, reason, seconds, *, task=None):
+def acquire(store, actor, name, reason, seconds, *, task=None, same_identity=None):
+    """FIFO wait with one deadline. same_identity, when given, admits a holder of the caller's identity
+    (another task or seat) and turns a timeout behind such a holder into its message."""
     require(os.name == 'posix', '--wait is supported on POSIX only; Windows must use immediate resource acquisition')
     require(math.isfinite(seconds) and seconds >= 0, '--wait requires finite nonnegative seconds')
     import fcntl
@@ -147,7 +149,9 @@ def acquire(store, actor, name, reason, seconds, *, task=None):
     store.release_views()
     initial = resource_state(store.root, name, actor, task)
     holder = initial['holder']
-    require(not holder or initial['identity'] != initial['holder_identity'],
+    require(not holder or initial['identity'] != initial['holder_identity'] or
+            (same_identity is not None and task is not None and holder.get('task') is not None and
+             not (holder['task'] == task and holder['owner'] == actor)),
             RESERVED + ('; holder: ' + holder['owner'] if holder else ''))
     ticket = None
     ticket_fd = mutex = None
@@ -193,6 +197,10 @@ def acquire(store, actor, name, reason, seconds, *, task=None):
                 if time.monotonic() >= deadline:
                     break
                 time.sleep(min(POLL_SECONDS, max(0, deadline - time.monotonic())))
+            if same_identity is not None:
+                final = resource_state(store.root, name, actor, task)
+                if final['holder'] and final['holder_identity'] == final['identity']:
+                    raise Error(same_identity(final['holder']))
             raise Error(RESERVED)
         finally:
             # Cleanup never races a scanner. If its mutex is busy, leave an unlocked stale ticket.
