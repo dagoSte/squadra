@@ -59,9 +59,10 @@ This detects a new address such as the observed contributor-attribution error; i
 does not check whether an address belongs to a GitHub account. Legitimate new authors
 need an explicit attribution review; the command does not change their commits.
 
-Fast-forward uses the local upstream at the last fetch, even with an explicit range.
-A missing upstream is unverifiable. Without it, the default interval is unverifiable
-too; an explicit valid interval can still have its emails inspected. Nothing here
+Without `--range`, fast-forward checks that the local upstream at the last fetch is an
+ancestor of HEAD; a missing upstream makes both it and the default email interval
+unverifiable. With an explicit `--range A..B`, fast-forward checks instead that `A` is
+an ancestor of `B`, needs no upstream and does not compare `B` with HEAD. Nothing here
 queries the remote or guarantees its current state. With `--task`, candidate ancestry
 is checked against HEAD, independently of the selected email interval.
 
