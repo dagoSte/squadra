@@ -392,7 +392,7 @@ def parser():
     p.add_argument("--version", action="version", version=VERSION)
     sub = p.add_subparsers(dest="command", required=True)
     a = sub.add_parser('checklist', help='Read-only checks before resume, assignment, delivery or push')
-    a.add_argument('--moment', choices=['resume', 'assign', 'deliver', 'push'], required=True)
+    a.add_argument('--moment', choices=['resume', 'assign', 'deliver', 'push', 'handover'], required=True)
     a.add_argument('--actor'); a.add_argument('--task'); a.add_argument('--repo')
     a.add_argument('--range', dest='revision_range', help='Commit interval A..B (default @{upstream}..HEAD)')
     a = sub.add_parser("forecast", help="Read-only comparison with similar completed tasks; no estimate below three samples")

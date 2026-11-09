@@ -1548,11 +1548,33 @@ function commsAnchor(){
 }
 function commsRestore(anchor){if(!anchor||!anchor.li.isConnected)return;const delta=anchor.li.getBoundingClientRect().top-anchor.top;if(Math.abs(delta)>=0.5)scrollBy(0,delta)}
 function outputs(){const p=panel(tr('page.outputs.title')),visible=state.outputs.filter(o=>matches(o)&&connectedMatches('outputs',o));p.children[0].setAttribute('tabindex','-1');focusKey(p.children[0],'connected:outputs');for(const o of visible.slice().reverse()){const r=row(o.agent+' · '+(o.task?taskTitle(o.task):tr('page.outputs.area')),o.text);r.append(node('div',tr('page.outputs.declared',{next:o.next,date:date(o.utc)}),'sub warn'));for(const a of o.artifacts)r.append(proofLink(a));connectedRowLinks('outputs',o,r,'connected:outputs');p.append(r)}addEmpty(p,visible.length);return p}
+function handoverCard(h){
+ const en=UI_LANG==='en';
+ const words=en?{ready:'Ready to resume',pending:'Pending handover',conditions:'Conditions',gate:'Safe moment',met:'Met',wait:'Waiting',none:'No conditions',ok:'Verified',fail:'Wait',unverifiable:'Not verified',notice:'Information',actor:'Window',runs:'Executions',resources:'Resources',reading:'Reads',release:'Release',worktree:'Work in progress',pending_acks:'Pending acknowledgements',service_wait:'Service wait',tiredness:'Session'}:
+ {ready:'Pronto per ripartire',pending:'Passaggio in sospeso',conditions:'Condizioni',gate:'Momento sicuro',met:'Raggiunta',wait:'Da attendere',none:'Nessuna condizione',ok:'Verificato',fail:'Attendere',unverifiable:'Non verificato',notice:'Informazione',actor:'Finestra',runs:'Esecuzioni',resources:'Risorse',reading:'Letture',release:'Rilascio',worktree:'Lavoro non committato',pending_acks:'Conferme pendenti',service_wait:'Attesa di servizio',tiredness:'Sessione'};
+ const p=row(seatName(h.from)+' → '+h.to,h.ready?words.ready:words.pending);
+ p.setAttribute('data-handover',h.id);
+ if(h.ready)p.append(node('p',en?'Open a new window and type «resume seat '+h.to+'».':'Apri una finestra nuova e scrivi «riprendi la sede '+h.to+'».','bodytext'));
+ p.append(node('strong',words.conditions));
+ const list=node('ul');
+ for(const c of h.conditions||[]){
+  const value=c.kind==='task'?taskTitle(c.value):c.kind==='after'?date(c.value):c.value;
+  const li=node('li',String(c.n)+'. '+value+' · '+(c.met?words.met:words.wait));
+  list.append(li);
+ }
+ if(!(h.conditions||[]).length)list.append(node('li',words.none));
+ p.append(list);
+ const gate=node('details');gate.open=(h.gate?.items||[]).some(i=>['fail','unverifiable'].includes(i.status));
+ gate.append(node('summary',words.gate));
+ for(const item of h.gate?.items||[])gate.append(row(words[item.id]||item.id,item.detail,words[item.status]||item.status));
+ p.append(gate);return p;
+}
 function ownerAttention(){
  const view=state.attention||{for_owner:[],decided:[],waiting:[],next_steps:[]};
  const p=panel(tr('page.owner.title'));p.className='panel sq-owner'+(view.for_owner.length?'':' is-empty');
  if(!view.for_owner.length)p.append(node('div',tr('page.owner.empty'),'empty'));
  for(const ask of newestFirst(view.for_owner,a=>a.utc||'')){
+  if(ask.kind==='handover'){p.append(handoverCard(ask));continue}
   const r=row(ask.kind==='ask'||!I18N['page.owner.'+ask.kind]?ask.question:tr('page.owner.'+ask.kind),ask.task?tr('page.owner.task',{task:taskTitle(ask.task)}):'',ask.kind==='ask'?tr('page.owner.decision'):ask.kind);
   if(ask.waiting?.length)r.append(node('div',tr('page.owner.waiting',{who:ask.waiting.join(', '),date:date(ask.utc)}),'sub'));
   for(const o of ask.options||[]){const choice=row(o.id+' · '+o.label,o.say,o.id===ask.recommended?tr('page.owner.recommended'):undefined);if(o.buys||o.costs)choice.append(node('div',tr('page.owner.buys',{buys:o.buys||'—',costs:o.costs||'—'}),'sub'));if(o.example)choice.append(node('div',o.example,'bodytext'));r.append(choice)}
@@ -1571,7 +1593,7 @@ function standbyWithRuns(rows){
 }
 function recordedWaiting(){
  const view=state.attention||{waiting:[],next_steps:[]};const p=panel(tr('page.wait.title')),shown=standbyWithRuns(view.waiting);
- for(const w of compactWaits(newestFirst(shown,w=>w.utc||''))){const r=row(['to-forward','stand-by'].includes(w.kind)?waitSentence(w):waitText(w),(w.task?taskTitle(w.task):w.id||'')+' · '+(w.who||[]).join(', ')+' · '+date(w.utc),w.kind);if(w.kind==='stand-by'&&(w.messages||[]).length)r.append(node('div',tr('page.wait.standby'),'sub'));if(w.rounds&&w.limits)r.append(node('div',tr('page.wait.rounds',{plan:w.rounds.plan,planLimit:w.limits.plan,code:w.rounds.code,codeLimit:w.limits.code}),'sub'));if(w.depends?.length)r.append(node('div',tr('page.wait.depends',{list:w.depends.map(taskTitle).join(', ')}),'sub'));p.append(r)}
+ for(const w of compactWaits(newestFirst(shown,w=>w.utc||''))){if(w.kind==='handover'){p.append(handoverCard(w));continue}const r=row(['to-forward','stand-by'].includes(w.kind)?waitSentence(w):waitText(w),(w.task?taskTitle(w.task):w.id||'')+' · '+(w.who||[]).join(', ')+' · '+date(w.utc),w.kind);if(w.kind==='stand-by'&&(w.messages||[]).length)r.append(node('div',tr('page.wait.standby'),'sub'));if(w.rounds&&w.limits)r.append(node('div',tr('page.wait.rounds',{plan:w.rounds.plan,planLimit:w.limits.plan,code:w.rounds.code,codeLimit:w.limits.code}),'sub'));if(w.depends?.length)r.append(node('div',tr('page.wait.depends',{list:w.depends.map(taskTitle).join(', ')}),'sub'));p.append(r)}
  const forwarded=new Set(view.waiting.filter(w=>w.kind==='to-forward').map(w=>w.id));
  for(const w of compactWaits(newestFirst(state.waits||[],w=>-(w.seconds||0)),view.waiting).filter(w=>w.kind!=='stand-by'&&(w.kind!=='to-forward'||!forwarded.has(w.id))))p.append(row(tr('page.wait.over',{kind:descriptions[w.kind]||w.kind}),(w.task?taskTitle(w.task):w.id)+' · '+w.seconds+'s / '+w.threshold+'s · '+waitText(w),tr('page.wait.check')));addEmpty(p,view.waiting.length);for(const step of newestTasks(view.next_steps,s=>state.tasks[s.task]||{id:s.task}))p.append(row(taskTitle(step.task),stepText(step),step.status));return p;
 }
@@ -1955,6 +1977,7 @@ function ovWaiting(){
  const s=ovSection('ov.q4');const view=state.attention||{};const list=node('ul',undefined,'ov-waits');let count=0;
  for(const item of newestFirst(view.for_owner||[],a=>a.utc||'')){count++;const li=node('li');li.append(glossed(tr('ov.forOwner',{text:item.kind==='ask'||!I18N['page.owner.'+item.kind]?item.question:tr('page.owner.'+item.kind)}),undefined,'ov.q4|ask:'+(item.id||item.kind)+'|text'));list.append(li)}
  for(const w of compactWaits(newestFirst(standbyWithRuns(view.waiting||[]),w=>w.utc||''))){
+  if(w.kind==='handover'){count++;list.append(handoverCard(w));continue}
   count++;const li=node('li');li.append(glossed(waitSentence(w),undefined,'ov.q4|wait:'+w.kind+':'+(w.task||w.id)+'|text'));
   const late=w.kind!=='stand-by'&&(state.waits||[]).find(x=>x.kind===w.kind&&(x.task||x.id)===(w.task||w.id));
   if(late)li.append(node('span',' · '+tr('ov.wait.over',{minutes:Math.floor(late.seconds/60)}),'bad'));

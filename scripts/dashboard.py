@@ -21,7 +21,7 @@ import webbrowser
 
 from registry import (Store, Error, digest, attention, waits, now, requirement_matrix, initial, apply, decision_graph, decision_id,
                       task_progress, presence, fix_status, plain, wait_view, scrub_index, fold_recorded, pending_ack_ids,
-                      composition)
+                      composition, pending_handovers)
 from comms import communications
 from panel import activity
 from reads import read_value
@@ -204,7 +204,7 @@ def detail_patch(recorded, events, compact, section, record):
     return None
 
 
-def transfer_signature(head, query, plugins_value, waiting, present, activity_value, audit=None):
+def transfer_signature(head, query, plugins_value, waiting, present, activity_value, audit=None, handovers=()):
     """Time ages are local; threshold membership, a stand-by row's members and bucket changes are semantic."""
     value = [head, query, plugins_value, audit,
              [(w['kind'], w.get('id'), w.get('task'), w.get('who', []), w.get('threshold'))
@@ -212,6 +212,8 @@ def transfer_signature(head, query, plugins_value, waiting, present, activity_va
               for w in waiting],
              [(p['agent'], p['due']) for p in present],
              {k: v for k, v in activity_value.items() if k != 'as_of'}]
+    if handovers:
+        value.append(handovers)
     return digest(json.dumps(value, ensure_ascii=False, sort_keys=True).encode())
 
 
@@ -718,7 +720,9 @@ def make_server(root, port=0):
                     query = unquote(self.headers.get('X-Squadra-Search', '')).lower() if is_compact else ''
                     token_held = (self.headers.get('X-Squadra-State-Token')
                                   if conditional and self.headers.get('X-Squadra-Delta') == '1' else None)
-                    if conditional:
+                    handovers = pending_handovers(recorded, stamp)
+                    # Gates can change after a clock crossing or local commit without a registry event.
+                    if conditional and not handovers:
                         held = view.held_parts(events, stamp, audit)
                         if held is not None and self.headers.get('X-Squadra-State-Token') == transfer_signature(
                                 events[-1]['hash'], query, plugin_value, *held, audit):
@@ -734,10 +738,10 @@ def make_server(root, port=0):
                             return
                     waiting, present = waits(state, stamp), presence(state, stamp)
                     activity_value = activity(events, stamp)
-                    if conditional:
+                    if conditional and not handovers:
                         view.hold_parts(events, state, stamp, audit, waiting, present, activity_value)
                     revision = transfer_signature(events[-1]['hash'], query, plugin_value,
-                                                  waiting, present, activity_value, audit) if conditional else None
+                                                  waiting, present, activity_value, audit, handovers) if conditional else None
                     if conditional and self.headers.get('X-Squadra-State-Token') == revision:
                         self.answer(200, json.dumps({'not_modified': True, 'change_token': revision,
                                                      'server_time': stamp}).encode())
@@ -749,7 +753,8 @@ def make_server(root, port=0):
                         state = landing_records(recorded, compact)
                         state.update(change_token=revision, server_time=stamp)
                     state["plugins"] = plugin_value
-                    recorded_view = attention(recorded)
+                    recorded_view = attention(recorded, stamp)
+                    state['handover_status'] = handovers
                     # The page lists waits without the mail to windows in stand-by; its pending ACKs keep that mail.
                     state["attention"] = {**recorded_view, "waiting": fold_recorded(recorded, recorded_view["waiting"], waiting),
                                           "pending_ack": pending_ack_ids(recorded, attention_value=recorded_view)}
