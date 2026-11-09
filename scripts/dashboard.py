@@ -701,8 +701,18 @@ def make_server(root, port=0):
                         raise plugins.Refused('reference_invalid') from None
                     task_id = unquote(self.headers.get('X-Squadra-Record', '')) or None
                     plugins.require(task_id is None or task_id in recorded['tasks'], 'unknown_task')
-                    self.answer(200, json.dumps(balance.calculate(recorded, events, task_id, usage.collect(events, recorded, roots=usage_roots),
-                                                                  reference), ensure_ascii=False).encode())
+                    measured = usage.collect(events, recorded, roots=usage_roots)
+                    result = balance.calculate(recorded, events, task_id, measured, reference)
+                    tired = {row['identity']: row.get('tiredness') for row in measured['windows']}
+                    for window in result['windows']:
+                        window['tiredness'] = tired.get(window['identity'])
+                    self.answer(200, json.dumps(result, ensure_ascii=False).encode())
+                elif path == '/api/tiredness':
+                    measured = usage.collect(events, recorded, roots=usage_roots)
+                    result = {actor: row['tiredness'] for row in measured['windows']
+                              if row.get('tiredness', {}).get('source') for actor in row['actors']}
+                    self.answer(200, json.dumps({'observed_at': measured['observed_at'], 'windows': result},
+                                               ensure_ascii=False).encode())
                 elif path == '/api/usage':
                     result = usage.response(events, recorded, roots=usage_roots,
                                             revision=self.headers.get('X-Squadra-Usage-Revision'),
