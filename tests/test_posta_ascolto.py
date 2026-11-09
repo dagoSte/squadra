@@ -137,8 +137,10 @@ class PostaAscolto(PostaAscolto):
         self.assert_ok('send', '--actor', 'A', '--to', 'C', '--id', 'QUESTION', '--body-file', str(self.body))
         with patch('squadra.now', return_value=LATER):
             out = self.assert_ok('status')
-        self.assertTrue(out.startswith('Aspetta te (C):'), out[:200])
-        block = out.split('\n\n', 1)[0]
+        # Status opens with the board; «Aspetta te» comes right under it, before «Serve a te».
+        self.assertLess(out.index('## Fatti'), out.index('Aspetta te (C):'))
+        self.assertLess(out.index('Aspetta te (C):'), out.index('Serve a te:'))
+        block = out[out.index('Aspetta te (C):'):out.index('Serve a te:')]
         self.assertIn('QUESTION · messaggio da A senza ACK', block)
         self.assertIn('squadra ack --actor C --message QUESTION', block)
         self.assertIn('da inoltrare a A', block)

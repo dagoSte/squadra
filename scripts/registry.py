@@ -1187,7 +1187,7 @@ def delivery_note(state, message_id, at, listen, en=False):
                    else ', destinatario in ascolto' if heard else ', destinatario non in ascolto')
 
 
-def coordinator_waits(state, at, coordinator):
+def coordinator_waits(state, at, coordinator, view=None):
     """What waits for an active coordinator, each with its command: accepted verdicts to close,
     handoffs to forward, messages to the coordinator to acknowledge. Read-only."""
     clock = dt.datetime.fromisoformat(at) if isinstance(at, str) else at
@@ -1203,8 +1203,9 @@ def coordinator_waits(state, at, coordinator):
                      'text': 'verdetto accettato, da chiudere', 'text_en': 'accepted verdict, to close',
                      'command': shlex.join(['squadra', 'check', '--actor', coordinator, '--task', task['id'], *root])
                      + ' && ' + shlex.join(['squadra', 'close', '--actor', coordinator, '--task', task['id'], *root])})
-    for wait in attention(state)['waiting']:
-        if wait['kind'] == 'to-forward':
+    for wait in (attention(state) if view is None else view)['waiting']:
+        # Mail to a window in stand-by stays in the folded stand-by lines, as in the waits.
+        if wait['kind'] == 'to-forward' and not held_window(state, wait):
             rows.append({'kind': 'forward', 'task': wait.get('task') or wait['id'], 'minutes': _minutes(clock, wait['utc']),
                          'text': 'da inoltrare a ' + wait['to'], 'text_en': 'to forward to ' + wait['to'],
                          'command': shlex.join(['squadra', 'transport', '--actor', coordinator, '--message', wait['id'],
@@ -1219,14 +1220,18 @@ def coordinator_waits(state, at, coordinator):
     return sorted(rows, key=lambda r: -r['minutes'])
 
 
-def coordinator_block(state, at, lang='it', actor=None):
-    """«Aspetta te» for each active coordinator (or only actor, when given and a coordinator)."""
+def coordinator_block(state, at, lang='it', actor=None, view=None, quiet=False):
+    """«Aspetta te» for each active coordinator (or only actor, when given and a coordinator).
+
+    quiet omits a coordinator with nothing waiting, so status still opens with the board then."""
     en = lang == 'en'
     names = [n for n, a in state['agents'].items() if a['role'] == 'coordinator' and not standby(state, n)
              and (actor is None or n == actor)]
     lines = []
     for name in names:
-        rows = coordinator_waits(state, at, name)
+        rows = coordinator_waits(state, at, name, view)
+        if quiet and not rows:
+            continue
         lines.append(('Waiting for you (%s):' if en else 'Aspetta te (%s):') % name)
         lines += ['- %s · %s · %d min · %s' % (r['task'], r['text_en'] if en else r['text'], r['minutes'], r['command'])
                   for r in rows]
@@ -4367,9 +4372,11 @@ def table(state, read_at=None, events=(), *, compact=False, lang=None, attention
     view = attention(state, read_at) if attention_value is None else attention_value
     listen_at = read_at if read_at is not None else now()
     # «Aspetta te» opens status; it is joined above the board when the text is returned.
-    head = "\n".join(map(md_inline, coordinator_block(state, listen_at, lang))) + "\n" if advice and state.get('root') else ""
-    lines = [board(state, lang, read_at=read_at, events=events, live=read_at is not None, compact=compact),
-             *(listening_lines(state, listen_at, lang) if advice else []), "",
+    # Status still opens with the board; right under it, who follows its mail and what waits on the coordinator.
+    listened = listening_lines(state, listen_at, lang) if advice else []
+    block = coordinator_block(state, listen_at, lang, view=view, quiet=True) if advice and state.get('root') else []
+    lines = [board(state, lang, read_at=read_at, events=events, live=read_at is not None, compact=compact), "",
+             *([*listened, ""] if listened else []), *block,
              *([*composition_lines(composition(state, lang=lang), lang), ""] if advice else []),
              "Needs you:" if en else "Serve a te:"]
     information = information_count(state)
@@ -4466,7 +4473,7 @@ def table(state, read_at=None, events=(), *, compact=False, lang=None, attention
         if len(steps) > 5:
             lines.append((str(len(steps) - 5) + ' more steps: squadra status --all.') if en
                          else ('Altri ' + str(len(steps) - 5) + ' passi: squadra status --all.'))
-        return head + "\n".join([lines[0], *map(md_inline, lines[1:])])
+        return "\n".join([lines[0], *map(md_inline, lines[1:])])
     lines += ["", "Next step per task:" if en else "Prossimo passo per incarico:"]
     lines += ["- " + item["task"] + ": " + step_text(item, en) for item in view["next_steps"]]
     if view["superseded"]:
@@ -4528,4 +4535,4 @@ def table(state, read_at=None, events=(), *, compact=False, lang=None, attention
         lines += ["", f"Messaggi senza ACK: {pending}. Riserve attive: {len(state['resources'])}.",
                   "Registrazione e heartbeat non dimostrano esecuzione, accettazione o risveglio del client."]
     # The board is the first element; every other element is one line, whatever its registry text holds.
-    return head + "\n".join([lines[0], *map(md_inline, lines[1:])])
+    return "\n".join([lines[0], *map(md_inline, lines[1:])])
