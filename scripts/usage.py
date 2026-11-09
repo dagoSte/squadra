@@ -130,6 +130,13 @@ def project(raw, client):
                 raise Invalid('counter_inconsistent')
             result['tokens'] = dict(input=inp - cache, cache_read=cache, cache_creation=0,
                                     output=out, reasoning=reason, total=total)
+            # Current context is distinct from the lifetime counters above.
+            last = info.get('last_token_usage')
+            if isinstance(last, dict) and type(last.get('input_tokens')) is int and 0 <= last['input_tokens'] <= MAX_NUMBER:
+                result['context_tokens'] = last['input_tokens']
+            window = info.get('model_context_window')
+            if type(window) is int and 0 < window <= MAX_NUMBER:
+                result['context_window'] = window
         quota = payload.get('rate_limits')
         if quota is not None:
             if not isinstance(quota, dict):
@@ -238,6 +245,100 @@ def project_scope(events, state, windows):
                 at = max(start, instant(e['utc']))
                 joins[key] = min(joins.get(key, at), at)
     return {'kind': 'project', 'from': utc(start), 'reason': None}, joins
+
+
+def tiredness(seat_sources, now, settings):
+    """Read validated parent-session samples, never cumulative usage or child context."""
+    clock = instant(now) if isinstance(now, str) else now.timestamp() if isinstance(now, datetime) else now
+    result = {'session_started': None, 'age_hours': None, 'context_tokens': None,
+              'tired': False, 'reasons': [], 'source': None}
+    candidates = []
+    for source in seat_sources:
+        if source.restored or not source.checked or 'subagents' in source.path.parts:
+            continue
+        _, _, reasons = source.normalized()
+        if {'identity_mismatch', 'identity_unverified', 'duplicate_conflict'} & reasons:
+            continue
+        model, rows = None, []
+        for _, row in sorted(source.records.items()):
+            if row['type'] == 'model':
+                model = row['model']
+            elif row['type'] == 'sample' and row.get('tokens') is not None and row['at'] <= clock:
+                rows.append({**row, 'model': row.get('model', model)})
+        if rows:
+            candidates.append((max(rows, key=lambda r: r['at']), min(r['at'] for r in rows), source))
+    if not candidates:
+        return result
+    latest, started, source = max(candidates, key=lambda item: item[0]['at'])
+    result['source'] = {'client': source.client, 'session': source.session, 'observed_at': utc(source.observed)}
+    if source.cursor == 0:
+        result['session_started'] = utc(started)
+        result['age_hours'] = max(0, (clock - started) / 3600)
+    window = None
+    if source.client == 'claude':
+        result['context_tokens'] = sum(latest['tokens'][k] for k in ('input', 'cache_read', 'cache_creation'))
+        window = settings.get('context_window', {}).get(latest['model'])
+    elif source.client == 'codex':
+        result['context_tokens'] = latest.get('context_tokens')
+        window = latest.get('context_window')
+    if type(window) is int and 0 < window <= MAX_NUMBER:
+        result['context_window'] = window
+        if result['context_tokens'] is not None:
+            result['context_fraction'] = result['context_tokens'] / window
+    if result['age_hours'] is not None and result['age_hours'] >= settings.get('tired_hours', 8):
+        result['reasons'].append('age')
+    if result.get('context_fraction', -1) >= settings.get('tired_context_fraction', .6):
+        result['reasons'].append('context')
+    result['tired'] = bool(result['reasons'])
+    return result
+
+
+def tired_notice(value, *, english=False):
+    """A suggestion only: the user decides whether to prepare a handover."""
+    if not value.get('tired'):
+        return None
+    reasons = []
+    if 'age' in value['reasons']:
+        reasons.append(('session age %.1f hours' if english else 'sessione aperta da %.1f ore') % value['age_hours'])
+    if 'context' in value['reasons']:
+        reasons.append(('context %.0f%%' if english else 'contesto %.0f%%') % (100 * value['context_fraction']))
+    return (('consider restarting: ' if english else 'conviene ripartire: ') + ', '.join(reasons)
+            + ('. Prepare the handover with ' if english else '. Prepara il passaggio con ')
+            + 'squadra handover prepare …')
+
+
+def _tired_key(state, actor):
+    agent = state.get('agents', {}).get(actor, {})
+    settings = state.get('workspace', {})
+    return (agent.get('identity'), agent.get('client'), agent.get('session'),
+            settings.get('tired_hours', 8), settings.get('tired_context_fraction', .6),
+            tuple(sorted(settings.get('context_window', {}).items())))
+
+
+def cached_tiredness(state, now):
+    """Only fresh values already calculated in this process; no disk or transcript reads."""
+    clock = instant(now) if isinstance(now, str) else now.timestamp() if isinstance(now, datetime) else now
+    result, observed = {}, {}
+    for collector in list(_COLLECTORS.values()):
+        for actor, row in getattr(collector, 'tired_data', {}).items():
+            at, key, value = row
+            if (actor in state.get('agents', {}) and 0 <= clock - at <= 60
+                    and key == _tired_key(state, actor) and value.get('source')
+                    and at >= observed.get(actor, float('-inf'))):
+                result[actor], observed[actor] = value, at
+    return result
+
+
+def window_tiredness(events, state, agent, *, now=None):
+    clock = time.time() if now is None else instant(now) if isinstance(now, str) else now.timestamp() if isinstance(now, datetime) else now
+    value = cached_tiredness(state, clock).get(agent)
+    if value is not None:
+        return value
+    for row in collect(events, state, now=clock)['windows']:
+        if agent in row['actors']:
+            value = row.get('tiredness')
+            return value if value and value.get('source') else None
+    return None
 
 
 class Source:
@@ -782,6 +883,8 @@ class Collector:
                        models=model_rows(samples, complete, now),
                        hourly=hourly(samples, complete, now), rolling=rolling(samples, complete, now),
                        quota=latest_quotas(quotas, now))
+            row['tiredness'] = tiredness([self.sources[(w['client'], str(path))] for _, path in selected],
+                                        now, state.get('workspace', {}))
             recent = interval(samples, now - 900, now, complete)
             fresh = observed is not None and now - observed <= 60
             row['recent'] = {'seconds': 900, 'total_tokens': recent['total'] if fresh and recent['status'] == 'measured' else None,
@@ -809,6 +912,8 @@ class Collector:
                 'windows': result, 'models': models, 'tasks': tasks, 'days': days,
                 'quota_history': [quota_status(q, now) for q in all_quotas],
                 'suggestions': advice(models, result, now), 'cost': None}
+        self.tired_data = {actor: (now, _tired_key(state, actor), row['tiredness'])
+                           for row in result for actor in row['actors']}
         self.persist(data['coverage']['status'] == 'collecting')
         if self.cache is not None and self.cache.notice:
             data['coverage']['notices'] = [self.cache.notice]

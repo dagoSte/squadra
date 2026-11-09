@@ -83,7 +83,8 @@ def record(value, client):
     if kind == 'model':
         fields(value, ('type', 'model', 'at'))
         return dict(type=kind, model=name(value['model'], MODEL, True), at=timestamp(value['at']))
-    fields(value, ('type', 'at', 'tokens', 'quota'))
+    extras = {'context_tokens', 'context_window'} & value.keys()
+    fields(value, {'type', 'at', 'tokens', 'quota'} | extras)
     require(kind == 'sample' and type(value['quota']) is list and len(value['quota']) <= 2)
     quota, slots = [], set()
     for q in value['quota']:
@@ -105,7 +106,9 @@ def record(value, client):
                           plan_type=q['plan_type']))
     counts = None if value['tokens'] is None else tokens(value['tokens'], client)
     require(counts is not None or quota)
-    return dict(type=kind, at=timestamp(value['at']), tokens=counts, quota=quota)
+    context = {key: integer(value[key]) for key in extras}
+    require('context_window' not in context or context['context_window'] > 0)
+    return dict(type=kind, at=timestamp(value['at']), tokens=counts, quota=quota, **context)
 
 
 def sources(value):

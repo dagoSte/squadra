@@ -208,7 +208,17 @@ def readiness(state, at, *, idle_minutes=IDLE_MINUTES):
                     if english else
                     f"{row['task']}: nessuna attività registrata da {row['minutes']} minuti dopo l'ACK. {row['next']}")
                    for row in idle)
+    import usage
+    tired = []
+    data = usage.collect([], state, now=clock.timestamp())
+    active_ids = {agent['id'] for agent in active}
+    for window in data['windows']:
+        actors = [actor for actor in window['actors'] if actor in active_ids]
+        value = window.get('tiredness', {})
+        if actors and value.get('tired'):
+            tired.append({'agents': actors, **value})
+            notices.append(', '.join(actors) + ': ' + usage.tired_notice(value, english=english))
     return {'ready': not blockers, 'blockers': blockers, 'notices': notices,
             'python': {'executable': sys.executable, 'version': '%d.%d.%d' % sys.version_info[:3]},
-            'checkouts': checkouts, 'silent_windows': silent, 'idle_tasks': idle,
+            'checkouts': checkouts, 'silent_windows': silent, 'idle_tasks': idle, 'tired_windows': tired,
             'limits': 'Local refs only, no fetch; windows are only listed, never changed.'}
