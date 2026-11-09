@@ -499,7 +499,8 @@ def keep(store, actor, path, reason):
 
 
 def compact(store, actor=None, reason=None, *, apply=False):
-    from storage_reuse import ReuseError  # noqa: F401  the optional primitives of the integrated release
+    # Not unused: refuse when storage_reuse is missing even if storage_compact is already loaded in this process.
+    from storage_reuse import ReuseError  # noqa: F401
     from storage_compact import compact as reuse_compact
     preview = plan(store)
     targets = [r['path'] for r in preview['entries'] if r['kind'] in {'checkpoint', 'save', 'candidate', 'run'}]
