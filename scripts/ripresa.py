@@ -106,21 +106,40 @@ def silent_windows(state, at):
     return silent
 
 
+def _open_lane_parents(state):
+    """Use the parent/children decision recorded atomically by lanes_apply."""
+    parents = set()
+    for decision in state.get('decisions', []):
+        assigned = decision.get('tasks', [])
+        if len(assigned) < 2:
+            continue
+        parent, *children = assigned
+        if (decision.get('id') != 'lanes-' + parent
+                or decision.get('plan', {}).get('original') != 'generated-lanes:' + parent):
+            continue
+        if any(child in state['tasks'] and state['tasks'][child]['status'] != 'done'
+               and not state['tasks'][child].get('superseded_by') for child in children):
+            parents.add(parent)
+    return parents
+
+
 def idle_tasks(state, at, *, minutes=IDLE_MINUTES):
     """Accepted assignments without recorded work; the coordinator decides any handoff."""
     require(type(minutes) is int and minutes >= 0, 'Nonnegative integer idle minutes required')
     clock = dt.datetime.fromisoformat(at) if isinstance(at, str) else at
     running = {run['task'] for run in state['runs'].values()}
     # A parent of automatic lanes waits for them by design: its own idleness is integration, not a stall.
-    lane_parents = {lane['id'].rsplit('.L', 1)[0] for lane in state['tasks'].values()
-                    if '.L' in lane['id'] and lane['status'] != 'done' and not lane.get('superseded_by')}
+    lane_parents = _open_lane_parents(state)
+    plan_events = getattr(state, 'wait_context', {}).get('tasks', {})
     english = state.get('workspace', {}).get('lang', 'it') == 'en'
     result = []
     for task in sorted(state['tasks'].values(), key=lambda t: t['id']):
         # A plan carried over by a takeover is the previous owner's work, not activity of the successor.
         origin = task.get('taken_over_from')
         previous = (state['tasks'].get(origin) if isinstance(origin, str) else None) or {}
-        own_plan = task.get('plan') and not (previous and task['plan'] == previous.get('plan'))
+        # A plan event on this task counts even when it reuses the inherited artifact.
+        registered_plan = task.get('plan_utc') or plan_events.get(task['id'], {}).get('plan_utc')
+        own_plan = task.get('plan') and (registered_plan or not (previous and task['plan'] == previous.get('plan')))
         if (task['status'] != 'ready' or task.get('superseded_by') or task.get('candidate')
                 or own_plan or task.get('delivery') or task.get('proofs') or task['id'] in running
                 or task['id'] in lane_parents):

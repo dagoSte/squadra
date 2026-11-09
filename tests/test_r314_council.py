@@ -30,6 +30,11 @@ class CouncilFixes(unittest.TestCase):
         self.task('F', owner='C')
         self.ack('F', owner='C')
         self.task('F.L1', owner='A')
+        # lanes_apply records this parent/children relation in the assignment transaction.
+        assignment = {'form': 'squadra-lanes-assignment/1', 'parent': 'F', 'lanes': [{'id': 'F.L1'}]}
+        self.store.append('decision', 'C', {'id': 'lanes-F', 'reason': 'Automatic lanes',
+                          'tasks': ['F', 'F.L1'], 'plan': self.store.artifact_bytes(
+                              json.dumps(assignment).encode(), 'lanes-F.json', 'generated-lanes:F')})
         state = self.store.view()
         accepted = dt.datetime.fromisoformat(state['messages']['assign-F']['ack']['utc'])
         late = accepted + dt.timedelta(minutes=45)
