@@ -20,7 +20,7 @@ MAX_NUMBER = 2**53 - 1
 HEX = re.compile(r'[0-9a-f]{64}\Z')
 MODEL = re.compile(r'(?:claude-(?:opus|sonnet|haiku)[-a-z0-9.]{0,60}|gpt-[0-9][-a-z0-9.]{0,60}|o[134](?:[-a-z0-9.]{0,60})|codex[-a-z0-9.]{0,60})\Z')
 SESSION = re.compile(r'[a-zA-Z0-9][a-zA-Z0-9_-]{5,79}\Z')
-ENTRY = re.compile(r'[0-9a-f]{64}\.json\Z')
+ENTRY = re.compile(r'[0-9a-f]{64}(?:\.json|\.notice)\Z')
 TEMP = re.compile(r'\.tmp-[0-9a-f]{64}-[0-9a-f]{32}\Z')
 KINDS = ('input', 'cache_read', 'cache_creation', 'output', 'reasoning', 'total')
 REASONS = frozenset(('timestamp_invalid', 'counter_invalid', 'sample_identity_missing',
@@ -154,6 +154,53 @@ def encoded(value):
     return json.dumps(value, sort_keys=True, separators=(',', ':'), ensure_ascii=True, allow_nan=False).encode('ascii')
 
 
+def notice_records(value):
+    """Strict numeric/structural projection of already calculated tiredness."""
+    require(type(value) is dict and len(value) <= MAX_SOURCES)
+    result = {}
+    for key, row in value.items():
+        name(key, HEX)
+        fields(row, ('at', 'value'))
+        at = timestamp(row['at'])
+        v = row['value']
+        require(type(v) is dict)
+        extras = {'context_window', 'context_fraction'} & v.keys()
+        fields(v, {'session_started', 'age_hours', 'context_tokens', 'tired', 'reasons', 'source'} | extras)
+        started = v['session_started']
+        require(started is None or (type(started) is str and len(started) <= 40))
+        if started is not None:
+            parsed = datetime.fromisoformat(started.replace('Z', '+00:00'))
+            require(parsed.tzinfo is not None)
+            timestamp(parsed.timestamp())
+        for k in ('age_hours', 'context_fraction'):
+            n = v.get(k)
+            require(n is None or (type(n) in (int, float) and math.isfinite(n) and n >= 0))
+        require((v['age_hours'] is None) == (v['session_started'] is None))
+        require(v['context_tokens'] is None or integer(v['context_tokens']) >= 0)
+        if 'context_window' in extras:
+            require(integer(v['context_window']) > 0)
+        if 'context_fraction' in extras:
+            require('context_window' in extras and v['context_tokens'] is not None
+                    and v['context_fraction'] == v['context_tokens'] / v['context_window'])
+        reasons = v['reasons']
+        require(type(reasons) is list and len(reasons) <= 2
+                and all(type(r) is str and r in ('age', 'context') for r in reasons)
+                and len(set(reasons)) == len(reasons))
+        require(type(v['tired']) is bool and v['tired'] == bool(reasons)
+                and ('age' not in reasons or v['age_hours'] is not None)
+                and ('context' not in reasons or 'context_fraction' in extras))
+        source = v['source']
+        fields(source, ('client', 'session', 'observed_at'))
+        require(type(source['client']) is str and source['client'] in ('claude', 'codex'))
+        name(source['session'], SESSION)
+        require(type(source['observed_at']) is str and len(source['observed_at']) <= 40)
+        parsed = datetime.fromisoformat(source['observed_at'].replace('Z', '+00:00'))
+        require(parsed.tzinfo is not None)
+        timestamp(parsed.timestamp())
+        result[key] = {'at': at, 'value': dict(v, reasons=list(reasons), source=dict(source))}
+    return result
+
+
 def pairs(items):
     result = {}
     for key, value in items:
@@ -234,10 +281,10 @@ class Cache:
         finally:
             os.close(fd)
 
-    def load(self):
+    def load(self, *, notices=False):
         try:
             with self._folder() as parent, self._lock(parent):
-                fd = os.open(self.key + '.json', OPEN, dir_fd=parent)
+                fd = os.open(self.key + ('.notice' if notices else '.json'), OPEN, dir_fd=parent)
                 try:
                     before = os.fstat(fd)
                     regular(before)
@@ -255,20 +302,22 @@ class Cache:
                             for k in ('st_dev', 'st_ino', 'st_size', 'st_mtime_ns', 'st_ctime_ns')))
                     data = json.loads(raw, object_pairs_hook=pairs,
                                       parse_constant=lambda _: require(False))
-                    fields(data, ('version', 'digest', 'sources'))
+                    section = 'notices' if notices else 'sources'
+                    fields(data, ('version', 'digest', section))
                     require(type(data['version']) is int and data['version'] == VERSION)
                     name(data['digest'], HEX)
-                    require(hashlib.sha256(encoded(data['sources'])).hexdigest() == data['digest'])
-                    result = sources(data['sources'])
+                    require(hashlib.sha256(encoded(data[section])).hexdigest() == data['digest'])
+                    result = (notice_records if notices else sources)(data[section])
                     # Eviction uses the last successful read or write of these disposable calculations.
-                    os.utime(fd, None)
+                    if not notices:
+                        os.utime(fd, None)
                     return result
                 finally:
                     os.close(fd)
         except (OSError, ValueError, TypeError, OverflowError, RecursionError):
             return {}
 
-    def _room(self, parent, size):
+    def _room(self, parent, size, entry_name):
         total, candidates = 0, []
         for entry in os.listdir(parent):
             info = os.stat(entry, dir_fd=parent, follow_symlinks=False)
@@ -278,7 +327,7 @@ class Cache:
                 os.unlink(entry, dir_fd=parent)
                 continue
             total += info.st_size
-            if ENTRY.fullmatch(entry) and entry != self.key + '.json':
+            if ENTRY.fullmatch(entry) and entry != entry_name:
                 candidates.append((info.st_mtime_ns, entry, info.st_size))
         for _, entry, old_size in sorted(candidates):
             if total + size <= MAX_TOTAL_BYTES:
@@ -287,17 +336,20 @@ class Cache:
             total -= old_size
         require(total + size <= MAX_TOTAL_BYTES)
 
-    def save(self, value):
+    def save(self, value, *, notices=False):
         temp = None
         try:
-            projected = sources(value)
+            entry_name = self.key + ('.notice' if notices else '.json')
+            section = 'notices' if notices else 'sources'
+            projected = (notice_records if notices else sources)(value)
             payload = encoded(projected)
             require(len(payload) <= MAX_ENTRY_BYTES)
             raw = (b'{"version":' + str(VERSION).encode('ascii') + b',"digest":"'
-                   + hashlib.sha256(payload).hexdigest().encode('ascii') + b'","sources":' + payload + b'}')
+                   + hashlib.sha256(payload).hexdigest().encode('ascii') + b'","'
+                   + section.encode('ascii') + b'":' + payload + b'}')
             require(len(raw) <= MAX_ENTRY_BYTES and len(raw) <= MAX_TOTAL_BYTES)
             with self._folder(create=True) as parent, self._lock(parent, write=True):
-                self._room(parent, len(raw))
+                self._room(parent, len(raw), entry_name)
                 temp = '.tmp-' + self.key + '-' + secrets.token_hex(16)
                 try:
                     fd = os.open(temp, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600, dir_fd=parent)
@@ -311,7 +363,7 @@ class Cache:
                         os.fsync(fd)
                     finally:
                         os.close(fd)
-                    os.replace(temp, self.key + '.json', src_dir_fd=parent, dst_dir_fd=parent)
+                    os.replace(temp, entry_name, src_dir_fd=parent, dst_dir_fd=parent)
                     temp = None
                     os.fsync(parent)
                     return True
