@@ -174,3 +174,9 @@ Lettura finale (regola 7): candidato `3.15.0-rc1`; L0 e L1 (Claude) letti da Cod
 4. Nessun cambio automatico: nessun timer, condizioni valutate solo in lettura, accept solo su comando.
 5. `prepare` senza sezione fuori registro (o con un segreto riconoscibile) rifiuta.
 6. Condizione `after:` falsa prima dell'orario e vera dopo; `task:` vera solo a task chiuso.
+
+## Note d'implementazione della 3.15.0
+
+- **status e la finestra stanca.** `status` mostra l'avviso solo da un valore già calcolato nello stesso processo, senza leggere transcript (§3.6). Ogni comando `status` è un processo nuovo, quindi in pratica l'avviso lo mostrano la dashboard (processo lungo) e `doctor --resume`, che lo calcolano. È voluto: `status` resta veloce.
+- **access probe** stampa il rapporto completo anche con l'output silenzioso: è un comando diagnostico (decisione r315-sout2-eccezione-access).
+- **Comandi composti.** `assign`, `join` e `pickup` stanno sopra le primitive e non introducono tipi di evento nuovi; una prova di parità lo verifica.
