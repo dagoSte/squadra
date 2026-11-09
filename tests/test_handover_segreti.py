@@ -42,6 +42,23 @@ EXTRA_CASES = (
     ('empty value', 'password=\n', False),
     ('empty before prose', 'password=\nserver fermo', False),
 )
+MARKDOWN_CASES = (
+    ('dash list', '- password: synthetic-value', True),
+    ('star list', '* DB_PASSWORD=synthetic-value', True),
+    ('numbered list', '1. token: synthetic-value', True),
+    ('quote', '> api_token=synthetic-value', True),
+    ('table', '| password | synthetic-value |', True),
+    ('backticks', '`TOKEN=synthetic-value`', True),
+    ('export in list', '- export GITHUB_TOKEN=synthetic-value', True),
+    ('nested markers', '- > * password: synthetic-value', True),
+    ('checkbox', '- [ ] TOKEN=synthetic-value', True),
+    ('inline code', 'Evita `api_token=synthetic-value` nella nota.', True),
+    ('later table cell', '| id | DB_PASSWORD | synthetic-value |', True),
+    ('JSON', '{"password": "synthetic-value"}', True),
+    ('assignment-like prose', 'Password: nel portachiavi', True),
+    ('ordinary prose', 'La password e nel portachiavi.', False),
+    ('id in code', '`task-sk-1234567890123456`', False),
+)
 
 
 class SecretFilter(unittest.TestCase):
@@ -50,6 +67,13 @@ class SecretFilter(unittest.TestCase):
 
     def test_additional_cases(self):
         self.check_cases(EXTRA_CASES)
+
+    def test_markdown_cases(self):
+        self.check_cases(MARKDOWN_CASES)
+
+    def test_refusal_explains_assignment_like_prose(self):
+        with self.assertRaisesRegex(Error, 'Prose .* also refused'):
+            handover.safe_text('Password: nel portachiavi')
 
     def check_cases(self, cases):
         for label, text, secret in cases:
@@ -72,7 +96,7 @@ class SecretPersistence(unittest.TestCase):
     def test_file_and_unknown_reason_refuse_secrets_without_persisting_them(self):
         outside = self.base / 'outside.md'
         sections = '\n'.join(h + '\nnessuno\n' for h in handover.HEADINGS)
-        for label, text, secret in REPORT_CASES + EXTRA_CASES:
+        for label, text, secret in REPORT_CASES + EXTRA_CASES + MARKDOWN_CASES:
             if not secret:
                 continue
             outside.write_text(sections + '\n' + text, encoding='utf-8')

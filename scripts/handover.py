@@ -15,9 +15,11 @@ def safe_text(text):
     import re
     require(not re.search(r'(?i)(?<![\w-])(?:sk-|ghp_|AKIA)[A-Za-z0-9_+/=-]{8,}|'
                           r'-----BEGIN [^-\r\n]*PRIVATE KEY-----|'
-                          r'^[ \t]*(?:export[ \t]+)?[\"\']?[\w.-]*(?:password|passwd|token|secret)'
-                          r'[\"\']?[ \t]*[=:][ \t]*\S', text, re.M),
-            'Outside state contains a recognizable secret; remove its value')
+                          r'(?<![\w.-])[\"\'`]?[\w.-]*(?:password|passwd|token|secret)'
+                          r'[\"\'`]?[ \t]*[=:|][ \t]*\S', text),
+            'Outside state contains a recognizable secret; remove its value. '
+            'Prose such as "Password: in the keychain" is also refused; '
+            'describe its location without a key followed by a separator.')
 
 
 def outside_text(body):
