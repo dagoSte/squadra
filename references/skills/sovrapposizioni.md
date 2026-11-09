@@ -3,7 +3,7 @@
 **The coordinator always checks that the windows it coordinates do not overlap.** Two
 windows writing the same tree, branch or file lose work, produce conflicting commits and
 invalidate each other's proofs. This guide is the coordinator's procedure for the
-[fundamental rule](../../SKILL.md#fundamental-rule--no-overlap-between-coordinated-windows).
+[fundamental rule](../../SKILL.md#no-overlap-resume-and-round-scope) (R10).
 It adds no command and no event: it uses the registry and Git as they are.
 
 ## When
@@ -50,3 +50,23 @@ bumps, pins, mirrors and release notes belong to the integration, built by the c
 - Windows that do not use the registry are outside it; their reservations are not seen.
 - The check never stops, cleans or resets another window's work: it reports and
   reassigns. Destructive Git actions on someone else's tree need the owner's word.
+
+## Rules moved from the core (SKILL.md 3.14.0)
+
+The core keeps one line per rule; this is the full text, unchanged except for relative links.
+
+### Fundamental rule — no overlap between coordinated windows
+
+**The coordinator always checks that the windows it coordinates do not overlap**, so that
+their work and their commits never collide (owner, 2026-10-30). It is a fundamental rule:
+no deadline, budget or stand-by suspends it.
+- **One writer per tree and per branch.** Two windows never build in the same checkout or
+  commit to the same branch; two lanes never own the same file or the same part of a
+  shared file. Shared contracts are written first and then frozen (Rule 1).
+- **During the work** the coordinator rechecks at every delivery, merge and mail that
+  changes a scope; a window that needs another lane's area asks the coordinator (Rule 5).
+  A commit outside a window's owned paths is a finding, raised at once.
+- When the coordinator cannot see a window's tree or branch, the overlap check is
+  **not done**: it says so and asks that window for its checkout, branch and changed paths
+  before assigning.
+

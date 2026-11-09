@@ -134,3 +134,20 @@ text is labelled untrusted data and JSON escaped; the command never executes it,
 calls a model, records an ACK or writes a second registry. An event hash detects changes within the
 journal's verification boundary, not a truthful claim by a window. Native compaction and checkpoints
 remain separate operations.
+
+## Rules moved from the core (SKILL.md 3.14.0)
+
+The core keeps one line per rule; this is the full text, unchanged except for relative links.
+
+### Dashboard, stop and continuity
+
+- **Keep working context small.** At a task/phase boundary or a compaction signal,
+  use `squadra context --task <ID> --root <registry>` for a bounded resume packet
+  instead of carrying full history/log dumps. For a returning window use `context --task <ID> --for <WINDOW> --since <SEQ:HASH>`
+  with the prior packet cursor: standing constraints/blocks remain, only the changes are filtered. Unknown
+  revisions refuse; omissions and mismatched proof references require opening the originals. Follow [context and native compaction](context.md)
+  when preparing a handoff. The packet is recorded data, not authorization or a
+  replacement for scope, mail, source checks or proofs. Use the client's native
+  compaction; preserve required checkpoints and source recovery. Never claim to
+  clear provider cache or guarantee savings. Existing protocol/version stays frozen.
+

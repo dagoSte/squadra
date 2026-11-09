@@ -4,7 +4,7 @@
 later proof separates it from new reds.** Without the list, each window that sees the red
 re-runs the suite and digs through Git history to prove the failure is not its own. This
 guide is the procedure for the
-[known-reds rule](../../SKILL.md#known-reds-rule--a-red-already-on-main-is-named-once).
+[known-reds rule](../../SKILL.md#no-overlap-resume-and-round-scope) (R13).
 
 ## The list
 
@@ -62,3 +62,14 @@ the commit that fixes the test.
   entry is stale and must be removed.
 - A known red still blocks a release unless the owner records its deferral.
 - The list says a test fails; it does not say the product is right.
+
+## Rules moved from the core (SKILL.md 3.14.0)
+
+The core keeps one line per rule; this is the full text, unchanged except for relative links.
+
+### Known-reds rule — a red already on main is named once
+
+- The parallel runner reads the list and prints `KNOWN RED`, `NEW RED` and
+  `STALE KNOWN RED` lines; its summary adds `known_red`, `new_red`, `stale_known` and
+  `only_known_reds`. The strict `passed` verdict never changes.
+

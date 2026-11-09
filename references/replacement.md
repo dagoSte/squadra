@@ -138,3 +138,12 @@ assignment/review messages before starting. Add `--force` only after reconciling
 the recent-answer/live-run warning and retain that reason in the audit trail.
 The selftest includes this synthetic 4→3/11-seat case, single/map replacements,
 independence, digest filtering, idempotency, dry-run, transport, save and waits.
+
+## Rules moved from the core (SKILL.md 3.14.0)
+
+The core keeps one line per rule; this is the full text, unchanged except for relative links.
+
+### Replacing exhausted windows
+
+Use `replace --actor COORD --old OLD --new NEW --reason TEXT --session ID` (or `--map`) after reconciling the real windows. Preview with `--dry-run`; all old session aliases stand by in one event. Keep author provenance and consumed budgets. The new assignments and reassigned reads need their actual ACKs. Inspect ambiguous transport receipts before an explicit retry; never replay an old resume message blindly. `wait --actor AGENT --until TIME --cause 429|outage` records an observed service limit. See [replacement and recovery](replacement.md), including the format-4 compatibility boundary of 3.11.1.
+

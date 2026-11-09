@@ -84,3 +84,22 @@ registry is append-only.
   will use.
 - At most five lessons are shown, and a longer match list is cut, never padded.
 - Lessons belong to one registry. A squad's lessons do not travel to another squad.
+
+## Rules moved from the core (SKILL.md 3.14.0)
+
+The core keeps one line per rule; this is the full text, unchanged except for relative links.
+
+### Built-in skills: errata, rasoio and migliora
+
+These activate by themselves at their documented moments within the authorized
+project scope; follow the guides without asking again for work already authorized.
+Errata and rasoio retain their activation events; migliora records applied remedies
+and commits in task outputs, while its inspections are computed on demand.
+- **errata** ([guide](errata.md)). At `brief --task` and `start` the
+  CLI shows the matching lessons and records a `lesson.recall`: read them and apply them.
+  After a code read that asks for changes, a failed proof or a closed defect fix, the
+  output asks the agent who ran the command for a lesson: record it at once with
+  `squadra lesson` (`lesson` event), or say in the output why no trigger can be named.
+  When a mistake comes back after its lesson was shown, mark it with
+  `lesson --ineffective` (`lesson.ineffective` event) and record a better one.
+

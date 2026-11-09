@@ -104,3 +104,15 @@ accessibility basics, or anything explicitly required. Never be lazy in understa
 problem: the ladder shortens the solution, never the reading. Lean code without its check
 is unfinished: non-trivial logic leaves one small runnable check that fails if the logic
 breaks.
+
+## Rules moved from the core (SKILL.md 3.14.0)
+
+The core keeps one line per rule; this is the full text, unchanged except for relative links.
+
+### Built-in skills: errata, rasoio and migliora
+
+- **rasoio** ([guide](rasoio.md)). Every code read whose candidate
+  changes code, not only prose, applies the lens: `review --lens rasoio --net-lines N`,
+  with the guide's tags and its closing net figure. The lens adds observations; it never
+  changes a verdict, check or close rule.
+

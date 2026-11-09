@@ -4,7 +4,7 @@
 squad on the board is the squad that is really there.** Stale windows inflate the
 composition advice, keep waits open and make the summary hard to read. This guide is the
 procedure for the
-[stale-windows rule](../../SKILL.md#stale-windows-rule--silent-windows-are-parked-on-the-owners-word).
+[stale-windows rule](../../SKILL.md#no-overlap-resume-and-round-scope) (R14).
 
 ## Finding them
 
@@ -50,3 +50,16 @@ window with open work is kept by that other seat.
   process and moves no work.
 - A parked window returns when it answers a new `ping` (Rule 0) or with
   `standby --resume`.
+
+## Rules moved from the core (SKILL.md 3.14.0)
+
+The core keeps one line per rule; this is the full text, unchanged except for relative links.
+
+### Stale-windows rule — silent windows are parked, on the owner's word
+
+**Windows that stopped answering are parked in stand-by, so the board, the composition
+advice and the waits show only the squad that is really there** (owner, 2026-10-31).
+- **Only the owner's word parks a window.** The coordinator shows the list, records the
+  question with `ask` or the owner's words with `decision --owner-words`, then runs one
+  `standby --reason "<owner's words>"` per window. Nothing is parked automatically.
+

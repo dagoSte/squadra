@@ -95,3 +95,20 @@ done
 The hook applies the same exit-1 rule for failed checklist items and prints unverifiable
 limits for reconciliation. The normal task, proof, independent-read and owner-authorization
 requirements remain in force.
+
+## Rules moved from the core (SKILL.md 3.14.0)
+
+The core keeps one line per rule; this is the full text, unchanged except for relative links.
+
+### Checklist rule — check at the critical moments
+
+**Run `squadra checklist --moment resume|assign|deliver|push` at the corresponding
+moment** (owner, 2026-10-31). Pass `--actor` for resume, `--task` for assignment and
+completed delivery, and `--repo` for push; add `--task` at push to check its closure
+and candidate ancestry. Run the delivery checklist after the reader ACKs the handoff.
+Read every item: `fail` stops the dependent action; `unverifiable` names a limit that
+must be reported and reconciled. `ready` means no failed item, not complete verification.
+The command reads the registry and local Git only. It grants no permission to publish.
+Follow the [checklist guide](checklist.md), including its optional
+pre-push hook example; no hook is installed automatically.
+

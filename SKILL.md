@@ -6,582 +6,93 @@ compatibility: Runs locally with Python 3.12+; the dashboard listens on 127.0.0.
 
 # Squadra 3
 
-This file is written in English for agents; always answer the user in the user's language.
+Each rule is one line with its ID and its home (→): read the home before acting on a rule you have not applied
+yet. The inventory with every rule's exit condition is [references/regole.md](references/regole.md); a rule
+leaves only through it.
 
-## Rule 0 — who coordinates, who answers
+## Start: who coordinates, who answers
+- **R01 Language.** This file is in English for agents; always answer the user in the user's language. [→](references/start.md)
+- **R02 The coordinator is Claude.** The first Claude window that invokes the skill for a piece of work coordinates; before assigning it takes a census of every Codex, Claude and Cursor window and introduces itself to each one. [→](references/start.md)
+- **R03 Codex does not coordinate.** A Codex window (or any client that cannot see and wake every window) never coordinates: it says so and gives the owner the exact sentence to type in a Claude window; with no Claude window the owner decides. [→](references/start.md)
+- **R04 Census.** Census with `squadra census` (before `init` add `--project`), Claude's peer list and the Codex sessions; a PID does not prove mail is read, and denied access is a limit, not an absent window. [→](references/start.md)
+- **R05 A coordinator exists.** A coordinator already registered: register as executor and `ping` it; a pending ping grants no coordination and a silent coordinator is reconciled, never doubled. [→](references/start.md)
+- **R06 Introduce and deliver.** Introduce yourself with `send` (identity, role, registry, next step); deliver with `transport --via codex-queue` or `--via manual`; the coordinator relays for sandboxed windows; only the recipient's ACK ends the wait. [→](references/start.md)
+- **R07 Composition.** At introduction, every resume and every join or leave, tell the owner the **Composition** advice that `status`, `census` and the dashboard print; it assigns nothing. [→](references/start.md)
+- **R08 Ping and sweep.** While coordinating use `ping --all`; `ping --sweep` records stand-by only for expired pings a transport delivered; no timer changes a state. [→](references/work.md)
+- **R09 Stand-by.** Stand-by covers every role of an identity, blocks new tasks and review handoffs and stops no process; a return needs a new ping and its ACK, or `standby --resume`. [→](references/work.md)
+- **R35 What it is.** Squadra is a shared registry with roles and proofs bound to code; explain to a newcomer what is done, by whom, at which step and who waits, with identifiers under «Technical details». [→](references/start.md)
+- **R36 Announce.** Announce the skill, read the mandate and the owner's instructions, keep given authorizations; an accepted review never authorizes publishing. [→](references/start.md)
+- **R37 Before assigning.** Before assigning read `status`, `doctor --resume`, tasks, the latest delivery and mail; every window without a native queue arms `inbox --follow` on all its names and re-arms it on expiry. [→](references/start.md)
+- **R38 Durable registry.** A new squad uses a durable registry folder outside `/tmp`. [→](references/start.md)
+- **R39 Identity and role.** Identity (the real window or session) is not a role; two roles share one identity; an alias creates no independence. [→](references/start.md)
+- **R40 Squad size.** Size the squad to the work: coordinator, the builders needed, a non-author reviewer; do not invent work. [→](references/start.md)
+- **R41 Task contents.** Every task has scope, Git base, dependencies and the agreed proof; queue delivery is not an ACK: the recipient confirms before starting. [→](references/start.md)
+- **R42 Launcher and formats.** The command is `squadra`, else `python3 <skill-folder>/scripts/squadra.py`; one `--root` for every window; upgrade every window before a new journal format. [→](references/start.md)
 
-**The coordinator is a Claude window.** The first Claude window that invokes this skill
-for a piece of work takes the coordinator role. **Before assigning or starting work, it
-takes a census of every Codex, Claude and Cursor window of the project and introduces
-itself to each one.** This is an operating rule for the agent, not an automatic election
-run by any CLI command.
+## No overlap, resume and round scope
+- **R10 No overlap.** **No overlap, ever.** Before every assignment, delivery, merge and scope change: one writer per tree and branch, one owner per file or part of a shared file; an overlap is resolved (split, `--depends`, own checkout, reassign) and recorded with `decision --task` before work starts; an unseen tree means the check is not done. [→](references/skills/sovrapposizioni.md)
+- **R11 Resume check.** At every resume and coordination handover run `squadra doctor --resume` before assigning: a blocker (exit 1) stops the resume, notices are reconciled and named; the report changes nothing. [→](references/skills/ripresa.md)
+- **R12 Storage notice.** When the report carries `storage.suggest`, tell the owner the sentence it names; any `storage … --apply` runs only on the owner's word. [→](references/skills/ripresa.md)
+- **R13 Known reds.** A test red on clean `main` is recorded once in `tests/known_reds.json` with reason, version and retiring condition; a task proof may use `--accept-known`; a new red always fails; the release proof stays strict. [→](references/skills/rossi-noti.md)
+- **R14 Stale windows.** Windows silent for two days or more are parked with `standby` only on the owner's word, after reconciling what they keep (coordinator role, tasks, reads, resources); never to hide open work. [→](references/skills/finestre-ferme.md)
+- **R15 Checklist.** Run `squadra checklist --moment resume|assign|deliver|push` at that moment; `fail` stops the dependent action, `unverifiable` is reported; `ready` grants no permission to publish. [→](references/skills/checklist.md)
+- **R16 Round scope.** Once a round's scope is fixed by a decision, a finding becomes a task only if it blocks a close; the rest goes once into the deferral decision with owner, trigger and acceptance check. [→](references/skills/perimetro.md)
 
-- A Codex window, or any client that cannot see and wake every window, does not take the
-  role when it is called first: inside its sandbox the census misses the other windows,
-  and no transport of its own wakes a Claude window. It tells the owner so in plain
-  words and gives the exact sentence to type in a Claude window, in the owner's language,
-  with the registry path, for example: «Use squadra to coordinate this project, with the
-  registry at <path>: introduce yourself to every window». If a registry exists, it
-  registers its identity with the executor role and waits for its assignment.
-- The Claude window that then takes the role introduces itself to every window,
-  including the Codex window that sent the owner there, before assigning work.
-- If the owner has no Claude window and does not want to open one, the owner decides.
-  The Codex window first states its limits: windows it cannot see, and mail the owner
-  must deliver by hand (`transport --via manual`). It never coordinates silently.
-- Look for the shared registry; use `squadra census` (before `init`, add
-  `--project <project>`). Complete the census with Claude's peer list and the
-  available Codex sessions; Cursor appears as a `cursor-agent` process. A PID does not prove that mail is read;
-  denied access or unobservable processes are limits, not absent windows. Take the census from
-  a Claude window: inside a Codex sandbox the process list hides the other windows, and the
-  report says to run it from a Claude window.
-- If you find a coordinator already registered in the same registry, register your
-  identity with the executor role and send it a `ping`. If it answers with an ACK,
-  introduce yourself and wait for the role you are assigned. A ping still pending does
-  not grant coordination, and a stand-by does not transfer roles or resources: explicitly
-  reconcile a coordinator that does not answer, without creating a second one.
-- Introduce yourself to every window you found with `send` in the registry, stating
-  identity, role, registry and next step. Use `transport --via codex-queue` for Codex
-  sessions actually identified; for Claude use peer messaging if available, keeping
-  its receipt, otherwise `transport --via manual` (also for Cursor).
-  The coordinator is an unsandboxed Claude window and relays mail a sandboxed window
-  cannot deliver: `squadra transport --actor <coordinator> --message <ID> --via codex-queue`
-  for a Codex recipient, `--via manual` otherwise; the record names it in `relayed_by`,
-  and only the recipient's ACK ends the wait. Every codex-queue attempt is recorded and
-  exits 1 unless delivered. A Codex window needs the registry folder among its writable
-  roots (`codex --add-dir <registry>`).
-  A process without a verified session remains a recipient to reconcile: do not
-  invent its identity and do not declare the introduction complete.
-- With the introduction, at every resume and whenever a window joins or leaves, the
-  coordinator tells the owner, in the owner's language, how to split the work: the
-  **Composition** advice that `status`, `census` and the dashboard print (Claude and Codex
-  windows counted, the coordinator's left out, the source named). One client only: open a
-  window of the other model. An imbalance such as 2 Claude + 1 Codex: the lone Codex window
-  reads everything, so give it a build lane or open another Codex window. Balanced: pair
-  each builder with a reader of the other model, in the final block the planned reader of
-  its delta. It is advice: it assigns and refuses nothing.
-- While coordinating, use `ping --all` and forward the messages; the recipient's ACK
-  is the answer. `settings` configures `alive` (default 300 seconds). Time is computed
-  at read time. `ping --sweep`, run by the coordinator, records stand-by for expired
-  answers to pings a transport delivered (`delivered: true`); no timer changes the state.
-  Mail to a Codex window that no transport delivered is listed «to forward» for the
-  coordinator, who relays it with `--via codex-queue`.
-- Stand-by applies to every role of the same identity and prevents new tasks and
-  review handoffs. A new `ping --to <window>` and its ACK let the coordinator's next
-  sweep record the return; `standby --resume --reason ...` records it explicitly. An old
-  ACK is not enough. Do not terminate processes, release resources or reassign work merely
-  because a window is on stand-by.
+## Parallel work
+- **R17 Automatic lanes.** Automatic lanes: `task --paths GLOB` creates lanes for independent groups through balance; shared files go to `<PARENT>.L0`, owned by the coordinator; preview with `lanes`, never force a split. [→](references/work.md)
+- **R18 Parallelism.** Parallelism is the value: assign independent work at once to every available window; separate trees, contract first and frozen, seam answers recorded as decisions; dependencies, reservations and proofs remain. [→](references/work.md)
+- **R19 Double final read.** The final read of a release is done together by a Claude reader and a Codex reader, neither an author of what it reads. [→](references/work.md)
+- **R20 Read by the other model.** Codex writes and Claude reads; Claude writes and Codex reads: the read that counts comes from the other model, unless `--same-client-reason` records why. [→](references/work.md)
+- **R21 Coordinator integrates.** The coordinator builds only the integration and the release; lanes go to builders chosen with `squadra balance`, and says so when it must build a lane itself. [→](references/work.md)
+- **R22 Coordinator mail.** The coordinator reads its own mail in the registry at every step. [→](references/work.md)
 
-Read [startup and presentation](references/start.md) for the complete commands and
-[keep-alive and return](references/work.md#keep-alive-e-stand-by) during the work.
-
-## Fundamental rule — no overlap between coordinated windows
-
-**The coordinator always checks that the windows it coordinates do not overlap**, so that
-their work and their commits never collide (owner, 2026-10-30). It is a fundamental rule:
-no deadline, budget or stand-by suspends it.
-
-- **Before every assignment** (`task`, `reassign`, a fix round, a resume) the coordinator
-  compares the new work with every open task and every window's declared next step:
-  repository and checkout, branch, owned files and parts of shared files, Git base,
-  reserved resources (gates, ports, databases, `cpu-heavy`) and the commits each window
-  is expected to make.
-- **One writer per tree and per branch.** Two windows never build in the same checkout or
-  commit to the same branch; two lanes never own the same file or the same part of a
-  shared file. Shared contracts are written first and then frozen (Rule 1).
-- **An overlap found is resolved before work starts**: split the scope, sequence it with
-  `--depends`, move one lane to its own checkout, or reassign. The choice is recorded with
-  `decision --task`; an overlap is never left for the merge to sort out.
-- **During the work** the coordinator rechecks at every delivery, merge and mail that
-  changes a scope; a window that needs another lane's area asks the coordinator (Rule 5).
-  A commit outside a window's owned paths is a finding, raised at once.
-- When the coordinator cannot see a window's tree or branch, the overlap check is
-  **not done**: it says so and asks that window for its checkout, branch and changed paths
-  before assigning.
-
-Follow the [overlap check](references/skills/sovrapposizioni.md) at each of those moments.
-
-## Resume rule — one readiness check before any assignment
-
-**At every resume, and whenever coordination passes to another window, the coordinator runs
-`squadra doctor --resume` before assigning work** (owner, 2026-10-30). It is read-only:
-the quick registry checks plus, in one report, the interpreter in use, every checkout of
-open tasks and active windows (exists, Git, branch, head, uncommitted changes, commits after
-the last tag, distance from upstream at the last fetch) and the active windows silent for
-two days or more.
-
-- **A blocker stops the resume** (exit 1): an open task whose checkout is missing or not a
-  Git checkout. Restore or re-clone it, or supersede the task, before assigning anything.
-- **Notices are reconciled, not ignored**: ping silent windows or record their stand-by,
-  fetch before trusting the release distance, and say which notices remain open.
-- The report changes nothing: it never fetches, stops, reassigns or archives. Its
-  checkouts feed the [overlap check](references/skills/sovrapposizioni.md).
-- **Storage notice.** When the report carries `storage.suggest` (checkpoints made before 3.13
-  that are not registered, or more than 1 GB of frozen candidates), tell the owner, in the
-  owner's language, the sentence it names ("Use squadra to compact the storage of the registry
-  at <path>") and what it does: `storage adopt`, `storage compact` and `storage purge`, each
-  previewed first. Run any `--apply` only on the owner's word; nothing is compacted at opening.
-
-Follow the [resume check](references/skills/ripresa.md).
-
-## Known-reds rule — a red already on main is named once
-
-**A test that fails on clean `main` is recorded once in `tests/known_reds.json`**, with
-its reason, the version it appeared in and the condition that retires it (owner,
-2026-10-31). Nobody re-investigates it at every proof.
-
-- The parallel runner reads the list and prints `KNOWN RED`, `NEW RED` and
-  `STALE KNOWN RED` lines; its summary adds `known_red`, `new_red`, `stale_known` and
-  `only_known_reds`. The strict `passed` verdict never changes.
-- A task proof may be agreed as `tools/parallel_tests.py --accept-known`: it exits 0
-  only when every failure is a listed known red. **A new red always fails**, and so do
-  crashes, skips, missing tests and count mismatches.
-- A known red that passes again, or is no longer collected, makes `--accept-known` fail
-  until it is removed from the list: the list never outlives the defect.
-- **The release proof stays strict** (Rule 9): never `--accept-known`. A known red blocks
-  a release until it is fixed or the owner records its deferral in a decision.
-- A test enters the list only after it was shown red on the clean `main` head, with a
-  task or decision that owns its fix; the coordinator adds it in its own commit.
-
-Follow the [known reds guide](references/skills/rossi-noti.md).
-
-## Stale-windows rule — silent windows are parked, on the owner's word
-
-**Windows that stopped answering are parked in stand-by, so the board, the composition
-advice and the waits show only the squad that is really there** (owner, 2026-10-31).
-
-- `squadra doctor --resume` lists every active window silent for two days or more (since
-  its last answer or, if later, its registration), with
-  `archivable` and, when it is not, what `keeps` it: a coordinator role (reconcile it with
-  Rule 0), open tasks it owns or reads (reviewer or pool), resources it holds. Stand-by
-  parks every seat of an identity, so these checks cover every seat sharing it. An
-  archivable identity carries one exact `standby` command; its other seats name it in
-  `parked_with`.
-- **Only the owner's word parks a window.** The coordinator shows the list, records the
-  question with `ask` or the owner's words with `decision --owner-words`, then runs one
-  `standby --reason "<owner's words>"` per window. Nothing is parked automatically.
-- A window that keeps something is reconciled first: ping it, `reassign` its reads,
-  supersede its tasks, release its resources through their owner. It is never parked
-  to hide open work.
-- Stand-by keeps identity, history, authors and budgets and stops no process; a parked
-  window leaves the composition advice, the waits and `silent_windows`. A window that
-  answers a new `ping` returns as described in Rule 0.
-
-Follow the [stale windows guide](references/skills/finestre-ferme.md).
-
-## Checklist rule — check at the critical moments
-
-**Run `squadra checklist --moment resume|assign|deliver|push` at the corresponding
-moment** (owner, 2026-10-31). Pass `--actor` for resume, `--task` for assignment and
-completed delivery, and `--repo` for push; add `--task` at push to check its closure
-and candidate ancestry. Run the delivery checklist after the reader ACKs the handoff.
-Read every item: `fail` stops the dependent action; `unverifiable` names a limit that
-must be reported and reconciled. `ready` means no failed item, not complete verification.
-The command reads the registry and local Git only. It grants no permission to publish.
-Follow the [checklist guide](references/skills/checklist.md), including its optional
-pre-push hook example; no hook is installed automatically.
-
-## Round-scope rule — what a round finds waits for the next one
-
-**Once a round's scope is fixed by a recorded decision, a problem found during the round
-becomes a new task only if it blocks closing one of the round's tasks** (owner,
-2026-10-31). Everything else goes into the round's deferral decision with an owner, a
-trigger and an acceptance check, and is opened as a task at the next round's kickoff.
-
-- Fix the scope with `decision` when the round starts: the tasks it closes, nothing else.
-- A finding that blocks a close (a red proof, a read asking for changes) is handled in
-  that task's fix round (Rules 7 and 10), including the bounded fix tasks Rule 10
-  requires; those carry only the assigned changes and never unrelated scope.
-- A finding that does not block is recorded once, in the deferral decision, linked with
-  `--follows decision:<scope decision>`. No new `task` is created for it in this round.
-- Only the owner's word brings a deferred item into the current round; record it as a
-  decision that follows the scope decision.
-- An instrument error (a lost lock, an overloaded machine, a shallow copy) is resolved
-  where it happens and recorded as a disposition; it does not widen the round either.
-
-Follow the [round-scope guide](references/skills/perimetro.md).
-
-## Rule 1 — parallel work
-
-For automatic lanes, create the coordinator's integration task with repeated
-`task --paths GLOB`. With at least two independent groups and available builders,
-Squadra assigns lanes through balance, using each builder's registered checkout of
-the same project and a non-author reader of the other model. Shared files go to
-`<PARENT>.L0`, owned by the coordinator, and other lanes depend on it. Register separate
-checkouts first: no checkout or window is created. Preview an existing parent with
-`lanes --task ID --paths GLOB`; only the coordinator applies it with `--apply --actor COORD`.
-`task --lanes none` keeps a single task. Windows silent for two days are skipped, the
-parent's reader never builds a lane, and each lane gets its own brief. Inspect the reasons
-when no lanes are created; never invent another model, ignore stand-by or reuse a busy
-window to force a split.
-
-The squad's value is parallelism. The coordinator immediately assigns independent work
-to every available window, Codex, Claude or interactive Cursor: no window stays idle
-while there is independent work to give it.
-
-- Builds on separate trees, one builder per tree; reads of different tasks run
-  together on frozen copies.
-- A large job is split by area after the shared contract (data format, interfaces)
-  is written: formats, interfaces, fixed limits and owned files are settled before
-  lanes start. The coordinator relays seam questions between lanes and records the
-  answer as a decision. The parts proceed together and are joined afterwards.
-- The final read of a release is done together by a Claude reader and a Codex
-  reader, neither of them an author of what it reads.
-- Codex writes and Claude reads; Claude writes and Codex reads (owner, 2026-10-23).
-  The required non-author read comes from the other model; a same-client read only adds
-  to it. `task --reviewer` refuses a reader of a Claude or Codex owner's own client and
-  names both, unless `--same-client-reason` records why; `check` and `close` need an
-  accepted current read from the other client or that reason. Tasks recorded before
-  3.10.4, and manual or Cursor authors, are not judged by it. A final-read task whose
-  reader shares its owner's model names its paired read of the other model in that reason.
-- The coordinator builds only the integration and the release. Lanes go to the
-  builders, chosen with `squadra balance`, so the coordinator keeps its context for mail,
-  routing and seams. When no other builder is available, the coordinator may build a
-  lane and says so in its output.
-- The coordinator reads its own mail in the registry at every step: a window may
-  receive work directly from the owner and report it only there.
-- Dependencies, reservations, budgets and reader independence remain: parallelism does
-  not skip proofs.
-
-## Rule 2 — the table always visible
-
-Every update to the owner, from any window, shows the state of the work by actor and
-state, taken from the registry with `squadra board`: three groups **In progress**,
-**To do**, **Done**, columns **Window | Work | State | Time (approx.)**, and «Done X of Y» at the end.
-The live board measures elapsed time: assignment to close for Done, time since the first
-recorded start (or assignment) for In progress, and «—» for To do, rounded to minutes,
-hours or days. The saved projection keeps Done durations but shows «—» for In progress,
-so it retains no running age. The coordinator adds an approximate estimate, explicitly marked as
-an estimate: remaining time for In progress, total task time for To do.
-Before the table one sentence says where things stand and what the owner needs; after
-it, «You now: …» («Tu adesso: …» in Italian). No invented percentages: a state
-declared but not recorded is written as such.
-
-## Rules 3–10 — method
-
-- **Rule 3 — read before you cite.** A count, a commit, task, message or proof id, or a
-  file path enters a report only after it was read from a command's output in this step,
-  never from memory. A wrong id already given is corrected in a new message.
-- **Rule 4 — record the decision before changing a pinned test.** When a requirement that
-  a test pins is withdrawn or changed, first record the decision (`squadra decision`, with
-  the owner's words when they are the source), then change the test and the code together.
-  Never edit a test only to make it pass.
-- **Rule 5 — parallel lanes own their files.** Each lane is told which files, and which
-  parts of a shared file, it may change. The coordinator merges the lanes with three-way
-  merges, resolves conflicts and checks that every lane's delivered bytes are in the result.
-  A lane that needs another lane's area asks the coordinator.
-- **Rule 6 — state the cost before spending money.** Before any paid call (model APIs,
-  voice, images, cloud runs) the window states the expected cost and a cap, stops at the
-  cap, and reports what was spent and on what. No secret key enters chat, logs or files.
-- **Rule 7 — the final block is the default.** Merge each lane on delivery with its
-  own green proof, without a per-lane read. Keep a delta ledger covering lane heads,
-  fixes, coordinator commits and merge resolutions, with the readers for each delta.
-  Freeze the integration as `<milestone>-rcN`; a Claude reader and a Codex reader
-  together cover every delta and the seams, split by author so neither reads its own
-  work; for each delta the read by the other model than its author is the one that
-  counts (Rule 1). One fix round follows on branches from that candidate, then one
-  re-read block covers only the fix deltas, again by non-authors. The read tasks
-  supersede the lanes and fixes they cover; proof, handoff ACKs, independence and
-  spent budgets remain. Only grave findings block. Record unresolved non-grave findings in one deferral
-  decision; at the next milestone's kickoff create each carry-over task with its
-  owner, acceptance check and source finding. Runtime/native proofs must bind the
-  exact release-head sources. A coordinator may delegate its non-author read to a
-  fresh-context subagent, then verify its main claims before recording the verdict;
-  delegation never makes the coordinator's own work independent.
-  On the owner's word, record an alternative: the former per-lane read with fixes
-  read together at release, or individual corrective re-reads. A plan read may precede
-  building on the owner's word or when a lane touches a trust boundary. Follow the
-  [final-block workflow](references/work.md#final-block) for task and evidence details.
-- **Rule 8 — faster next time.** At every close the coordinator reads where the task's
-  time went (the dashboard measures waiting for the acknowledgement, building, waiting
-  for the read and fix rounds), writes one line «Faster next time: …» in its closing
-  output, and applies it to the next assignment.
-- **Rule 9 — the release leaves on time.** These are rules, not coordinator choices.
-  - **Cut-off.** When a release's scope is fixed, its cut-off is set two hours later,
-    unless the owner names a time, and recorded as a decision. At the cut-off only lanes
-    with a green proof and coverage by the required non-author reads enter the release.
-    In final-block mode that coverage comes from the frozen candidate's reads. The others
-    move to the next patch release, recorded as deferred with «missed cut-off». Only the
-    owner's word extends a cut-off.
-  - **Scoped final reads.** In the default mode, the ledger assigns every delta and
-    integration seam: conflict resolutions, version, pins, mirrors and release docs.
-    The re-read block covers only the fix deltas. If the owner chose per-lane reads,
-    the final reads cover previously unread fixes and the integration seams, from
-    lane heads to release head. Whole-suite and required runtime/native proofs bind
-    the exact release head. Small light tasks registered
-    `--read-at-gate` have no read of their own, so the release task (`--release-gate`)
-    must cover each of them, or the coordinator explicitly defers one
-    (`decision --defer-read … --gate …`).
-  - **Release proof.** When the repository has the parallel runner
-    (`tools/parallel_tests.py`), it is the release's whole-suite proof, with collected
-    equal to executed.
-  - **Stalled reads.** A delivery left without an acknowledgement for 15 minutes, while
-    another non-author reader is free, moves to that reader. A reviewer pool
-    (`task --reviewer` repeated) does this by itself: the first free member claims it.
-- **Rule 10 — a fix round fixes only the problem.** When a read asks for a change:
-  - gather the findings into one round of bounded fix tasks on branches from the frozen
-    candidate, each carrying only its assigned changes;
-  - merge their proven deliveries and read the fix deltas in one non-author re-read
-    block (Rule 7). Accepted reads on the rest stand, recorded by a decision. Under an
-    owner-selected alternative, use its declared corrective-read arrangement;
-  - a fix covered by that block carries its normal proof and red-to-green evidence
-    in the task output. Do not register a challenge agreement for it: a declared
-    defect fix cannot be superseded by an ordinary read task and binds an interpreter;
-  - the proof is the parallel whole-suite runner when the repository has it: it is
-    complete and faster than a serial subset (measured on 2026-10-14: 953 tests in
-    about 105 s, against 228 s for the 416 tests that read the changed files).
-    Without it, run the tests that read the changed files, and the whole suite when
-    code changes;
-  - tell the assigned block readers at once. Remaining grave findings keep the gate
-    closed; unresolved non-grave findings follow Rule 7's carry-over decision.
-
-## What it is
-
-A squad with a shared registry, recognizable roles and proofs bound to the delivered
-code. The coordinator keeps the thread; the reviewer checks a frozen candidate without
-becoming its author. Windows can use Codex, Claude or Cursor.
-Cursor works only as an interactive window: squadra never starts it by itself, because
-Cursor runs team, user and enterprise hooks without a sandbox (`references/runtime.md`).
-
-Whoever opens the dashboard may know neither the project nor this skill. Explain first
-what is being done, who is doing it, which step it has reached and whose answer it is
-waiting for. A candidate is a frozen version to check; a review is the check by someone
-who did not write it; an ACK is the recipient's explicit confirmation.
-Use the task's title or summary to describe the windows. Identifiers, code
-fingerprints, paths and event numbers go in «Technical details».
-The landing page must make the project, the current work, progress, waits and the path
-from decisions to results readable; keep the detail available on request.
-In explanations of presence, a ping is a call that asks for confirmation; stand-by
-suspends new tasks and does not stop processes already started.
-
-## Start and resume
-
-Announce the skill when you apply it. Read the project's mandate and the owner's
-instructions first. Keep the authorizations already given and the release boundaries:
-an accepted review does not grant a new authorization to publish.
-
-1. Look for an existing registry and read `status`, `doctor --resume`, tasks, the latest delivery
-   and mail before assigning work. Do not replay old queues blindly.
-   All windows of the same squad use a single shared registry; separate clones do not
-   create separate mailboxes. `posta/exchange-YYYY-MM-DD.md` is the daily projection
-   of the events, not a second source to edit. Use the current `inbox` when receiving
-   or transporting messages; a complete mailbox export is not a live queue. `inbox`
-   prints the messages still waiting for an ACK plus the latest ten; open one in full
-   with `--message ID` and the whole history with `--all`.
-   Every window without a native queue, including every Claude window and the
-   coordinator, arms `inbox --follow` for all its agent names on joining/resuming
-   (include `coord` for the coordinator). Re-arm on expiry with the same recipients and the automatic saved cursor; use `--since` only for an explicit replay. On restart a pending row lists mail still needing ACK; it does not trigger `--until-first`.
-   Use Claude Code Monitor, a background command with `--until-first` (no 30-minute
-   limit; it wakes the window when mail arrives), or an actively watched background
-   process, as shown in
-   [following mail](references/work.md#following-mail-without-a-native-queue).
-   A saved cursor is not an ACK. Status cannot show a follower that stopped: the window re-arms it itself.
-   Following never confirms a message: read it and explicitly ACK when required.
-2. For a new squad choose a durable folder outside `/tmp`. Use
-   `references/start.md` to initialize it and register windows/skills/versions.
-3. Distinguish **identity** (the actual window/session) from **role**. If a window
-   has two roles, register the same identity. An alias does not create independence.
-4. Choose a squad sized to the work: coordinator, the builders needed, a non-author
-   reviewer. Two builders are useful for independent scopes; do not invent work to
-   keep them busy. Use separate checkouts and assign the owned paths.
-5. Every task contains scope, Git base, dependencies and the agreed proof command.
-   Queue delivery is not an ACK: the recipient must confirm in the registry before
-   starting. An unreachable client stays pending.
-
-The installed command is `squadra`. Without the launcher use
-`python3 <skill-folder>/scripts/squadra.py`, also for the `squadra …` instructions the CLI
-prints: the `/plugin` install puts no launcher on PATH. Do not guess user paths.
-`--root` and `SQUADRA_ROOT` select the same registry for every window.
-New 3.11 tasks and reader transfers use journal format 3. Upgrade every reader and
-writer before their first use; old clients refuse that format rather than applying
-old delivery rules. A transfer changes only the reader: `reassign --task ID
---reviewer READER --reason ...`, with a fresh ACK and the same proofs and budget.
-`resource status --name cpu-heavy` shows the reservation and live queue tickets;
-`resource acquire --task ID` scopes a reservation. Never infer a running process from
-its reservation. Identical verdict retries return the same receipt; `review --amend
-RECEIPT` explicitly revises a verdict and consumes the normal round budget.
+## Method
+- **R23 Table always.** Every update to the owner ends with the `squadra board` table (In progress, To do, Done; Window | Work | State | Time), one sentence before it and «You now: …» after it; estimates are marked, no invented percentages. [→](references/work.md)
+- **R24 Read before you cite.** Read before you cite: counts, ids and paths enter a report only from a command output read in this step; a wrong id is corrected in a new message. [→](references/work.md)
+- **R25 Decision before a pinned test.** Record the decision (with the owner's words when they are the source) before changing a test that pins a requirement; never edit a test only to make it pass. [→](references/work.md)
+- **R26 Lanes own files.** Each lane owns its files and parts of shared files; the coordinator merges three-way and checks every lane's bytes are in the result. [→](references/work.md)
+- **R27 Cost before money.** Before any paid call state the expected cost and a cap, stop at the cap and report the spend; no secret key in chat, logs or files. [→](references/work.md)
+- **R28 Final block.** Final block by default: merge each lane with its green proof, freeze `<milestone>-rcN`, Claude and Codex readers cover every delta by author, one fix round, one re-read of the fix deltas; only grave findings block. [→](references/work.md)
+- **R29 Faster next time.** At every close write «Faster next time: …» from where the time went, and apply it to the next assignment. [→](references/work.md)
+- **R30 Cut-off.** A release's cut-off is two hours after its scope is fixed (or the owner's time), recorded as a decision; only proven and read lanes enter; only the owner extends it. [→](references/work.md)
+- **R31 Scoped final reads.** Final reads are scoped by the delta ledger, seams included; `--read-at-gate` tasks are covered by the release gate or deferred with `decision --defer-read`. [→](references/work.md)
+- **R32 Release proof.** With `tools/parallel_tests.py` the release proof is the whole suite, collected equal to executed. [→](references/work.md)
+- **R33 Stalled reads.** A delivery without ACK for 15 minutes moves to a free non-author reader; a reviewer pool does it by itself. [→](references/work.md)
+- **R34 Fix rounds.** A fix round fixes only the problem: bounded fix tasks from the frozen candidate, red-to-green evidence, whole-suite proof, one re-read of the fix deltas. [→](references/work.md)
 
 ## Work, verification and limits
+- **R43 Forecast.** At task creation, briefing and start read the printed forecast; follow its route or record why not in a decision. [→](references/skills/previsione.md)
+- **R44 Balance.** At task creation, briefing and start read the short balance printed after the forecast; follow it or record why not; an author is never a reader candidate. [→](references/skills/bilanciamento.md)
+- **R45 Triage.** At creation, every finding and every scope change apply the five IT/EN triage questions: full path, fix now with proof, or one code read; no pattern or score decides. [→](references/work.md)
+- **R46 Only grave blocks.** Only grave findings block; others are fixed with proof and a non-author check, or deferred with assignee, trigger and acceptance check. [→](references/work.md)
+- **R47 Reader chosen first.** Choose the reader at once with `task --reviewer`: available, not an author, of the other model; after the ACK of the handoff from `deliver` it reads without another go. [→](references/work.md)
+- **R48 Proven capability.** Before assigning a browser or an installation ask for a receipt of a probe of the real capability; without it the step is not executed. [→](references/work.md)
+- **R49 Skills per task.** Choose skills per task, recording path and hash; no council, audit or full suite only because they exist. [→](references/work.md)
+- **R50 Cost follows the change.** The cost follows the change and is said first: state the minutes; reads and full suites only when asked or due; a small change gets at most one check. [→](references/work.md)
+- **R51 Budgets.** Budgets are fixed before the cycle (3 plan reads, 1 build + 2 fixes, 2 code reads); at the limit keep candidate and findings; only the owner extends with `decision --extend-budget`. [→](references/work.md)
+- **R52 Light route.** `task --route light` (light-v1: at most 80 lines in 4 files, 16 KiB) for small reversible changes; outside the limits or after a rejected read, `route --full`. [→](references/work.md)
+- **R53 Bound proof and delivery.** The builder runs `prove` on frozen code and delivers with `deliver`; a source change invalidates the proof; review and close bind the delivered copy. [→](references/work.md)
+- **R54 Requirements.** Explicit requirements use `--requirements-file`; proof and read each declare `--covers ID`; `check` and `close` refuse missing coverage. [→](references/work.md)
+- **R55 Reviewer.** The reviewer reads diff and contracts, keeps probes in isolated copies, separates product failures from instrument errors and never fixes the candidate. [→](references/work.md)
+- **R56 Completed turns.** A runner exit 0 without a completed turn, coverage or valid answer fails; `changes-required` is not acceptance. [→](references/work.md)
+- **R57 Check then close.** The coordinator runs `check`, then `close`, and writes which checks were real, targeted, provisional, skipped or still needed. [→](references/work.md)
+- **R58 Reservations.** Reserve gates, ports and databases in the registry before using them; never steal a resource because its heartbeat is old. [→](references/work.md)
 
-### Previsione: use comparable history before choosing a route
+## Owner, decisions and outputs
+- **R59 Questions to the owner.** Record a question to the owner with `ask` before showing it, the answer with `decision --answers`; relayed words add no authorization. [→](references/work.md)
+- **R60 Needs you and waits.** «Needs you» and «Who is waiting» are derived at read time from recorded requests and waits; nothing is inferred from chat or mail. [→](references/work.md)
+- **R61 Briefs.** After `init` record the project brief and after each `task` its brief (`brief --project`, `brief --task`); only the coordinator writes them. [→](references/work.md)
+- **R62 Decision links.** Link every decision to its sources with `--follows` and `--task`; replace a task with `task --supersedes` or `supersede`; no link is inferred. [→](references/work.md)
+- **R63 One output per step.** Save one `squadra output` per completed step that adds information; no duplicated narration; optional `da-ricordare.json`; never secrets or private paths. [→](references/work.md)
+- **R65 Real receipts.** Real ACKs, decisions, pauses and native receipts are mandatory and never inferred from chat; an unwritable registry is declared, never claimed saved. [→](references/work.md)
 
-At task creation, briefing and start, read the automatically printed forecast and
-follow [previsione](references/skills/previsione.md). The coordinator follows the
-suggested route unless it records a reason to deviate in a decision linked to the
-task. A historical estimate never overrides triage, permissions or light-route
-eligibility. Missing scope or fewer than three complete comparable tasks means no
-numeric estimate. `squadra forecast --task ID` is read-only and records no activation;
-the System skills page labels it **Computed on demand** rather than inventing a count.
-
-### Bilanciamento: follow the suggestion or record why not
-
-At task creation, briefing and start, read the short balance printed after the
-forecast and follow [bilanciamento](references/skills/bilanciamento.md): it names the
-first window for building and for reading, each with its reason, in about 2 KB with
-the forecast and 10 windows; `squadra balance --task` prints the whole ranking. The
-coordinator follows the suggestion or records the reason in a decision linked to the task. The advice assigns nothing and
-never overrides independence, stand-by, route or permissions. An author is never a
-reader candidate. Tokens and quota appear only with `squadra balance` or the Balance
-page. Claude quota is an estimate against a reference the viewer declares: never quote
-it as a measurement.
-
-
-Read `references/work.md` for tasks, plan, proofs and review. Read
-`references/runtime.md` only if you must invoke a client automatically.
-For the dashboard plugins' data and declared settings read [folders, schemas and limits](references/plugins.md); their labels do not authorize actions on the registry.
-
-- At creation, at every finding or change of scope use the [five IT/EN
-  questions](references/work.md#triage-in-una-pagina). The author proposes, the
-  coordinator records the choice, and the non-author checks it in the assigned block.
-  Q1 yes or unknown, Q2 unresolved, hidden material harm under Q5, or a mandate
-  require the **full path**: full proof, non-author read and the checks due. Plan
-  reads follow Rule 7's option; an already required plan stays required.
-  In the other cases choose **fix now with proof** (reversible
-  remedy, no choices, short non-author check) or **one code read** (scope, bound
-  proof, independent read).
-  No regex, path pattern or score decides; no required check is dropped.
-- **Only grave findings block**, including missing mandatory security proofs.
-  Final-block carry-overs follow Rule 7. For standalone work, other findings are
-  fixed with proof and non-author verification, or recorded
-  for later: their own task, or a decision that names the task, with an assignee,
-  trigger and acceptance check, linked from the report and visible until closed.
-  A deferred requirement needs an authorized disposition; do not declare it satisfied.
-- Choose from the start, with `task --reviewer`, an available identity different from
-  the authors and of the other model: Claude reads Codex work, Codex reads Claude work.
-  Readers of different tasks work in parallel on frozen copies; one
-  builder per tree. Dependencies and reservations of gates, ports and databases remain.
-  After the ACK of the handoff generated by `deliver`, the reader starts the read
-  already assigned without another «go» from the coordinator; the command does not
-  invoke the client.
-- Before assigning a browser or an installation, ask the window for a receipt of a
-  probe of the real capability. If it is missing, declare the step not executed and
-  cite the last valid proof (or its absence); do not hand commands to the owner.
-  Browser: timeouts for the connection, for each call and for the whole step; cleanup
-  of your own processes only. Capability and delegation do not exceed the environment's permissions.
-- Skills are chosen **for each task**, recording path and hash. Do not launch a
-  council, an adversarial audit or the full suite just because they are available.
-- **The cost follows the change and is said first.** Before starting, say the expected
-  minutes. A read by another window, or the whole suite, runs only when the owner or the
-  coordinator asks for it, as Rules 7 and 9 do for a release; for an important change,
-  suggest it with its minutes. A small change is simply made, with at most one check,
-  and recorded with `output`; `task --route light` is for when a read is wanted. If the
-  time grows, say so and why before going on.
-- Fix the budget before the cycle: by default 3 plan reads, 1 build + 2 fixes, 2 code
-  reads. An explicit timeout per process. At the limit keep the candidate, the findings
-  and the concrete question; do not restart with an alias or an identical task to reset
-  the counter. A budget decision must be explicit and recorded; a narrow corrective
-  reread also consumes the same budget, and no new cycle starts. On the owner's word the
-  coordinator extends one task with `decision --extend-budget TASK --stage plan|code --by N
-  --owner-words ... --channel ...`; every window must run 3.14+ before it is used.
-- For a small, reversible change after the same triage, the coordinator may declare
-  `task --route light`: **light-v1, at most 80 added+deleted lines in 4 files and 16 KiB of changed lines, P2**.
-  All operational scripts, security, instruction and normative contract paths stay
-  protected; unknown paths refuse. Counts include tests/docs from the original
-  clean base, not the latest commit. No plan read, agreed targeted proof, one code
-  read; independence, ACKs, native/source/contract binding, covers, required domain
-  evidence, pauses, resources, budgets, final release reads and typed publication
-  consent remain. The registry rechecks at proof/delivery/check/close, also inside
-  Store. Outside limits or after a rejected read, use coordinator-only `route --full`:
-  keep base/history/counters, invalidate old bindings, require new proof/read; no
-  reverse or budget reset. The steady refresh example counted 23 lines in 2 files,
-  so its six targeted loading tests could replace the suite, but its browser check
-  stayed required. See [exact policy, refusals and promotion](references/work.md#light-route).
-  Frozen squads must explicitly upgrade every writer first; old CLI versions ignore
-  this metadata, so no mixed-version enforcement claim or automatic migration.
-- The builder runs `prove` on frozen code and delivers with `deliver`. The command
-  keeps argv, stdout/stderr, the native result and the fingerprint of tracked and
-  untracked sources. Before delivery a source change invalidates the proof. New CLI
-  tasks materialize the proved source at delivery; review and close bind that copy,
-  so the builder can continue. Historical tasks retain their live-source bindings. Choose the
-  reviewer with `task --reviewer`: `deliver` atomically saves an immutable packet
-  and a message bound to the candidate. The real ACK of that message is required; `advance`
-  reconciles the handoff without building, approving or invoking a model.
-- For requirements to make explicit use `--requirements-file`; proof and read each
-  declare `--covers ID` separately. `check/close` refuse missing coverage, or coverage
-  that refers to old sources. The reviewer judges whether the assertions are sufficient:
-  the registry checks completeness and links, not the meaning of the test.
-- The reviewer reads the diff and the contracts, chooses its own probes when needed and
-  keeps originals, positive controls and mutants in isolated copies. It distinguishes
-  product failures from instrument errors. It does not fix the candidate.
-- The client runner distinguishes a completed turn, a structured verdict and a
-  recorded review. An exit 0 without completion, coverage or a valid answer fails.
-  A successful turn with `changes-required` is **not** acceptance.
-- The coordinator verifies `check`, then `close`. Recording a declared result does not
-  mean having reproduced it. Write exactly which checks are real, targeted,
-  provisional, skipped or still needed.
-- Reserve gates/ports/databases in the registry before using them and also consult the
-  project's reservations. The registry does not control windows that do not adopt it.
-  Do not steal a resource because its heartbeat is old.
-
-## Needs you — requests and waits
-
-The coordinator records a question to the owner with `ask` **before showing it**:
-options with ID, label and the sentence to say, the task and the relevant proofs. After
-the answer it records `decision --answers` with the choice and the channel `typed-here` or `relayed`.
-Relayed words are receipts: they add no executive authorization.
-A question is closed once, with an answer or `--withdraws`.
-
-`status`, the dashboard and the complete `stato.md` written by `squadra export` use the
-same derived view: «Needs you» contains open requests, exhausted budgets and pause; «Who
-is waiting» contains the waits between windows. Ordinary commands leave only a short
-summary in `stato.md`.
-No question is inferred from the chat, from mail bodies or from the `output.next` text.
-An empty panel only means that there are no recorded requests.
-The dashboard shows the requests and the overview of the work first; the details are below.
-Waits are computed at read time with `waits(state, now, settings)`; explicit thresholds
-in seconds, no frozen age in the projections. A warning does not authorize retries,
-reassignment or releasing resources; actual reconciliation is needed.
-Read `references/work.md` for the commands.
-
-## Explaining the work and following decisions
-
-Someone arriving now must understand the project without knowing acronyms or identifiers.
-Right after `init` the coordinator records the project's **brief** with
-`brief --project --file <text>`: UTF-8 text of at most 8192 bytes, with the goal
-in the first paragraph and, if needed, `## Steps` and `## Glossary` (or `## Passi` and `## Glossario`). After each `task`
-it records the task's brief with `brief --task <ID> --file <text>`: the first line
-becomes the task's name throughout the dashboard, the rest says why it exists, who it
-is for and when it will be finished. Only the coordinator writes briefs; a new one takes
-the place of the previous one on the page and the history remains. A brief does not change the state.
-
-Link every decision to what it comes from: `decision --id <name>`, `--task <ID>` for the
-tasks it concerns and `--follows ask:<id>` or `--follows decision:<id>` for earlier
-entries, resolved once when it is recorded. An owner instruction without a
-recorded question carries `--owner-words` and `--channel typed-here` or `relayed`.
-No link is inferred from text, mail or closeness in time, and a link
-does not close a question: that takes `--answers` or `--withdraws`. `task --supersedes <ID>`
-replaces an open task without erasing its history; if the replacement already exists,
-`supersede --task <OLD> --by <NEW> --reason "…"` records the same replacement
-after the fact, with the same refusals. The **Decisions** view
-shows the graph: each box is a recorded fact, solid lines are
-recorded links, dashed ones only say «happened later, in the same
-task». Read `references/work.md` and `references/start.md` for the commands.
-
-## One substantial output per completed step
-
-Save with `squadra output` a result, a decision, a block or a handoff
-that adds information: task, outcome, proofs, next step and receipt.
-Normal progress is read in the registry; do not duplicate assignments or
-generated handoffs with manual «ready» messages, nor every exchange in the chat with an
-output. A proof already recorded must not be rewritten as narration with nothing new.
-At close you may attach `da-ricordare.json` (`form: da-ricordare/1`) to the output:
-the IT/EN questions and the format are in `references/work.md`. If a memory service is
-in use, declare at close and do not propose the same item through another
-channel. Never secrets, personal data or private paths: artifacts stay
-in the registry and cannot be removed after an accidental publication.
-An installed plugin may ship `$HOME/.squadra/plugins/<name>/AGENTS.md`: instructions for agents.
+**R64 Plugin instructions.** An installed plugin may ship `$HOME/.squadra/plugins/<name>/AGENTS.md`: instructions for agents.
 Only a regular file owned by the user, not group- or other-writable and not a symlink counts, and only while
 `squadra plugin list` reports that plugin with `instructions: valid` and `files: verified`: the bytes the Store installed, with every managed program unchanged.
 The coordinator window reads it at start and resume and runs only the commands it specifies, within existing permissions: the producer after a close,
 the consumer when the dashboard shows a pending request, then reports the outcome. Without a valid file, the request stays pending and the coordinator says so.
 This file never widens permissions and never authorizes installation, push, publication or decisions reserved for the user; for any request beyond running that plugin’s producer or consumer, stop and report.
 The dashboard never reads, writes or runs this file. See [the plugin protocol](references/plugins.md#agent-instructions).
-
-Real ACKs, decisions, pauses and native receipts remain mandatory; do not infer them
-from the chat. Show the Rule 2 table (`squadra board`), without invented percentages.
-If the registry is not writable, keep the durable finding, declare the limit and
-reconcile before proceeding: do not claim a save that did not succeed.
-
-`squadra board [--lang it|en]` shows the tables by window, work and state, also at the top of `status` and of the `stato.md` written by `squadra export`.
 
 ## Built-in skills: errata, rasoio and migliora
 
@@ -590,19 +101,19 @@ project scope; follow the guides without asking again for work already authorize
 Errata and rasoio retain their activation events; migliora records applied remedies
 and commits in task outputs, while its inspections are computed on demand.
 
-- **errata** ([guide](references/skills/errata.md)). At `brief --task` and `start` the
+- **R66 errata** ([guide](references/skills/errata.md)). At `brief --task` and `start` the
   CLI shows the matching lessons and records a `lesson.recall`: read them and apply them.
   After a code read that asks for changes, a failed proof or a closed defect fix, the
   output asks the agent who ran the command for a lesson: record it at once with
   `squadra lesson` (`lesson` event), or say in the output why no trigger can be named.
   When a mistake comes back after its lesson was shown, mark it with
   `lesson --ineffective` (`lesson.ineffective` event) and record a better one.
-- **rasoio** ([guide](references/skills/rasoio.md)). Every code read whose candidate
+- **R67 rasoio** ([guide](references/skills/rasoio.md)). Every code read whose candidate
   changes code, not only prose, applies the lens: `review --lens rasoio --net-lines N`,
   with the guide's tags and its closing net figure. The lens adds observations; it never
   changes a verdict, check or close rule.
 
-- **migliora** ([guide](references/skills/migliora.md)). At task close, after repeated
+- **R68 migliora** ([guide](references/skills/migliora.md)). At task close, after repeated
   failures or on request, inspect observed friction. Prefer a tool remedy to an added
   rule. Apply only evidence-backed scoped changes, verify them and automatically
   commit owned changes after the project's required checks and independent reviews.
@@ -610,132 +121,22 @@ and commits in task outputs, while its inspections are computed on demand.
   required read, and `migliora commit` commits the checked bytes afterwards. No rule
   without a trigger and retirement condition, no implicit push or memory approval.
 
-## Dashboard, stop and continuity
-
-- **Keep working context small.** At a task/phase boundary or a compaction signal,
-  use `squadra context --task <ID> --root <registry>` for a bounded resume packet
-  instead of carrying full history/log dumps. For a returning window use `context --task <ID> --for <WINDOW> --since <SEQ:HASH>`
-  with the prior packet cursor: standing constraints/blocks remain, only the changes are filtered. Unknown
-  revisions refuse; omissions and mismatched proof references require opening the originals. Follow [context and native compaction](references/context.md)
-  when preparing a handoff. The packet is recorded data, not authorization or a
-  replacement for scope, mail, source checks or proofs. Use the client's native
-  compaction; preserve required checkpoints and source recovery. Never claim to
-  clear provider cache or guarantee savings. Existing protocol/version stays frozen.
-- **Autonomous checkpoints:** do not wait for the owner to ask for them. After a
-  completed increment, an accepted review and before a session change or
-  publication, run `checkpoint --actor WINDOW --compact --to <new-durable-folder>` and record the
-  receipt in the output. The checkpoint keeps the registry; to also protect
-  sources and WIP use `save` and a real `restore-check`. Do not rerun tests that are
-  already valid just to create a resume point. Read the handover protocol in
-  `references/recovery.md`. Before every new long round run `storage purge --dry-run`.
-  Retain three checkpoints, three saves, the last successfully restored save,
-  everything younger than 24 hours and explicit `storage keep` points. Only the
-  coordinator's explicit `storage purge --apply --actor COORD --reason TEXT`
-  deletes files. Identical bytes of the newest recorded checkpoint on the same
-  filesystem are reused automatically (`--reuse PREVIOUS` names one); for data
-  already on disk preview `storage compact --dry-run`. Checkpoints made before 3.13 are unregistered: bring
-  those of this registry under retention with `storage adopt --scan DIR` (dry run first, then `--apply`
-  by the coordinator). Never `cp -R` a live registry; `cp -c` is only for disposable tests.
-- **Context under pressure:** if the client signals compaction/a limit, or you
-  can no longer reliably reconstruct task, constraints and proofs, save
-  before continuing. Use a registered compact checkpoint with reuse, plus `save`
-  and `restore-check` for sources/WIP. Avoid repeated full registry exports and
-  inspect retention before the next long round. Do not invent a percentage of remaining tokens. Prepare a
-  durable summary and consider a session with a clean context; if the client
-  allows it, start it within the task and budget already authorized. The new session
-  must reread the mandate, the registry and the handover, confirm receipt and
-  reconcile sources and resources before writing. A prepared prompt does not prove
-  that a window was opened. Preserve authors, identities, budgets and blocks;
-  do not use the context change to reset them or to create a second writer.
-- `squadra dash --open`: a local page, read-only except declared settings and selections of installed plugins (it saves requests, it does not run actions); refreshed every 2 seconds.
-  The **Summary** explains work, steps, waits and the history of the tasks; **Decisions**
-  and **Communications** keep the recorded links and ACKs. Technical
-  details on request, IT/EN for the interface, never translations of the recorded texts.
-  Read `references/recovery.md` for how it works and its limits.
-- `squadra selftest`: synthetic toolkit checks without model calls, with
-  result and logs kept. It verifies the protocol, not the general quality of the
-  generated code or the security of a product. Do not present it as a
-  comparative benchmark of two agents.
-- When the owner stops the work, record `pause`, interrupt only owned processes,
-  wait for the terminal receipts and save with `save` into a durable folder, then use
-  `restore-check` on a new folder to really prove the recovery.
-  A process without a receipt stays in an uncertain state: do not declare it stopped.
-- `save` captures the registry and all registered repositories, Git history, separate
-  index/worktree patches and untracked files; `--repo` is a partial choice. `checkpoint`
-  remains the copy of the registry only. Read the filters and limits in
-  `references/recovery.md`; do not promise that secrets are absent from the whole history.
-- A secret recorded into an artifact by mistake: delete its file and record `decision --scrub-artifact SHA256 --reason ...` (coordinator only); read «Removing a leaked artifact» in `references/recovery.md`.
-- To resume, wait for the owner's request, reread and reconcile
-  `doctor --quick`, reservations, sources and messages, record `resume` and assign the current step.
-  An ACK, a resume or a review does not authorize an implicit publication.
-- Old packets can be imported as **unverified historical copies**;
-  they generate no tasks, ACKs or acceptances. A squad already active keeps its
-  frozen protocol until it receives an explicit version switch.
-
-For original/remedy/positive challenges or benchmarks read `references/benchmark.md`.
-For a standalone defect fix outside the final re-read block, the coordinator records `task --defect-fix` (or marks an open
-task with `challenge --register --task ... --reason ...`). Before close, run the
-registered regression on the original task base and the exact candidate with
-`challenge --task ... --output ...`. The default `python-unittest-v1` runner uses
-the fix's own test IDs and their result objects: every selected method must fail
-by assertion on the base and pass on the candidate. Errors, skipped or unknown
-tests and setup failures do not qualify. The test files are frozen and copied
-unchanged onto both private inputs. No separate positive control is needed for
-task fixes; the standalone command retains all three inputs. A coordinator may
-declare a reasoned exception, visible beside the proof and checked by the
-independent reader; it never appears as a successful challenge. Drift requires
-fresh bindings. Light fixes keep the same obligation; old tasks remain unchanged
-and frozen squads must coordinate a writer upgrade before using the new fields.
-`challenge` distinguishes an assertion from an instrument error; it does not replace a
-delivery proof. `bench-example/run/score` test the comparison with fake clients. A pilot
-with real models requires the owner's budget; no superiority is inferred
-from the selftest, from a single turn or from different permission profiles.
-
-### What registry reads verify
+## Continuity
+- **R69 Small context.** Keep context small: at task or phase boundaries use `squadra context --task` (and `--for … --since …` for a returning window) instead of full history. [→](references/context.md)
+- **R70 Checkpoints.** Checkpoint autonomously (`checkpoint --compact`) after increments, accepted reviews and before session changes; `storage purge --dry-run` before long rounds; only the coordinator applies a purge. [→](references/recovery.md)
+- **R71 Context pressure.** Under context pressure save first (checkpoint, `save`, `restore-check`); a new session rereads mandate, registry and handover and confirms before writing. [→](references/recovery.md)
+- **R72 Dashboard.** `squadra dash --open` is a local read-only page except declared plugin settings and selections. [→](references/recovery.md)
+- **R73 Selftest.** `squadra selftest` checks the protocol without model calls; it is not a benchmark of agents. [→](references/recovery.md)
+- **R74 Stop.** When the owner stops: `pause`, interrupt only owned processes, `save` to a durable folder, `restore-check` on a new one; a process without receipt stays uncertain. [→](references/recovery.md)
+- **R75 Save.** `save` captures registry, repositories, Git history, patches and untracked files; it promises no absence of secrets. [→](references/recovery.md)
+- **R76 Leaked artifact.** A secret recorded into an artifact: delete the file and record `decision --scrub-artifact SHA256 --reason`. [→](references/recovery.md)
+- **R77 Resume.** Resume only on the owner's request, after reconciling `doctor --quick`, reservations, sources and messages; record `resume`. [→](references/recovery.md)
+- **R78 Old packets.** Old packets import as unverified historical copies: no tasks, ACKs or acceptances. [→](references/recovery.md)
+- **R79 Defect fixes.** A standalone defect fix records `task --defect-fix` and runs `challenge` red on the base, green on the candidate. [→](references/benchmark.md)
+- **R82 Handover.** Passing coordination to another seat follows the handover protocol. [→](references/handover.md)
+- **R81 Replacing windows.** Replace exhausted windows with `replace` (preview `--dry-run`), keeping authors and budgets; `wait --cause 429|outage` records a service limit. [→](references/replacement.md)
+- **R80 What reads verify.** Each registry read verifies only its stated scope (table below); `doctor` without `--quick` is the full audit; windows are not cryptographically authenticated. [→](references/recovery.md)
 
 | Operation | Verified during that operation |
 | --- | --- |
-| Other ordinary commands, including `check` and an ordinary task's `close`; dashboard refresh after startup | The recorded anchor event and its hash, every newer event's hash and previous link, and the authenticated index proofs for each cache value or index read. |
-| Quick resume check (`doctor --quick`) | The anchor, newer suffix and demanded cache values; the report explicitly excludes full historical/artifact verification and replay-root comparison. |
-| Explicit `usage`/`balance` calculations, a lesson's source check, and the lesson hint after a failed proof | The complete event hash chain and the requested historical evidence. These reads do not perform a full artifact audit. |
 | `doctor`, `export`, `checkpoint`, `save`, `restore-check`, and a release-gate task's `close` | The complete event chain and referenced artifacts/manifests, plus full replay to compare or rebuild the derived cache. |
-| Dashboard startup | The ordinary verified path serves data while a full chain/artifact/replay audit runs in the background. A visible status marks the pending audit; failure stops data responses and removes the displayed data. |
-
-Use `doctor` without `--quick` for the full audit. It stays read-only and refuses a
-cache/journal mismatch; only explicit `doctor --repair` rebuilds the derived tables
-in a writable workspace. Repair refuses saved packages and checkpoint folders.
-The expensive cold-cache build and release-gate audit run outside the journal's
-exclusive write transaction; publication rechecks the prepared snapshot, and a
-busy retry never means that the requested write committed.
-
-The other ordinary reads above do **not** reverify events before the anchor, untouched cache
-leaves, or whether the cached root equals a complete replay of the reducer. An
-invalid, missing or foreign cache falls back to verified reconstruction; a failing
-verification is not a successful cached read. Source manifests store file lists
-once and preserve the original source fingerprint; binding checks resolve them.
-
-Read-only commands do not write the registry or its projections. Ordinary writes
-append new `events.jsonl` records and update affected daily views. A crash can leave
-those views behind the committed journal: compare their recorded sequence/head with
-the current Store view before treating them as complete. `state.json` and complete
-mail/history exports are refreshed by `export`, `checkpoint` or `save`, not by
-every command. Use `squadra export` when a consumer needs a complete file export.
-Upgrade every window together before the first new-format write. New events bind
-`format: 2` into their hash; legacy rows remain unchanged. Squadra 3.10.0 therefore
-refuses at the first such event with an integrity error, including status, check and
-close. This intentional refusal is not data loss: use the upgraded CLI, never bypass
-the verifier. New doctor/export commands verify the complete mixed-format history.
-
-The local registry protects against concurrent overwrites and detects accidental
-alterations within these verification boundaries. A whole older `registry.sqlite3`,
-or one whose `-wal` was lost, still verifies on its own: the journal cannot see the
-tail it lost. The next projection refresh notices that `events.jsonl` holds events
-the journal lacks, refuses, and keeps the projections unchanged; `squadra export`
-does not make that check. The registry does not cryptographically authenticate the windows:
-anyone with the same account can impersonate a name or rewrite the database.
-Continuity requires backups to another destination; no disk guarantees
-"never lose" against failure or total deletion.
-
-## Replacing exhausted windows
-
-Use `replace --actor COORD --old OLD --new NEW --reason TEXT --session ID` (or `--map`) after reconciling the real windows. Preview with `--dry-run`; all old session aliases stand by in one event. Keep author provenance and consumed budgets. The new assignments and reassigned reads need their actual ACKs. Inspect ambiguous transport receipts before an explicit retry; never replay an old resume message blindly. `wait --actor AGENT --until TIME --cause 429|outage` records an observed service limit. See [replacement and recovery](references/replacement.md), including the format-4 compatibility boundary of 3.11.1.

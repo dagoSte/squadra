@@ -4,7 +4,7 @@
 whole:** `squadra doctor --resume --root <registry>`. It costs seconds and replaces the
 manual search for the interpreter, the source tree and the live windows. This guide is
 the procedure for the
-[resume rule](../../SKILL.md#resume-rule--one-readiness-check-before-any-assignment).
+[resume rule](../../SKILL.md#no-overlap-resume-and-round-scope) (R11).
 
 ## When
 
@@ -54,3 +54,22 @@ If the command refuses with «needs Python 3.12 or newer», run it with a newer 
 - It reads checkouts registered in the registry; work outside it is not seen.
 - A listed window is only an observation: the check never changes availability,
   stops a process, archives a window or moves work.
+
+## Rules moved from the core (SKILL.md 3.14.0)
+
+The core keeps one line per rule; this is the full text, unchanged except for relative links.
+
+### Resume rule — one readiness check before any assignment
+
+- **A blocker stops the resume** (exit 1): an open task whose checkout is missing or not a
+  Git checkout. Restore or re-clone it, or supersede the task, before assigning anything.
+- **Notices are reconciled, not ignored**: ping silent windows or record their stand-by,
+  fetch before trusting the release distance, and say which notices remain open.
+- The report changes nothing: it never fetches, stops, reassigns or archives. Its
+  checkouts feed the [overlap check](sovrapposizioni.md).
+- **Storage notice.** When the report carries `storage.suggest` (checkpoints made before 3.13
+  that are not registered, or more than 1 GB of frozen candidates), tell the owner, in the
+  owner's language, the sentence it names ("Use squadra to compact the storage of the registry
+  at <path>") and what it does: `storage adopt`, `storage compact` and `storage purge`, each
+  previewed first. Run any `--apply` only on the owner's word; nothing is compacted at opening.
+
