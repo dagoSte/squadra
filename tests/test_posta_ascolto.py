@@ -49,6 +49,24 @@ class PostaAscolto(PostaAscolto):
         return dt.datetime.now(dt.timezone.utc)
 
     # 1. heartbeat, requested timeout and stop in the follower's own cursor file
+    def test_a_follower_that_ends_before_its_first_heartbeat_is_stopped(self):
+        # A positive timeout that expires during start-up: no heartbeat was ever written.
+        self.assertEqual(inbox_follow.follow(self.root, ['C'], timeout=1e-9), 0)
+        saved = json.loads(self.cursor(['C']).read_text())
+        self.assertIsNone(saved['heartbeat_utc'])
+        self.assertIsInstance(saved['stopped_utc'], str)
+        self.assertEqual(self.listening(self.now())['C']['state'], 'stopped')
+
+    def test_sigterm_before_the_first_heartbeat_is_stopped(self):
+        # The signal arrives during the first poll, before any heartbeat: the handler, finally and file are real.
+        def interrupted(self_):
+            raise KeyboardInterrupt
+        with patch.object(inbox_follow.Follower, 'poll', interrupted):
+            self.assertEqual(inbox_follow.follow(self.root, ['C'], timeout=5), 0)
+        saved = json.loads(self.cursor(['C']).read_text())
+        self.assertIsNone(saved['heartbeat_utc'])
+        self.assertEqual(self.listening(self.now())['C']['state'], 'stopped')
+
     def test_follow_writes_start_heartbeat_timeout_and_stop_without_events(self):
         before = self.events()
         self.assertEqual(inbox_follow.follow(self.root, ['C'], timeout=0.3), 0)
@@ -124,12 +142,37 @@ class PostaAscolto(PostaAscolto):
         self.assertLess(out.index('## Fatti'), out.index('Ascolto della posta:'))
 
     # 3. a pending message says how long ago it was delivered and whether its recipient listens
-    def test_pending_message_shows_delivery_age_and_recipient_listening(self):
-        self.assert_ok('assign', *self.task_args(), '--brief-file', str(self.brief), '--via', 'manual')
+    def wait_line(self, message):
         with patch('squadra.now', return_value=LATER):
             out = self.assert_ok('status', '--all')
-        line = next(l for l in out.splitlines() if 'assign-Q' in l and l.startswith(('- to-forward', '- ack')))
-        self.assertIn('recapitato da 60 min, destinatario non in ascolto', line)
+        return next(l for l in out.splitlines() if message in l and l.startswith(('- to-forward', '- ack')))
+
+    def transport_at(self, utc, delivered, message='NOTE-B'):
+        receipt = {'delivered': delivered, 'native_rc': 0 if delivered else 1}
+        with patch('registry.now', return_value=utc), patch('squadra.now', return_value=utc), \
+                patch('squadra.codex_queue', return_value=receipt):
+            return self.invoke('transport', '--actor', 'C', '--message', message, '--via', 'codex-queue')
+
+    def codex_seat_with_mail(self):
+        """A Codex window with a real session, so its queue transports are recorded."""
+        self.assert_ok('agent', *self.join_args())
+        self.assert_ok('send', '--actor', 'C', '--to', 'B', '--id', 'NOTE-B', '--body-file', str(self.body))
+
+    def test_manual_forwarding_is_not_called_delivered(self):
+        # assign --via manual records delivered:null: forwarded, but no queue confirmed it.
+        self.assert_ok('assign', *self.task_args(), '--brief-file', str(self.brief), '--via', 'manual')
+        line = self.wait_line('assign-Q')
+        self.assertIn('inoltrato da 60 min, recapito non confermato, destinatario non in ascolto', line)
+        self.assertNotIn('recapitato da', line)
+
+    def test_failed_attempts_are_not_delivered_and_the_age_counts_from_the_first_success(self):
+        self.codex_seat_with_mail()  # created at 10:00, the fixture clock
+        self.transport_at('2026-11-09T10:00:00+00:00', False)
+        self.assertIn('inoltrato da 60 min, recapito non confermato', self.wait_line('NOTE-B'))
+        self.transport_at('2026-11-09T10:45:00+00:00', True)
+        self.transport_at('2026-11-09T10:50:00+00:00', False)  # a later attempt does not move the delivery
+        line = self.wait_line('NOTE-B')
+        self.assertIn('recapitato da 15 min, destinatario non in ascolto', line)
 
     # 4. «Aspetta te» opens status and the coordinator's pickup, each item with its command
     def test_aspetta_te_opens_status_and_coordinator_pickup_with_commands(self):

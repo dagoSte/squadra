@@ -334,6 +334,9 @@ def wait_facts(events):
             message = facts["messages"].setdefault(data["message"], {})
             message.setdefault("transport_first_utc", event["utc"])
             message["transport_all_failed"] = message.get("transport_all_failed", True) and data.get("delivered") is not True
+            if data.get("delivered") is True:
+                # The first confirmed delivery, which later attempts do not move.
+                message.setdefault("transport_delivered_utc", event["utc"])
         elif event["kind"] == "plan":
             facts["tasks"][data["task"]] = {"plan_utc": event["utc"]}
         elif event["kind"] == "settings":
@@ -1166,21 +1169,30 @@ def listening_lines(state, at, lang='it'):
 
 
 def delivery_note(state, message_id, at, listen, en=False):
-    """«recapitato da 42 min, destinatario non in ascolto» for a message that waits for its ACK."""
+    """«recapitato da 42 min, destinatario non in ascolto» for a message that waits for its ACK.
+
+    «Delivered» only after a transport recorded delivered:true, aged from the first such transport;
+    attempts that failed or that no queue confirmed (manual) say so, aged from the first attempt."""
     clock = dt.datetime.fromisoformat(at) if isinstance(at, str) else at
     message = state['messages'].get(message_id)
     if message is None:
         return ''
+    # The wait view merges the read-time transport facts into each message; a bare state carries them aside.
     facts = getattr(state, 'wait_context', {}).get('messages', {}).get(message_id, {})
-    first = facts.get('transport_first_utc')
-    if first is None and message.get('transport'):
-        first = message['utc']
+    delivered = message.get('transport_delivered_utc') or facts.get('transport_delivered_utc')
+    attempted = message.get('transport_first_utc') or facts.get('transport_first_utc')
     row = listen.get(message['to'])
     heard = row is not None and row['state'] == 'listening'
-    if first is None:
-        sent = 'not forwarded yet' if en else 'non ancora inoltrato'
+    if delivered is not None:
+        sent = ('delivered %d min ago' if en else 'recapitato da %d min') % _minutes(clock, delivered)
+    elif attempted is not None or message.get('transport'):
+        since = _minutes(clock, attempted) if attempted is not None else None
+        sent = (('forwarded %d min ago, delivery not confirmed' % since if since is not None
+                 else 'forwarded, delivery not confirmed') if en else
+                ('inoltrato da %d min, recapito non confermato' % since if since is not None
+                 else 'inoltrato, recapito non confermato'))
     else:
-        sent = ('delivered %d min ago' if en else 'recapitato da %d min') % _minutes(clock, first)
+        sent = 'not forwarded yet' if en else 'non ancora inoltrato'
     if row is None:
         return sent
     return sent + (', recipient listening' if en and heard else ', recipient not listening' if en

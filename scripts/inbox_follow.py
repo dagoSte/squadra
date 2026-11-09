@@ -321,7 +321,10 @@ def listening(state, root, at):
             if not keys & set(value['agents']):
                 continue
             beat = _stamp(value.get('heartbeat_utc'))
-            if beat is None and path is not None:
+            if beat is None and 'started_utc' in value:
+                # A follower that ended before its first heartbeat: its start, never the file's time.
+                beat = _stamp(value.get('started_utc'))
+            elif beat is None and path is not None:
                 # A cursor written before heartbeats existed: its last save is the only sign of life.
                 try:
                     beat = dt.datetime.fromtimestamp(path.stat().st_mtime, dt.timezone.utc)
