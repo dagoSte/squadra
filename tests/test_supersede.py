@@ -93,7 +93,7 @@ class Supersede(unittest.TestCase):
     def cli(self, *args):
         out, err = io.StringIO(), io.StringIO()
         with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
-            rc = main(["--root", str(self.root), *args])
+            rc = main(['--verbose', "--root", str(self.root), *args])
         self.last_output, self.last_error = out.getvalue(), err.getvalue()
         return rc
 
@@ -142,7 +142,7 @@ class Supersede(unittest.TestCase):
             args = {"--actor": "C", "--task": "T", "--by": "U", "--reason": "r"}
             args.pop(missing)
             with self.subTest(missing=missing), self.assertRaises(SystemExit), contextlib.redirect_stderr(io.StringIO()):
-                main(["--root", str(self.root), "supersede", *[x for pair in args.items() for x in pair]])
+                main(['--verbose', "--root", str(self.root), "supersede", *[x for pair in args.items() for x in pair]])
 
     def test_supersede_is_one_cli_subcommand(self):
         self.assertIn("supersede", set(next(a for a in parser()._actions if a.dest == "command").choices))

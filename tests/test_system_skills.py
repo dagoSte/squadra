@@ -266,11 +266,11 @@ class Forecast(unittest.TestCase):
         before = self.frozen()
         for task, rc in [('T', 0), ('unknown', 1)]:
             with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
-                self.assertEqual(main(['forecast', '--task', task, '--root', str(self.root)]), rc)
+                self.assertEqual(main(['--verbose', 'forecast', '--task', task, '--root', str(self.root)]), rc)
             self.assertEqual(before, self.frozen())
         missing = self.base / 'absent'
         with contextlib.redirect_stderr(io.StringIO()):
-            self.assertEqual(main(['forecast', '--task', 'T', '--root', str(missing)]), 1)
+            self.assertEqual(main(['--verbose', 'forecast', '--task', 'T', '--root', str(missing)]), 1)
         self.assertFalse(missing.exists())
 
     def test_read_only_sqlite_sidecars_absent_and_with_writer(self):
@@ -282,7 +282,7 @@ class Forecast(unittest.TestCase):
             before = self.frozen()
             previous_wal = (wal.read_bytes(), wal.stat().st_mtime_ns) if wal.exists() else None
             with contextlib.redirect_stdout(io.StringIO()):
-                self.assertEqual(main(['forecast', '--task', 'T', '--root', str(self.root)]), 0)
+                self.assertEqual(main(['--verbose', 'forecast', '--task', 'T', '--root', str(self.root)]), 0)
             self.assertEqual(before, self.frozen())
             if previous_wal is not None:
                 self.assertEqual((wal.read_bytes(), wal.stat().st_mtime_ns), previous_wal)
@@ -297,7 +297,7 @@ class Forecast(unittest.TestCase):
                       '--title', 'New', '--scope-file', str(self.scope))]:
             out = io.StringIO()
             with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
-                self.assertEqual(main(['--root', str(self.root), *args]), 0)
+                self.assertEqual(main(['--verbose', '--root', str(self.root), *args]), 0)
             self.assertIn('"forecast":', out.getvalue())
         self.assertFalse(any(e['kind'].startswith('forecast') for e in self.store.events()))
 

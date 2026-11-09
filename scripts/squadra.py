@@ -1724,13 +1724,20 @@ def _main(argv=None, receipt=None):
         store = Store(root, create=a.command == "init", read_only=read_only)
         before = getattr(store, 'commit_count', None)
         result = dispatch(a, store)
+        if receipt is not None:
+            if isinstance(result, dict):
+                receipt.update({k: result[k] for k in ('id', 'delivered', 'verified', 'status', 'already_held') if k in result})
+                if result.get('messages'):
+                    receipt['id'] = result['messages'][-1]['id']
+            if getattr(a, 'id', None) and 'id' not in receipt:
+                receipt['id'] = a.id
         if a.command == 'doctor':
             print(json.dumps(plain(result), ensure_ascii=False, indent=2))
             return 0 if result.get('resume', {}).get('ready', True) else 1
         committed = type(before) is int and store.commit_count > before
         if a.command == 'transport' and a.via == 'codex-queue' and result.get('delivered') is not True:
             result_rc = 1
-        if committed and not a.verbose and result_rc == 0:
+        if not read_only and a.command != 'export' and not a.verbose and result_rc == 0:
             try:
                 store.publish()
             except Exception as exc:
@@ -1829,8 +1836,9 @@ def _main(argv=None, receipt=None):
         return 1
     finally:
         if store:
-            if receipt is not None and type(store.commit_count) is int and store.commit_count:
-                receipt.update({'committed': True, **store.last_commit})
+            if receipt is not None and type(store.commit_count) is int and not store.read_only:
+                receipt.update({'committed': bool(store.commit_count),
+                                **(store.last_commit or {'event': None, 'seq': store.view()['event_count']})})
             try:
                 store.close()
             except (OSError, sqlite3.Error):
@@ -1850,8 +1858,9 @@ def main(argv=None):
     except BaseException:
         print(out.getvalue(), end=''); print(err.getvalue(), end='', file=sys.stderr)
         raise
-    if receipt and code == 0:
+    if receipt and (code == 0 or args.command == 'transport'):
         following = {'agent': 'inbox', 'task': 'inbox', 'brief': 'inbox', 'ack': 'inbox',
+                     'join': 'inbox', 'assign': 'inbox', 'transport': 'inbox',
                      'start': 'prove', 'prove': 'deliver', 'deliver': 'review', 'review': 'check',
                      'ask': 'decision', 'project': 'census'}
         receipt['next'] = following.get(args.command, 'status')
@@ -1859,11 +1868,18 @@ def main(argv=None):
         if len(line.encode()) + 1 > 200:
             event = str(receipt['event'])
             while len(line.encode()) + 1 > 200:
-                event = event[:-1]
-                receipt['event'] = event + '…'
+                key = 'event' if len(str(receipt.get('event', ''))) > 14 else 'id'
+                value = str(receipt.get(key, '')).rstrip('…')
+                receipt[key] = value[:-1] + '…'
                 line = json.dumps(receipt, ensure_ascii=False, separators=(',', ':'))
         print(line)
-        print(err.getvalue(), end='', file=sys.stderr)
+        for message in err.getvalue().splitlines():
+            try:
+                marker = json.loads(message)
+            except ValueError:
+                marker = None
+            if not isinstance(marker, dict) or marker.get('committed') is not True:
+                print(message, file=sys.stderr)
     else:
         print(out.getvalue(), end=''); print(err.getvalue(), end='', file=sys.stderr)
     return code

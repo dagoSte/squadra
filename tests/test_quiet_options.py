@@ -36,7 +36,7 @@ class QuietOptions(unittest.TestCase):
                 self.assertEqual(len(out.splitlines()), 1)
                 self.assertLessEqual(len(out.encode()), 200)
                 receipt = json.loads(out)
-                self.assertEqual(set(receipt), {'committed', 'event', 'seq', 'next'})
+                self.assertTrue({'committed', 'event', 'seq', 'next'} <= set(receipt))
                 self.assertIs(receipt['committed'], True)
                 self.assertEqual(receipt['event'], self.store.events()[-1]['id'])
                 self.assertEqual(receipt['seq'], self.store.events()[-1]['seq'])
@@ -47,6 +47,17 @@ class QuietOptions(unittest.TestCase):
             rc, out, err = self.invoke(*args)
             self.assertEqual(rc, 0, err)
             self.assertIn('In corso', out)
+
+    def test_short_receipts_keep_transport_outcome_and_generated_ping_id(self):
+        self.invoke('send', '--actor', 'C', '--to', 'A', '--id', 'M', '--body-file', str(self.scope))
+        rc, out, err = self.invoke('transport', '--actor', 'C', '--message', 'M', '--via', 'manual')
+        self.assertEqual(rc, 0, err)
+        self.assertIn('delivered', json.loads(out))
+        self.assertIsNone(json.loads(out)['delivered'])
+        rc, out, err = self.invoke('ping', '--actor', 'C', '--to', 'A')
+        self.assertEqual(rc, 0, err)
+        self.assertTrue(json.loads(out)['id'].startswith('ping-'))
+        self.assertLessEqual(len(out.encode()), 200)
 
     def test_round_scope_flag_and_legacy_prefix_are_both_read(self):
         self.assertEqual(self.invoke('decision', '--actor', 'C', '--id', 'flag', '--reason', 'Explicit', '--round-scope')[0], 0)

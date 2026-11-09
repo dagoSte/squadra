@@ -133,7 +133,7 @@ class RealCompactLock(unittest.TestCase):
         case.checkpoint("compact-me")
         script = Path(__file__).resolve().parents[1] / "scripts" / "squadra.py"
         try:
-            done = subprocess.run([sys.executable, "-B", str(script), "--root", str(case.store.root), "storage", "compact",
+            done = subprocess.run([sys.executable, "-B", str(script), "--verbose", "--root", str(case.store.root), "storage", "compact",
                                    "--apply", "--actor", "C", "--reason", "Integrated compact"],
                                   capture_output=True, timeout=90, start_new_session=True)
         except subprocess.TimeoutExpired:

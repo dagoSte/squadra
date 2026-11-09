@@ -81,7 +81,7 @@ class Reg:
         self.root = Path(root)
 
     def cli(self, *args):
-        return sh([sys.executable, "-B", launcher(), "--root", self.root, *args])
+        return sh([sys.executable, "-B", launcher(), "--verbose", "--root", self.root, *args])
 
     def events(self):
         with open(self.root / "events.jsonl", encoding="utf-8") as handle:
