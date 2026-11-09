@@ -334,6 +334,9 @@ def wait_facts(events):
             message = facts["messages"].setdefault(data["message"], {})
             message.setdefault("transport_first_utc", event["utc"])
             message["transport_all_failed"] = message.get("transport_all_failed", True) and data.get("delivered") is not True
+            if data.get("delivered") is True:
+                # The first confirmed delivery, which later attempts do not move.
+                message.setdefault("transport_delivered_utc", event["utc"])
         elif event["kind"] == "plan":
             facts["tasks"][data["task"]] = {"plan_utc": event["utc"]}
         elif event["kind"] == "settings":
@@ -1144,6 +1147,110 @@ def forwarding_lines(waiting, lang='it'):
         '- ' + w['id'] + ' · ' + w['utc'] + ' · ' + w.get('text_en' if lang == 'en' else 'text', w['text'])
         + (' · ' + w['ack_command'] if w.get('ack_command') else '') for w in rows] if rows else []
     return lines + standby_lines(waiting, lang)
+
+
+def _minutes(clock, utc):
+    return max(0, int((clock - dt.datetime.fromisoformat(utc)).total_seconds() // 60))
+
+
+def listening_lines(state, at, lang='it'):
+    """One line under the board: whether each active window follows its mail (read-only, cursor files)."""
+    from inbox_follow import listening, listening_text
+    if not state.get('root'):
+        return []
+    en = lang == 'en'
+    rows = listening(state, state['root'], at)
+    groups = {}
+    for name, row in rows.items():
+        key = (state['agents'][name]['identity'], listening_text(row, en))
+        groups.setdefault(key, []).append(name)
+    parts = [', '.join(names) + ': ' + text for (_, text), names in groups.items()]
+    return [('Mail listening: ' if en else 'Ascolto della posta: ') + ' · '.join(parts)] if parts else []
+
+
+def delivery_note(state, message_id, at, listen, en=False):
+    """«recapitato da 42 min, destinatario non in ascolto» for a message that waits for its ACK.
+
+    «Delivered» only after a transport recorded delivered:true, aged from the first such transport;
+    attempts that failed or that no queue confirmed (manual) say so, aged from the first attempt."""
+    clock = dt.datetime.fromisoformat(at) if isinstance(at, str) else at
+    message = state['messages'].get(message_id)
+    if message is None:
+        return ''
+    # The wait view merges the read-time transport facts into each message; a bare state carries them aside.
+    facts = getattr(state, 'wait_context', {}).get('messages', {}).get(message_id, {})
+    delivered = message.get('transport_delivered_utc') or facts.get('transport_delivered_utc')
+    attempted = message.get('transport_first_utc') or facts.get('transport_first_utc')
+    row = listen.get(message['to'])
+    heard = row is not None and row['state'] == 'listening'
+    if delivered is not None:
+        sent = ('delivered %d min ago' if en else 'recapitato da %d min') % _minutes(clock, delivered)
+    elif attempted is not None or message.get('transport'):
+        since = _minutes(clock, attempted) if attempted is not None else None
+        sent = (('forwarded %d min ago, delivery not confirmed' % since if since is not None
+                 else 'forwarded, delivery not confirmed') if en else
+                ('inoltrato da %d min, recapito non confermato' % since if since is not None
+                 else 'inoltrato, recapito non confermato'))
+    else:
+        sent = 'not forwarded yet' if en else 'non ancora inoltrato'
+    if row is None:
+        return sent
+    return sent + (', recipient listening' if en and heard else ', recipient not listening' if en
+                   else ', destinatario in ascolto' if heard else ', destinatario non in ascolto')
+
+
+def coordinator_waits(state, at, coordinator, view=None):
+    """What waits for an active coordinator, each with its command: accepted verdicts to close,
+    handoffs to forward, messages to the coordinator to acknowledge. Read-only."""
+    clock = dt.datetime.fromisoformat(at) if isinstance(at, str) else at
+    root = ['--root', state['root']] if state.get('root') else []
+    aliases = {n for n, a in state['agents'].items()
+               if a['identity'] == state['agents'][coordinator]['identity']}
+    rows = []
+    for task in state['tasks'].values():
+        if task['status'] != 'reviewed' or task.get('superseded_by'):
+            continue
+        when = (task.get('reviews') or [{}])[-1].get('utc') or task.get('status_utc')
+        rows.append({'kind': 'close', 'task': task['id'], 'minutes': _minutes(clock, when) if when else 0,
+                     'text': 'verdetto accettato, da chiudere', 'text_en': 'accepted verdict, to close',
+                     'command': shlex.join(['squadra', 'check', '--actor', coordinator, '--task', task['id'], *root])
+                     + ' && ' + shlex.join(['squadra', 'close', '--actor', coordinator, '--task', task['id'], *root])})
+    for wait in (attention(state) if view is None else view)['waiting']:
+        # Mail to a window in stand-by stays in the folded stand-by lines, as in the waits.
+        if wait['kind'] == 'to-forward' and not held_window(state, wait):
+            rows.append({'kind': 'forward', 'task': wait.get('task') or wait['id'], 'minutes': _minutes(clock, wait['utc']),
+                         'text': 'da inoltrare a ' + wait['to'], 'text_en': 'to forward to ' + wait['to'],
+                         'command': shlex.join(['squadra', 'transport', '--actor', coordinator, '--message', wait['id'],
+                                                '--via', 'codex-queue', *root])})
+    for message in state['messages'].values():
+        if (message['to'] in aliases and not message.get('ack') and not message.get('info')
+                and not message.get('replaced_by')):
+            rows.append({'kind': 'ack', 'task': message['id'], 'minutes': _minutes(clock, message['utc']),
+                         'text': 'messaggio da ' + message['from'] + ' senza ACK',
+                         'text_en': 'message from ' + message['from'] + ' without ACK',
+                         'command': shlex.join(['squadra', 'ack', '--actor', message['to'], '--message', message['id'], *root])})
+    return sorted(rows, key=lambda r: -r['minutes'])
+
+
+def coordinator_block(state, at, lang='it', actor=None, view=None, quiet=False):
+    """«Aspetta te» for each active coordinator (or only actor, when given and a coordinator).
+
+    quiet omits a coordinator with nothing waiting, so status still opens with the board then."""
+    en = lang == 'en'
+    names = [n for n, a in state['agents'].items() if a['role'] == 'coordinator' and not standby(state, n)
+             and (actor is None or n == actor)]
+    lines = []
+    for name in names:
+        rows = coordinator_waits(state, at, name, view)
+        if quiet and not rows:
+            continue
+        lines.append(('Waiting for you (%s):' if en else 'Aspetta te (%s):') % name)
+        lines += ['- %s · %s · %d min · %s' % (r['task'], r['text_en'] if en else r['text'], r['minutes'], r['command'])
+                  for r in rows]
+        if not rows:
+            lines.append('- ' + ('nothing' if en else 'niente'))
+        lines.append('')
+    return lines
 
 
 def fix_binding(task):
@@ -4275,7 +4382,13 @@ def table(state, read_at=None, events=(), *, compact=False, lang=None, attention
     en = lang == "en"
     tasks = list(state["tasks"].values())
     view = attention(state, read_at) if attention_value is None else attention_value
+    listen_at = read_at if read_at is not None else now()
+    # «Aspetta te» opens status; it is joined above the board when the text is returned.
+    # Status still opens with the board; right under it, who follows its mail and what waits on the coordinator.
+    listened = listening_lines(state, listen_at, lang) if advice else []
+    block = coordinator_block(state, listen_at, lang, view=view, quiet=True) if advice and state.get('root') else []
     lines = [board(state, lang, read_at=read_at, events=events, live=read_at is not None, compact=compact), "",
+             *([*listened, ""] if listened else []), *block,
              *([*composition_lines(composition(state, lang=lang), lang), ""] if advice else []),
              "Needs you:" if en else "Serve a te:"]
     information = information_count(state)
@@ -4302,6 +4415,11 @@ def table(state, read_at=None, events=(), *, compact=False, lang=None, attention
     if read_at is not None:
         lines += ["", ("Waits computed at " if en else "Attese calcolate al ") + str(read_at) + ":"]
         waiting = waits(state, read_at, attention_value=view)
+        if state.get('root'):
+            from inbox_follow import listening
+            listen = listening(state, state['root'], read_at)
+        else:
+            listen = None
         held = [w for w in waiting if w['kind'] == 'stand-by']
         waiting = [w for w in waiting if w['kind'] != 'stand-by']
         if compact:
@@ -4346,6 +4464,8 @@ def table(state, read_at=None, events=(), *, compact=False, lang=None, attention
                   + ((" (" + str(w['count']) + (" waits, the oldest)" if en else " attese, la più vecchia)"))
                      if w.get('count', 1) > 1 else "")
                   + " · " + (w['text_en'] if en and w.get('text_en') else wait_text(w, en))
+                  + (' · ' + delivery_note(state, w['id'], read_at, listen, en)
+                     if w['kind'] in {'ack', 'to-forward'} and listen is not None else '')
                   + (' · ' + w['ack_command'] if w.get('ack_command') else '') for w in waiting]
         lines += standby_lines(held, 'en' if en else 'it')
         if compact:

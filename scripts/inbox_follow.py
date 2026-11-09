@@ -1,6 +1,7 @@
 """Read-only, resumable JSONL mail for windows without a native queue."""
 from __future__ import annotations
 
+import datetime as dt
 import json
 import os
 from pathlib import Path
@@ -195,10 +196,22 @@ class Follower:
         self.head, self.cursor, self.first, self.anchor = tip, end, False, anchor
 
 
+BEAT_SECONDS = 30      # a follower rewrites its heartbeat at least this often
+LISTENING_SECONDS = 90  # a heartbeat younger than this means «listening»
+
+
+def cursor_dir():
+    return Path(os.environ.get('XDG_STATE_HOME', str(Path.home() / '.local/state'))) / 'squadra/inbox'
+
+
 def cursor_path(root, agents):
     from registry import canonical, digest
     key = digest(canonical({'root': str(Path(root).resolve()), 'agents': sorted(set(agents))}).encode())
-    return Path(os.environ.get('XDG_STATE_HOME', str(Path.home() / '.local/state'))) / 'squadra/inbox' / (key + '.json')
+    return cursor_dir() / (key + '.json')
+
+
+def _utc():
+    return dt.datetime.now(dt.timezone.utc).isoformat()
 
 
 def load_cursor(path, store, agents):
@@ -229,14 +242,121 @@ def load_cursor(path, store, agents):
     return seq
 
 
-def save_cursor(path, follower, agents):
+def save_cursor(path, follower, agents, life=None):
+    """The resume point plus, when following, the listener's life: start, heartbeat, timeout and stop.
+
+    Readers of the resume point ignore the life fields, so files written before them stay valid."""
     from registry import atomic, canonical
     path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
     require(not path.is_symlink(), 'Inbox cursor cannot be a symlink')
     seq, sha = follower.anchor_at(follower.cursor)
-    value = {'root': str(follower.store.root), 'agents': sorted(set(agents)), 'event': seq, 'hash': sha}
+    value = {'root': str(follower.store.root), 'agents': sorted(set(agents)), 'event': seq, 'hash': sha,
+             **(life or {})}
     atomic(path, (canonical(value) + '\n').encode())
     path.chmod(0o600)
+
+
+def save_beacon(root, agents, cursor_file):
+    """A follower with --cursor-file elsewhere leaves a pointer where status looks, outside the journal."""
+    from registry import atomic, canonical
+    path = cursor_path(root, agents).with_suffix('.beacon')
+    path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    require(not path.is_symlink(), 'Inbox beacon cannot be a symlink')
+    value = {'root': str(Path(root).resolve()), 'agents': sorted(set(agents)), 'cursor_file': str(cursor_file)}
+    atomic(path, (canonical(value) + '\n').encode())
+    path.chmod(0o600)
+
+
+def _read_json(path):
+    try:
+        if path.is_symlink() or not path.is_file() or path.stat().st_size >= 8192:
+            return None
+        value = json.loads(path.read_bytes().decode('utf-8'))
+    except (OSError, UnicodeError, ValueError, RecursionError):
+        return None
+    return value if isinstance(value, dict) and isinstance(value.get('agents'), list) else None
+
+
+def _stamp(value):
+    try:
+        parsed = dt.datetime.fromisoformat(value)
+    except (TypeError, ValueError):
+        return None
+    return parsed if parsed.tzinfo is not None else None
+
+
+def listening(state, root, at):
+    """Read-only: whether each active seat follows its mail, from the cursor files of inbox --follow.
+
+    states: 'listening' (heartbeat younger than LISTENING_SECONDS), 'stopped' (with 'since'), 'never' (no
+    cursor file in the default place) or 'not-visible' (followed with --cursor-file elsewhere, unreadable)."""
+    from registry import standby
+    clock = dt.datetime.fromisoformat(at) if isinstance(at, str) else at
+    root = str(Path(root).resolve())
+    files, beacons = [], []
+    try:
+        entries = sorted(cursor_dir().iterdir()) if cursor_dir().is_dir() else []
+    except OSError:
+        entries = []
+    for path in entries:
+        value = _read_json(path) if path.suffix in {'.json', '.beacon'} else None
+        if value is None or value.get('root') != root:
+            continue
+        if path.suffix == '.beacon':
+            target = _read_json(Path(str(value.get('cursor_file', ''))))
+            if target is not None and target.get('root') == root:
+                files.append((target, None))
+            else:
+                beacons.append(value)
+        else:
+            files.append((value, path))
+    result = {}
+    for name, agent in state['agents'].items():
+        if standby(state, name):
+            continue
+        rows = []
+        # Cursor files name mailboxes by identity (every seat of a window), by seat, or (older) by name.
+        keys = {'identity:' + agent['identity'], 'seat:' + name, name}
+        for value, path in files:
+            if not keys & set(value['agents']):
+                continue
+            beat = _stamp(value.get('heartbeat_utc'))
+            if beat is None and 'started_utc' in value:
+                # A follower that ended before its first heartbeat: its start, never the file's time.
+                beat = _stamp(value.get('started_utc'))
+            elif beat is None and path is not None:
+                # A cursor written before heartbeats existed: its last save is the only sign of life.
+                try:
+                    beat = dt.datetime.fromtimestamp(path.stat().st_mtime, dt.timezone.utc)
+                except OSError:
+                    beat = None
+            if beat is not None:
+                rows.append((beat, _stamp(value.get('stopped_utc'))))
+        if rows:
+            beat, stopped = max(rows, key=lambda r: r[0])
+            if stopped is not None and stopped >= beat:
+                result[name] = {'state': 'stopped', 'since': stopped.isoformat(),
+                                'minutes': max(0, int((clock - stopped).total_seconds() // 60))}
+            elif (clock - beat).total_seconds() <= LISTENING_SECONDS:
+                result[name] = {'state': 'listening', 'since': beat.isoformat()}
+            else:
+                result[name] = {'state': 'stopped', 'since': beat.isoformat(),
+                                'minutes': max(0, int((clock - beat).total_seconds() // 60))}
+        elif any(keys & set(b['agents']) for b in beacons):
+            result[name] = {'state': 'not-visible'}
+        else:
+            result[name] = {'state': 'never'}
+    return result
+
+
+def listening_text(row, en=False):
+    if row['state'] == 'listening':
+        return 'listening' if en else 'in ascolto'
+    if row['state'] == 'stopped':
+        return ('listener stopped %d min ago' if en else 'ascolto fermo da %d min') % row['minutes']
+    if row['state'] == 'not-visible':
+        return 'not visible (--cursor-file elsewhere)' if en else 'non visibile (--cursor-file altrove)'
+    return 'never armed' if en else 'mai armato'
 
 
 def follow(root, agents, timeout=None, since=None, *, until_first=False, cursor_file=None, persist=True):
@@ -256,6 +376,11 @@ def follow(root, agents, timeout=None, since=None, *, until_first=False, cursor_
             since = load_cursor(source, store, keys)
             resumed = since is not None
         follower = Follower(store, agents, since, pending_on_start=resumed)
+        life = {'started_utc': _utc(), 'heartbeat_utc': None, 'timeout': timeout, 'stopped_utc': None,
+                'pid': os.getpid()}
+        beat_at = None
+        if persist and cursor_file:
+            save_beacon(root, keys, path)
         while True:
             if deadline is not None and time.monotonic() >= deadline:
                 break
@@ -269,7 +394,11 @@ def follow(root, agents, timeout=None, since=None, *, until_first=False, cursor_
                     follower.cursor = more['event']
                     follower.anchor = follower.anchor_at(follower.cursor)
                     follower.head = None
-                save_cursor(path, follower, keys)
+                life['heartbeat_utc'], beat_at = _utc(), time.monotonic()
+                save_cursor(path, follower, keys, life)
+            if persist and (beat_at is None or time.monotonic() - beat_at >= BEAT_SECONDS):
+                life['heartbeat_utc'], beat_at = _utc(), time.monotonic()
+                save_cursor(path, follower, keys, life)
             if until_first and follower.printed:
                 return 0
             delay = max(0, 2 - (time.monotonic() - started))
@@ -284,6 +413,13 @@ def follow(root, agents, timeout=None, since=None, *, until_first=False, cursor_
     except sqlite3.Error as exc:
         raise Error('inbox follow registry error: ' + str(exc)) from exc
     finally:
+        # Normal end, timeout or signal: the file says the listener stopped (a SIGKILL leaves an old heartbeat).
+        if persist and 'life' in locals() and store is not None:
+            try:
+                life['stopped_utc'] = _utc()
+                save_cursor(path, follower, keys, life)
+            except (Error, OSError, sqlite3.Error):
+                pass
         if store is not None:
             store.close()
         signal.signal(signal.SIGTERM, previous)

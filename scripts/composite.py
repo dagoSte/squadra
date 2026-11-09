@@ -137,6 +137,10 @@ def pickup(a, root, cli):
         found = collect(state['workspace']['project'], state)
         found['composition'] = composition(state, found['processes'], state['workspace'].get('lang', 'it'), found['scan'])
         messages = [m for m in cli.inbox(state, [a.actor]) if not m.get('ack') and not m.get('info')]
+        if state['agents'][a.actor]['role'] == 'coordinator':
+            # «Aspetta te» first: what waits on this coordinator, each with its command.
+            from registry import coordinator_block
+            print('\n'.join(coordinator_block(state, now(), state['workspace'].get('lang', 'it'), actor=a.actor)))
         print(json.dumps({'doctor --resume': plain(doctor), 'census': found}, ensure_ascii=False, indent=2))
         print(cli.board(state, read_at=now(), events=store.events()))
         print(json.dumps({'pending_mail': plain(messages)}, ensure_ascii=False, indent=2))
