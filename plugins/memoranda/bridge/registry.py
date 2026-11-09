@@ -1461,6 +1461,35 @@ def review_request(actor, data):
     return 'review-request:' + digest(canonical({'actor': actor, **identity}).encode())
 
 
+def lane_builder_of(state, parent, reader):
+    """The lane of ``parent`` built by any seat of ``reader``'s identity, or None.
+
+    Lanes are the tasks of the decision lanes_apply records for the parent (``lanes-<parent>`` with
+    its plan), never a guess from a '.L' in an id.
+    """
+    agent = state["agents"].get(reader)
+    if agent is None:
+        return None
+    for decision in state["decisions"]:
+        tasks = decision.get("tasks")
+        if (decision.get("id") != "lanes-" + parent or "plan" not in decision or not isinstance(tasks, list)
+                or not tasks or tasks[0] != parent):
+            continue
+        for lane in tasks[1:]:
+            task = state["tasks"].get(lane)
+            if task and agent["identity"] in {state["agents"][a]["identity"] for a in task["authors"]
+                                              if a in state["agents"]}:
+                return lane
+    return None
+
+
+def require_not_lane_builder(state, parent, reader):
+    """One rule for --reviewer, a pool member and reassign: a lane's builder never reads its parent."""
+    lane = lane_builder_of(state, parent, reader)
+    require(lane is None, "lane_builder_reader: " + str(reader) + " built lane " + str(lane) + " of " + parent +
+            " (same identity); the parent's integration is read by a window that built none of its lanes")
+
+
 def check_pool(state, d):
     """Refuse the whole registration if the pool's size or any member is invalid."""
     pool = d["pool"]
@@ -1474,6 +1503,10 @@ def check_pool(state, d):
                    "in stand-by" if standby(state, member) else
                    "author alias is not independent" if agent["identity"] == owner else None)
         require(problem is None, "review_pool_member: " + str(member) + ": " + str(problem))
+        try:
+            require_not_lane_builder(state, d["id"], member)
+        except Error as exc:
+            raise Error("review_pool_member: " + str(member) + ": " + str(exc)) from None
 
 
 def require_handoff(state, task, actor, action):
@@ -2110,6 +2143,7 @@ def validate(state, kind, actor, d, stored_packet=None, *, candidate_history=())
                 not standby(state, reader['id']), 'Available registered reviewer required')
         require(reader['identity'] not in {state['agents'][a]['identity'] for a in task['authors']},
                 'Author cannot independently review own changes')
+        require_not_lane_builder(state, task['id'], reader['id'])
         require(reader['id'] != task.get('reviewer'), 'Reviewer is already assigned')
         if task.get('cross_client'):
             validate_cross_client(state, {**task, 'reviewer': reader['id'], 'pool': None,
@@ -2277,6 +2311,7 @@ def validate(state, kind, actor, d, stored_packet=None, *, candidate_history=())
                     "Registered reviewer required")
             require(not standby(state, reader), "Reviewer is in stand-by; coordinator must record return first")
             require(state["agents"][reader]["identity"] != state["agents"][d["owner"]]["identity"], "Author alias is not independent")
+            require_not_lane_builder(state, d["id"], reader)
         if d.get("pool") is not None:
             check_pool(state, d)
         if "cross_client" in d or "same_client_reason" in d:
