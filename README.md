@@ -847,6 +847,14 @@ manual deletion of an active cache degrades candidate integrity. See
 [recovery cleanup](references/recovery.md#removing-read-only-copies).
 
 <a id="commands"></a>
+### Replacing a window
+
+- **A tired window that still works:** `squadra handover prepare --from SEAT --to NEW`, then «resume seat NEW» in a new window. Tasks, reads, mail and role pass in one event, the coordinator included ([seat handover](references/handover.md)).
+- **A window that is already gone:** `squadra replace` (preview with `--dry-run`) keeps history, authors and budgets; `wait --until … --cause 429|outage` records a service limit ([replacement](references/replacement.md)).
+- **Before an assignment** the recipient runs `access probe` in its ordinary sandbox; `access status` shows registry and clone as verified, denied or not verified ([entry check](references/start.md#permission-check-at-entry)).
+- **A window that comes back** uses `squadra context --task TASK --for WINDOW --since SEQ:HASH`: it shows what changed and keeps constraints, pending ACKs and budgets ([re-entry](references/context.md#re-entry-for-one-window-and-one-revision)).
+- **Mail per identity:** `inbox --agent NAME` covers every role of the same identity; an assigned reader may declare `ready` before delivery, which never replaces the ACK of the real handoff ([reader readiness](references/work.md#reader-readiness)).
+
 ## Squadra commands
 
 You do not have to type these commands: **asking your window in plain words is the recommended way**, as in the *Or just ask* column and the [example prompts](#prompts), and the window runs the command for you. The commands are what the windows run, and what you can type yourself to check.
@@ -1089,21 +1097,3 @@ Squadra is a community project: it gets better with every plugin, report and sha
 ---
 
 Developed by Stefano D'Agostino · [GitHub](https://github.com/dagoSte/squadra)
-
-## Replacing windows during a milestone
-
-3.11.1 adds `squadra replace`, `census --unregistered` and `wait --until … --cause 429|outage`. One recorded handover preserves task history, authors and budgets; previews and retries are safe. See the [commands, compatibility boundary and hotskills example](references/replacement.md). All windows must use 3.11.1 before the first journal-format-4 write.
-
-### Permission check at entry
-
-Before assignment, the recipient window runs `access probe` in its ordinary sandbox; `access status` reads the recorded observation. Registry and clone have separate **verified**, **denied** and **not verified** states in board, status and the dashboard. An escalated probe never verifies ordinary sandbox access. A reader may correctly have a read-only clone. See [the commands and evidence limits](references/start.md#permission-check-at-entry). A recorded probe also refreshes the daily projections; a projection failure is reported separately from the committed observation.
-
-### Per-window re-entry context
-
-Use `squadra context --task TASK --for WINDOW --since SEQ:HASH` when a window returns after a pause, compaction or replacement. It shows relevant changes and keeps earlier constraints, pending ACKs, inherited budgets and evidence references. A mismatched revision refuses; an empty delta grants nothing. Open the originals when data is omitted or a proof no longer matches. [Commands, size limits and evidence boundaries](references/context.md#re-entry-for-one-window-and-one-revision). Long error diagnostics retain a bounded summary and their original event sequence; for a long history use `--max-chars 32000` and open the referenced events for full diagnostics.
-
-### Identity mail and reader readiness
-
-`inbox --agent NAME` includes every registered role of the same identity, once per message. `--follow` picks up new roles while running and shares its cursor across aliases. Each message retains its original recipient: use that role for its explicit ACK. Messages from other identities stay outside this mailbox.
-
-An assigned reader can run `ready --actor READER --task TASK` before delivery. Status, board and dashboard show “reader ready, waiting for delivery”. This declares availability only; it does not acknowledge a future handoff, start a read or approve work. `--revoke`, stand-by, window re-registration and delivery clear it; replacement never transfers it. The reader still ACKs the actual delivery message before reading. See [the work protocol](references/work.md#reader-readiness).

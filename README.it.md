@@ -852,6 +852,14 @@ attiva degrada l'integrita del candidato. Vedi la
 [pulizia nel recupero](references/recovery.md#removing-read-only-copies).
 
 <a id="commands"></a>
+### Sostituire una finestra
+
+- **Una finestra stanca che funziona ancora:** `squadra handover prepare --from SEDE --to NUOVA`, poi «riprendi la sede NUOVA» in una finestra nuova. Incarichi, letture, posta e ruolo passano in un solo evento, coordinatore compreso ([passaggio di sede](references/handover.md)).
+- **Una finestra già persa:** `squadra replace` (anteprima con `--dry-run`) conserva storia, autori e budget; `wait --until … --cause 429|outage` registra un limite del servizio ([sostituzione](references/replacement.md)).
+- **Prima di un incarico** la finestra destinataria esegue `access probe` nel proprio sandbox ordinario; `access status` mostra registro e clone come verificati, negati o non verificati ([controllo d'ingresso](references/start.md#permission-check-at-entry)).
+- **Una finestra che rientra** usa `squadra context --task INCARICO --for FINESTRA --since SEQ:HASH`: mostra cosa è cambiato e conserva vincoli, ACK dovuti e budget ([rientro](references/context.md#re-entry-for-one-window-and-one-revision)).
+- **Posta per identità:** `inbox --agent NOME` copre tutti i ruoli della stessa identità; il lettore assegnato può dichiararsi `ready` prima della consegna, il che non sostituisce mai l'ACK della consegna reale ([disponibilità del lettore](references/work.md#reader-readiness)).
+
 ## Comandi di squadra
 
 Non serve scrivere questi comandi: **il modo consigliato è chiedere alla finestra in parole semplici**, come nella colonna *Oppure chiedi* e nei [prompt di esempio](#prompts); il comando lo esegue la finestra. I comandi sono quello che eseguono le finestre, e quello che puoi scrivere tu per controllare.
@@ -1094,21 +1102,3 @@ Squadra è un progetto della community: migliora con ogni plugin, ogni segnalazi
 ---
 
 Sviluppato da Stefano D'Agostino · [GitHub](https://github.com/dagoSte/squadra)
-
-## Sostituire le finestre durante un milestone
-
-La 3.11.1 aggiunge `squadra replace`, `census --unregistered` e `wait --until … --cause 429|outage`. Il passaggio registrato conserva storico, autori e budget; offre anteprima e ripetizione sicura. Leggi [comandi, compatibilità ed esempio hotskills](references/replacement.it.md). Aggiornare tutte le finestre prima della prima scrittura nel formato 4 del registro.
-
-### Controllo dei permessi all’ingresso
-
-Prima dell’incarico, la finestra destinataria esegue `access probe` nel proprio sandbox ordinario; `access status` legge l’osservazione registrata. Registro e clone hanno stati distinti **verificato**, **negato** e **non verificato**, visibili in board, status e dashboard. Una prova con escalation non verifica il sandbox ordinario. Per un lettore il clone in sola lettura può essere corretto. Vedi [comandi e limiti delle prove](references/start.md#permission-check-at-entry). Una sonda registrata aggiorna anche le proiezioni giornaliere; un errore di proiezione viene segnalato separatamente dall’osservazione già registrata.
-
-### Contesto di rientro per finestra
-
-Usa `squadra context --task TASK --for WINDOW --since SEQ:HASH` quando una finestra rientra dopo una pausa, compattazione o sostituzione. Mostra le novità pertinenti e conserva vincoli precedenti, ACK dovuti, budget ereditati e riferimenti alle prove. Una revisione non corrispondente viene rifiutata; un delta vuoto non autorizza nulla. Apri gli originali quando ci sono omissioni o una prova non corrisponde più. [Comandi, limiti e confini delle prove](references/context.md#re-entry-for-one-window-and-one-revision). I diagnostici lunghi conservano un riepilogo limitato e la sequenza dell’evento originale; per uno storico esteso usa `--max-chars 32000` e apri gli eventi citati per il diagnostico completo.
-
-### Posta per identità e disponibilità del lettore
-
-`inbox --agent NOME` include tutti i ruoli registrati della stessa identità, una volta per messaggio. `--follow` include i ruoli aggiunti mentre gira e condivide il cursore fra gli alias. Ogni messaggio conserva il destinatario originale: usare quel ruolo per il suo ACK esplicito. La posta di altre identità resta esclusa.
-
-Il lettore assegnato può eseguire `ready --actor LETTORE --task INCARICO` prima della consegna. Status, board e dashboard mostrano «lettore pronto, attende consegna». È una dichiarazione di disponibilità: non conferma una consegna futura, non avvia una lettura e non approva il lavoro. `--revoke`, stand-by, nuova registrazione della finestra e consegna la azzerano; una sostituzione non la trasferisce. Il lettore deve ancora confermare il messaggio della consegna reale prima di leggere. Vedi [il protocollo di lavoro](references/work.md#reader-readiness).
