@@ -451,7 +451,25 @@ def ready_readers(state, task):
 def apply(state, event):
     d, kind = event["data"], event["kind"]
     refs = state.setdefault("refs", {"ask": {}, "decision": {}})
-    if kind == 'replace':
+    if kind == 'handover.prepare':
+        state.setdefault('handovers', {})[d['id']] = {**plain(d), 'by': event['actor'], 'utc': event['utc'], 'status': 'pending'}
+        apply(state, {**event, 'kind': 'decision', 'data': d['decision']})
+        state['event_count'] -= 1
+    elif kind == 'handover.confirm':
+        condition = next(c for c in state['handovers'][d['id']]['conditions'] if c['n'] == d['condition'])
+        condition['confirmed'] = {'by': event['actor'], 'utc': event['utc'], 'reason': d['reason']}
+    elif kind == 'handover.cancel':
+        state['handovers'][d['id']].update(status='cancelled', cancelled={
+            'by': event['actor'], 'utc': event['utc'], 'reason': d['reason']})
+    elif kind == 'handover':
+        for operation in d['operations']:
+            apply(state, {**event, **operation})
+            state['event_count'] -= 1
+        request = d['request']
+        state['handovers'][request['handover']].update(status='accepted', accepted={
+            'seq': event.get('seq'), 'session': request['sessions'][event['actor']], 'client': request['client'],
+            'outbox': d['outbox'], 'successors': d['successors'], 'seat_note': request['seat_note']})
+    elif kind == 'replace':
         for operation in d['operations']:
             apply(state, {**event, **operation})
             state['event_count'] -= 1
@@ -2041,7 +2059,8 @@ def validate(state, kind, actor, d, stored_packet=None, *, candidate_history=())
                     "resource.acquire", "resource.release", "pause", "resume", "legacy", "decision", "ask", "diagnostic",
                     "settings", "save", "restore.check", "restore.freeze", "challenge", "benchmark", "brief",
                     "availability", "supersede", "reassign", "route", "fix", "replace", "service.wait", "access.probe", "reader.ready",
-                    "lesson", "lesson.retire", "lesson.recall", "lesson.ineffective"},
+                    "lesson", "lesson.retire", "lesson.recall", "lesson.ineffective",
+                    "handover", "handover.prepare", "handover.confirm", "handover.cancel"},
             "Unknown event kind")
     if kind == 'access.probe':
         validate_access(state, actor, d)
@@ -2049,6 +2068,10 @@ def validate(state, kind, actor, d, stored_packet=None, *, candidate_history=())
     if kind == 'replace':
         from replacement import validate_event
         validate_event(state, actor, d)
+        return
+    if kind.startswith('handover'):
+        from handover import validate_event
+        validate_event(state, kind, actor, d)
         return
     if kind == 'reader.ready':
         require(actor in state['agents'], 'Registered reader required')
@@ -2980,7 +3003,7 @@ class Store:
         event = {k: row[k] for k in ["id", "utc", "kind", "actor", "previous"]}
         event["data"] = json.loads(row["data"])
         version = row['hash_format'] if 'hash_format' in row.keys() else None
-        require(version in (None, 2, 3, 4), "Unsupported event hash format")
+        require(version in (None, 2, 3, 4, 5), "Unsupported event hash format")
         if version is not None:
             event['format'] = version
         require(digest(canonical(event).encode()) == row["hash"],
@@ -3418,7 +3441,7 @@ class Store:
                 checked_data = transform_event(kind, data, self.resolve_snapshot)
                 if kind in {'deliver', 'reassign'} and 'packet_data' in checked_data:
                     checked_data = {**checked_data, 'packet_data': transform_packet(checked_data['packet_data'], self.resolve_snapshot)}
-                if kind in {'run.start', 'run.end', 'deliver', 'reassign', 'review', 'close', 'challenge', 'replace'}:
+                if kind in {'run.start', 'run.end', 'deliver', 'reassign', 'review', 'close', 'challenge', 'replace', 'handover'}:
                     target = self.resolved(state)
                 elif kind == 'availability' and data.get('ping'):
                     # A sweep re-checks that its ping is due, and only a delivered ping can be due.
@@ -3456,9 +3479,12 @@ class Store:
                 if (kind in {'replace', 'service.wait', 'access.probe', 'reader.ready'} or (kind == 'settings' and 'onboarding_template' in data) or
                         self.db.execute('SELECT 1 FROM events WHERE hash_format=4 LIMIT 1').fetchone() is not None):
                     event['format'] = 4
+                if (kind.startswith('handover') or
+                        self.db.execute('SELECT 1 FROM events WHERE hash_format=5 LIMIT 1').fetchone() is not None):
+                    event['format'] = 5
                 # A restore of a package with no new-format event keeps the envelope the saving version can read.
                 if kind == "restore.freeze" and self.db.execute(
-                        "SELECT 1 FROM events WHERE hash_format IN (2,3,4) LIMIT 1").fetchone() is None:
+                        "SELECT 1 FROM events WHERE hash_format IN (2,3,4,5) LIMIT 1").fetchone() is None:
                     del event["format"]
                 h = digest(canonical(event).encode())
                 cursor = self.db.execute("INSERT INTO events(id,utc,kind,actor,data,previous,hash,hash_format) VALUES(?,?,?,?,?,?,?,?)",
