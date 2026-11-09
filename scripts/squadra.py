@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Squadra CLI: one durable record shared by Codex, Claude and human seats."""
 import argparse
+import contextlib
+import io
 import json
 import os
 import errno
@@ -390,6 +392,7 @@ def parser():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--root", help="Shared persistent workspace; or SQUADRA_ROOT")
     p.add_argument("--version", action="version", version=VERSION)
+    p.add_argument('--verbose', action='store_true', help='Show full write results and the board')
     sub = p.add_subparsers(dest="command", required=True)
     a = sub.add_parser('checklist', help='Read-only checks before resume, assignment, delivery or push')
     a.add_argument('--moment', choices=['resume', 'assign', 'deliver', 'push', 'handover'], required=True)
@@ -599,6 +602,7 @@ def parser():
     for command in ["pause", "resume", "decision"]:
         a = sub.add_parser(command); a.add_argument("--actor", required=True); a.add_argument("--reason", required=True)
         if command == "decision":
+            a.add_argument('--round-scope', action='store_true', help='Record this decision as the round scope')
             a.add_argument("--answers"); a.add_argument("--choice")
             a.add_argument("--channel", choices=["typed-here", "relayed"])
             a.add_argument("--owner-words"); a.add_argument("--withdraws")
@@ -616,6 +620,8 @@ def parser():
     a.add_argument("--question", required=True); a.add_argument("--options-file", required=True)
     a.add_argument("--recommended"); a.add_argument("--task"); a.add_argument("--waiting", action="append", default=[])
     a.add_argument("--evidence", action="append", default=[])
+    a = sub.add_parser('project', help='Coordinator updates the recorded project directory')
+    a.add_argument('--actor', required=True); a.add_argument('--set', dest='project_path', required=True)
     a = sub.add_parser("legacy"); a.add_argument("--actor", required=True); a.add_argument("--path", required=True)
     a = sub.add_parser("checkpoint"); a.add_argument("--to", required=True)
     a.add_argument('--actor'); a.add_argument('--compact', action='store_true')
@@ -678,6 +684,8 @@ def parser():
     from composite import add_parsers
     add_parsers(sub)
     for child in sub.choices.values():
+        child.add_argument('--verbose', action='store_true', default=argparse.SUPPRESS,
+                           help='Show full write results and the board')
         child.add_argument("--root", default=argparse.SUPPRESS, help="Shared persistent workspace")
     return p
 
@@ -1243,12 +1251,28 @@ def dispatch(a, store):
             store.append("resource." + a.action, actor, {"name": a.name, "reason": a.reason,
                          **({'task': a.task} if a.task else {})})
     elif command == "ask":
+        evidence = []
+        for value in a.evidence:
+            if value.startswith(('decision:', 'ask:')):
+                reference = resolve_follows(state, [value])[0]
+                row = store.db.execute('SELECT * FROM events WHERE seq=?', (reference['seq'],)).fetchone()
+                event = store.decode_event(row)
+                evidence.append(store.artifact_bytes((canonical(event) + '\n').encode(),
+                                'evidence-' + reference['kind'] + '-' + str(reference['seq']) + '.json', value))
+            else:
+                evidence.append(store.artifact(value))
         store.append("ask", actor, {"id": a.id, "question": a.question,
                      "options": json.loads(Path(a.options_file).read_text()), "recommended": a.recommended,
-                     "task": a.task, "waiting": a.waiting, "evidence": [store.artifact(f) for f in a.evidence]})
+                     "task": a.task, "waiting": a.waiting, "evidence": evidence})
+    elif command == 'project':
+        path = Path(a.project_path).resolve(strict=True)
+        require(path.is_dir(), 'Project must be an existing directory')
+        store.append('project.set', actor, {'project': str(path)})
     elif command in {"pause", "resume", "decision"}:
         data = {"reason": a.reason}
         if command == "decision":
+            if a.round_scope:
+                data['round_scope'] = True
             data.update({k: getattr(a, k) for k in ("answers", "choice", "channel", "owner_words", "withdraws", "id")
                          if getattr(a, k) is not None})
             require(bool(a.defer_read) == bool(a.gate), "gate_defer_invalid: --defer-read and --gate go together")
@@ -1526,7 +1550,7 @@ def parse_cli(argv=None):
     return parser().parse_args(argv)
 
 
-def main(argv=None):
+def _main(argv=None, receipt=None):
     a = parse_cli(argv)
     store = None
     result_rc = 0
@@ -1706,6 +1730,14 @@ def main(argv=None):
         committed = type(before) is int and store.commit_count > before
         if a.command == 'transport' and a.via == 'codex-queue' and result.get('delivered') is not True:
             result_rc = 1
+        if committed and not a.verbose and result_rc == 0:
+            try:
+                store.publish()
+            except Exception as exc:
+                from registry_projections import JournalRollback
+                warning(str(exc) if isinstance(exc, JournalRollback) else
+                        'Command committed; summary unavailable; do not retry')
+            return result_rc
         if a.command != "dash":
             try:
                 if result is not None:
@@ -1797,10 +1829,44 @@ def main(argv=None):
         return 1
     finally:
         if store:
+            if receipt is not None and type(store.commit_count) is int and store.commit_count:
+                receipt.update({'committed': True, **store.last_commit})
             try:
                 store.close()
             except (OSError, sqlite3.Error):
                 warning('Registry close failed in ' + str(root))
+
+
+def main(argv=None):
+    """Successful writes have one bounded receipt; --verbose retains the full interface."""
+    args = parse_cli(argv)
+    if args.verbose or args.command in {'status', 'inbox', 'doctor', 'dash', 'check', 'checklist',
+                                       'forecast', 'balance', 'usage', 'context', 'census', 'selftest'}:
+        return _main(argv)
+    out, err, receipt = io.StringIO(), io.StringIO(), {}
+    try:
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            code = _main(argv, receipt)
+    except BaseException:
+        print(out.getvalue(), end=''); print(err.getvalue(), end='', file=sys.stderr)
+        raise
+    if receipt and code == 0:
+        following = {'agent': 'inbox', 'task': 'inbox', 'brief': 'inbox', 'ack': 'inbox',
+                     'start': 'prove', 'prove': 'deliver', 'deliver': 'review', 'review': 'check',
+                     'ask': 'decision', 'project': 'census'}
+        receipt['next'] = following.get(args.command, 'status')
+        line = json.dumps(receipt, ensure_ascii=False, separators=(',', ':'))
+        if len(line.encode()) + 1 > 200:
+            event = str(receipt['event'])
+            while len(line.encode()) + 1 > 200:
+                event = event[:-1]
+                receipt['event'] = event + '…'
+                line = json.dumps(receipt, ensure_ascii=False, separators=(',', ':'))
+        print(line)
+        print(err.getvalue(), end='', file=sys.stderr)
+    else:
+        print(out.getvalue(), end=''); print(err.getvalue(), end='', file=sys.stderr)
+    return code
 
 
 if __name__ == "__main__":
