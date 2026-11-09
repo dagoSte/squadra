@@ -118,7 +118,7 @@ def run(a, root):
     rc = _step(cli, root, 'transport', {'actor': a.id, 'message': introduction, 'via': a.via}, completed)
     if rc:
         return rc
-    print(json.dumps({'command': 'join', 'agent': a.id, 'coordinator': a.coordinator, 'ack': 'pending'}))
+    print(json.dumps({'command': 'join', 'agent': a.id, 'coordinator': a.coordinator, 'ack_required': True}))
     return 0
 
 
