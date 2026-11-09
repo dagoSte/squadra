@@ -1497,10 +1497,12 @@ def lane_builder_of(state, parent, reader):
     agent = state["agents"].get(reader)
     if agent is None:
         return None
+    # A successor (replace, handover, supersede) keeps the lanes of every task it descends from.
+    ancestors = task_lineage(state, state["tasks"].get(parent) or {"id": parent})
     for decision in state["decisions"]:
         tasks = decision.get("tasks")
-        if (decision.get("id") != "lanes-" + parent or "plan" not in decision or not isinstance(tasks, list)
-                or not tasks or tasks[0] != parent):
+        if (not isinstance(tasks, list) or not tasks or tasks[0] not in ancestors
+                or decision.get("id") != "lanes-" + tasks[0] or "plan" not in decision):
             continue
         for lane in tasks[1:]:
             task = state["tasks"].get(lane)
@@ -1508,6 +1510,21 @@ def lane_builder_of(state, parent, reader):
                                               if a in state["agents"]}:
                 return lane
     return None
+
+
+def task_lineage(state, task):
+    """The task and every ancestor through supersedes/taken_over_from, nearest first; cycles stop the walk."""
+    seen, pending = [], [task]
+    while pending:
+        current = pending.pop()
+        name = current.get("id")
+        if not isinstance(name, str) or name in seen:
+            continue
+        seen.append(name)
+        for origin in (current.get("supersedes"), current.get("taken_over_from")):
+            if isinstance(origin, str) and origin not in seen:
+                pending.append(state["tasks"].get(origin) or {"id": origin})
+    return seen
 
 
 def require_not_lane_builder(state, parent, reader):
