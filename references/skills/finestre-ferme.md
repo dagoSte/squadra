@@ -62,4 +62,17 @@ advice and the waits show only the squad that is really there** (owner, 2026-10-
 - **Only the owner's word parks a window.** The coordinator shows the list, records the
   question with `ask` or the owner's words with `decision --owner-words`, then runs one
   `standby --reason "<owner's words>"` per window. Nothing is parked automatically.
+- `squadra doctor --resume` lists every active window silent for two days or more (since
+  its last answer or, if later, its registration), with
+  `archivable` and, when it is not, what `keeps` it: a coordinator role (reconcile it with
+  Rule 0), open tasks it owns or reads (reviewer or pool), resources it holds. Stand-by
+  parks every seat of an identity, so these checks cover every seat sharing it. An
+  archivable identity carries one exact `standby` command; its other seats name it in
+  `parked_with`.
+- A window that keeps something is reconciled first: ping it, `reassign` its reads,
+  supersede its tasks, release its resources through their owner. It is never parked
+  to hide open work.
+- Stand-by keeps identity, history, authors and budgets and stops no process; a parked
+  window leaves the composition advice, the waits and `silent_windows`. A window that
+  answers a new `ping` returns as described in Rule 0.
 

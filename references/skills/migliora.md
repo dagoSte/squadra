@@ -77,3 +77,19 @@ rasoio. It is not a hidden daemon or a promise that every coding client invokes 
 skill. Project startup instructions can explicitly request it for other clients.
 
 Git hooks run against an isolated index. Refused/failed commits leave owned rule bytes unstaged. A hook-created commit with unexpected files is recorded with its actual hash, files, mismatch and logs, then requires reconciliation; it is never silently retried. Unrelated staged entries are preserved.
+
+## Rules moved from the core (SKILL.md 3.14.0)
+
+The core keeps one line per rule; this is the full text, unchanged except for relative links.
+
+
+### Built-in skills: errata, rasoio and migliora
+
+- **migliora** ([guide](migliora.md)). At task close, after repeated
+  failures or on request, inspect observed friction. Prefer a tool remedy to an added
+  rule. Apply only evidence-backed scoped changes, verify them and automatically
+  commit owned changes after the project's required checks and independent reviews.
+  `migliora apply` manages a block in `AGENTS.md`; `--defer-commit` prepares it for a
+  required read, and `migliora commit` commits the checked bytes afterwards. No rule
+  without a trigger and retirement condition, no implicit push or memory approval.
+

@@ -72,4 +72,10 @@ The core keeps one line per rule; this is the full text, unchanged except for re
   owner's language, the sentence it names ("Use squadra to compact the storage of the registry
   at <path>") and what it does: `storage adopt`, `storage compact` and `storage purge`, each
   previewed first. Run any `--apply` only on the owner's word; nothing is compacted at opening.
+**At every resume, and whenever coordination passes to another window, the coordinator runs
+`squadra doctor --resume` before assigning work** (owner, 2026-10-30). It is read-only:
+the quick registry checks plus, in one report, the interpreter in use, every checkout of
+open tasks and active windows (exists, Git, branch, head, uncommitted changes, commits after
+the last tag, distance from upstream at the last fetch) and the active windows silent for
+two days or more.
 

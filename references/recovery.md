@@ -37,11 +37,11 @@ cache has already been folded.
 
 | Operation | Verified during that operation |
 | --- | --- |
-| Other ordinary commands, including `check` and an ordinary task's `close`; dashboard refresh after startup | The recorded anchor event and its hash, every newer event's hash and previous link, and authenticated proofs for each cache value or index read. |
-| Quick resume check (`doctor --quick`) | The anchor, newer suffix and demanded cache values; no full historical/artifact audit or replay-root comparison. The output labels this limited scope. |
+| Other ordinary commands, including `check` and an ordinary task's `close`; dashboard refresh after startup | The recorded anchor event and its hash, every newer event's hash and previous link, and the authenticated index proofs for each cache value or index read. |
+| Quick resume check (`doctor --quick`) | The anchor, newer suffix and demanded cache values; the report explicitly excludes full historical/artifact verification and replay-root comparison. The output labels this limited scope. |
 | Explicit `usage`/`balance` calculations, a lesson's source check, and the lesson hint after a failed proof | The complete event hash chain and the requested historical evidence. These reads do not perform a full artifact audit. |
 | `doctor`, `export`, `checkpoint`, `save`, `restore-check`, and a release-gate task's `close` | The complete event chain and referenced artifacts/manifests, plus full replay to compare or rebuild the derived cache. |
-| Dashboard startup | The ordinary verified path serves data while a full chain/artifact/replay audit runs in the background on a private copy of the registry. A visible status marks the pending audit; failure stops data responses and removes the displayed data. |
+| Dashboard startup | The ordinary verified path serves data while a full chain/artifact/replay audit runs in the background. The audit runs on a private copy of the registry. A visible status marks the pending audit; failure stops data responses and removes the displayed data. |
 
 Use read-only `doctor --quick` when resuming; a coordinator runs `doctor --resume`, the same checks plus resume readiness ([resume check](skills/ripresa.md)). Run `doctor` without that flag for
 the complete audit. A full audit reports cache/journal disagreement as a mismatch:
@@ -645,4 +645,64 @@ leaves, or whether the cached root equals a complete replay of the reducer. An
 invalid, missing or foreign cache falls back to verified reconstruction; a failing
 verification is not a successful cached read. Source manifests store file lists
 once and preserve the original source fingerprint; binding checks resolve them.
+
+### Dashboard, stop and continuity
+
+- **Context under pressure:** if the client signals compaction/a limit, or you
+  can no longer reliably reconstruct task, constraints and proofs, save
+  before continuing. Use a registered compact checkpoint with reuse, plus `save`
+  and `restore-check` for sources/WIP. Avoid repeated full registry exports and
+  inspect retention before the next long round. Do not invent a percentage of remaining tokens. Prepare a
+  durable summary and consider a session with a clean context; if the client
+  allows it, start it within the task and budget already authorized. The new session
+  must reread the mandate, the registry and the handover, confirm receipt and
+  reconcile sources and resources before writing. A prepared prompt does not prove
+  that a window was opened. Preserve authors, identities, budgets and blocks;
+  do not use the context change to reset them or to create a second writer.
+- `squadra dash --open`: a local page, read-only except declared settings and selections of installed plugins (it saves requests, it does not run actions); refreshed every 2 seconds.
+  The **Summary** explains work, steps, waits and the history of the tasks; **Decisions**
+  and **Communications** keep the recorded links and ACKs. Technical
+  details on request, IT/EN for the interface, never translations of the recorded texts.
+  Read `references/recovery.md` for how it works and its limits.
+- When the owner stops the work, record `pause`, interrupt only owned processes,
+  wait for the terminal receipts and save with `save` into a durable folder, then use
+  `restore-check` on a new folder to really prove the recovery.
+  A process without a receipt stays in an uncertain state: do not declare it stopped.
+- `save` captures the registry and all registered repositories, Git history, separate
+  index/worktree patches and untracked files; `--repo` is a partial choice. `checkpoint`
+  remains the copy of the registry only. Read the filters and limits in
+  `references/recovery.md`; do not promise that secrets are absent from the whole history.
+- To resume, wait for the owner's request, reread and reconcile
+  `doctor --quick`, reservations, sources and messages, record `resume` and assign the current step.
+  An ACK, a resume or a review does not authorize an implicit publication.
+
+
+Use `doctor` without `--quick` for the full audit. It stays read-only and refuses a
+cache/journal mismatch; only explicit `doctor --repair` rebuilds the derived tables
+in a writable workspace. Repair refuses saved packages and checkpoint folders.
+The expensive cold-cache build and release-gate audit run outside the journal's
+exclusive write transaction; publication rechecks the prepared snapshot, and a
+busy retry never means that the requested write committed.
+
+Read-only commands do not write the registry or its projections. Ordinary writes
+append new `events.jsonl` records and update affected daily views. A crash can leave
+those views behind the committed journal: compare their recorded sequence/head with
+the current Store view before treating them as complete. `state.json` and complete
+mail/history exports are refreshed by `export`, `checkpoint` or `save`, not by
+every command. Use `squadra export` when a consumer needs a complete file export.
+Upgrade every window together before the first new-format write. New events bind
+`format: 2` into their hash; legacy rows remain unchanged. Squadra 3.10.0 therefore
+refuses at the first such event with an integrity error, including status, check and
+close. This intentional refusal is not data loss: use the upgraded CLI, never bypass
+the verifier. New doctor/export commands verify the complete mixed-format history.
+
+The local registry protects against concurrent overwrites and detects accidental
+alterations within these verification boundaries. A whole older `registry.sqlite3`,
+or one whose `-wal` was lost, still verifies on its own: the journal cannot see the
+tail it lost. The next projection refresh notices that `events.jsonl` holds events
+the journal lacks, refuses, and keeps the projections unchanged; `squadra export`
+does not make that check. The registry does not cryptographically authenticate the windows:
+anyone with the same account can impersonate a name or rewrite the database.
+Continuity requires backups to another destination; no disk guarantees
+"never lose" against failure or total deletion.
 
