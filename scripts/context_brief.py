@@ -467,7 +467,8 @@ def seat_context(store, name, *, since=None, max_chars=DEFAULT_CHARS, state=None
     if start:
         refs = state.get('refs', {}).get('decision', {})
         decisions = [d for d in decisions if (refs.get(d.get('id')) or 0) > start['seq']]
-    messages = [plain(m) for m in state['messages'].values() if not m.get('ack') and not m.get('info') and
+    messages = [{k: v for k, v in plain(m).items() if not k.startswith('transport_')}
+                for m in state['messages'].values() if not m.get('ack') and not m.get('info') and
                 not m.get('replaced_by') and (m['to'] in history or m['from'] in history)]
     resources = [{'name': key, **plain(r)} for key, r in state['resources'].items() if r['owner'] in aliases]
     questions = [plain(q) for q in state['asks'].values() if q['status'] == 'open' and
