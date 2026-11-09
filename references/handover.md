@@ -177,6 +177,6 @@ Lettura finale (regola 7): candidato `3.15.0-rc1`; L0 e L1 (Claude) letti da Cod
 
 ## Note d'implementazione della 3.15.0
 
-- **status e la finestra stanca.** `status` mostra l'avviso solo da un valore già calcolato nello stesso processo, senza leggere transcript (§3.6). Ogni comando `status` è un processo nuovo, quindi in pratica l'avviso lo mostrano la dashboard (processo lungo) e `doctor --resume`, che lo calcolano. È voluto: `status` resta veloce.
+- **status e la finestra stanca.** `status` mostra l'avviso leggendo la cache su disco scritta da chi l'ha calcolato (dashboard o `doctor --resume`), senza leggere transcript (§3.6), solo se il valore è fresco (entro 60 s) e legato a identità, sessione e settings. Se nessuno l'ha calcolato di recente, `status` non mostra nulla: resta veloce.
 - **access probe** stampa il rapporto completo anche con l'output silenzioso: è un comando diagnostico (decisione r315-sout2-eccezione-access).
 - **Comandi composti.** `assign`, `join` e `pickup` stanno sopra le primitive e non introducono tipi di evento nuovi; una prova di parità lo verifica.
