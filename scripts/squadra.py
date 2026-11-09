@@ -1795,6 +1795,9 @@ def _main(argv=None, receipt=None):
                     if a.command == 'supersede':
                         print('- ' + a.task + ' → ' + a.by)
                     if a.command == 'status':
+                        import usage
+                        for notice in usage.status_notices(state, now()):
+                            print('- ' + notice)
                         from ripresa import idle_tasks
                         idle = idle_tasks(plain(state), now())
                         if idle:

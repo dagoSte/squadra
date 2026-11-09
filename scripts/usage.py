@@ -23,6 +23,7 @@ SLICE_BYTES = 8 * 1024 * 1024
 MAX_RECORDS = 100000
 MAX_FILES = 1000
 SAVE_SECONDS = 5
+TIRED_FRESH_SECONDS = 60
 MODEL = re.compile(r'(?:claude-(?:opus|sonnet|haiku)[-a-z0-9.]{0,60}|gpt-[0-9][-a-z0-9.]{0,60}|o[134](?:[-a-z0-9.]{0,60})|codex[-a-z0-9.]{0,60})\Z')
 SESSION = re.compile(r'[a-zA-Z0-9][a-zA-Z0-9_-]{5,79}\Z')
 
@@ -271,7 +272,7 @@ def tiredness(seat_sources, now, settings):
         return result
     latest, started, source = max(candidates, key=lambda item: item[0]['at'])
     result['source'] = {'client': source.client, 'session': source.session, 'observed_at': utc(source.observed)}
-    if source.cursor == 0:
+    if source.cursor == 0 and not ({'sample_limit', 'record_too_large'} & source.normalized()[2]):
         result['session_started'] = utc(started)
         result['age_hours'] = max(0, (clock - started) / 3600)
     window = None
@@ -322,10 +323,48 @@ def cached_tiredness(state, now):
     for collector in list(_COLLECTORS.values()):
         for actor, row in getattr(collector, 'tired_data', {}).items():
             at, key, value = row
-            if (actor in state.get('agents', {}) and 0 <= clock - at <= 60
+            if (actor in state.get('agents', {}) and 0 <= clock - at <= TIRED_FRESH_SECONDS
                     and key == _tired_key(state, actor) and value.get('source')
                     and at >= observed.get(actor, float('-inf'))):
                 result[actor], observed[actor] = value, at
+    return result
+
+
+def _tired_binding(state, actor):
+    return hashlib.sha256(usage_cache.encoded([actor, _tired_key(state, actor)])).hexdigest()
+
+
+def _tired_cache(state, roots=None):
+    workspace = state.get('workspace', {})
+    roots = source_roots() if roots is None else roots
+    key = ('tiredness-v1', workspace.get('project'), workspace.get('name'),
+           tuple(sorted((k, str(v)) for k, v in roots.items())), str(Path.home()))
+    return usage_cache.Cache(Collector.source_key(key),
+                            excluded=[workspace[k] for k in ('project', 'root') if workspace.get(k)])
+
+
+def status_tiredness(state, now):
+    """Read calculated notices from disk only; 60 seconds, exact seat and settings."""
+    clock = instant(now) if isinstance(now, str) else now.timestamp() if isinstance(now, datetime) else now
+    saved = _tired_cache(state).load(notices=True)
+    result = {}
+    for actor in state.get('agents', {}):
+        row = saved.get(_tired_binding(state, actor))
+        if (row and 0 <= clock - row['at'] <= TIRED_FRESH_SECONDS
+                and 0 <= clock - instant(row['value']['source']['observed_at']) <= TIRED_FRESH_SECONDS):
+            result[actor] = row['value']
+    return result
+
+
+def status_notices(state, now):
+    from registry import standby
+    values = status_tiredness(state, now)
+    english = state.get('workspace', {}).get('lang', 'it') == 'en'
+    result = []
+    for window in seats(state):
+        actors = [a for a in window['actors'] if a in values and not standby(state, a)]
+        if actors and values[actors[0]]['tired']:
+            result.append(', '.join(actors) + ': ' + tired_notice(values[actors[0]], english=english))
     return result
 
 
@@ -914,6 +953,9 @@ class Collector:
                 'suggestions': advice(models, result, now), 'cost': None}
         self.tired_data = {actor: (now, _tired_key(state, actor), row['tiredness'])
                            for row in result for actor in row['actors']}
+        _tired_cache(state, self.roots).save(
+            {_tired_binding(state, actor): {'at': at, 'value': value}
+             for actor, (at, _, value) in self.tired_data.items() if value.get('source')}, notices=True)
         self.persist(data['coverage']['status'] == 'collecting')
         if self.cache is not None and self.cache.notice:
             data['coverage']['notices'] = [self.cache.notice]

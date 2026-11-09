@@ -210,7 +210,7 @@ def readiness(state, at, *, idle_minutes=IDLE_MINUTES):
                    for row in idle)
     import usage
     tired = []
-    data = usage.collect([], state, now=clock.timestamp())
+    data = usage.collect([], state, now=clock.timestamp(), budget_seconds=2.0)
     active_ids = {agent['id'] for agent in active}
     for window in data['windows']:
         actors = [actor for actor in window['actors'] if actor in active_ids]
