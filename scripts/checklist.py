@@ -334,6 +334,7 @@ def handover_checks(state, actor, at=None):
     _add(items, 'actor', lambda: _expect(actor in state['agents'], 'Registered actor required: ' + str(actor)))
     if items[-1]['status'] == 'fail':
         return {'moment': 'handover', 'items': items, 'ready': False}
+    items[-1]['detail'] = ('Seat registered: ' if english else 'Sede registrata: ') + str(actor)
     seats = _handover_seats(state, actor)
     tasks = [t for t in state['tasks'].values() if t.get('owner') in seats
              and t['status'] not in {'done', 'withdrawn'} and not t.get('superseded_by')]
