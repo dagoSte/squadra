@@ -718,16 +718,23 @@ def make_server(root, port=0):
                     key = remember_key(events)
                     audit = view.audit_info()
                     stamp = now()
-                    tired = None
+                    tired = listen = None
                     if self.headers.get('X-Squadra-Tiredness') == '1':
                         measured = usage.collect(events, recorded, roots=usage_roots)
                         tired = {actor: row['tiredness'] for row in measured['windows']
                                  if row.get('tiredness', {}).get('source') for actor in row['actors']}
+                        # The Windows tab also shows who follows its mail: cursor files only, read-only.
+                        from inbox_follow import listening
+                        try:
+                            listen = listening(recorded, root, stamp)
+                        except (OSError, ValueError, KeyError):
+                            listen = {}
 
                     def state_answer(body):
                         # Dynamic tab data accompanies full, delta and unchanged replies.
                         if tired is not None:
-                            body = json.dumps({**json.loads(body), 'tiredness': tired}, ensure_ascii=False).encode()
+                            body = json.dumps({**json.loads(body), 'tiredness': tired, 'listening': listen},
+                                              ensure_ascii=False).encode()
                         self.answer(200, body)
 
                     plugin_value = {**plugin_actions.discover(plugin_home, key), "key": key}
