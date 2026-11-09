@@ -1584,7 +1584,14 @@ def _main(argv=None, receipt=None):
                               cursor_file=a.cursor_file, persist=not a.no_cursor)
         if a.command == 'access':
             from access import run
-            print(json.dumps(run(root, a.actor, a.action, a.repo, a.session, a.context), ensure_ascii=False, indent=2))
+            result = run(root, a.actor, a.action, a.repo, a.session, a.context)
+            if a.action == 'probe':
+                last_commit = result.pop('last_commit', None)
+                if receipt is not None and last_commit:
+                    receipt.update(last_commit)
+                    if result.get('projection_error'):
+                        warning(result['projection_error'])
+            print(json.dumps(result, ensure_ascii=False, indent=2))
             return 0
         if a.command == "context":
             import context_brief
