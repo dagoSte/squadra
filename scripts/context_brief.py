@@ -467,7 +467,11 @@ def seat_context(store, name, *, since=None, max_chars=DEFAULT_CHARS, state=None
     if start:
         refs = state.get('refs', {}).get('decision', {})
         decisions = [d for d in decisions if (refs.get(d.get('id')) or 0) > start['seq']]
-    messages = [{k: v for k, v in plain(m).items() if not k.startswith('transport_')}
+    # Only fields the journal records: read-time facts (transport_* from wait_facts, or any later
+    # derivation) differ between a plan and its validation, and the note is compared byte for byte.
+    recorded = ('id', 'from', 'to', 'utc', 'body', 'ack', 'task', 'related_task', 'reply_to', 'ping', 'info',
+                'awaited', 'pool', 'availability_event', 'delivery_intent', 'transport', 'replaced_by')
+    messages = [{k: v for k, v in plain(m).items() if k in recorded}
                 for m in state['messages'].values() if not m.get('ack') and not m.get('info') and
                 not m.get('replaced_by') and (m['to'] in history or m['from'] in history)]
     resources = [{'name': key, **plain(r)} for key, r in state['resources'].items() if r['owner'] in aliases]

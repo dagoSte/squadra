@@ -82,6 +82,9 @@ def run(a, root):
         return pickup(a, root, cli)
     values, completed = vars(a).copy(), []
     if a.command == 'assign':
+        # Automatic lanes create one assignment per lane; assign transports only assign-<id>.
+        require(not getattr(a, 'paths', None), 'assign does not create automatic lanes, whose assignments it would '
+                'not transport; use task --paths, then transport each lane assignment')
         steps = [('task', values), ('brief', {**values, 'task': a.id, 'project': False, 'file': a.brief_file}),
                  ('transport', {**values, 'message': 'assign-' + a.id, 'force': False}),
                  ('checklist', {'moment': 'assign', 'actor': a.actor, 'task': a.id})]
