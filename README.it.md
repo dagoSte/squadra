@@ -232,6 +232,19 @@ squadra dash --open
 
 </details>
 
+Le stesse primitive si possono anche combinare. `assign` include il briefing e i controlli dell’incarico; `join` inoltra la chiamata di presenza e la presentazione al coordinatore indicato. Scegli `--via manual` per un inoltro manuale registrato o `--via codex-queue` per un destinatario Codex con sessione registrata. `pickup` legge i controlli di ripresa e la posta pendente; `resume --actor ... --reason ...` conserva il cambio di stato esplicito del coordinatore. Se un passo fallisce, leggi la ricevuta e i passi già registrati prima di riprovare.
+
+```sh
+squadra assign --actor coord --id T2 --owner builder --reviewer reader \
+  --title "Key rotation" --repo /path/to/builder-checkout \
+  --scope-file /evidence/scope.md --proof-file /evidence/argv.json \
+  --brief-file /evidence/t2.md --via manual
+squadra join --id builder2 --identity ACTUAL-SESSION --session ACTUAL-SESSION \
+  --role executor --client codex --repo /path/to/builder2-checkout \
+  --coordinator coord --body-file /evidence/introduction.md --via manual
+squadra pickup --actor builder2
+```
+
 <a id="prompts"></a>
 ## Prompt di esempio
 
@@ -519,7 +532,7 @@ Le sezioni seguenti conservano gli esempi operativi completi. Apri l’argomento
 | Seguire un incarico dall’assegnazione alla chiusura | [Flusso di lavoro](#workflow) |
 | Ricostruire un’istruzione o registrare una decisione | [Briefing, messaggi e decisioni](#decision-reference) |
 | Salvare il lavoro o riprendere una sessione | [Checkpoint e ripristino](#checkpoints) |
-| Cercare un comando o il suo prompt in parole semplici | [Tutti i 62 comandi](#commands) |
+| Cercare un comando o il suo prompt in parole semplici | [Tutti i 65 comandi](#commands) |
 
 [Skill](SKILL.md) · [Avvio](references/start.md) · [Lavoro/prova/lettura](references/work.md) · [Runner nativi](references/runtime.md) · [Ripristino/passaggio di contesto](references/recovery.md) · [Sfide/confronto](references/benchmark.md) · [Plugin](references/plugins.md) · [Creare un plugin](references/plugin-authoring.md)
 
@@ -843,10 +856,10 @@ attiva degrada l'integrita del candidato. Vedi la
 
 Non serve scrivere questi comandi: **il modo consigliato è chiedere alla finestra in parole semplici**, come nella colonna *Oppure chiedi* e nei [prompt di esempio](#prompts); il comando lo esegue la finestra. I comandi sono quello che eseguono le finestre, e quello che puoi scrivere tu per controllare.
 
-Ogni comando, raggruppato per scopo: **62 sottocomandi**, più `--version`. Usa `squadra <comando> --help` per le opzioni; i comandi del registro accettano `--root` o `SQUADRA_ROOT`. «Solo il coordinatore» segna ciò che solo il coordinatore può registrare: `task`, `route`, `supersede`, `reassign`, `replace`, `brief`, `close`, `ask`, `decision` (compreso `--extend-budget`), `lanes --apply`, `settings`, `pause`, `resume`, `save`, `standby`, `ping --all`, `ping --sweep`, e la ricevuta che `restore-check` scrive nel registro vivo. Senza installare, gli stessi comandi girano come `python3 -B scripts/squadra.py <comando>`.
+Ogni comando, raggruppato per scopo: **65 sottocomandi**, più `--version`. Usa `squadra <comando> --help` per le opzioni; i comandi del registro accettano `--root` o `SQUADRA_ROOT`. «Solo il coordinatore» segna ciò che solo il coordinatore può registrare: `task`, `route`, `supersede`, `reassign`, `replace`, `brief`, `close`, `ask`, `decision` (compreso `--extend-budget`), `lanes --apply`, `settings`, `pause`, `resume`, `save`, `standby`, `ping --all`, `ping --sweep`, e la ricevuta che `restore-check` scrive nel registro vivo. Senza installare, gli stessi comandi girano come `python3 -B scripts/squadra.py <comando>`.
 
 <details>
-<summary><strong>Tutti i 62 comandi con i loro prompt, raggruppati per scopo</strong></summary>
+<summary><strong>Tutti i 65 comandi con i loro prompt, raggruppati per scopo</strong></summary>
 
 ### Avvio e squadra
 
@@ -855,6 +868,7 @@ Ogni comando, raggruppato per scopo: **62 sottocomandi**, più `--version`. Usa 
 | `--version` | Stampa la versione installata. | «Che versione di Squadra è installata?» |
 | `init` | Crea il registro di un progetto, con nome, lingua e budget di lettura. | «Usa la skill squadra e crea il registro di questo progetto in ~/.local/state/squadra/atlas.» |
 | `agent` | Registra una finestra: identità, ruolo, client, checkout e le skill che ha letto davvero. | «Registra questa finestra nella squadra, con le skill che hai letto davvero.» |
+| `join` | Registra questa sede, chiama un coordinatore esistente, invia la presentazione e registra entrambi gli inoltri; gli ACK dei destinatari restano da ricevere. Accetta le opzioni di `agent` più `--coordinator`, `--body-file` e `--via`. | «Entra nella squadra esistente e presenta questa finestra al coordinatore.» |
 | `census` | Trova le finestre Codex, Claude e Cursor del progetto senza scrivere nulla; prima di `init` serve `--project`. Va lanciato da una finestra Claude: dentro la sandbox di Codex non vede le altre finestre, e lo dice. | «Trova le finestre Codex, Claude e Cursor che lavorano a questo progetto, senza scrivere nulla.» |
 | `ping` | Manda una chiamata di presenza a una finestra (`--to`) o, solo il coordinatore, a tutte (`--all`); `--sweep` (solo il coordinatore) registra lo stand-by per una chiamata senza risposta che un trasporto ha consegnato, e il ritorno dopo un ACK nuovo. | Al coordinatore: «Controlla quali finestre ci sono ancora: manda a tutte una chiamata di presenza.» |
 | `replace` | Solo il coordinatore: sostituisce finestre, trasferisce incarichi e posta utile; anteprima con `--dry-run`. | «Passa il lavoro della finestra esaurita alla sostituta.» |
@@ -870,6 +884,7 @@ Ogni comando, raggruppato per scopo: **62 sottocomandi**, più `--version`. Usa 
 | Comando | Cosa fa | Oppure chiedi |
 |---|---|---|
 | `task` | Solo il coordinatore: assegna un incarico: responsabile, lettore, checkout, perimetro, prova, requisiti, dipendenze; `--supersedes` sostituisce un incarico aperto. | Al coordinatore: «Affida "Servizio di rotazione delle chiavi" alla finestra costruttrice, con la finestra revisora come lettore indipendente e l'intera suite di test come prova.» |
+| `assign` | Esegue `task`, il suo `brief`, il `transport` dell’incarico e `checklist --moment assign` in un solo comando. Accetta le opzioni di `task` più `--brief-file` e `--via`; se un passo fallisce indica quelli già registrati. | «Assegna e descrivi questo incarico, inoltralo e controllalo.» |
 | `lanes` | Mostra l'anteprima delle corsie da `--paths`, ripetibile; `--apply --actor COORD` la applica al padre esistente del coordinatore. `task --paths` applica automaticamente; `task --lanes none` disattiva. Le finestre silenziose sono escluse, il lettore del padre non costruisce mai una corsia e ogni corsia riceve il proprio brief. | «Dividi queste modifiche indipendenti fra i costruttori disponibili e mostra il piano.» |
 | `route` | Solo coordinatore: promuove con `--full`, conservando base/storia/budget; nuove prova e lettura. | Al coordinatore: «T3 non è più una piccola modifica: passalo al percorso completo.» |
 | `supersede` | Solo il coordinatore: registra dopo che un incarico esistente e più recente sostituisce uno aperto, con lo stesso effetto di `--supersedes`. | Al coordinatore: «T7 sostituisce T5: registralo, conservando la storia di T5.» |
@@ -923,6 +938,7 @@ Ogni comando, raggruppato per scopo: **62 sottocomandi**, più `--version`. Usa 
 |---|---|---|
 | `pause` | Solo il coordinatore: ferma nuovo lavoro, letture ed esecuzioni, lasciando possibili consultazione e ripristino. | Al coordinatore: «Metti in pausa la squadra: niente lavoro nuovo finché non te lo dico.» |
 | `resume` | Solo il coordinatore: riprende dopo la parola esplicita del proprietario e una riconciliazione. | Al coordinatore: «Riprendi il lavoro: prima riconcilia, poi dimmi il prossimo passo.» |
+| `pickup` | Legge `doctor --resume`, censimento, tabella e posta pendente della sede indicata da `--actor`; non scrive eventi nel registro e non conferma messaggi. | «Mostra i controlli e il lavoro pendente di questa finestra.» |
 | `checkpoint` | Copia il registro, i suoi artefatti e le viste derivate in una cartella nuova; `--actor` lo registra per la conservazione, `--compact` omette le viste rigenerabili, i byte identici dell'ultimo checkpoint registrato sono riusati. | «Fai un checkpoint compatto del registro in una cartella nuova.» |
 | `storage` | `status`, `purge` (`--dry-run` predefinito; `--apply` solo il coordinatore, con un motivo), `keep`, `compact` e `adopt` (checkpoint e salvataggi fatti prima della 3.13; `compact` sigilla anche i candidati scrivibili legacy) di punti di recupero registrati, candidati e corse archiviate; le cartelle sconosciute e i punti di altri registri non vengono mai rimossi. | «Usa squadra: compatta lo spazio del registro /percorso/del/registro.» |
 | `save` | Solo il coordinatore: impacchetta il registro con ogni repository Git registrato e il lavoro in corso; `--repo ROOT --allow-name REL --reason TEXT` registra una deroga al nome per un solo salvataggio. | Al coordinatore: «Salva il registro e il codice di ogni repository, compreso il lavoro non finito.» |
