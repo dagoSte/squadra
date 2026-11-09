@@ -13,7 +13,7 @@ Coordinate Claude Code, Codex and Cursor with shared tasks, independent reviews 
 
 **Free and open source** — MIT licence, no account, everything runs on your machine.
 
-**Version 3.15.0** · Python 3.12+ · macOS / POSIX
+**Version 3.15.1** · Python 3.12+ · macOS / POSIX
 
 **English** · [Italiano](README.it.md) · [Privacy](PRIVACY.md)
 
@@ -991,7 +991,7 @@ Static, behavioral and dependency checks, excluding `tests/`. Passing means no H
 <a id="news"></a>
 ## What's new
 
-**3.15.0 — a tired window is replaced without losing anything, and the squad is simpler to run**
+**3.15.1 (includes 3.15.0) — a tired window is replaced without losing anything, and the squad is simpler to run**
 
 A window that runs for hours grows costly and less reliable. It can now be replaced in two commands, the coordinator included, without losing tasks, mail or decisions. Meanwhile Squadra runs with fewer commands, less output and shorter instructions, with no feature removed.
 
@@ -1003,6 +1003,7 @@ A window that runs for hours grows costly and less reliable. It can now be repla
 - **Fixes.** A lane's builder never reads its parent: the rule now holds through `reassign`, `replace`, pools, seat handovers, the whole chain of successors and at task creation. `doctor --resume` no longer reports as idle a successor that records its inherited plan, nor any task with «.L» in its name.
 - **How it was checked.** Every part was read by a different model from the one that wrote it (Codex reads Claude, Claude reads Codex); the final reads found three grave defects, fixed and re-read before release. Every fix has a test that is red before and green after; the full suite has more than 2490 tests.
 - **Upgrade every window together.** Seat handovers write journal format 5: 3.14 windows refuse it instead of ignoring it.
+- **In 3.15.1.** `access probe` answers with the short line too; the tiredness notice cache is written only when needed; a test no longer trips on Git's automatic maintenance; a probe confirms that declaring yourself ready to read opens no gap in independence; documentation qualified.
 
 **Watch the two-minute film of what's new in 3.10.2 — turn the sound on in the player:**
 

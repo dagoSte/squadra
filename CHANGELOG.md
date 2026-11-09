@@ -3,6 +3,14 @@
 Every Squadra release, newest first. The README keeps the newest release and the three before it.
 
 
+**3.15.1 — refinements after 3.15.0**
+
+- `access probe` answers with the short line like every other write (85 bytes); `--verbose` shows the full report.
+- The tired-window notice cache is written only when it changes or needs refreshing, not on every dashboard refresh; `status` still sees it within 60 s.
+- The test that checks lane analysis writes nothing no longer trips on Git's automatic maintenance; it stays red for a real write.
+- Verified with a probe and a guard test: declaring yourself ready to read does not let a lane's builder read its parent.
+- Documentation: the seat-handover note describes `status` with the on-disk cache; reply sizes are qualified (at most 200 bytes for every write).
+
 **3.15.0 — a tired window is replaced without losing anything, and the squad is simpler to run**
 
 A window that runs for hours grows costly and less reliable. It can now be replaced in two commands, the coordinator included, without losing tasks, mail or decisions. Meanwhile Squadra runs with fewer commands, less output and shorter instructions, with no feature removed.

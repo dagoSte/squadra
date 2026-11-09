@@ -13,7 +13,7 @@ Coordina Claude Code, Codex e Cursor con incarichi condivisi, revisioni indipend
 
 **Gratuita e open source** — licenza MIT, nessun account, tutto gira sul tuo computer.
 
-**Versione 3.15.0** · Python 3.12+ · macOS / POSIX
+**Versione 3.15.1** · Python 3.12+ · macOS / POSIX
 
 [English](README.md) · **Italiano** · [Privacy](PRIVACY.it.md)
 
@@ -996,7 +996,7 @@ Controlli statici, comportamentali e delle dipendenze, con `tests/` esclusa. Il 
 <a id="news"></a>
 ## Novità
 
-**3.15.0 — una finestra stanca si sostituisce senza perdere nulla, e la squadra è più semplice da guidare**
+**3.15.1 (comprende la 3.15.0) — una finestra stanca si sostituisce senza perdere nulla, e la squadra è più semplice da guidare**
 
 Una finestra che lavora per ore diventa costosa e meno affidabile. Ora la si sostituisce con due comandi, coordinatore compreso, senza perdere incarichi, posta o decisioni. Intanto Squadra si guida con meno comandi, meno testo e istruzioni più corte, senza togliere nessuna funzione.
 
@@ -1008,6 +1008,7 @@ Una finestra che lavora per ore diventa costosa e meno affidabile. Ora la si sos
 - **Correzioni.** Chi ha costruito una corsia non legge mai il padre: la regola ora vale con `reassign`, `replace`, il pool, i passaggi di sede, lungo tutta la catena dei successori e già alla creazione dell'incarico. `doctor --resume` non segnala più come fermo un successore che registra il piano ereditato né un incarico qualsiasi con «.L» nel nome.
 - **Verificata così.** Ogni parte è stata letta da un modello diverso da quello che l'ha scritta (Codex legge Claude, Claude legge Codex); le letture finali hanno trovato tre problemi gravi, corretti e riletti prima del rilascio. Ogni correzione ha un test rosso prima e verde dopo; la suite completa conta oltre 2490 test.
 - **Aggiorna tutte le finestre insieme.** I passaggi di sede scrivono il formato di journal 5: le finestre 3.14 lo rifiutano invece di ignorarlo.
+- **Nella 3.15.1.** `access probe` risponde anch'esso con la riga corta; la cache degli avvisi di stanchezza si scrive solo quando serve; un test non cade più per la manutenzione automatica di Git; una sonda conferma che dichiararsi pronti a leggere non apre varchi all'indipendenza; documentazione precisata.
 
 **Guarda il film delle novità della 3.10.2, due minuti — attiva l'audio nel lettore:**
 

@@ -3,6 +3,14 @@
 Tutte le versioni di Squadra, dalla più nuova. Il README tiene la più nuova e le tre precedenti.
 
 
+**3.15.1 — rifiniture dopo la 3.15.0**
+
+- `access probe` risponde con la riga corta come ogni altra scrittura (85 byte); `--verbose` mostra il rapporto completo.
+- La cache degli avvisi di finestra stanca si scrive solo quando cambia o va rinnovata, non a ogni aggiornamento della dashboard; `status` la vede ancora entro 60 s.
+- Il test che controlla che il calcolo delle corsie non scriva nulla non cade più per la manutenzione automatica di Git; resta rosso per una scrittura vera.
+- Verificato con una sonda e un test di guardia: dichiararsi pronti a leggere non permette a chi ha costruito una corsia di leggere il padre.
+- Documentazione: la nota del passaggio di sede descrive `status` con la cache su disco; le dimensioni delle risposte sono precisate (al massimo 200 byte per ogni scrittura).
+
 **3.15.0 — una finestra stanca si sostituisce senza perdere nulla, e la squadra è più semplice da guidare**
 
 Una finestra che lavora per ore diventa costosa e meno affidabile. Ora la si sostituisce con due comandi, coordinatore compreso, senza perdere incarichi, posta o decisioni. Intanto Squadra si guida con meno comandi, meno testo e istruzioni più corte, senza togliere nessuna funzione.
