@@ -43,13 +43,13 @@ class Squad(unittest.TestCase):
         out, err = io.StringIO(), io.StringIO()
         with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
             try:
-                rc = main(['--root', str(self.root), *args])
+                rc = main(['--verbose', '--root', str(self.root), *args])
             except SystemExit as exc:
                 rc = exc.code
         return rc, out.getvalue(), err.getvalue()
 
     def run_cli(self, *args, timeout=60):
-        return subprocess.run([sys.executable, '-B', str(CLI), '--root', str(self.root), *args],
+        return subprocess.run([sys.executable, '-B', str(CLI), '--verbose', '--root', str(self.root), *args],
                               env=self.env | {'PYTHONDONTWRITEBYTECODE': '1'},
                               capture_output=True, text=True, timeout=timeout)
 

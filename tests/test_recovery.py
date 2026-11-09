@@ -97,7 +97,7 @@ class Recovery(unittest.TestCase):
     def quiet(self,*args):
         out=io.StringIO()
         with contextlib.redirect_stdout(out),contextlib.redirect_stderr(io.StringIO()):
-            return main(list(args)),out.getvalue()
+            return main(['--verbose', *args]),out.getvalue()
 
     def test_restore_check_receipt_uses_squadra_root_like_every_command(self):
         path,_=self.pack();before=len(self.store.events())

@@ -50,7 +50,7 @@ class Precheck(unittest.TestCase):
     def cli(self, *args):
         out, err = io.StringIO(), io.StringIO()
         with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
-            rc = main(["--root", str(self.root), *args])
+            rc = main(['--verbose', "--root", str(self.root), *args])
         return rc, out.getvalue(), err.getvalue()
 
     def prove(self, task="T", argv=None):

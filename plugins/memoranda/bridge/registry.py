@@ -478,6 +478,8 @@ def apply(state, event):
         state['workspace'].setdefault('replacements', {})[event['id']] = {
             'request': d['request'], 'successors': d['successors'], 'outbox': d['outbox'],
             'unresolved_runs': d['unresolved_runs'], 'utc': event['utc']}
+    elif kind == 'project.set':
+        state['workspace']['project'] = d['project']
     elif kind == 'replacement.inherit':
         task = state['tasks'][d['task']]
         task['rounds'].update(d['rounds'])
@@ -2103,7 +2105,7 @@ def validate(state, kind, actor, d, stored_packet=None, *, candidate_history=())
                     "settings", "save", "restore.check", "restore.freeze", "challenge", "benchmark", "brief",
                     "availability", "supersede", "reassign", "route", "fix", "replace", "service.wait", "access.probe", "reader.ready",
                     "lesson", "lesson.retire", "lesson.recall", "lesson.ineffective",
-                    "handover", "handover.prepare", "handover.confirm", "handover.cancel"},
+                    "handover", "handover.prepare", "handover.confirm", "handover.cancel", "project.set"},
             "Unknown event kind")
     if kind == 'access.probe':
         validate_access(state, actor, d)
@@ -2163,6 +2165,12 @@ def validate(state, kind, actor, d, stored_packet=None, *, candidate_history=())
         return
     require(actor in state["agents"], "Unknown agent: " + actor)
     coordinator = state["agents"][actor]["role"] == "coordinator"
+    if kind == 'project.set':
+        require(coordinator, 'Only coordinator may change the project')
+        require(set(d) == {'project'} and isinstance(d['project'], str)
+                and Path(d['project']).is_absolute() and Path(d['project']).is_dir(),
+                'Project must be an existing absolute directory')
+        return
     if kind in {"task", "close", "pause", "resume", "decision", "ask", "settings", "save", "restore.check", "brief",
                 "availability", "supersede", "reassign", "route", "fix"}:
         require(coordinator, "Coordinator role required")
@@ -3536,7 +3544,7 @@ class Store:
                 if (kind in {'replace', 'service.wait', 'access.probe', 'reader.ready'} or (kind == 'settings' and 'onboarding_template' in data) or
                         self.db.execute('SELECT 1 FROM events WHERE hash_format=4 LIMIT 1').fetchone() is not None):
                     event['format'] = 4
-                if (kind.startswith('handover') or
+                if (kind.startswith('handover') or kind == 'project.set' or
                         self.db.execute('SELECT 1 FROM events WHERE hash_format=5 LIMIT 1').fetchone() is not None):
                     event['format'] = 5
                 # A restore of a package with no new-format event keeps the envelope the saving version can read.

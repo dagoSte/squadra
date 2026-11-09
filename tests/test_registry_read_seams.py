@@ -70,7 +70,7 @@ class RegistryReadSeams(unittest.TestCase):
                 with patch.object(squadra, 'dispatch', return_value=None), \
                      patch.object(squadra, 'table', return_value=''), \
                      patch.object(balance, 'calculate', return_value={}):
-                    output = self.run_main(store, ['start', '--actor', 'A', '--task', 'T'])
+                    output = self.run_main(store, ['--verbose', 'start', '--actor', 'A', '--task', 'T'])
                 decoder = json.JSONDecoder()
                 actual, _ = decoder.raw_decode(output.lstrip())
                 self.assertEqual(actual['forecast'], expected)

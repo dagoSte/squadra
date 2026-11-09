@@ -78,7 +78,7 @@ class Composite(unittest.TestCase):
     def invoke(self, *args):
         out, err = io.StringIO(), io.StringIO()
         with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
-            rc = squadra.main(['--root', str(self.root), *args])
+            rc = squadra.main(['--verbose', '--root', str(self.root), *args])
         return rc, out.getvalue(), err.getvalue()
 
     @contextlib.contextmanager

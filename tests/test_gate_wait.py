@@ -25,7 +25,7 @@ class GateWait(unittest.TestCase):
         support.Workflow.setUp(self)
 
     def call(self, *args):
-        return subprocess.run([sys.executable, '-B', str(CLI), '--root', str(self.root), *args],
+        return subprocess.run([sys.executable, '-B', str(CLI), '--verbose', '--root', str(self.root), *args],
                               env=self.env, capture_output=True, text=True, timeout=20)
 
     def resource(self, actor='A', wait=None, action='acquire', name='gate'):
@@ -57,7 +57,7 @@ class GateWait(unittest.TestCase):
         log = self.base / (actor + '-' + name + '.stderr')
         handle = log.open('w')
         self.addCleanup(handle.close)
-        proc = subprocess.Popen([sys.executable, '-B', str(CLI), '--root', str(self.root),
+        proc = subprocess.Popen([sys.executable, '-B', str(CLI), '--verbose', '--root', str(self.root),
                                  *self.resource(actor, seconds, name=name)], env=self.env,
                                 stdout=subprocess.PIPE, stderr=handle, text=True)
         def cleanup():

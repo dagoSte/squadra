@@ -32,7 +32,7 @@ class RegistrySafety(unittest.TestCase):
         out, err = io.StringIO(), io.StringIO()
         with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
             try:
-                rc = squadra.main(['--root', str(root or self.root), *args])
+                rc = squadra.main(['--verbose', '--root', str(root or self.root), *args])
             except Exception as exc:
                 rc = None
                 err.write(type(exc).__name__ + ': ' + str(exc))

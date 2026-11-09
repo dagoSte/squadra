@@ -23,7 +23,7 @@ def run(root, *args):
     out, err = io.StringIO(), io.StringIO()
     with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
         try:
-            rc = main(["--root", str(root), *args])
+            rc = main(['--verbose', "--root", str(root), *args])
         except SystemExit as exc:
             rc = exc.code
     text = out.getvalue()

@@ -33,7 +33,7 @@ def git(cwd, *args):
 def cli(root, *args):
     with contextlib.redirect_stdout(io.StringIO()) as out, contextlib.redirect_stderr(io.StringIO()) as err:
         try:
-            rc = main(["--root", str(root), *args])
+            rc = main(['--verbose', "--root", str(root), *args])
         except SystemExit as exit_:
             rc = exit_.code
     return rc, out.getvalue(), err.getvalue()

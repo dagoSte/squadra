@@ -551,7 +551,7 @@ class Cli(unittest.TestCase):
         from squadra import main
         out, err = io.StringIO(), io.StringIO()
         with patch.dict(sys.modules, {'usage': FakeUsage}), contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
-            code = main(list(args))
+            code = main(['--verbose', *args])
         return code, out.getvalue(), err.getvalue()
 
     def test_cli_read_only_reference_unknown_and_missing_registry(self):

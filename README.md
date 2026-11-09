@@ -530,7 +530,7 @@ The sections below keep the full working examples. Open the topic you need; the 
 | Follow a task from assignment to closure | [Task workflow](#workflow) |
 | Trace an instruction or record a decision | [Briefs, messages and decisions](#decision-reference) |
 | Save work or resume a session | [Checkpoints and recovery](#checkpoints) |
-| Look up a command or its plain-language prompt | [All 65 commands](#commands) |
+| Look up a command or its plain-language prompt | [All 66 commands](#commands) |
 
 [Skill](SKILL.md) · [Setup](references/start.md) · [Work/proof/review](references/work.md) · [Native runners](references/runtime.md) · [Recovery/context handover](references/recovery.md) · [Challenges/benchmark](references/benchmark.md) · [Plugins](references/plugins.md) · [Plugin authoring](references/plugin-authoring.md)
 
@@ -851,10 +851,10 @@ manual deletion of an active cache degrades candidate integrity. See
 
 You do not have to type these commands: **asking your window in plain words is the recommended way**, as in the *Or just ask* column and the [example prompts](#prompts), and the window runs the command for you. The commands are what the windows run, and what you can type yourself to check.
 
-Every command, grouped by purpose: **65 subcommands**, plus `--version`. Use `squadra <command> --help` for the flags; registry commands accept `--root` or `SQUADRA_ROOT`. «Coordinator only» marks what only the coordinator can record: `task`, `route`, `supersede`, `reassign`, `replace`, `brief`, `close`, `ask`, `decision` (including `--extend-budget`), `lanes --apply`, `settings`, `pause`, `resume`, `save`, `standby`, `ping --all`, `ping --sweep`, and the receipt that `restore-check` writes into the live registry. Without installing, the same commands run as `python3 -B scripts/squadra.py <command>`.
+Every command, grouped by purpose: **66 subcommands**, plus `--version`. Use `squadra <command> --help` for the flags; registry commands accept `--root` or `SQUADRA_ROOT`. «Coordinator only» marks what only the coordinator can record: `task`, `route`, `supersede`, `reassign`, `replace`, `brief`, `close`, `ask`, `decision` (including `--extend-budget`), `lanes --apply`, `settings`, `pause`, `resume`, `save`, `standby`, `ping --all`, `ping --sweep`, and the receipt that `restore-check` writes into the live registry. Without installing, the same commands run as `python3 -B scripts/squadra.py <command>`.
 
 <details>
-<summary><strong>All 65 commands and their prompts, grouped by purpose</strong></summary>
+<summary><strong>All 66 commands and their prompts, grouped by purpose</strong></summary>
 
 ### Start and team
 
@@ -862,6 +862,7 @@ Every command, grouped by purpose: **65 subcommands**, plus `--version`. Use `sq
 |---|---|---|
 | `--version` | Print the installed version. | “Which version of Squadra is installed?” |
 | `init` | Create the registry for a project, with its name, language and review budgets. | “Use the squadra skill and create the registry for this project in ~/.local/state/squadra/atlas.” |
+| `project` | Coordinator only: repair the recorded project directory with `--set PATH`. | “Update the project directory in the registry.” |
 | `agent` | Register a window: identity, role, client, checkout, and the skills it actually read. | “Register this window in the squad, with the skills you actually read.” |
 | `join` | Register this seat, ping an existing coordinator, send the introduction and record both transports; recipient ACKs remain pending. Takes the `agent` options plus `--coordinator`, `--body-file` and `--via`. | “Join the existing squad and introduce this window to its coordinator.” |
 | `census` | Find the project's Codex, Claude and Cursor windows without writing anything; `--project` is required before `init`. Run it from a Claude window: inside a Codex sandbox it cannot see the other windows, and says so. | “Find the Codex, Claude and Cursor windows working on this project, without writing anything.” |

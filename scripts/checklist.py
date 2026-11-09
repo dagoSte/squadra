@@ -128,7 +128,7 @@ def _round_scope(store, task):
         if event['kind'] == 'task' and data.get('id') == task['id'] and created is None:
             created = event['seq']
         elif event['kind'] == 'decision' and isinstance(data.get('reason'), str) \
-                and data['reason'].startswith(ROUND_SCOPE):
+                and (data.get('round_scope') is True or data['reason'].startswith(ROUND_SCOPE)):
             scope = (event['seq'], decision_id(data, event['seq']), data['reason'])
     if scope is None:
         return 'No round scope recorded (a decision whose reason starts with "' + ROUND_SCOPE + '")'

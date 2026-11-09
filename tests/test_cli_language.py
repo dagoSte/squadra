@@ -92,7 +92,7 @@ def walk(base, lang):
         out = io.StringIO()
         with patch("registry.now", return_value=at), patch("squadra.now", return_value=at), \
                 contextlib.redirect_stdout(out), contextlib.redirect_stderr(out):
-            rc = main(["--root", str(root), *args])
+            rc = main(['--verbose', "--root", str(root), *args])
         if rc != 0:
             raise AssertionError((args, rc, out.getvalue()))
         if name:
@@ -186,9 +186,9 @@ class Language(unittest.TestCase):
             self.addCleanup(temp.cleanup)
             root, out = Path(temp.name).resolve(), io.StringIO()
             with contextlib.redirect_stdout(out), contextlib.redirect_stderr(out):
-                rc = main(["--root", str(root / "record"), "init", "--name", "Empty", "--project", str(root),
+                rc = main(['--verbose', "--root", str(root / "record"), "init", "--name", "Empty", "--project", str(root),
                            "--temporary", "--lang", lang])
-                rc += main(["--root", str(root / "record"), "status"])
+                rc += main(['--verbose', "--root", str(root / "record"), "status"])
             self.assertEqual(rc, 0, out.getvalue())
             for phrase in foreign:
                 self.assertNotIn(phrase, out.getvalue(), lang)

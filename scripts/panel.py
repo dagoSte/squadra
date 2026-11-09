@@ -12,7 +12,7 @@ FAMILIES = {
              "resource.acquire", "resource.release", "lesson", "lesson.retire", "lesson.recall", "lesson.ineffective",
              "handover", "handover.prepare", "handover.confirm", "handover.cancel"},
     "reads": {"reader.ready", "review", "close", "ask", "decision", "pause", "resume"},
-    "other": {"init", "agent", "legacy", "diagnostic", "settings", "save", "restore.check", "restore.freeze",
+    "other": {"init", "agent", "legacy", "diagnostic", "settings", "project.set", "save", "restore.check", "restore.freeze",
               "challenge", "benchmark"},
 }
 HEARTBEAT = "run.progress"

@@ -31,7 +31,7 @@ class WithdrawnAcceptance(Fixture, unittest.TestCase):
         argv = ["--root", str(self.root), "review", "--actor", reader, "--task", "N", "--stage", "code",
                 "--verdict", verdict, "--report", str(self.report), *(["--amend", amend] if amend else [])]
         with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
-            rc = main(argv)
+            rc = main(['--verbose', *argv])
         self.assertEqual(rc, 0, err.getvalue())
         return json.JSONDecoder().raw_decode(out.getvalue().strip())[0]["receipt"]
 

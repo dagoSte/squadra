@@ -31,7 +31,7 @@ class RegistryPerformance(unittest.TestCase):
         out, err = io.StringIO(), io.StringIO()
         with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
             try:
-                rc = squadra.main(['--root', str(self.root), *argv])
+                rc = squadra.main(['--verbose', '--root', str(self.root), *argv])
             except SystemExit as exc:
                 rc = exc.code
         return rc, out.getvalue(), err.getvalue()
@@ -357,7 +357,7 @@ class RegistryPerformance(unittest.TestCase):
             old.close()
         out, err = io.StringIO(), io.StringIO()
         with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
-            rc = squadra.main(['--root', str(root), 'status'])
+            rc = squadra.main(['--verbose', '--root', str(root), 'status'])
         self.assertEqual(rc, 0, err.getvalue())
         self.assertRegex(out.getvalue(), r'English legacy work[^\n]*about [0-9]+ min')
         reader = legacy.Store(root, read_only=True)
