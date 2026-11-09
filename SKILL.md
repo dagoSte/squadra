@@ -135,7 +135,7 @@ and commits in task outputs, while its inspections are computed on demand.
 - **R79 Defect fixes.** A standalone defect fix records `task --defect-fix` and runs `challenge` red on the base, green on the candidate. [→](references/benchmark.md)
 - **R82 Handover.** Passing coordination to another seat follows the handover protocol. [→](references/handover.md)
 - **R81 Replacing windows.** Replace exhausted windows with `replace` (preview `--dry-run`), keeping authors and budgets; `wait --cause 429|outage` records a service limit. [→](references/replacement.md)
-- **R80 What reads verify.** Each registry read verifies only its stated scope (table below); `doctor` without `--quick` is the full audit; windows are not cryptographically authenticated. [→](references/recovery.md)
+- **R80 What reads verify.** Each registry read verifies only its stated scope (table below); `doctor` without `--quick` is the full audit; windows are not cryptographically authenticated. An older `registry.sqlite3`, or one that lost its `-wal`, still verifies while missing its tail: the next projection refresh refuses, `squadra export` does not check; continuity needs backups to another destination, and nothing promises «never lose». [→](references/recovery.md)
 
 | Operation | Verified during that operation |
 | --- | --- |
