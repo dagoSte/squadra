@@ -113,18 +113,9 @@ def independent(state, task, reader):
 
 
 def lineage(state, task):
-    """The task and every ancestor through supersedes/taken_over_from, oldest last; cycles stop the walk."""
-    seen, pending = [], [task]
-    while pending:
-        current = pending.pop()
-        name = current.get('id')
-        if not isinstance(name, str) or name in seen:
-            continue
-        seen.append(name)
-        for origin in (current.get('supersedes'), current.get('taken_over_from')):
-            if isinstance(origin, str) and origin not in seen:
-                pending.append(state['tasks'].get(origin) or {'id': origin})
-    return seen
+    """The task and its ancestors; a successor being planned may not be in state yet."""
+    from registry import task_lineage
+    return task_lineage(state, task)
 
 
 def reader_policy(state, task):

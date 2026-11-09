@@ -46,6 +46,17 @@ class Seams(Seams):
         replacement.independent(state, second, 'V-read')
         self.assertEqual(replacement.lineage(state, second), ['P-2', 'P-1', 'P'])
 
+    def test_shared_k1_check_covers_a_successor_after_one_takeover(self):
+        # reassign, task --reviewer and pools call the shared helper with the successor's own id.
+        self.lanes()
+        state = plain(self.store.view())
+        state['tasks']['P-1'] = {**state['tasks']['P'], 'id': 'P-1', 'supersedes': 'P', 'taken_over_from': 'P'}
+        with self.assertRaisesRegex(Error, 'lane_builder_reader: A-read'):
+            registry.require_not_lane_builder(state, 'P-1', 'A-read')
+        with self.assertRaisesRegex(Error, 'lane_builder_reader: B-read'):
+            registry.check_pool(state, {'id': 'P-1', 'owner': 'C', 'pool': ['V-read', 'B-read'], 'reviewer': None})
+        self.assertIsNone(registry.lane_builder_of(state, 'P-1', 'V-read'))
+
     def test_lineage_stops_on_a_cycle(self):
         state = {'tasks': {'X': {'id': 'X', 'supersedes': 'Y'}, 'Y': {'id': 'Y', 'supersedes': 'X'}}}
         self.assertEqual(replacement.lineage(state, state['tasks']['X']), ['X', 'Y'])
