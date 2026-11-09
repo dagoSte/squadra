@@ -1854,6 +1854,9 @@ def decision_graph(events):
 
     for position, event in enumerate(events):
         kind, d = event.get("kind"), event.get("data") or {}
+        if kind == "handover.prepare" and isinstance(d.get("decision"), dict):
+            # The owner's authorization recorded inside a handover is a decision node of that same event.
+            kind, d = "decision", d["decision"]
         seq = event.get("seq", position + 1)
         task = d.get("task") if isinstance(d.get("task"), str) else None
         if kind == "task":
