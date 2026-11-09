@@ -304,3 +304,26 @@ old delivery rules. A transfer changes only the reader: `reassign --task ID
 its reservation. Identical verdict retries return the same receipt; `review --amend
 RECEIPT` explicitly revises a verdict and consumes the normal round budget.
 
+### Rule 0 — who coordinates, who answers
+
+- A Codex window, or any client that cannot see and wake every window, does not take the
+  role when it is called first: inside its sandbox the census misses the other windows,
+  and no transport of its own wakes a Claude window. It tells the owner so in plain
+  words and gives the exact sentence to type in a Claude window, in the owner's language,
+  with the registry path, for example: «Use squadra to coordinate this project, with the
+  registry at <path>: introduce yourself to every window». If a registry exists, it
+  registers its identity with the executor role and waits for its assignment.
+- If you find a coordinator already registered in the same registry, register your
+  identity with the executor role and send it a `ping`. If it answers with an ACK,
+  introduce yourself and wait for the role you are assigned. A ping still pending does
+  not grant coordination, and a stand-by does not transfer roles or resources: explicitly
+  reconcile a coordinator that does not answer, without creating a second one.
+- With the introduction, at every resume and whenever a window joins or leaves, the
+  coordinator tells the owner, in the owner's language, how to split the work: the
+  **Composition** advice that `status`, `census` and the dashboard print (Claude and Codex
+  windows counted, the coordinator's left out, the source named). One client only: open a
+  window of the other model. An imbalance such as 2 Claude + 1 Codex: the lone Codex window
+  reads everything, so give it a build lane or open another Codex window. Balanced: pair
+  each builder with a reader of the other model, in the final block the planned reader of
+  its delta. It is advice: it assigns and refuses nothing.
+

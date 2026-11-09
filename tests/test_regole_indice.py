@@ -2,13 +2,13 @@
 
 references/regole.md holds the rule inventory and the index of the 127 rule-bearing units of the 3.14.0
 SKILL.md (commit 0e56ba3). Each unit maps to rules; each rule has one line in the core and a home in
-references/ that holds the unit's substance: its command tokens, or its first sentence, or (for a pointer)
-the page it points to. The index bytes are pinned below; when the Git object is reachable the index is
-also rebuilt from the 3.14.0 text itself.
+references/ that holds every clause of the unit, word for word (whitespace and link targets aside): the
+index keeps a short hash of each clause, so a home that drops one clause fails even when the command
+tokens are still there. A pointer unit only needs the page it names. The index bytes are pinned below;
+when the Git object is reachable the index is also rebuilt from the 3.14.0 text itself.
 """
 import hashlib
 import json
-import os
 import re
 import subprocess
 import unittest
@@ -18,13 +18,13 @@ ROOT = Path(__file__).resolve().parents[1]
 INVENTORY = ROOT / 'references' / 'regole.md'
 BASE = '0e56ba3107d80275bd5460d29dfcc52bed28d979'
 UNITS = 127
-INDEX_SHA256 = '8cdc71fddf70659a5688cfb84615f4a73eade561eda040f006d7f6e45de4afcb'
+INDEX_SHA256 = '76c8043de9bbd09b109e373f159978e15097ae79649dc72016b7d89d09a33a16'
 CORE_LIMIT = 22000
 
 
-def raw_units(text):
-    """Rule-bearing units of a SKILL.md: each paragraph, bullet and table, with its section."""
-    body = text.split('\n---\n', 1)[1]
+def raw_units(text, front_matter=True):
+    """Rule-bearing units of a SKILL.md (or of a guide): each paragraph, bullet and table, with its section."""
+    body = text.split('\n---\n', 1)[1] if front_matter else text
     out, section, cur, table = [], '', [], False
 
     def flush():
@@ -62,19 +62,44 @@ def unlink(text):
     return re.sub(r'\]\([^)]*\)', ']', text)
 
 
-def evidence(text):
-    """What a unit's home must hold: '→page' for a pointer, '¶first sentence' for prose, else its tokens."""
+def pointer(text):
+    """The pages a pure pointer unit («Follow the [guide](references/…)») names, or None."""
     n = norm(text)
     if n.startswith(('Follow the [', 'Read [')) and len(n) < 400 and '](references/' in n and n.count('. ') <= 1:
-        return ['→' + p for p in re.findall(r'\]\((references/[^)#]+)', n)]
+        return re.findall(r'\]\((references/[^)#]+)', n)
     if n.startswith('Read `references/') and len(n) < 400:
-        return ['→' + p for p in re.findall(r'`(references/[^`]+\.md)`', n)]
-    tokens = sorted(set(k for k in re.findall(r'`([^`]{3,})`', n) if not k.startswith('references/')))
-    if tokens:
-        return tokens
-    s = re.sub(r'^(- |\d+\. )', '', n)
-    m = re.match(r'(.+?[.:;])( |$)', s)
-    return ['¶' + (m.group(1) if m else s)[:160]]
+        return re.findall(r'`(references/[^`]+\.md)`', n)
+    return None
+
+
+def clauses(text):
+    """The unit's clauses: sentences of its text (of each table cell for a table), without list markers."""
+    n = unlink(norm(text))
+    if n.startswith('|'):
+        cells = [c.strip() for c in n.split('|') if c.strip() and not set(c.strip()) <= set('- ')]
+        n = ' '.join(c if c.endswith(('.', ';', ':')) else c + '.' for c in cells)
+    parts = re.split(r'(?<=[.;:!?])\s+', n)
+    return [q for q in (re.sub(r'^(?:- |\d+\. )+', '', p).strip() for p in parts) if len(q) > 2]
+
+
+def clause_hash(clause):
+    return hashlib.sha256(clause.encode()).hexdigest()[:10]
+
+
+def evidence(text):
+    """What a unit's homes must hold: '→page' for a pointer, else the hash of every clause."""
+    pages = pointer(text)
+    if pages:
+        return ['→' + p for p in pages]
+    return [clause_hash(c) for c in clauses(text)]
+
+
+def home_clauses(paths):
+    found = set()
+    for path in paths:
+        for _, unit in raw_units(path.read_text(), front_matter=False):
+            found.update(clause_hash(c) for c in clauses(unit))
+    return found
 
 
 def index_lines(skill_text):
@@ -144,7 +169,7 @@ class RuleIndex(unittest.TestCase):
         self.assertGreaterEqual(len(self.rules), 82)
         for rid, rule in self.rules.items():
             with self.subTest(rule=rid):
-                self.assertRegex(self.core, r'\*\*%s\b' % rid)
+                self.assertTrue(re.search(r'\*\*%s\b' % rid, self.core), '%s has no line in SKILL.md' % rid)
                 self.assertTrue(rule['rule'].strip() and rule['exit'].strip())
                 self.assertTrue(rule['homes'])
                 for home in rule['homes']:
@@ -153,21 +178,22 @@ class RuleIndex(unittest.TestCase):
                     if anchor:
                         self.assertIn(anchor, anchors(file), home)
 
-    def test_each_unit_s_substance_is_in_its_rules_homes(self):
+    def test_every_clause_of_every_unit_is_in_its_rules_homes(self):
         owners = {}
         for rid, rule in self.rules.items():
             for u in rule['units']:
                 owners.setdefault(u, set()).update(resolve(INVENTORY, h)[0] for h in rule['homes'])
         for line in self.index:
             number, _, ev = line.split(' ', 2)
-            homes = owners[int(number[1:])]
-            text = unlink(norm(' '.join(p.read_text() for p in sorted(homes))))
+            homes = sorted(owners[int(number[1:])])
+            found = home_clauses(homes)
             for item in json.loads(ev):
-                with self.subTest(unit=number, evidence=item[:60]):
+                with self.subTest(unit=number, evidence=item):
                     if item.startswith('→'):
                         self.assertTrue((ROOT / item[1:]).is_file())
                     else:
-                        self.assertIn(unlink(item[1:] if item.startswith('¶') else item), text)
+                        self.assertTrue(item in found, 'clause %s of %s is missing from %s' % (
+                            item, number, ', '.join(p.name for p in homes)))
 
     def test_every_link_of_the_core_and_inventory_resolves(self):
         for doc in (ROOT / 'SKILL.md', INVENTORY):

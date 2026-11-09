@@ -69,4 +69,5 @@ trigger and an acceptance check, and is opened as a task at the next round's kic
   decision that follows the scope decision.
 - An instrument error (a lost lock, an overloaded machine, a shallow copy) is resolved
   where it happens and recorded as a disposition; it does not widen the round either.
+- Fix the scope with `decision` when the round starts: the tasks it closes, nothing else.
 

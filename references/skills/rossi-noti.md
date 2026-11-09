@@ -72,4 +72,16 @@ The core keeps one line per rule; this is the full text, unchanged except for re
 - The parallel runner reads the list and prints `KNOWN RED`, `NEW RED` and
   `STALE KNOWN RED` lines; its summary adds `known_red`, `new_red`, `stale_known` and
   `only_known_reds`. The strict `passed` verdict never changes.
+**A test that fails on clean `main` is recorded once in `tests/known_reds.json`**, with
+its reason, the version it appeared in and the condition that retires it (owner,
+2026-10-31). Nobody re-investigates it at every proof.
+- A task proof may be agreed as `tools/parallel_tests.py --accept-known`: it exits 0
+  only when every failure is a listed known red. **A new red always fails**, and so do
+  crashes, skips, missing tests and count mismatches.
+- A known red that passes again, or is no longer collected, makes `--accept-known` fail
+  until it is removed from the list: the list never outlives the defect.
+- **The release proof stays strict** (Rule 9): never `--accept-known`. A known red blocks
+  a release until it is fixed or the owner records its deferral in a decision.
+- A test enters the list only after it was shown red on the clean `main` head, with a
+  task or decision that owns its fix; the coordinator adds it in its own commit.
 

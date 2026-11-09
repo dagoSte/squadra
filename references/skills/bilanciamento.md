@@ -86,3 +86,21 @@ Required files: `SKILL.md`, `scripts/registry.py`, `scripts/squadra.py`,
 `references/skills/bilanciamento.md`, `scripts/balance.py`, `scripts/forecast.py`
 and `scripts/usage.py`. The coordinator supplies the real scan record at
 integration. Until then the page shows **Not audited for this version**.
+
+## Rules moved from the core (SKILL.md 3.14.0)
+
+The core keeps one line per rule; this is the full text, unchanged except for relative links.
+
+
+### Bilanciamento: follow the suggestion or record why not
+
+At task creation, briefing and start, read the short balance printed after the
+forecast and follow [bilanciamento](bilanciamento.md): it names the
+first window for building and for reading, each with its reason, in about 2 KB with
+the forecast and 10 windows; `squadra balance --task` prints the whole ranking. The
+coordinator follows the suggestion or records the reason in a decision linked to the task. The advice assigns nothing and
+never overrides independence, stand-by, route or permissions. An author is never a
+reader candidate. Tokens and quota appear only with `squadra balance` or the Balance
+page. Claude quota is an estimate against a reference the viewer declares: never quote
+it as a measurement.
+

@@ -69,4 +69,12 @@ no deadline, budget or stand-by suspends it.
 - When the coordinator cannot see a window's tree or branch, the overlap check is
   **not done**: it says so and asks that window for its checkout, branch and changed paths
   before assigning.
+- **Before every assignment** (`task`, `reassign`, a fix round, a resume) the coordinator
+  compares the new work with every open task and every window's declared next step:
+  repository and checkout, branch, owned files and parts of shared files, Git base,
+  reserved resources (gates, ports, databases, `cpu-heavy`) and the commits each window
+  is expected to make.
+- **An overlap found is resolved before work starts**: split the scope, sequence it with
+  `--depends`, move one lane to its own checkout, or reassign. The choice is recorded with
+  `decision --task`; an overlap is never left for the merge to sort out.
 
