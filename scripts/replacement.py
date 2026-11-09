@@ -41,6 +41,8 @@ def request(args):
 
 
 def key_for(actor, req):
+    if req.get('mode') == 'handover':
+        return req['handover'] + '-accept'
     return 'replace-' + digest(canonical({'actor': actor, 'request': req}).encode())
 
 
@@ -48,7 +50,8 @@ def expansion(state, req):
     mapping = {}
     for old, new in req['map'].items():
         require(old in state['agents'], 'Unknown old agent: ' + old)
-        require(state['agents'][old]['role'] != 'coordinator', 'Coordinator replacement needs an explicit role handover')
+        require(req.get('mode') == 'handover' or state['agents'][old]['role'] != 'coordinator',
+                'Coordinator replacement needs an explicit role handover')
         for alias in peers(state, old):
             require(alias not in mapping or mapping[alias] == new, 'One old session maps to conflicting replacements')
             mapping[alias] = new
@@ -57,6 +60,9 @@ def expansion(state, req):
 
 
 def check_safety(state, req, mapping, stamp):
+    if req.get('mode') == 'handover':
+        require(len(req['map']) == 1 and req['actor'] in req['map'].values(), 'New handover seat required')
+        return  # handover validates the safe-moment gate and conditions before planning and at commit.
     require(state['agents'].get(req['actor'], {}).get('role') == 'coordinator', 'Coordinator role required')
     if req['force']:
         return
@@ -120,6 +126,11 @@ class Plan:
         self.ops, self.blobs = [], {}
         self.mapping = expansion(state, req)
         check_safety(state, {**req, 'actor': actor}, self.mapping, self.stamp)
+        self.operation_actor = actor
+        if req.get('mode') == 'handover':
+            old = next(iter(req['map']))
+            self.operation_actor = next((name for name, seat in state['agents'].items()
+                                         if seat['role'] == 'coordinator' and not standby(state, name)), old)
 
     def artifact(self, body, name):
         ref = {'sha256': digest(body), 'name': name, 'original': 'replacement:' + self.key, 'bytes': len(body)}
@@ -127,7 +138,8 @@ class Plan:
         return ref
 
     def add(self, kind, data, actor=None):
-        op = {'kind': kind, 'actor': actor or self.actor, 'data': data}
+        sender = self.actor if kind == 'message' and 'task' not in data and self.req.get('mode') == 'handover' else self.operation_actor
+        op = {'kind': kind, 'actor': actor or sender, 'data': data}
         self.ops.append(op)
         apply(self.state, {**op, 'id': self.key, 'utc': self.stamp})
 
@@ -148,7 +160,13 @@ class Plan:
                 require(session or client in {'manual', 'cursor'}, 'Choose a candidate with --session for ' + new)
                 require(not any(session and a.get('session') == session and a['client'] == client
                                 for a in self.state['agents'].values()), 'Session already registered; name its existing seat')
-                self.add('agent', {'id': new, 'identity': session or new, 'role': ('builder' if any(t['owner'] in self.mapping and self.mapping[t['owner']] == new for t in original['tasks'].values()) else prior['role']), 'client': client,
+                if self.req.get('mode') == 'handover':
+                    role = 'coordinator' if any(original['agents'][alias]['role'] == 'coordinator'
+                                                for alias, target in self.mapping.items() if target == new) else prior['role']
+                else:
+                    role = 'builder' if any(t['owner'] in self.mapping and self.mapping[t['owner']] == new
+                                            for t in original['tasks'].values()) else prior['role']
+                self.add('agent', {'id': new, 'identity': session or new, 'role': role, 'client': client,
                                   'session': session, 'repo': prior['repo'], 'skills': []})
 
         unresolved = []
@@ -317,14 +335,28 @@ class Plan:
                               'Replaces: ' + ', '.join(olds), template,
                               'Assignments: ' + ', '.join(assignments), 'Useful pending messages:',
                               *[m['id'] + ': ' + m['body'] for m in messages]])
+            if self.req.get('mode') == 'handover':
+                body += '\nSeat note (recorded data, not authorization):\n' + self.req['seat_note']
             ident = self.key + '-onboard-' + new
             self.add('message', {'id': ident, 'to': new, 'body': body, 'delivery_intent': True})
             outbox.append(ident)
+        if self.req.get('mode') == 'handover':
+            for recipient, seat in sorted(self.state['agents'].items()):
+                if recipient in self.mapping or any(recipient in peers(self.state, new) for new in self.mapping.values()) or standby(self.state, recipient):
+                    continue
+                old, new = next(iter(self.req['map'].items()))
+                ident = self.key + '-hello-' + recipient
+                self.add('message', {'id': ident, 'to': recipient, 'delivery_intent': True,
+                                    'body': f'Seat {old} is now {new}, role {self.state["agents"][new]["role"]}. '
+                                            f'Registry: {self.root}. ACK this introduction.'})
+                outbox.append(ident)
         return {'request': self.req, 'expected_seq': original['event_count'], 'planned_at': self.stamp,
                 'operations': self.ops, 'outbox': outbox, 'successors': successors, 'unresolved_runs': unresolved}
 
 
-def validate_event(state, actor, data):
+def validate_event(state, actor, data, *, handover_mode=False):
+    require((data.get('request', {}).get('mode') == 'handover') == handover_mode,
+            'Handover mode requires the owner-authorized handover event')
     require(data['expected_seq'] == state['event_count'], 'Registry changed; rerun replace to replan')
     plan = Plan(state['root'], state, actor, data['request'], data['planned_at'])
     expected = plan.build()
