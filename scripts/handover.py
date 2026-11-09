@@ -13,9 +13,10 @@ OUTSIDE_BYTES = 8192
 
 def safe_text(text):
     import re
-    require(not re.search(r'(?i)\b(?:sk-|ghp_|AKIA)[A-Za-z0-9_+/=-]+|'
+    require(not re.search(r'(?i)(?<![\w-])(?:sk-|ghp_|AKIA)[A-Za-z0-9_+/=-]{8,}|'
                           r'-----BEGIN [^-\r\n]*PRIVATE KEY-----|'
-                          r'^\s*[\"\']?(?:password|token)[\"\']?\s*=\s*\S', text, re.M),
+                          r'^[ \t]*(?:export[ \t]+)?[\"\']?[\w.-]*(?:password|passwd|token|secret)'
+                          r'[\"\']?[ \t]*[=:][ \t]*\S', text, re.M),
             'Outside state contains a recognizable secret; remove its value')
 
 
