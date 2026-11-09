@@ -60,6 +60,7 @@ def run(root, actor, action, repo=None, session=None, context=None):
             with closing(Store(root)) as store:
                 store.append('access.probe', actor, receipt)
                 result['recorded'] = True
+                result['last_commit'] = {'committed': True, **store.last_commit}
                 result['access'] = access_view(store.view(), actor, repo=repo, root=str(root))
                 try:
                     store.publish()

@@ -72,7 +72,7 @@ class LiveAccess(unittest.TestCase):
     def test_probe_cli_publishes_its_own_event_immediately(self):
         out = io.StringIO()
         with contextlib.redirect_stdout(out):
-            rc = main(['access', 'probe', '--actor', 'A', '--session', 'recipient-session',
+            rc = main(['--verbose', 'access', 'probe', '--actor', 'A', '--session', 'recipient-session',
                        '--context', 'sandbox', '--repo', str(self.fixture.repo), '--root', str(self.fixture.root)])
         self.assertEqual(rc, 0)
         self.assertTrue(json.loads(out.getvalue())['recorded'])

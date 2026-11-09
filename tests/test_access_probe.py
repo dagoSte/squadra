@@ -182,7 +182,7 @@ class AccessProbe(unittest.TestCase):
     def test_cli_status_and_probe_return_json(self):
         output = io.StringIO()
         with contextlib.redirect_stdout(output):
-            rc = main(['access', 'probe', '--actor', 'A', '--session', 'recipient-session',
+            rc = main(['--verbose', 'access', 'probe', '--actor', 'A', '--session', 'recipient-session',
                        '--context', 'sandbox', '--repo', str(self.repo), '--root', str(self.root)])
         self.assertEqual(rc, 0)
         self.assertTrue(json.loads(output.getvalue())['recorded'])
