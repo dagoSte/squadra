@@ -1963,7 +1963,7 @@
       ]
     },
     {
-      "label": "squadra 3.13.1",
+      "label": "squadra 3.13.1 candidate fb01bbe before 3.14.0",
       "registry_py_sha256": "c2952aa8cc9bfa34d55466ac122f5ecc2cc76150f5f872ecf045bc5c70c45dbf",
       "source_commit": "fb01bbee189b8831b30fd8dd08c41e4ed99d19f2",
       "kinds": [
@@ -2015,7 +2015,7 @@
       ]
     },
     {
-      "label": "squadra 3.13.1",
+      "label": "squadra 3.13.1 candidate f1f38ff before 3.14.0",
       "registry_py_sha256": "8cdf0356d99050b0d0ea9c24c11c5266a1eec7564c876d52f56787689d8b60e4",
       "source_commit": "f1f38ffbc40276a80a03ac048ea0c7c5dd89d2c1",
       "kinds": [
