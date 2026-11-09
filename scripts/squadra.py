@@ -675,6 +675,8 @@ def parser():
     a = sub.add_parser("dash"); a.add_argument("--port", type=int, default=0); a.add_argument("--open", action="store_true")
     a = sub.add_parser("selftest"); a.add_argument("--output", help="New directory for durable test receipts")
     a.add_argument("--timeout", type=int, default=1800, help="Seconds for the whole parallel suite and each test module")
+    from composite import add_parsers
+    add_parsers(sub)
     for child in sub.choices.values():
         child.add_argument("--root", default=argparse.SUPPRESS, help="Shared persistent workspace")
     return p
@@ -1501,9 +1503,11 @@ def warning(text):
 
 def proof_tail(argv):
     """Split `task ... --proof -- argv`: everything after that `--` is the proof argv verbatim."""
-    if 'task' not in argv:
+    commands = [name for name in ('task', 'assign') if name in argv]
+    if not commands:
         return argv, None
-    for i in range(argv.index('task') + 1, len(argv) - 1):
+    command_at = min(argv.index(name) for name in commands)
+    for i in range(command_at + 1, len(argv) - 1):
         if argv[i] == '--':
             break
         if argv[i] == '--proof' and argv[i + 1] == '--':
@@ -1516,7 +1520,7 @@ def parse_cli(argv=None):
     head, tail = proof_tail(argv)
     if tail is not None:
         a = parser().parse_args([*head, '--proof', 'proof-tail'])
-        if a.command == 'task':
+        if a.command in {'task', 'assign'}:
             a.proof = ['--', *tail]  # the task handler drops the marker and skips the option check
             return a
     return parser().parse_args(argv)
@@ -1529,6 +1533,9 @@ def main(argv=None):
     root = Path(a.root or os.environ.get('SQUADRA_ROOT') or Path.cwd() / '.squadra')
     try:
         root = workspace_path(a.root)
+        if a.command in {'assign', 'join', 'pickup'}:
+            from composite import run
+            return run(a, root)
         from storage_policy import restore_projections
         restore_projections(root)
         if a.command == 'checklist':
