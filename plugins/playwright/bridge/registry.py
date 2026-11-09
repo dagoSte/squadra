@@ -377,10 +377,12 @@ def wait_view(source, facts):
 
 def wait_settings(value):
     """Older writers/readers understand only the original wait_seconds keys."""
-    require(isinstance(value, dict) and set(value) <= set(WAIT_SECONDS) | {"onboarding_template"}, "Unknown wait threshold")
+    tired_keys = {'tired_hours', 'tired_context_fraction', 'context_window'}
+    require(isinstance(value, dict) and set(value) <= set(WAIT_SECONDS) | {"onboarding_template"} | tired_keys, "Unknown wait threshold")
     return {"wait_seconds": {k: v for k, v in value.items() if k in WAIT_SECONDS and k not in MESSAGE_WAIT_KEYS},
             "message_wait_seconds": {k: v for k, v in value.items() if k in MESSAGE_WAIT_KEYS},
-            **({'onboarding_template': value['onboarding_template']} if 'onboarding_template' in value else {})}
+            **({'onboarding_template': value['onboarding_template']} if 'onboarding_template' in value else {}),
+            **{k: value[k] for k in tired_keys if k in value}}
 
 
 def decision_id(data, seq):
@@ -663,6 +665,9 @@ def apply(state, event):
         state["workspace"]["wait_seconds"] = d["wait_seconds"]
         if 'onboarding_template' in d:
             state['workspace']['onboarding_template'] = d['onboarding_template']
+        for key in ('tired_hours', 'tired_context_fraction', 'context_window'):
+            if key in d:
+                state['workspace'][key] = d[key]
     elif kind in {"save", "restore.check", "challenge", "benchmark"}:
         state[{"save": "saves", "restore.check": "restores", "challenge": "challenges", "benchmark":"benchmarks"}[kind]].append(
             {**d, "actor": event["actor"], "utc": event["utc"]})
@@ -2221,6 +2226,18 @@ def validate(state, kind, actor, d, stored_packet=None, *, candidate_history=())
         require(d.get('force') is True or not state['messages'][d['message']].get('transport', {}).get('attempted'),
                 'Replacement delivery already attempted; inspect its receipt before retrying')
     if kind == "settings":
+        if 'tired_hours' in d:
+            require(type(d['tired_hours']) in (int, float) and 0 < d['tired_hours'] <= 8760,
+                    'tired_hours must be positive hours, at most 8760')
+        if 'tired_context_fraction' in d:
+            require(type(d['tired_context_fraction']) in (int, float) and 0 < d['tired_context_fraction'] <= 1,
+                    'tired_context_fraction must be greater than zero and at most one')
+        if 'context_window' in d:
+            windows = d['context_window']
+            require(isinstance(windows, dict) and len(windows) <= 100
+                    and all(isinstance(model, str) and re.fullmatch(r'claude-(?:opus|sonnet|haiku)[-a-z0-9.]{0,60}', model)
+                            and type(size) is int and 0 < size <= 2**53 - 1 for model, size in windows.items()),
+                    'context_window must map Claude model names to positive integer token limits')
         if 'onboarding_template' in d:
             require(isinstance(d['onboarding_template'], str) and len(d['onboarding_template'].encode()) <= 8192,
                     'Onboarding template must be text of at most 8192 bytes')
