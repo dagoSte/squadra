@@ -255,9 +255,137 @@ def _push(state, repo, revision_range, task_id, items):
         _add(items, 'candidate_ancestor', contains_candidate)
 
 
+def _handover_seats(state, actor):
+    """Aliases share a nonempty identity or session, including transitive links."""
+    require(actor in state['agents'], 'Registered actor required: ' + str(actor))
+    names, identities, sessions = {actor}, set(), set()
+    while True:
+        for name in names:
+            seat = state['agents'][name]
+            if seat.get('identity'):
+                identities.add(seat['identity'])
+            if seat.get('session'):
+                sessions.add(seat['session'])
+        aliases = {name for name, seat in state['agents'].items()
+                   if seat.get('identity') in identities or seat.get('session') in sessions}
+        if aliases <= names:
+            return names
+        names.update(aliases)
+
+
+def _handover_reading(state, seats):
+    pending = []
+    for task in state['tasks'].values():
+        if task['status'] in {'done', 'withdrawn'} or task.get('superseded_by'):
+            continue
+        delivery = task.get('delivery') or {}
+        for handoff in [delivery.get('handoff'), *(delivery.get('handoffs') or [])]:
+            message = state['messages'].get(handoff, {})
+            ack = message.get('ack') or {}
+            if ack.get('agent') not in seats:
+                continue
+            verdicts = [r for r in task.get('reviews', []) if r.get('stage') == 'code'
+                        and r.get('reviewer') in seats and r.get('handoff') == handoff]
+            if not verdicts:
+                pending.append(task['id'])
+    return sorted(set(pending))
+
+
+def _handover_worktrees(tasks, english):
+    dirty, unknown = [], []
+    for repo in sorted({t['repo'] for t in tasks}):
+        try:
+            if not Path(repo).is_dir():
+                unknown.append(repo)
+            elif _git(repo, 'status', '--porcelain', '--untracked-files=all'):
+                dirty.append(repo)
+        except (Error, OSError, subprocess.SubprocessError):
+            unknown.append(repo)
+    require(not dirty, ('Wait for a WIP commit in ' if english else 'Attendere il commit del WIP in ') + ', '.join(dirty))
+    if unknown:
+        return 'unverifiable', ('Checkout not inspected: ' if english else 'Checkout non verificato: ') + ', '.join(unknown)
+    return 'Worktrees clean' if english else 'Checkout puliti'
+
+
+def _tiredness_notice(items, values, english):
+    reasons = [str(reason) for value in values if value and value.get('tired') for reason in value.get('reasons', [])]
+    if reasons or any(value and value.get('tired') for value in values):
+        items.append({'id': 'tiredness', 'status': 'notice',
+                      'detail': (('Consider restarting: ' if english else 'Conviene ripartire: ')
+                                 + '; '.join(reasons) + '. squadra handover prepare …')})
+
+
+def handover_checks(state, actor, at=None):
+    """Shared gate for the explicit checklist and views; never reads transcripts or writes."""
+    from handover_conditions import evaluate, _timestamp
+    clock, items = at or now(), []
+    english = state.get('workspace', {}).get('lang', 'it') == 'en'
+    _add(items, 'actor', lambda: _expect(actor in state['agents'], 'Registered actor required: ' + str(actor)))
+    if items[-1]['status'] == 'fail':
+        return {'moment': 'handover', 'items': items, 'ready': False}
+    seats = _handover_seats(state, actor)
+    tasks = [t for t in state['tasks'].values() if t.get('owner') in seats
+             and t['status'] not in {'done', 'withdrawn'} and not t.get('superseded_by')]
+    runs = sorted(r['id'] for r in state.get('runs', {}).values()
+                  if r.get('agent') in seats and r['status'] in {'running', 'cleanup-unknown'})
+    resources = sorted(name for name, r in state.get('resources', {}).items() if r.get('owner') in seats)
+    reading = _handover_reading(state, seats)
+    releases = sorted(t['id'] for t in tasks if t.get('release_gate') is True)
+    for name, blocked, message, clear in [
+        ('runs', runs, 'Wait for terminal receipt of run ' if english else 'Attendere la ricevuta terminale del run ',
+         'No live runs' if english else 'Nessun run in corso'),
+        ('resources', resources, 'Wait for release of ' if english else 'Attendere il rilascio di ',
+         'No resources held' if english else 'Nessuna risorsa prenotata'),
+        ('reading', reading, 'Wait for verdict on task ' if english else "Attendere il verdetto sull'incarico ",
+         'No unfinished reads' if english else 'Nessuna lettura incompleta'),
+        ('release', releases, 'Wait for release closure: ' if english else 'Attendere la chiusura del rilascio ',
+         'No open release gates' if english else 'Nessun rilascio aperto'),
+    ]:
+        _add(items, name, lambda blocked=blocked, message=message, clear=clear:
+             _expect(not blocked, message + ', '.join(blocked)) if blocked else clear)
+    _add(items, 'worktree', lambda: _handover_worktrees(tasks, english))
+    missing = [row['detail'] for handover in state.get('handovers', {}).values()
+               if handover.get('status') == 'pending' and handover.get('from') in seats
+               for row in evaluate(state, handover, clock) if not row['met']]
+    _add(items, 'conditions', lambda: _expect(not missing, '; '.join(missing)) if missing else
+         ('Conditions met' if english else 'Condizioni raggiunte'))
+    outgoing = sorted(m['id'] for m in state.get('messages', {}).values()
+                      if m.get('from') in seats and m.get('to') not in seats
+                      and not m.get('ack') and not m.get('info') and not m.get('replaced_by'))
+    items.append({'id': 'pending_acks', 'status': 'notice',
+                  'detail': (('Pending acknowledgements will transfer: ' if english else 'Conferme pendenti da trasferire: ')
+                             + ', '.join(outgoing) if outgoing else
+                             ('No pending outgoing acknowledgements' if english else 'Nessuna conferma altrui in attesa'))})
+    waits = []
+    for seat in sorted(seats):
+        wait = state['agents'][seat].get('service_wait') or {}
+        until = _timestamp(wait.get('until'))
+        if until is not None and _timestamp(clock) is not None and _timestamp(clock) < until:
+            waits.append(seat + ': ' + str(wait.get('cause', '')) + ' → ' + wait['until'])
+    items.append({'id': 'service_wait', 'status': 'notice',
+                  'detail': '; '.join(waits) or ('No active service waits' if english else 'Nessuna attesa di servizio attiva')})
+    import usage
+    cached = getattr(usage, 'cached_tiredness', None)
+    if callable(cached):
+        values = cached(state, clock)
+        _tiredness_notice(items, [values.get(seat) for seat in sorted(seats)], english)
+    return {'moment': 'handover', 'items': items, 'ready': not any(i['status'] == 'fail' for i in items)}
+
+
 def run(store, moment, *, actor=None, task_id=None, repo=None, revision_range=None):
     """Ready means no failed item; every unverifiable observation remains explicit."""
     state, items = store.resolved(), []
+    if moment == 'handover':
+        result = handover_checks(state, actor)
+        if actor in state['agents']:
+            import usage
+            measure = getattr(usage, 'window_tiredness', None)
+            if callable(measure):
+                value = measure(store.events(), state, actor, now=now())
+                if value is not None:
+                    result['items'] = [i for i in result['items'] if i['id'] != 'tiredness']
+                    _tiredness_notice(result['items'], [value], state.get('workspace', {}).get('lang', 'it') == 'en')
+        return result
     if moment == 'resume':
         _resume(state, actor, items)
     elif moment == 'push':
