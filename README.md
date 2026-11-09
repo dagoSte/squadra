@@ -232,6 +232,19 @@ squadra dash --open
 
 </details>
 
+The same primitives can also be combined. `assign` includes the task brief and assignment checks; `join` forwards the presence call and introduction to the coordinator you name. Choose `--via manual` for a recorded manual handoff or `--via codex-queue` for a registered Codex recipient. `pickup` reads the resume checks and pending mail; `resume --actor ... --reason ...` retains the coordinator’s explicit state change. If a step fails, inspect its receipt and the recorded steps before retrying.
+
+```sh
+squadra assign --actor coord --id T2 --owner builder --reviewer reader \
+  --title "Key rotation" --repo /path/to/builder-checkout \
+  --scope-file /evidence/scope.md --proof-file /evidence/argv.json \
+  --brief-file /evidence/t2.md --via manual
+squadra join --id builder2 --identity ACTUAL-SESSION --session ACTUAL-SESSION \
+  --role executor --client codex --repo /path/to/builder2-checkout \
+  --coordinator coord --body-file /evidence/introduction.md --via manual
+squadra pickup --actor builder2
+```
+
 <a id="prompts"></a>
 ## Example prompts
 
@@ -850,6 +863,7 @@ Every command, grouped by purpose: **62 subcommands**, plus `--version`. Use `sq
 | `--version` | Print the installed version. | “Which version of Squadra is installed?” |
 | `init` | Create the registry for a project, with its name, language and review budgets. | “Use the squadra skill and create the registry for this project in ~/.local/state/squadra/atlas.” |
 | `agent` | Register a window: identity, role, client, checkout, and the skills it actually read. | “Register this window in the squad, with the skills you actually read.” |
+| `join` | Register this seat, ping an existing coordinator, send the introduction and record both transports; recipient ACKs remain pending. Takes the `agent` options plus `--coordinator`, `--body-file` and `--via`. | “Join the existing squad and introduce this window to its coordinator.” |
 | `census` | Find the project's Codex, Claude and Cursor windows without writing anything; `--project` is required before `init`. Run it from a Claude window: inside a Codex sandbox it cannot see the other windows, and says so. | “Find the Codex, Claude and Cursor windows working on this project, without writing anything.” |
 | `ping` | Send a presence call to one window (`--to`) or, coordinator only, to all (`--all`); `--sweep` (coordinator only) records stand-by for an unanswered call that a transport delivered, and the return after a fresh ACK. | To the coordinator: “Check which windows are still there: send a presence call to all of them.” |
 | `replace` | Coordinator only: atomically replace windows, carry tasks and useful mail; preview with `--dry-run`. | “Hand the exhausted window over to its replacement.” |
@@ -865,6 +879,7 @@ Every command, grouped by purpose: **62 subcommands**, plus `--version`. Use `sq
 | Command | What it does | Or just ask |
 |---|---|---|
 | `task` | Coordinator only: assign a task: owner, reviewer, checkout, scope, proof, requirements, dependencies; `--supersedes` replaces an open task. | To the coordinator: “Assign ‘Key rotation service’ to the builder window, with the reviewer window as independent reader and the whole test suite as proof.” |
+| `assign` | Run `task`, its `brief`, assignment `transport` and `checklist --moment assign` in one command. Takes the `task` options plus `--brief-file` and `--via`; a failed step reports the steps already recorded. | “Assign and brief this task, forward the assignment and check it.” |
 | `lanes` | Preview automatic lane assignments from repeated `--paths`; `--apply --actor COORD` applies them to the coordinator's existing parent. `task --paths` applies automatically; `task --lanes none` opts out. Silent windows are skipped, the parent's reader never builds a lane, and each lane gets its own brief. | “Split these independent changes across the available builders and show the plan.” |
 | `route` | Coordinator only: promote with `--full`, keeping the base/history/budgets; new proof and read. | To the coordinator: “T3 is no longer a small change: move it to the full route.” |
 | `supersede` | Coordinator only: record afterwards that an existing, later task replaces an open one, with the same effect as `--supersedes`. | To the coordinator: “T7 replaces T5: record it, keeping the history of T5.” |
@@ -918,6 +933,7 @@ Every command, grouped by purpose: **62 subcommands**, plus `--version`. Use `sq
 |---|---|---|
 | `pause` | Coordinator only: stop new work, reviews and runs, keeping consultation and recovery. | To the coordinator: “Pause the squad: no new work until I say so.” |
 | `resume` | Coordinator only: resume after the owner's explicit word and a reconciliation. | To the coordinator: “Resume the squad: reconcile first, then tell me the next step.” |
+| `pickup` | Read `doctor --resume`, the process census, the board and this seat’s pending mail with `--actor`; writes no registry event and confirms no messages. | “Show the checks and pending work for this window.” |
 | `checkpoint` | Copy the registry, its artifacts and projections to a new folder; `--actor` records it for retention, `--compact` omits regenerable views, identical bytes of the newest recorded checkpoint are reused. | “Take a compact checkpoint of the registry in a new folder.” |
 | `storage` | `status`, `purge` (`--dry-run` by default; `--apply` coordinator only, with a reason), `keep`, `compact` and `adopt` (checkpoints and saves made before 3.13; `compact` also seals legacy writable candidates) of registered recovery points, candidates and archived runs; unknown folders and other registries' points are never removed. | “Use squadra to compact the storage of the registry at /path/to/registry.” |
 | `save` | Coordinator only: package the registry with every registered Git repository and its unfinished work; `--repo ROOT --allow-name REL --reason TEXT` records a one-save name exception. | To the coordinator: “Save the registry and the code of every repository, unfinished work included.” |
