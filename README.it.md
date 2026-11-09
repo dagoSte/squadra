@@ -532,7 +532,7 @@ Le sezioni seguenti conservano gli esempi operativi completi. Apri l’argomento
 | Seguire un incarico dall’assegnazione alla chiusura | [Flusso di lavoro](#workflow) |
 | Ricostruire un’istruzione o registrare una decisione | [Briefing, messaggi e decisioni](#decision-reference) |
 | Salvare il lavoro o riprendere una sessione | [Checkpoint e ripristino](#checkpoints) |
-| Cercare un comando o il suo prompt in parole semplici | [Tutti i 62 comandi](#commands) |
+| Cercare un comando o il suo prompt in parole semplici | [Tutti i 65 comandi](#commands) |
 
 [Skill](SKILL.md) · [Avvio](references/start.md) · [Lavoro/prova/lettura](references/work.md) · [Runner nativi](references/runtime.md) · [Ripristino/passaggio di contesto](references/recovery.md) · [Sfide/confronto](references/benchmark.md) · [Plugin](references/plugins.md) · [Creare un plugin](references/plugin-authoring.md)
 
@@ -856,10 +856,10 @@ attiva degrada l'integrita del candidato. Vedi la
 
 Non serve scrivere questi comandi: **il modo consigliato è chiedere alla finestra in parole semplici**, come nella colonna *Oppure chiedi* e nei [prompt di esempio](#prompts); il comando lo esegue la finestra. I comandi sono quello che eseguono le finestre, e quello che puoi scrivere tu per controllare.
 
-Ogni comando, raggruppato per scopo: **62 sottocomandi**, più `--version`. Usa `squadra <comando> --help` per le opzioni; i comandi del registro accettano `--root` o `SQUADRA_ROOT`. «Solo il coordinatore» segna ciò che solo il coordinatore può registrare: `task`, `route`, `supersede`, `reassign`, `replace`, `brief`, `close`, `ask`, `decision` (compreso `--extend-budget`), `lanes --apply`, `settings`, `pause`, `resume`, `save`, `standby`, `ping --all`, `ping --sweep`, e la ricevuta che `restore-check` scrive nel registro vivo. Senza installare, gli stessi comandi girano come `python3 -B scripts/squadra.py <comando>`.
+Ogni comando, raggruppato per scopo: **65 sottocomandi**, più `--version`. Usa `squadra <comando> --help` per le opzioni; i comandi del registro accettano `--root` o `SQUADRA_ROOT`. «Solo il coordinatore» segna ciò che solo il coordinatore può registrare: `task`, `route`, `supersede`, `reassign`, `replace`, `brief`, `close`, `ask`, `decision` (compreso `--extend-budget`), `lanes --apply`, `settings`, `pause`, `resume`, `save`, `standby`, `ping --all`, `ping --sweep`, e la ricevuta che `restore-check` scrive nel registro vivo. Senza installare, gli stessi comandi girano come `python3 -B scripts/squadra.py <comando>`.
 
 <details>
-<summary><strong>Tutti i 62 comandi con i loro prompt, raggruppati per scopo</strong></summary>
+<summary><strong>Tutti i 65 comandi con i loro prompt, raggruppati per scopo</strong></summary>
 
 ### Avvio e squadra
 
