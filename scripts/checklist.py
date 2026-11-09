@@ -315,9 +315,20 @@ def _tiredness_notice(items, values, english):
                                  + '; '.join(reasons) + '. squadra handover prepare …')})
 
 
+def _aware(value):
+    """A timezone-aware instant, or None: the gate depends only on evaluate() from handover_conditions."""
+    import datetime as dt
+    try:
+        stamp = dt.datetime.fromisoformat(value)
+    except (TypeError, ValueError):
+        return None
+    return stamp if stamp.tzinfo is not None else None
+
+
 def handover_checks(state, actor, at=None):
     """Shared gate for the explicit checklist and views; never reads transcripts or writes."""
-    from handover_conditions import evaluate, _timestamp
+    from handover_conditions import evaluate
+    _timestamp = _aware
     clock, items = at or now(), []
     english = state.get('workspace', {}).get('lang', 'it') == 'en'
     _add(items, 'actor', lambda: _expect(actor in state['agents'], 'Registered actor required: ' + str(actor)))
