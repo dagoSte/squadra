@@ -2177,7 +2177,7 @@
     {
       "label": "squadra 3.14.0",
       "registry_py_sha256": "49a36412799622339868e1a2d26ee6a93179bc77e53e14e9cfd7e1bac17046d7",
-      "source_commit": "545dea92a7c70d82299ddc6a6db598fbb90d7cb5",
+      "source_commit": "49317e02dd0e6f95f6cb17b2ec576f4e3ad1f9cd",
       "kinds": [
         "access.probe",
         "ack",
@@ -2206,6 +2206,7 @@
         "output",
         "pause",
         "plan",
+        "project.set",
         "reader.ready",
         "reassign",
         "replace",
