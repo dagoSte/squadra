@@ -10,6 +10,8 @@ sys.path[:0] = [str(Path(__file__).resolve().parent), str(Path(__file__).resolve
 from squadra import main
 from checklist import _round_scope
 import test_squadra as support
+import test_composite as composite_support
+from registry import Store
 
 
 class QuietOptions(unittest.TestCase):
@@ -78,6 +80,43 @@ class QuietOptions(unittest.TestCase):
         self.assertEqual([a['original'] for a in evidence], ['decision:D', 'ask:Q'])
         self.assertEqual([json.loads((self.root / 'artifacts' / a['sha256']).read_text())['kind'] for a in evidence], ['decision', 'ask'])
         self.assertNotEqual(self.invoke(*args, '--id', 'Q3', '--evidence', 'decision:missing')[0], 0)
+
+
+class CompositeQuiet(unittest.TestCase):
+    setUp = composite_support.Composite.setUp
+    git = composite_support.Composite.git
+    seed = composite_support.Composite.seed
+    task_args = composite_support.Composite.task_args
+    join_args = composite_support.Composite.join_args
+    invoke = QuietOptions.invoke
+
+    def assert_receipt(self, args):
+        rc, out, err = self.invoke(*args)
+        self.assertEqual(rc, 0, out + err)
+        self.assertEqual(len(out.splitlines()), 1)
+        self.assertLessEqual(len(out.encode()), 200)
+        receipt = json.loads(out)
+        store = Store(self.root, read_only=True)
+        try:
+            event = store.events()[-1]
+            self.assertIs(receipt['committed'], True)
+            self.assertEqual((receipt['event'], receipt['seq']), (event['id'], event['seq']))
+        finally:
+            store.close()
+        return receipt
+
+    def test_assign_receipt_uses_the_last_committed_primitive(self):
+        self.assert_receipt(['assign', *self.task_args(), '--brief-file', str(self.brief), '--via', 'manual'])
+
+    def test_join_receipt_keeps_the_generated_introduction_id(self):
+        receipt = self.assert_receipt(['join', *self.join_args(), '--coordinator', 'C',
+                                       '--body-file', str(self.body), '--via', 'manual'])
+        store = Store(self.root, read_only=True)
+        try:
+            introduction = next(m for m in store.view()['messages'].values() if not m.get('ping'))
+            self.assertEqual(receipt['id'], introduction['id'])
+        finally:
+            store.close()
 
 
 if __name__ == '__main__':

@@ -2,6 +2,7 @@
 """Squadra CLI: one durable record shared by Codex, Claude and human seats."""
 import argparse
 import contextlib
+import contextvars
 import io
 import json
 import os
@@ -30,6 +31,7 @@ class InputRefusal(Error):
 
 # doctor --repair waits at most this long for readers before it leaves the write-ahead log as it is.
 REPAIR_BUSY_MS = 10000
+_receipt_context = contextvars.ContextVar('squadra_write_receipt', default=None)
 
 
 def repair_wal(store):
@@ -1759,7 +1761,7 @@ def _main(argv=None, receipt=None):
                         print(f"Squadra: showing {len(result)} of {result.total} messages (the {result.pending} waiting for an ACK "
                               f"and the latest {INBOX_RECENT}); --all shows every message, --message ID one in full.",
                               file=sys.stderr)
-                if committed:
+                if committed and receipt is None:
                     print(json.dumps({'committed': True, **store.last_commit}), file=sys.stderr, flush=True)
                 if a.command == 'export':
                     state, events = store.project(with_events=True)
@@ -1850,14 +1852,20 @@ def main(argv=None):
     args = parse_cli(argv)
     if args.verbose or args.command in {'status', 'inbox', 'doctor', 'dash', 'check', 'checklist',
                                        'forecast', 'balance', 'usage', 'context', 'census', 'selftest'}:
-        return _main(argv)
-    out, err, receipt = io.StringIO(), io.StringIO(), {}
+        return _main(argv, _receipt_context.get())
+    out, receipt = io.StringIO(), {}
+    parent = _receipt_context.get()
+    token = _receipt_context.set(receipt)
     try:
-        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+        with contextlib.redirect_stdout(out):
             code = _main(argv, receipt)
     except BaseException:
-        print(out.getvalue(), end=''); print(err.getvalue(), end='', file=sys.stderr)
+        print(out.getvalue(), end='')
         raise
+    finally:
+        _receipt_context.reset(token)
+        if parent is not None:
+            parent.update(receipt)
     if receipt and (code == 0 or args.command == 'transport'):
         following = {'agent': 'inbox', 'task': 'inbox', 'brief': 'inbox', 'ack': 'inbox',
                      'join': 'inbox', 'assign': 'inbox', 'transport': 'inbox',
@@ -1873,15 +1881,8 @@ def main(argv=None):
                 receipt[key] = value[:-1] + '…'
                 line = json.dumps(receipt, ensure_ascii=False, separators=(',', ':'))
         print(line)
-        for message in err.getvalue().splitlines():
-            try:
-                marker = json.loads(message)
-            except ValueError:
-                marker = None
-            if not isinstance(marker, dict) or marker.get('committed') is not True:
-                print(message, file=sys.stderr)
     else:
-        print(out.getvalue(), end=''); print(err.getvalue(), end='', file=sys.stderr)
+        print(out.getvalue(), end='')
     return code
 
 

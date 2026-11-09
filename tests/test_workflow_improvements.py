@@ -68,7 +68,7 @@ class Improvements(unittest.TestCase):
     def test_duplicate_review_keeps_one_round_and_same_receipt(self):
         self.task(); self.start(); self.deliver()
         self.review(); before = self.state()['event_count']
-        out = self.cli('review', '--actor', 'R', '--task', 'T', '--verdict', 'accepted', '--report', str(self.report))
+        out = self.cli('review', '--actor', 'R', '--task', 'T', '--verdict', 'accepted', '--report', str(self.report), '--verbose')
         task = self.state()['tasks']['T']
         self.assertEqual(task['rounds']['code'], 1)
         self.assertEqual(len(task['reviews']), 1)

@@ -49,7 +49,7 @@ class Squad(unittest.TestCase):
         return rc, out.getvalue(), err.getvalue()
 
     def run_cli(self, *args, timeout=60):
-        return subprocess.run([sys.executable, '-B', str(CLI), '--root', str(self.root), *args],
+        return subprocess.run([sys.executable, '-B', str(CLI), '--verbose', '--root', str(self.root), *args],
                               env=self.env | {'PYTHONDONTWRITEBYTECODE': '1'},
                               capture_output=True, text=True, timeout=timeout)
 
