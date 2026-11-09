@@ -211,7 +211,7 @@ def transform_packet(value, transform):
 
 def transform_event(kind, value, transform):
     """Visit declared event bindings, preserving stored packet bytes and user data."""
-    if kind == 'replace':
+    if kind in {'replace', 'handover'}:
         return {**value, 'operations': [{**op, 'data': transform_event(op['kind'], op['data'], transform)}
                                       for op in value['operations']]}
     if kind in {"run.start", "run.end"}:

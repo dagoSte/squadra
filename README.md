@@ -517,7 +517,7 @@ The sections below keep the full working examples. Open the topic you need; the 
 | Follow a task from assignment to closure | [Task workflow](#workflow) |
 | Trace an instruction or record a decision | [Briefs, messages and decisions](#decision-reference) |
 | Save work or resume a session | [Checkpoints and recovery](#checkpoints) |
-| Look up a command or its plain-language prompt | [All 61 commands](#commands) |
+| Look up a command or its plain-language prompt | [All 62 commands](#commands) |
 
 [Skill](SKILL.md) · [Setup](references/start.md) · [Work/proof/review](references/work.md) · [Native runners](references/runtime.md) · [Recovery/context handover](references/recovery.md) · [Challenges/benchmark](references/benchmark.md) · [Plugins](references/plugins.md) · [Plugin authoring](references/plugin-authoring.md)
 
@@ -838,10 +838,10 @@ manual deletion of an active cache degrades candidate integrity. See
 
 You do not have to type these commands: **asking your window in plain words is the recommended way**, as in the *Or just ask* column and the [example prompts](#prompts), and the window runs the command for you. The commands are what the windows run, and what you can type yourself to check.
 
-Every command, grouped by purpose: **61 subcommands**, plus `--version`. Use `squadra <command> --help` for the flags; registry commands accept `--root` or `SQUADRA_ROOT`. «Coordinator only» marks what only the coordinator can record: `task`, `route`, `supersede`, `reassign`, `replace`, `brief`, `close`, `ask`, `decision` (including `--extend-budget`), `lanes --apply`, `settings`, `pause`, `resume`, `save`, `standby`, `ping --all`, `ping --sweep`, and the receipt that `restore-check` writes into the live registry. Without installing, the same commands run as `python3 -B scripts/squadra.py <command>`.
+Every command, grouped by purpose: **62 subcommands**, plus `--version`. Use `squadra <command> --help` for the flags; registry commands accept `--root` or `SQUADRA_ROOT`. «Coordinator only» marks what only the coordinator can record: `task`, `route`, `supersede`, `reassign`, `replace`, `brief`, `close`, `ask`, `decision` (including `--extend-budget`), `lanes --apply`, `settings`, `pause`, `resume`, `save`, `standby`, `ping --all`, `ping --sweep`, and the receipt that `restore-check` writes into the live registry. Without installing, the same commands run as `python3 -B scripts/squadra.py <command>`.
 
 <details>
-<summary><strong>All 61 commands and their prompts, grouped by purpose</strong></summary>
+<summary><strong>All 62 commands and their prompts, grouped by purpose</strong></summary>
 
 ### Start and team
 
@@ -853,6 +853,7 @@ Every command, grouped by purpose: **61 subcommands**, plus `--version`. Use `sq
 | `census` | Find the project's Codex, Claude and Cursor windows without writing anything; `--project` is required before `init`. Run it from a Claude window: inside a Codex sandbox it cannot see the other windows, and says so. | “Find the Codex, Claude and Cursor windows working on this project, without writing anything.” |
 | `ping` | Send a presence call to one window (`--to`) or, coordinator only, to all (`--all`); `--sweep` (coordinator only) records stand-by for an unanswered call that a transport delivered, and the return after a fresh ACK. | To the coordinator: “Check which windows are still there: send a presence call to all of them.” |
 | `replace` | Coordinator only: atomically replace windows, carry tasks and useful mail; preview with `--dry-run`. | “Hand the exhausted window over to its replacement.” |
+| `handover` | Prepare an owner-authorized session change, inspect its note and conditions, then let the new window accept it atomically; includes the coordinator. | “Prepare this seat's handover to a fresh window.” |
 | `access` | Probe recipient write access, or read the latest observation, before assignment. | “Check this window’s registry and clone permissions.” |
 | `ready` | Declare that the assigned reader is ready before delivery; `--revoke` withdraws readiness. The delivery still needs its own ACK. | “Record that I am ready to read this task when it is delivered.” |
 | `wait` | Record a service wait with `--until` and `--cause 429|outage`; no sleep or automatic retry. | “Record the service outage until 19:30.” |

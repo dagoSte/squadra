@@ -57,7 +57,8 @@ def artifact(value):
 def render(packet, as_json=False):
     # ASCII escaping makes newlines/control characters in excerpts inert data.
     body = json.dumps(packet, ensure_ascii=True, indent=2, sort_keys=True)
-    return body + '\n' if as_json else '# Task resume packet\n\n```json\n' + body + '\n```\n'
+    title = 'Seat' if packet.get('schema') == 'squadra.seat-context/1' else 'Task'
+    return body + '\n' if as_json else '# ' + title + ' resume packet\n\n```json\n' + body + '\n```\n'
 
 
 def targets(run, task_id):
@@ -225,7 +226,7 @@ def reentry(store, task_id, *, recipient=None, since=None, max_chars=DEFAULT_CHA
                      if recipient is not None and seat['identity'] == state['agents'][recipient]['identity'])
     parts = []
     for event in events:
-        if event['kind'] == 'replace':
+        if event['kind'] in {'replace', 'handover'}:
             parts.extend({**event, **op, 'operation': index} for index, op in enumerate(event['data']['operations']))
         else:
             parts.append(event)
@@ -423,3 +424,94 @@ def reentry(store, task_id, *, recipient=None, since=None, max_chars=DEFAULT_CHA
         if not packet['changes']:
             raise Error('Context cap cannot hold mandatory re-entry state; use a larger --max-chars or read originals')
         omitted.append(packet['changes'].pop(0)['seq'])
+
+
+def seat_context(store, name, *, since=None, max_chars=DEFAULT_CHARS, state=None, as_json=True):
+    """Recorded continuation for a seat, including declared state outside the journal.
+
+    The CLI is bounded with explicit omission counts. An atomic handover embeds the
+    complete packet (max_chars=None), so onboarding never silently drops work/mail.
+    """
+    from registry import next_step, require
+    from replacement import peers
+    from handover import read_outside
+    require(max_chars is None or (type(max_chars) is int and MIN_CHARS <= max_chars <= MAX_CHARS),
+            'Context size must be between 4000 and 32000 characters')
+    events = store.events()
+    start = resolve_revision(events, since)
+    state = store.resolved() if state is None else state
+    require(name in state['agents'], 'Unknown seat')
+    events = [e for e in events if e['seq'] <= state['event_count']]
+    require(start is None or start['seq'] <= state['event_count'], 'Revision is newer than the selected seat state')
+    head = {'seq': events[-1]['seq'], 'hash': events[-1]['hash']}
+    aliases = peers(state, name)
+    history = set(aliases)
+    pending = list(aliases)
+    while pending:
+        prior = set(state['agents'][pending.pop()].get('replaces', [])) - history
+        history.update(prior)
+        pending.extend(n for n in prior if n in state['agents'])
+    tasks = [t for t in state['tasks'].values() if t['status'] != 'done' and not t.get('superseded_by') and
+             (t['owner'] in aliases or t.get('reviewer') in aliases or aliases.intersection(t.get('pool') or []))]
+    task_ids = {t['id'] for t in tasks}
+    outputs = list(state['outputs'])
+    task_rows = []
+    for task in tasks:
+        step = next_step(task)
+        output = next((o for o in reversed(outputs) if o.get('task') == task['id']), {})
+        task_rows.append({**pick(task, ('id', 'status', 'owner', 'reviewer', 'pool', 'repo', 'base')),
+                          'title': (task.get('brief', {}).get('text') or task['title']).split('\n\n', 1)[0],
+                          'phase': step['phase'], 'next': output.get('next') or step['text'],
+                          'next_step': pick(step, ('who', 'role', 'text'))})
+    decisions = [d for d in state['decisions'] if d.get('actor') in history or task_ids.intersection(d.get('tasks') or [])]
+    if start:
+        refs = state.get('refs', {}).get('decision', {})
+        decisions = [d for d in decisions if (refs.get(d.get('id')) or 0) > start['seq']]
+    messages = [plain(m) for m in state['messages'].values() if not m.get('ack') and not m.get('info') and
+                not m.get('replaced_by') and (m['to'] in history or m['from'] in history)]
+    resources = [{'name': key, **plain(r)} for key, r in state['resources'].items() if r['owner'] in aliases]
+    questions = [plain(q) for q in state['asks'].values() if q['status'] == 'open' and
+                 (state['agents'][name]['role'] == 'coordinator' or q.get('actor') in history or
+                  q.get('task') in task_ids or history.intersection(q.get('waiting') or []))]
+    handovers = [plain(h) for h in state.get('handovers', {}).values() if h['from'] in history or h['to'] in aliases]
+    latest = handovers[-1] if handovers else None
+    outside = read_outside(store.root, latest['outside']) if latest else {'unknown': 'No outside state recorded', 'loss_declared': True}
+    rows = [{**pick(h, ('id', 'from', 'to', 'status', 'conditions', 'owner_words', 'channel'))} for h in handovers if h['status'] == 'pending']
+    changes = []
+    if start:
+        for event in events:
+            data = event['data']
+            if event['seq'] > start['seq'] and (event['actor'] in history or data.get('task') in task_ids or
+                                               data.get('to') in history or data.get('from') in history):
+                changes.append({'seq': event['seq'], 'kind': event['kind'], 'actor': event['actor'],
+                                'data': pick(data, ('id', 'task', 'message', 'reason', 'next', 'from', 'to'))})
+    packet = {'schema': 'squadra.seat-context/1', 'notice': NOTICE, 'registry': str(store.root),
+              'range': {'from': start, 'to': head}, 'cursor': str(head['seq']) + ':' + head['hash'],
+              'seat': pick(state['agents'][name], ('id', 'identity', 'session', 'role', 'client', 'repo', 'availability', 'replaces')),
+              'aliases': sorted(aliases), 'tasks': task_rows, 'decisions': plain(decisions[-10:]),
+              'pending_messages': messages, 'resources': resources, 'questions': questions,
+              'handovers': rows, 'rules': state['workspace'].get('onboarding_template', 'Read the project rules and each assignment; ACK before starting.'),
+              'outside': outside, 'changes': changes, 'omitted': {'decisions': max(0, len(decisions) - 10)}}
+    if max_chars is not None:
+        def size():
+            return len(render(packet, as_json))
+        # Remove whole records and name the affected section; no success claim is
+        # attached to a record omitted for size. Full onboarding uses no cap.
+        for section in ('changes', 'decisions', 'questions', 'handovers', 'resources', 'pending_messages', 'tasks'):
+            while packet[section] and size() > max_chars:
+                packet[section].pop()
+                packet['omitted'][section] = packet['omitted'].get(section, 0) + 1
+        outside_field = 'text' if 'text' in packet['outside'] else 'unknown'
+        for field, text in (('outside', packet['outside'].get(outside_field)), ('rules', packet['rules'])):
+            if isinstance(text, str) and size() > max_chars:
+                removed = 0
+                while text and size() > max_chars:
+                    cut = max(1, min(len(text), (size() - max_chars) // 2 + 1))
+                    text, removed = text[:-cut], removed + cut
+                    if field == 'outside':
+                        packet['outside'][outside_field] = text
+                    else:
+                        packet['rules'] = text
+                    packet['omitted'][field + '_characters'] = removed
+        require(size() <= max_chars, 'Context cap cannot hold seat identity and omission metadata')
+    return packet

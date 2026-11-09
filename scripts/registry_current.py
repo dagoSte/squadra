@@ -138,7 +138,7 @@ def advance(indexes, state, event):
     if indexes.get("schema") != SCHEMA:
         raise ValueError("Unsupported current-index schema")
     kind, data = event["kind"], event["data"]
-    if kind == 'replace':
+    if kind in {'replace', 'handover'}:
         for operation in data['operations']:
             advance(indexes, state, {**event, **operation})
         return

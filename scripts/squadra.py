@@ -404,11 +404,38 @@ def parser():
     a.add_argument("--json", action="store_true", help="Print the same measured data as JSON")
     a.add_argument("--prices", metavar="FILE", help="Optional local price table for a labelled estimate; no default prices")
     a = sub.add_parser("context", help="Read-only bounded task resume packet; no model call or client compaction")
-    a.add_argument("--task", required=True)
+    context_target = a.add_mutually_exclusive_group(required=True)
+    context_target.add_argument("--task")
+    context_target.add_argument("--seat", help="Recorded continuation for a seat")
     a.add_argument("--for", dest="recipient", help="Registered window, including its identity aliases")
     a.add_argument("--since", help="Verified revision <seq>:<hash> for relevant changes")
     a.add_argument("--max-chars", type=int, default=8000, help="Complete output cap, 4000..32000 characters (default 8000)")
     a.add_argument("--json", action="store_true")
+    a = sub.add_parser('handover', help='Prepare and accept an owner-authorized session handover')
+    handover_sub = a.add_subparsers(dest='action', required=True)
+    h = handover_sub.add_parser('prepare')
+    h.add_argument('--actor', required=True); h.add_argument('--from', dest='origin', required=True)
+    h.add_argument('--to', dest='target', required=True)
+    outside = h.add_mutually_exclusive_group(required=True)
+    outside.add_argument('--outside-file'); outside.add_argument('--outside-unknown')
+    authorization = h.add_mutually_exclusive_group(required=True)
+    authorization.add_argument('--owner-words'); authorization.add_argument('--answers')
+    h.add_argument('--channel', choices=['typed-here', 'relayed']); h.add_argument('--choice')
+    h.add_argument('--when', action='append', default=[])
+    h = handover_sub.add_parser('status'); h.add_argument('--from', dest='origin')
+    h = handover_sub.add_parser('note'); h.add_argument('--from', dest='origin', required=True)
+    h.add_argument('--max-chars', type=int, default=8000)
+    h = handover_sub.add_parser('confirm'); h.add_argument('--actor', required=True)
+    h.add_argument('--id', required=True); h.add_argument('--condition', type=int, required=True)
+    h.add_argument('--reason', required=True)
+    h = handover_sub.add_parser('accept'); h.add_argument('--actor', required=True)
+    h.add_argument('--id', required=True); h.add_argument('--session', required=True)
+    h.add_argument('--client', choices=['claude', 'codex', 'cursor'], required=True)
+    h.add_argument('--dry-run', action='store_true')
+    h = handover_sub.add_parser('cancel'); h.add_argument('--actor', required=True)
+    h.add_argument('--id', required=True); h.add_argument('--reason', required=True)
+    for child in handover_sub.choices.values():
+        child.add_argument('--root', default=argparse.SUPPRESS, help='Shared persistent workspace')
     a = sub.add_parser("init"); a.add_argument("--name", required=True); a.add_argument("--project", required=True)
     a.add_argument("--lang", choices=["it", "en"], help="Workspace board language (default it)")
     a.add_argument("--temporary", action="store_true", help="Explicit disposable test/demo workspace")
@@ -724,6 +751,9 @@ def inbox(state, agents, everything=False, message=None):
 
 def dispatch(a, store):
     command = a.command
+    if command == 'handover':
+        import handover
+        return handover.dispatch(store, a)
     waiting = command == 'resource' and a.action == 'acquire' and a.wait is not None
     state = None if command == 'doctor' or waiting else store.view()
     actor = getattr(a, "actor", "system")
@@ -1526,6 +1556,11 @@ def main(argv=None):
         if a.command == "context":
             import context_brief
             store = Store(workspace_path(a.root), read_only=True)
+            if a.seat is not None:
+                require(a.recipient is None, '--for applies to context --task; use --seat for seat context')
+                packet = context_brief.seat_context(store, a.seat, since=a.since, max_chars=a.max_chars, as_json=a.json)
+                print(context_brief.render(packet, a.json), end='')
+                return 0
             if a.recipient is not None or a.since is not None:
                 packet = context_brief.reentry(store, a.task, recipient=a.recipient, since=a.since,
                                                max_chars=a.max_chars, as_json=a.json)
@@ -1650,7 +1685,9 @@ def main(argv=None):
                       (a.action in {'purge', 'compact', 'adopt'} and not a.apply))) or
                      (a.command in {'resource', 'candidate'} and a.action == 'status') or
                      (a.command == 'migliora' and a.action == 'inspect') or
-                     (a.command == 'lesson' and a.list) or (a.command == 'replace' and a.dry_run))
+                     (a.command == 'lesson' and a.list) or (a.command == 'replace' and a.dry_run) or
+                     (a.command == 'handover' and (a.action in {'status', 'note'} or
+                                                  (a.action == 'accept' and a.dry_run))))
         if a.command == 'init':
             validate_init(a, root)
         store = Store(root, create=a.command == "init", read_only=read_only)

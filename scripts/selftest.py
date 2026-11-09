@@ -41,6 +41,79 @@ def counts(folder):
             "executed": sum(read(p).get("executed", 0) for p in folder.glob("*-*/result.json"))}
 
 
+def handover_scenario(folder):
+    """Synthetic coordinator transfer, structurally checked by test_handover.
+
+    The ordinary selftest suite runs that test. This checks recorded coverage,
+    never whether a model understands the continuation note.
+    """
+    from registry import Store, standby
+    from context_brief import seat_context
+    import handover
+    from runtime import execute
+    from squadra import deliver
+    folder = Path(folder)
+    folder.mkdir(mode=0o700, parents=True, exist_ok=False)
+    repo = folder / 'repo'
+    repo.mkdir()
+    def git(*args):
+        return subprocess.check_output(['git', *args], cwd=repo, stderr=subprocess.PIPE)
+    git('init', '-q')
+    (repo / 'code.py').write_text('VALUE = 1\n')
+    git('add', '.')
+    git('-c', 'user.name=Synthetic', '-c', 'user.email=test@example.invalid',
+        '-c', 'commit.gpgsign=false', 'commit', '-qm', 'Synthetic handover base')
+    store = Store(folder / 'registry', create=True)
+    try:
+        store.append('init', 'system', {'name': 'Synthetic handover', 'project': str(repo), 'temporary': True,
+                     'version': '3.14.0', 'limits': {'plan': 3, 'code': 2, 'build': 3}})
+        for name, role, client in [('Old', 'coordinator', 'claude'), ('Worker', 'builder', 'manual'), ('Reader', 'reviewer', 'codex')]:
+            store.append('agent', name, {'id': name, 'identity': name, 'session': 'synthetic-' + name,
+                         'role': role, 'client': client, 'repo': str(repo), 'skills': []})
+        scope = store.artifact_bytes(b'Synthetic task contract.\n', 'scope.md', 'selftest:handover')
+        for name, owner, reader in [('OWN', 'Old', 'Reader'), ('READ', 'Worker', 'Old')]:
+            store.append('task', 'Old', {'id': name, 'title': 'Synthetic ' + name, 'owner': owner,
+                         'repo': str(repo), 'base': git('rev-parse', 'HEAD').decode().strip(), 'scope': scope,
+                         'proof': None, 'expected': None, 'full_gate': False, 'depends': [],
+                         'delivery_policy': 'frozen-v1', 'reviewer': reader})
+            store.append('message', 'Old', {'id': 'assign-' + name, 'to': owner, 'task': name, 'body': 'Synthetic work'})
+            store.append('output', owner, {'task': name, 'text': 'Synthetic state', 'next': 'Next step for ' + name})
+        store.append('ack', 'Worker', {'message': 'assign-READ'})
+        proof = execute(store, 'Worker', 'READ', argv=[sys.executable, '-c', 'pass'])
+        require(proof['status'] == 'passed', 'Synthetic handover proof failed')
+        delivery = deliver(store, 'Worker', 'READ')
+        store.append('resource.acquire', 'Old', {'name': 'synthetic-resource'})
+        resource_note = seat_context(store, 'Old', max_chars=None)
+        store.append('resource.release', 'Old', {'name': 'synthetic-resource'})
+        store.append('message', 'Worker', {'id': 'question', 'to': 'Old', 'body': 'Synthetic pending question'})
+        store.append('decision', 'Old', {'id': 'synthetic-contract', 'tasks': ['OWN'], 'reason': 'Preserve the contract'})
+        ident = handover.prepare(store, 'Old', 'Old', 'New', outside_unknown='Synthetic session, no outside processes',
+                                 owner_words='Synthetic owner authorizes the session change', channel='typed-here')['id']
+        before = store.state()
+        result = handover.accept(store, 'New', ident, 'synthetic-new-session', 'claude')
+        state = store.state()
+        note = json.loads(state['handovers'][ident]['accepted']['seat_note'])
+        expected_tasks = {'OWN', 'READ'}
+        expected_messages = {m['id'] for m in before['messages'].values() if not m.get('ack') and
+                             not m.get('info') and not m.get('replaced_by') and (m['to'] == 'Old' or m['from'] == 'Old')}
+        checks = {'tasks': {t['id'] for t in note['tasks']} == expected_tasks,
+                  'next_steps': {t['next'] for t in note['tasks']} == {'Next step for OWN', 'Next step for READ'},
+                  'pending_messages': {m['id'] for m in note['pending_messages']} == expected_messages,
+                  'resources': note['resources'] == [] and resource_note['resources'][0]['name'] == 'synthetic-resource',
+                  'decisions': 'synthetic-contract' in {d['id'] for d in note['decisions']},
+                  'one_coordinator': [n for n, a in state['agents'].items() if a['role'] == 'coordinator' and not standby(state, n)] == ['New'],
+                  'read_preserved': state['tasks']['READ']['reviewer'] == 'New' and
+                                    state['tasks']['READ']['delivery']['frozen'] == before['tasks']['READ']['delivery']['frozen'],
+                  'fresh_read_ack': state['messages'][state['tasks']['READ']['delivery']['handoff']]['ack'] is None,
+                  'successor': 'OWN' in result['successors'],
+                  'history': before['decisions'][0] in state['decisions']}
+        return {'status': 'passed' if all(checks.values()) else 'failed', 'checks': checks,
+                'scope': 'Structural recorded coverage; no model-comprehension claim', 'id': ident,
+                'read_before': delivery['handoff']}
+    finally:
+        store.close()
+
+
 def run(output=None, timeout=TIMEOUT_SECONDS):
     source = Path(__file__).resolve().parents[1]
     folder = Path(output).resolve() if output else Path.home() / ".local/state/squadra/selftests" / uuid.uuid4().hex
