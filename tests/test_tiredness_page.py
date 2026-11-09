@@ -28,11 +28,18 @@ class TirednessRoutes(unittest.TestCase):
                                          headers={'X-Squadra-Token': token, **(headers or {})})
             with urllib.request.urlopen(req, timeout=10) as response:
                 return json.load(response)
-        fatigue = get('/api/tiredness')
-        row = fatigue['windows']['tokens']
+        fatigue = get('/api/state', {'X-Squadra-Tiredness': '1'})
+        row = fatigue['tiredness']['tokens']
         self.assertEqual(row['context_tokens'], 950)
         self.assertNotIn('context_fraction', row)
         self.assertTrue(row['tired'])
+        headers = {'X-Squadra-Tiredness': '1', 'X-Squadra-View': 'compact', 'X-Squadra-State-Token': ''}
+        compact = get('/api/state', headers)
+        headers['X-Squadra-State-Token'] = compact['change_token']
+        unchanged = get('/api/state', headers)
+        self.assertTrue(unchanged['not_modified'])
+        self.assertEqual(unchanged['tiredness']['tokens']['context_tokens'], 950)
+        self.assertNotIn('tiredness', get('/api/state'))
         balance = get('/api/balance')
         measured = next(w for w in balance['windows'] if w['identity'] == 'claude-window-' + routes.SESSION)
         self.assertEqual(measured['tiredness']['context_tokens'], 950)
@@ -45,9 +52,6 @@ class TirednessPage(unittest.TestCase):
         node = shutil.which('node')
         self.assertIsNotNone(node, 'Node is required for the dashboard contract')
         prefix = (ROOT / 'tests/panel_contract.js').read_text().split('const scenarios={')[0]
-        seam = "fetch:async path=>{app.fetched.push(path);return path.startsWith('/api/artifact/')?{ok:true,text:async()=>'artifact'}:{ok:true,json:async()=>clone(app.fixture)}}"
-        self.assertIn(seam, prefix)
-        prefix = prefix.replace(seam, "fetch:async path=>{app.fetched.push(path);if(path==='/api/tiredness')return {ok:true,json:async()=>({windows:{C:{age_hours:9,context_tokens:950,tired:true,reasons:['age']}}})};return path.startsWith('/api/artifact/')?{ok:true,text:async()=>'artifact'}:{ok:true,json:async()=>clone(app.fixture)}}")
         code = prefix + r'''
 (async()=>{
  const app=await boot();await app.tab('Finestre');await settle();
@@ -65,11 +69,12 @@ class TirednessPage(unittest.TestCase):
  const balance=app.run('balanceWindowsPlain(testBalance)');
  assert.ok(one(balance,e=>e.getAttribute('data-tiredness')==='balance'));assert.match(text(balance),/consider restarting/);
  const count=app.fetched.filter(x=>x==='/api/tiredness').length;await app.refresh();await settle();
- assert.equal(app.fetched.filter(x=>x==='/api/tiredness').length,count,'no repeated transcript read within 30 seconds');
+ assert.equal(app.fetched.filter(x=>x==='/api/tiredness').length,count,'no extra request when opening the window tab');
  console.log('tiredness page passed');
 })().catch(e=>{console.error(e);process.exitCode=1});
 '''
         state = state_fixture()
+        state['tiredness'] = {'C': {'age_hours': 9, 'context_tokens': 950, 'tired': True, 'reasons': ['age']}}
         state['agents']['C'] = {'id': 'C', 'identity': 'window-C', 'role': 'executor',
                                 'client': 'claude', 'session': routes.SESSION, 'model': '', 'skills': []}
         with tempfile.TemporaryDirectory(prefix='sq-tired-page-') as tmp:

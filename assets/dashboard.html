@@ -1729,7 +1729,7 @@ async function refresh(quiet=false){
  const query=loadUI.query,actionClock=typeof pluginActionClock==='number'?pluginActionClock:0;
  if(!state)applyStaticLabels();else loadingLabels();
  try{
-  const held=transferLanding,ask=token=>api('/api/state',{'X-Squadra-View':'compact','X-Squadra-State-Token':token,'X-Squadra-Delta':'1','X-Squadra-Search':encodeURIComponent(query)});
+  const held=transferLanding,ask=token=>api('/api/state',{'X-Squadra-View':'compact','X-Squadra-State-Token':token,'X-Squadra-Delta':'1','X-Squadra-Search':encodeURIComponent(query),...(tab==='Finestre'?{'X-Squadra-Tiredness':'1'}:{})});
   let next=await(await ask(held?.change_token||'')).json(),landing=null;
   if(next.delta){
    try{
@@ -1746,6 +1746,7 @@ async function refresh(quiet=false){
    if(typeof pluginActionReads!=='undefined')pluginActionReads.set(state,actionClock);
    if(typeof notifyPoll==='function')notifyPoll(state);
   }
+  if(next.tiredness)state.tiredness=next.tiredness;
   transferClock(next.server_time);
   render();
   await transferIndependentPoll();
@@ -4372,7 +4373,6 @@ function balanceRules(data,facts){
  }
  const scroll=node('div',undefined,'scroll');scroll.append(table);box.append(scroll);return box;
 }
-const windowTiredUI={data:{},loaded:0,flight:null};
 function tiredText(value){
  if(!value||typeof value.age_hours!=='number'&&typeof value.context_tokens!=='number')return '';
  const parts=[];
@@ -4383,13 +4383,8 @@ function tiredText(value){
 }
 function windowTiredPanel(){
  const box=node('section');box.setAttribute('data-tiredness','windows');
- if(!windowTiredUI.flight&&Date.now()-windowTiredUI.loaded>30000){
-  windowTiredUI.loaded=Date.now();
-  windowTiredUI.flight=(async()=>{try{const value=await(await api('/api/tiredness')).json();windowTiredUI.data=value.windows||{};windowTiredUI.loaded=Date.now()}catch(e){windowTiredUI.data={}}finally{windowTiredUI.flight=null;if(tab==='Finestre')render()}})();
- }
- if(Date.now()-windowTiredUI.loaded>60000)return box;
  const seen=new Set();
- for(const [actor,value] of Object.entries(windowTiredUI.data)){
+ for(const [actor,value] of Object.entries(state.tiredness||{})){
   const a=state.agents?.[actor],key=a?.identity||actor;
   if(!a||seen.has(key))continue;seen.add(key);
   const text=tiredText(value);if(text){const p=node('p',panelSeat(actor)+': '+text,value.tired?'sub warn':'sub');p.setAttribute('data-tired-seat',actor);box.append(p)}

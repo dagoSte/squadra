@@ -707,12 +707,6 @@ def make_server(root, port=0):
                     for window in result['windows']:
                         window['tiredness'] = tired.get(window['identity'])
                     self.answer(200, json.dumps(result, ensure_ascii=False).encode())
-                elif path == '/api/tiredness':
-                    measured = usage.collect(events, recorded, roots=usage_roots)
-                    result = {actor: row['tiredness'] for row in measured['windows']
-                              if row.get('tiredness', {}).get('source') for actor in row['actors']}
-                    self.answer(200, json.dumps({'observed_at': measured['observed_at'], 'windows': result},
-                                               ensure_ascii=False).encode())
                 elif path == '/api/usage':
                     result = usage.response(events, recorded, roots=usage_roots,
                                             revision=self.headers.get('X-Squadra-Usage-Revision'),
@@ -722,6 +716,18 @@ def make_server(root, port=0):
                     key = remember_key(events)
                     audit = view.audit_info()
                     stamp = now()
+                    tired = None
+                    if self.headers.get('X-Squadra-Tiredness') == '1':
+                        measured = usage.collect(events, recorded, roots=usage_roots)
+                        tired = {actor: row['tiredness'] for row in measured['windows']
+                                 if row.get('tiredness', {}).get('source') for actor in row['actors']}
+
+                    def state_answer(body):
+                        # Dynamic tab data accompanies full, delta and unchanged replies.
+                        if tired is not None:
+                            body = json.dumps({**json.loads(body), 'tiredness': tired}, ensure_ascii=False).encode()
+                        self.answer(200, body)
+
                     plugin_value = {**plugin_actions.discover(plugin_home, key), "key": key}
                     is_compact = self.headers.get('X-Squadra-View') == 'compact'
                     conditional = is_compact and 'X-Squadra-State-Token' in self.headers
@@ -732,7 +738,7 @@ def make_server(root, port=0):
                         held = view.held_parts(events, stamp, audit)
                         if held is not None and self.headers.get('X-Squadra-State-Token') == transfer_signature(
                                 events[-1]['hash'], query, plugin_value, *held, audit):
-                            self.answer(200, json.dumps({'not_modified': True, 'change_token': self.headers.get('X-Squadra-State-Token'),
+                            state_answer(json.dumps({'not_modified': True, 'change_token': self.headers.get('X-Squadra-State-Token'),
                                                          'server_time': stamp}).encode())
                             return
                         # Only the query changed: the held landing stands, with new results and its own server_time.
@@ -740,7 +746,7 @@ def make_server(root, port=0):
                         if base is not None:
                             revision = transfer_signature(events[-1]['hash'], query, plugin_value, *held, audit)
                             landing = {**base, 'change_token': revision, 'search': search_records(recorded, events, query)}
-                            self.answer(200, view.transfer_reply(token_held, revision, landing, stamp))
+                            state_answer(view.transfer_reply(token_held, revision, landing, stamp))
                             return
                     waiting, present = waits(state, stamp), presence(state, stamp)
                     activity_value = activity(events, stamp)
@@ -749,7 +755,7 @@ def make_server(root, port=0):
                     revision = transfer_signature(events[-1]['hash'], query, plugin_value,
                                                   waiting, present, activity_value, audit) if conditional else None
                     if conditional and self.headers.get('X-Squadra-State-Token') == revision:
-                        self.answer(200, json.dumps({'not_modified': True, 'change_token': revision,
+                        state_answer(json.dumps({'not_modified': True, 'change_token': revision,
                                                      'server_time': stamp}).encode())
                         return
                     if not is_compact:
@@ -778,9 +784,9 @@ def make_server(root, port=0):
                         if not conditional:
                             state.update(compact)
                     if conditional:
-                        self.answer(200, view.transfer_reply(token_held, revision, state, stamp))
+                        state_answer(view.transfer_reply(token_held, revision, state, stamp))
                     else:
-                        self.answer(200, json.dumps(state, ensure_ascii=False).encode())
+                        state_answer(json.dumps(state, ensure_ascii=False).encode())
                 elif path == '/api/detail/view':
                     if self.headers.get('X-Squadra-State-Head') != events[-1]['hash']:
                         self.answer(409, b'{"error":"state_changed"}')
