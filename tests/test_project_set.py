@@ -3,6 +3,7 @@ from pathlib import Path
 from unittest.mock import patch
 import unittest
 import test_quiet_options as support
+import census
 
 
 class ProjectSet(unittest.TestCase):
@@ -20,7 +21,7 @@ class ProjectSet(unittest.TestCase):
         event = self.store.events()[-1]
         self.assertEqual((event['kind'], event['format']), ('project.set', 5))
         before = self.store.events()
-        with patch('census.collect', return_value={'project': str(moved)}) as collect:
+        with patch('census.collect', wraps=census.collect) as collect:
             rc, _, err = self.invoke('census')
         self.assertEqual(rc, 0, err)
         self.assertEqual(Path(collect.call_args.args[0]), moved)
