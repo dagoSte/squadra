@@ -106,11 +106,25 @@ def independent(state, task, reader):
     authors = set().union(*(peers(state, author) for author in task['authors']))
     require(reader not in authors, 'Author cannot independently review own changes (including session aliases)')
     require(state['agents'][reader]['role'] in {'reviewer', 'coordinator'}, 'Replacement reader needs a reviewer seat')
-    # K1 also holds across replace and handover: a successor keeps the lanes of the task it takes over.
+    # K1 also holds across replace and handover: a successor keeps the lanes of every task it descends from.
     from registry import require_not_lane_builder
-    for parent in dict.fromkeys(p for p in (task['id'], task.get('supersedes'), task.get('taken_over_from'))
-                                if isinstance(p, str)):
+    for parent in lineage(state, task):
         require_not_lane_builder(state, parent, reader)
+
+
+def lineage(state, task):
+    """The task and every ancestor through supersedes/taken_over_from, oldest last; cycles stop the walk."""
+    seen, pending = [], [task]
+    while pending:
+        current = pending.pop()
+        name = current.get('id')
+        if not isinstance(name, str) or name in seen:
+            continue
+        seen.append(name)
+        for origin in (current.get('supersedes'), current.get('taken_over_from')):
+            if isinstance(origin, str) and origin not in seen:
+                pending.append(state['tasks'].get(origin) or {'id': origin})
+    return seen
 
 
 def reader_policy(state, task):

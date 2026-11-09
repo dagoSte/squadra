@@ -33,6 +33,23 @@ class Seams(Seams):
         with self.assertRaisesRegex(Error, 'lane_builder_reader: A-read'):
             replacement.independent(state, successor, 'A-read')
 
+    def test_k1_follows_the_whole_chain_of_takeovers(self):
+        # Two takeovers P -> P-1 -> P-2: the lanes decision stays on P, the oldest ancestor.
+        self.lanes()
+        state = plain(self.store.view())
+        first = {**state['tasks']['P'], 'id': 'P-1', 'supersedes': 'P', 'taken_over_from': 'P'}
+        state['tasks']['P-1'] = first
+        second = {**first, 'id': 'P-2', 'supersedes': 'P-1', 'taken_over_from': 'P-1'}
+        for reader in ('A-read', 'B-read'):
+            with self.subTest(reader=reader), self.assertRaisesRegex(Error, 'lane_builder_reader: ' + reader):
+                replacement.independent(state, second, reader)
+        replacement.independent(state, second, 'V-read')
+        self.assertEqual(replacement.lineage(state, second), ['P-2', 'P-1', 'P'])
+
+    def test_lineage_stops_on_a_cycle(self):
+        state = {'tasks': {'X': {'id': 'X', 'supersedes': 'Y'}, 'Y': {'id': 'Y', 'supersedes': 'X'}}}
+        self.assertEqual(replacement.lineage(state, state['tasks']['X']), ['X', 'Y'])
+
 
 class HandoverDecisionGraph(unittest.TestCase):
     def test_owner_words_inside_a_handover_prepare_are_a_decision_node(self):
