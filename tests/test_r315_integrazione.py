@@ -44,7 +44,26 @@ class Seams(Seams):
             with self.subTest(reader=reader), self.assertRaisesRegex(Error, 'lane_builder_reader: ' + reader):
                 replacement.independent(state, second, reader)
         replacement.independent(state, second, 'V-read')
+
+    def test_lineage_lists_every_ancestor_nearest_first(self):
+        self.lanes()
+        state = plain(self.store.view())
+        state['tasks']['P-1'] = {**state['tasks']['P'], 'id': 'P-1', 'supersedes': 'P', 'taken_over_from': 'P'}
+        second = {**state['tasks']['P-1'], 'id': 'P-2', 'supersedes': 'P-1', 'taken_over_from': 'P-1'}
+        self.assertEqual(registry.task_lineage(state, second), ['P-2', 'P-1', 'P'])
         self.assertEqual(replacement.lineage(state, second), ['P-2', 'P-1', 'P'])
+
+    def test_a_new_successor_task_refuses_a_lane_builder_reader_at_creation(self):
+        # The task being validated is not in state yet: its declaration must carry the ancestry.
+        self.lanes()
+        state = plain(self.store.view())
+        declared = {k: v for k, v in state['tasks']['P'].items() if k in registry.TASK_FIELDS}
+        declared.update(id='P-next', supersedes='P', reviewer='A-read', pool=None)
+        with self.assertRaisesRegex(Error, 'lane_builder_reader: A-read'):
+            registry.validate(state, 'task', 'C', declared)
+        pooled = {**declared, 'reviewer': None, 'pool': ['V-read', 'A-read']}
+        with self.assertRaisesRegex(Error, 'lane_builder_reader: A-read'):
+            registry.validate(state, 'task', 'C', pooled)
 
     def test_shared_k1_check_covers_a_successor_after_one_takeover(self):
         # reassign, task --reviewer and pools call the shared helper with the successor's own id.
