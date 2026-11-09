@@ -876,7 +876,7 @@ def next_step(task):
     return {"task": task["id"], "status": status, "phase": phase, "role": role, "text": text, "who": who}
 
 
-def attention(state):
+def attention(state, at=None):
     """List recorded decisions and waits without inferring intent from prose."""
     open_asks = [a for a in state.get("asks", {}).values() if a["status"] == "open"]
     owners = [{"kind": "ask", **a} for a in open_asks]
@@ -969,6 +969,8 @@ def attention(state):
                             else "Esito dell'esecuzione non ancora registrato"})
     if state["paused"]:
         owners.append({"kind": "paused", "question": "Area in pausa: ripresa solo su richiesta del proprietario"})
+    for handover in pending_handovers(state, at):
+        (owners if handover['ready'] else waiting).append(handover)
     decisions = []
     for decision in state["decisions"][-20:]:
         target = decision.get("answers") or decision.get("withdraws")
@@ -3574,6 +3576,11 @@ class Store:
                 lines = ["# Squadra · riepilogo corrente", "", "Registro #" + str(state['event_count']),
                          "Stato e posta completi: squadra export"]
             lines += forwarding_lines(fold_standby(state, view['waiting']), state['workspace'].get('lang', 'it'))
+            for key, heading in [('for_owner', 'Needs you:' if en_summary else 'Serve a te:'),
+                                 ('waiting', 'Who is waiting:' if en_summary else 'Chi aspetta:')]:
+                handovers = [item for item in view[key] if item['kind'] == 'handover']
+                if handovers:
+                    lines += ['', heading, *('- ' + item['text'] for item in handovers)]
             lines += ["", *composition_lines(composition(state, lang="en" if en_summary else "it"),
                                              "en" if en_summary else "it")]
             lines += ["", "| Window | Next step |" if en_summary else "| Finestra | Prossimo passo |", "|---|---|"]
@@ -3865,6 +3872,33 @@ def service_lines(state, at=None, en=False):
     return result
 
 
+def pending_handovers(state, at=None):
+    """Project recorded pending handovers at read time, sharing the checklist's gate."""
+    pending = [h for h in state.get('handovers', {}).values() if h.get('status') == 'pending']
+    if not pending:
+        return []
+    from checklist import handover_checks
+    from handover_conditions import evaluate
+    stamp = at.isoformat() if isinstance(at, dt.datetime) else at or now()
+    english = state.get('workspace', {}).get('lang', 'it') == 'en'
+    result = []
+    for handover in sorted(pending, key=lambda h: (h.get('utc', ''), h['id'])):
+        gate = handover_checks(state, handover['from'], stamp)
+        conditions = evaluate(state, handover, stamp)
+        ready = gate['ready'] and all(c['met'] is True for c in conditions)
+        ready_it = 'Adesso si può: apri una finestra nuova e scrivi «riprendi la sede ' + handover['to'] + '».'
+        ready_en = 'Ready now: open a new window and type «resume seat ' + handover['to'] + '».'
+        blocked = '; '.join(i['detail'] for i in gate['items'] if i['status'] == 'fail')
+        text_it = ready_it if ready else 'Passaggio in sospeso: ' + blocked
+        text_en = ready_en if ready else 'Pending handover: ' + blocked
+        text = text_en if english else text_it
+        result.append({'kind': 'handover', 'id': handover['id'], 'from': handover['from'], 'to': handover['to'],
+                       'who': [handover['from']], 'utc': handover.get('utc'), 'ready': ready,
+                       'conditions': conditions, 'gate': gate, 'text': text, 'text_en': text_en,
+                       'text_it': text_it, 'question': text})
+    return result
+
+
 def board(state, lang=None, read_at=None, events=(), *, live=True, compact=False):
     """Build the progress table; saved views retain fixed durations, not running ages."""
     lang = lang or state["workspace"].get("lang", "it")
@@ -3936,6 +3970,17 @@ def board(state, lang=None, read_at=None, events=(), *, live=True, compact=False
             lines.append(seat_label(state, reader, en) + ' · ' + task_id + ': ' +
                          ('reader ready, waiting for delivery' if en else 'lettore pronto, attende consegna'))
     lines.extend(service_lines(state, clock.isoformat() if clock else now(), en))
+    handovers = pending_handovers(state, read_at)
+    if handovers:
+        lines += ['', 'Pending handovers:' if en else 'Passaggi in sospeso:']
+        for handover in handovers:
+            text = handover['text_en'] if en else handover['text_it']
+            lines.append('- ' + md_inline(handover['from']) + ' → ' + md_inline(handover['to']) + ': ' + md_inline(text))
+            for condition in handover['conditions']:
+                lines.append('  - ' + ('✓ ' if condition['met'] else '… ') + md_inline(condition['detail']))
+            for item in handover['gate']['items']:
+                if item['status'] in {'fail', 'unverifiable'}:
+                    lines.append('  - ' + item['id'] + ': ' + item['status'] + ' · ' + md_inline(item['detail']))
     return printable("\n".join(lines))
 
 
@@ -4122,7 +4167,7 @@ def table(state, read_at=None, events=(), *, compact=False, lang=None, attention
     require(lang in {"it", "en"}, "Board language must be it or en")
     en = lang == "en"
     tasks = list(state["tasks"].values())
-    view = attention(state) if attention_value is None else attention_value
+    view = attention(state, read_at) if attention_value is None else attention_value
     lines = [board(state, lang, read_at=read_at, events=events, live=read_at is not None, compact=compact), "",
              *([*composition_lines(composition(state, lang=lang), lang), ""] if advice else []),
              "Needs you:" if en else "Serve a te:"]
@@ -4132,12 +4177,18 @@ def table(state, read_at=None, events=(), *, compact=False, lang=None, attention
                          else "Informazioni senza conferma richiesta: ") + str(information))
     for item in view["for_owner"]:
         question = OWNER_TEXT_EN.get(item["kind"], item["question"]) if en else item["question"]
+        if item['kind'] == 'handover':
+            question = item['text_en'] if en else item['text_it']
         lines.append("- " + question + (" · " + item["task"] if item.get("task") else ""))
         for option in item.get("options", []):
             lines.append("  " + option["id"] + ": " + option["label"] + (" · Say: " if en else " · Frase: ") + option["say"])
     if not view["for_owner"]:
         lines.append("No request recorded — a question asked only in chat does not appear here." if en
                      else "Nessuna richiesta registrata — una domanda fatta solo in chat non compare qui.")
+    handovers_waiting = [w for w in view['waiting'] if w['kind'] == 'handover']
+    if handovers_waiting:
+        lines += ['', 'Who is waiting:' if en else 'Chi aspetta:']
+        lines.extend('- ' + md_inline(w['text_en'] if en else w['text_it']) for w in handovers_waiting)
     lang = state['workspace'].get('lang', 'it')
     if read_at is None:
         lines += forwarding_lines(fold_standby(state, view['waiting']), lang)
