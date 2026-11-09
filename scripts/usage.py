@@ -24,6 +24,7 @@ MAX_RECORDS = 100000
 MAX_FILES = 1000
 SAVE_SECONDS = 5
 TIRED_FRESH_SECONDS = 60
+TIRED_REFRESH_SECONDS = 50
 MODEL = re.compile(r'(?:claude-(?:opus|sonnet|haiku)[-a-z0-9.]{0,60}|gpt-[0-9][-a-z0-9.]{0,60}|o[134](?:[-a-z0-9.]{0,60})|codex[-a-z0-9.]{0,60})\Z')
 SESSION = re.compile(r'[a-zA-Z0-9][a-zA-Z0-9_-]{5,79}\Z')
 
@@ -343,6 +344,16 @@ def _tired_cache(state, roots=None):
                             excluded=[workspace[k] for k in ('project', 'root') if workspace.get(k)])
 
 
+def _notice_signature(values):
+    # Age follows the clock and session start; reasons still change at the configured thresholds.
+    content = {key: {**row['value'], 'age_hours': None,
+                    'source': {**row['value']['source'], 'observed_at': None}}
+               for key, row in values.items()}
+    times = {key: (instant(utc(row['at'])), instant(row['value']['source']['observed_at']))
+             for key, row in values.items()}
+    return usage_cache.encoded(content), times
+
+
 def status_tiredness(state, now):
     """Read calculated notices from disk only; 60 seconds, exact seat and settings."""
     clock = instant(now) if isinstance(now, str) else now.timestamp() if isinstance(now, datetime) else now
@@ -641,6 +652,7 @@ class Collector:
         self.cache = None
         self.restored_sources = {}
         self.cache_mark = None
+        self.notice_saved = None
         self.http_data = None
         self.http_key = None
         self.http_until = 0
@@ -808,6 +820,25 @@ class Collector:
         if self.cache.save(values):
             self.cache_mark, self.saved_at = mark, time.monotonic()
 
+    def persist_notices(self, state, now):
+        cache = _tired_cache(state, self.roots)
+        values = {_tired_binding(state, actor): {'at': at, 'value': value}
+                  for actor, (at, _, value) in self.tired_data.items() if value.get('source')}
+        if self.notice_saved is None or self.notice_saved[0] != cache.key:
+            self.notice_saved = (cache.key, *_notice_signature(cache.load(notices=True)))
+        _, previous_mark, previous_times = self.notice_saved
+        mark, times = _notice_signature(values)
+        clock = instant(utc(now))  # Match the microsecond precision of the stored observation.
+        # Refresh before the 60-second consumer expiry, only if a fresh observation renews it.
+        if mark == previous_mark and not any(
+                min(current) != min(previous_times[key])
+                and all(0 <= clock - stamp <= TIRED_FRESH_SECONDS for stamp in current)
+                and any(not 0 <= clock - stamp < TIRED_REFRESH_SECONDS for stamp in previous_times[key])
+                for key, current in times.items()):
+            return
+        if cache.save(values, notices=True):
+            self.notice_saved = (cache.key, mark, times)
+
     @staticmethod
     def busy(now):
         return {'schema': 1, 'observed_at': utc(now), 'status': 'not_measured',
@@ -953,9 +984,7 @@ class Collector:
                 'suggestions': advice(models, result, now), 'cost': None}
         self.tired_data = {actor: (now, _tired_key(state, actor), row['tiredness'])
                            for row in result for actor in row['actors']}
-        _tired_cache(state, self.roots).save(
-            {_tired_binding(state, actor): {'at': at, 'value': value}
-             for actor, (at, _, value) in self.tired_data.items() if value.get('source')}, notices=True)
+        self.persist_notices(state, now)
         self.persist(data['coverage']['status'] == 'collecting')
         if self.cache is not None and self.cache.notice:
             data['coverage']['notices'] = [self.cache.notice]
