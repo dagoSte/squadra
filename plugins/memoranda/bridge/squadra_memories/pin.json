@@ -2173,7 +2173,7 @@
     {
       "label": "squadra 3.14.0",
       "registry_py_sha256": "45c47475850568216839f97719bfd960cef01f3c55b0473bead918dc933cda23",
-      "source_commit": "039ddcc7947982b625c0cfcf7a40a31cc41f78fc",
+      "source_commit": "eb4b4ec5f47d6a4f2f2c8c4cb1cb6e4ef3df3b2b",
       "kinds": [
         "access.probe",
         "ack",
