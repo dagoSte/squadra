@@ -162,12 +162,61 @@ const example = "import { ghost } from './ghost'";
         self.write('pkg/a.py', 'from .b import B\n')
         self.write('pkg/b.py', 'B = 1\n')
         self.commit()
-        inventory = lambda: {str(p.relative_to(self.repo)): p.read_bytes() for p in self.repo.rglob('*') if p.is_file()}
+        def inventory():
+            files = {}
+            for path in self.repo.rglob('*'):
+                relative = path.relative_to(self.repo)
+                if relative.parts[:2] == ('.git', 'objects') or relative.as_posix() in {
+                        '.git/maintenance.lock', '.git/gc.lock', '.git/gc.pid', '.git/gc.pid.lock',
+                        '.git/gc.log', '.git/gc.log.lock'}:
+                    continue
+                if path.is_file():
+                    files[str(relative)] = path.read_bytes()
+            return files
+
         before = inventory()
         first = lanes.partition(lanes.analyze(self.repo, ['pkg/b.py', 'pkg/a.py']))
         second = lanes.partition(lanes.analyze(self.repo, ['pkg/a.py', 'pkg/b.py', 'pkg/a.py']))
         self.assertEqual(first, second)
         self.assertEqual(inventory(), before)
+
+    def _no_writes_check_with_mutation(self, mutate):
+        partition, calls = lanes.partition, 0
+
+        def after_planning(analysis):
+            nonlocal calls
+            result = partition(analysis)
+            calls += 1
+            if calls == 2:
+                mutate()
+            return result
+
+        with patch.object(lanes, 'partition', side_effect=after_planning):
+            self.test_same_inputs_in_a_different_path_order_have_the_same_plan_and_no_writes()
+        self.assertEqual(calls, 2)
+
+    def test_no_writes_inventory_ignores_git_maintenance_files(self):
+        def maintenance():
+            for name in ('.git/objects/maintenance.lock', '.git/maintenance.lock',
+                         '.git/gc.pid', '.git/gc.pid.lock', '.git/gc.lock',
+                         '.git/gc.log', '.git/gc.log.lock',
+                         '.git/objects/pack/pack-fixture.pack', '.git/objects/pack/pack-fixture.idx',
+                         '.git/objects/ab/fixture'):
+                self.write(name, 'Synthetic Git maintenance\n')
+
+        self._no_writes_check_with_mutation(maintenance)
+
+    def test_no_writes_inventory_still_rejects_checkout_registry_and_config_writes(self):
+        for name in ('pkg/a.py', 'unexpected.py', '.squadra/events.jsonl', '.git/config'):
+            with self.subTest(path=name):
+                fixture = Analysis('test_same_inputs_in_a_different_path_order_have_the_same_plan_and_no_writes')
+                fixture.setUp()
+                try:
+                    with self.assertRaises(AssertionError):
+                        fixture._no_writes_check_with_mutation(lambda: fixture.write(name, 'Unexpected write\n'))
+                    self.assertEqual((fixture.repo / name).read_text(), 'Unexpected write\n')
+                finally:
+                    fixture.doCleanups()
 
     def test_analysis_never_imports_the_analyzed_python_source(self):
         marker = self.repo / 'executed'
