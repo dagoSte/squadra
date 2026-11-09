@@ -194,3 +194,113 @@ JSON as handoff evidence; never rerun with escalation and label it an ordinary s
 The `access.probe` event uses journal format 4. Upgrade every reader before the first write, including
 bridge copies and their same-version pin. `access status` is read-only and compares the requested paths
 with the observation; mismatched sessions or paths cannot reuse a verified result.
+
+## Rules moved from the core (SKILL.md 3.14.0)
+
+The core keeps one line per rule; this is the full text, unchanged except for relative links.
+
+### Squadra 3
+
+This file is written in English for agents; always answer the user in the user's language.
+
+### Rule 0 — who coordinates, who answers
+
+**The coordinator is a Claude window.** The first Claude window that invokes this skill
+for a piece of work takes the coordinator role. **Before assigning or starting work, it
+takes a census of every Codex, Claude and Cursor window of the project and introduces
+itself to each one.** This is an operating rule for the agent, not an automatic election
+run by any CLI command.
+- The Claude window that then takes the role introduces itself to every window,
+  including the Codex window that sent the owner there, before assigning work.
+- If the owner has no Claude window and does not want to open one, the owner decides.
+  The Codex window first states its limits: windows it cannot see, and mail the owner
+  must deliver by hand (`transport --via manual`). It never coordinates silently.
+- Look for the shared registry; use `squadra census` (before `init`, add
+  `--project <project>`). Complete the census with Claude's peer list and the
+  available Codex sessions; Cursor appears as a `cursor-agent` process. A PID does not prove that mail is read;
+  denied access or unobservable processes are limits, not absent windows. Take the census from
+  a Claude window: inside a Codex sandbox the process list hides the other windows, and the
+  report says to run it from a Claude window.
+- Introduce yourself to every window you found with `send` in the registry, stating
+  identity, role, registry and next step. Use `transport --via codex-queue` for Codex
+  sessions actually identified; for Claude use peer messaging if available, keeping
+  its receipt, otherwise `transport --via manual` (also for Cursor).
+  The coordinator is an unsandboxed Claude window and relays mail a sandboxed window
+  cannot deliver: `squadra transport --actor <coordinator> --message <ID> --via codex-queue`
+  for a Codex recipient, `--via manual` otherwise; the record names it in `relayed_by`,
+  and only the recipient's ACK ends the wait. Every codex-queue attempt is recorded and
+  exits 1 unless delivered. A Codex window needs the registry folder among its writable
+  roots (`codex --add-dir <registry>`).
+  A process without a verified session remains a recipient to reconcile: do not
+  invent its identity and do not declare the introduction complete.
+
+### What it is
+
+A squad with a shared registry, recognizable roles and proofs bound to the delivered
+code. The coordinator keeps the thread; the reviewer checks a frozen candidate without
+becoming its author. Windows can use Codex, Claude or Cursor.
+Cursor works only as an interactive window: squadra never starts it by itself, because
+Cursor runs team, user and enterprise hooks without a sandbox (`references/runtime.md`).
+
+Whoever opens the dashboard may know neither the project nor this skill. Explain first
+what is being done, who is doing it, which step it has reached and whose answer it is
+waiting for. A candidate is a frozen version to check; a review is the check by someone
+who did not write it; an ACK is the recipient's explicit confirmation.
+Use the task's title or summary to describe the windows. Identifiers, code
+fingerprints, paths and event numbers go in «Technical details».
+The landing page must make the project, the current work, progress, waits and the path
+from decisions to results readable; keep the detail available on request.
+In explanations of presence, a ping is a call that asks for confirmation; stand-by
+suspends new tasks and does not stop processes already started.
+
+### Start and resume
+
+Announce the skill when you apply it. Read the project's mandate and the owner's
+instructions first. Keep the authorizations already given and the release boundaries:
+an accepted review does not grant a new authorization to publish.
+
+1. Look for an existing registry and read `status`, `doctor --resume`, tasks, the latest delivery
+   and mail before assigning work. Do not replay old queues blindly.
+   All windows of the same squad use a single shared registry; separate clones do not
+   create separate mailboxes. `posta/exchange-YYYY-MM-DD.md` is the daily projection
+   of the events, not a second source to edit. Use the current `inbox` when receiving
+   or transporting messages; a complete mailbox export is not a live queue. `inbox`
+   prints the messages still waiting for an ACK plus the latest ten; open one in full
+   with `--message ID` and the whole history with `--all`.
+   Every window without a native queue, including every Claude window and the
+   coordinator, arms `inbox --follow` for all its agent names on joining/resuming
+   (include `coord` for the coordinator). Re-arm on expiry with the same recipients and the automatic saved cursor; use `--since` only for an explicit replay. On restart a pending row lists mail still needing ACK; it does not trigger `--until-first`.
+   Use Claude Code Monitor, a background command with `--until-first` (no 30-minute
+   limit; it wakes the window when mail arrives), or an actively watched background
+   process, as shown in
+   [following mail](work.md#following-mail-without-a-native-queue).
+   A saved cursor is not an ACK. Status cannot show a follower that stopped: the window re-arms it itself.
+   Following never confirms a message: read it and explicitly ACK when required.
+
+2. For a new squad choose a durable folder outside `/tmp`. Use
+   `references/start.md` to initialize it and register windows/skills/versions.
+
+3. Distinguish **identity** (the actual window/session) from **role**. If a window
+   has two roles, register the same identity. An alias does not create independence.
+
+4. Choose a squad sized to the work: coordinator, the builders needed, a non-author
+   reviewer. Two builders are useful for independent scopes; do not invent work to
+   keep them busy. Use separate checkouts and assign the owned paths.
+
+5. Every task contains scope, Git base, dependencies and the agreed proof command.
+   Queue delivery is not an ACK: the recipient must confirm in the registry before
+   starting. An unreachable client stays pending.
+
+The installed command is `squadra`. Without the launcher use
+`python3 <skill-folder>/scripts/squadra.py`, also for the `squadra …` instructions the CLI
+prints: the `/plugin` install puts no launcher on PATH. Do not guess user paths.
+`--root` and `SQUADRA_ROOT` select the same registry for every window.
+New 3.11 tasks and reader transfers use journal format 3. Upgrade every reader and
+writer before their first use; old clients refuse that format rather than applying
+old delivery rules. A transfer changes only the reader: `reassign --task ID
+--reviewer READER --reason ...`, with a fresh ACK and the same proofs and budget.
+`resource status --name cpu-heavy` shows the reservation and live queue tickets;
+`resource acquire --task ID` scopes a reservation. Never infer a running process from
+its reservation. Identical verdict retries return the same receipt; `review --amend
+RECEIPT` explicitly revises a verdict and consumes the normal round budget.
+

@@ -67,3 +67,18 @@ dependencies, missing/malformed records, unsafe paths, symlinks, unknown
 providers/versions or unavailable files yield **Not audited for this version**.
 Guide reads are regular-file-only and bounded to 64 KiB. The page renders text
 and validated HTTPS links, never guide HTML, remote scripts or remote images.
+
+## Rules moved from the core (SKILL.md 3.14.0)
+
+The core keeps one line per rule; this is the full text, unchanged except for relative links.
+
+### Previsione: use comparable history before choosing a route
+
+At task creation, briefing and start, read the automatically printed forecast and
+follow [previsione](previsione.md). The coordinator follows the
+suggested route unless it records a reason to deviate in a decision linked to the
+task. A historical estimate never overrides triage, permissions or light-route
+eligibility. Missing scope or fewer than three complete comparable tasks means no
+numeric estimate. `squadra forecast --task ID` is read-only and records no activation;
+the System skills page labels it **Computed on demand** rather than inventing a count.
+

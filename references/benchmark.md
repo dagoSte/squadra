@@ -120,3 +120,29 @@ squadra bench-score --actor coord --from /evidence/benchmark-run \
 - **`selftest`** checks Git, SQLite, local HTTP, JavaScript and fake clients, keeps native logs and `RESULT.json`, and makes no model calls: it tests the toolkit, not your product or a model.
 - **Standalone `challenge`** runs one immutable `check(repo)` oracle on three clean, committed roots, in private copies that never modify the originals. `matched` needs a real assertion failure on the original and passes on remedy and positive control; instrument errors are not defects. It is bounded, not an audit or a sandbox for hostile code.
 - **The offline comparison** runs exact bundled **fake clients**, not installed models, in four author/reader arms over four seeded cases, with a preregistered manifest and an oracle the run never sees; it never claims a winner. A pilot with real models needs the owner's separate authorization, an explicit budget and `bench-run --allow-models --budget-file`, with no automatic retries and no invented usage or cost; an offline run never shows model superiority.
+
+## Rules moved from the core (SKILL.md 3.14.0)
+
+The core keeps one line per rule; this is the full text, unchanged except for relative links.
+
+### Dashboard, stop and continuity
+
+For original/remedy/positive challenges or benchmarks read `references/benchmark.md`.
+For a standalone defect fix outside the final re-read block, the coordinator records `task --defect-fix` (or marks an open
+task with `challenge --register --task ... --reason ...`). Before close, run the
+registered regression on the original task base and the exact candidate with
+`challenge --task ... --output ...`. The default `python-unittest-v1` runner uses
+the fix's own test IDs and their result objects: every selected method must fail
+by assertion on the base and pass on the candidate. Errors, skipped or unknown
+tests and setup failures do not qualify. The test files are frozen and copied
+unchanged onto both private inputs. No separate positive control is needed for
+task fixes; the standalone command retains all three inputs. A coordinator may
+declare a reasoned exception, visible beside the proof and checked by the
+independent reader; it never appears as a successful challenge. Drift requires
+fresh bindings. Light fixes keep the same obligation; old tasks remain unchanged
+and frozen squads must coordinate a writer upgrade before using the new fields.
+`challenge` distinguishes an assertion from an instrument error; it does not replace a
+delivery proof. `bench-example/run/score` test the comparison with fake clients. A pilot
+with real models requires the owner's budget; no superiority is inferred
+from the selftest, from a single turn or from different permission profiles.
+

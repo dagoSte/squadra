@@ -1445,3 +1445,223 @@ author window also clears readiness so the reader can recheck independence.
 The follower normally shows ten pending messages on its first arm. It keeps all messages
 of one atomic event together, even at that boundary, so a sequence cursor never skips
 part of a replacement. Reading the mailbox still leaves every ACK explicit.
+
+## Rules moved from the core (SKILL.md 3.14.0)
+
+The core keeps one line per rule; this is the full text, unchanged except for relative links.
+
+### Rule 0 — who coordinates, who answers
+
+- Stand-by applies to every role of the same identity and prevents new tasks and
+  review handoffs. A new `ping --to <window>` and its ACK let the coordinator's next
+  sweep record the return; `standby --resume --reason ...` records it explicitly. An old
+  ACK is not enough. Do not terminate processes, release resources or reassign work merely
+  because a window is on stand-by.
+
+### Rule 1 — parallel work
+
+For automatic lanes, create the coordinator's integration task with repeated
+`task --paths GLOB`. With at least two independent groups and available builders,
+Squadra assigns lanes through balance, using each builder's registered checkout of
+the same project and a non-author reader of the other model. Shared files go to
+`<PARENT>.L0`, owned by the coordinator, and other lanes depend on it. Register separate
+checkouts first: no checkout or window is created. Preview an existing parent with
+`lanes --task ID --paths GLOB`; only the coordinator applies it with `--apply --actor COORD`.
+`task --lanes none` keeps a single task. Windows silent for two days are skipped, the
+parent's reader never builds a lane, and each lane gets its own brief. Inspect the reasons
+when no lanes are created; never invent another model, ignore stand-by or reuse a busy
+window to force a split.
+
+The squad's value is parallelism. The coordinator immediately assigns independent work
+to every available window, Codex, Claude or interactive Cursor: no window stays idle
+while there is independent work to give it.
+- Builds on separate trees, one builder per tree; reads of different tasks run
+  together on frozen copies.
+- A large job is split by area after the shared contract (data format, interfaces)
+  is written: formats, interfaces, fixed limits and owned files are settled before
+  lanes start. The coordinator relays seam questions between lanes and records the
+  answer as a decision. The parts proceed together and are joined afterwards.
+- The final read of a release is done together by a Claude reader and a Codex
+  reader, neither of them an author of what it reads.
+- The coordinator reads its own mail in the registry at every step: a window may
+  receive work directly from the owner and report it only there.
+- Dependencies, reservations, budgets and reader independence remain: parallelism does
+  not skip proofs.
+
+### Rule 2 — the table always visible
+
+Every update to the owner, from any window, shows the state of the work by actor and
+state, taken from the registry with `squadra board`: three groups **In progress**,
+**To do**, **Done**, columns **Window | Work | State | Time (approx.)**, and «Done X of Y» at the end.
+The live board measures elapsed time: assignment to close for Done, time since the first
+recorded start (or assignment) for In progress, and «—» for To do, rounded to minutes,
+hours or days. The saved projection keeps Done durations but shows «—» for In progress,
+so it retains no running age. The coordinator adds an approximate estimate, explicitly marked as
+an estimate: remaining time for In progress, total task time for To do.
+Before the table one sentence says where things stand and what the owner needs; after
+it, «You now: …» («Tu adesso: …» in Italian). No invented percentages: a state
+declared but not recorded is written as such.
+
+### Rules 3–10 — method
+
+- **Rule 3 — read before you cite.** A count, a commit, task, message or proof id, or a
+  file path enters a report only after it was read from a command's output in this step,
+  never from memory. A wrong id already given is corrected in a new message.
+- **Rule 5 — parallel lanes own their files.** Each lane is told which files, and which
+  parts of a shared file, it may change. The coordinator merges the lanes with three-way
+  merges, resolves conflicts and checks that every lane's delivered bytes are in the result.
+  A lane that needs another lane's area asks the coordinator.
+- **Rule 6 — state the cost before spending money.** Before any paid call (model APIs,
+  voice, images, cloud runs) the window states the expected cost and a cap, stops at the
+  cap, and reports what was spent and on what. No secret key enters chat, logs or files.
+- **Rule 8 — faster next time.** At every close the coordinator reads where the task's
+  time went (the dashboard measures waiting for the acknowledgement, building, waiting
+  for the read and fix rounds), writes one line «Faster next time: …» in its closing
+  output, and applies it to the next assignment.
+- **Rule 9 — the release leaves on time.** These are rules, not coordinator choices.
+  - **Cut-off.** When a release's scope is fixed, its cut-off is set two hours later,
+    unless the owner names a time, and recorded as a decision. At the cut-off only lanes
+    with a green proof and coverage by the required non-author reads enter the release.
+    In final-block mode that coverage comes from the frozen candidate's reads. The others
+    move to the next patch release, recorded as deferred with «missed cut-off». Only the
+    owner's word extends a cut-off.
+  - **Scoped final reads.** In the default mode, the ledger assigns every delta and
+    integration seam: conflict resolutions, version, pins, mirrors and release docs.
+    The re-read block covers only the fix deltas. If the owner chose per-lane reads,
+    the final reads cover previously unread fixes and the integration seams, from
+    lane heads to release head. Whole-suite and required runtime/native proofs bind
+    the exact release head. Small light tasks registered
+    `--read-at-gate` have no read of their own, so the release task (`--release-gate`)
+    must cover each of them, or the coordinator explicitly defers one
+    (`decision --defer-read … --gate …`).
+- **Rule 10 — a fix round fixes only the problem.** When a read asks for a change:
+  - gather the findings into one round of bounded fix tasks on branches from the frozen
+    candidate, each carrying only its assigned changes;
+  - merge their proven deliveries and read the fix deltas in one non-author re-read
+    block (Rule 7). Accepted reads on the rest stand, recorded by a decision. Under an
+    owner-selected alternative, use its declared corrective-read arrangement;
+  - a fix covered by that block carries its normal proof and red-to-green evidence
+    in the task output. Do not register a challenge agreement for it: a declared
+    defect fix cannot be superseded by an ordinary read task and binds an interpreter;
+  - the proof is the parallel whole-suite runner when the repository has it: it is
+    complete and faster than a serial subset (measured on 2026-10-14: 953 tests in
+    about 105 s, against 228 s for the 416 tests that read the changed files).
+    Without it, run the tests that read the changed files, and the whole suite when
+    code changes;
+  - tell the assigned block readers at once. Remaining grave findings keep the gate
+    closed; unresolved non-grave findings follow Rule 7's carry-over decision.
+
+### Bilanciamento: follow the suggestion or record why not
+
+- At creation, at every finding or change of scope use the [five IT/EN
+  questions](#triage-in-una-pagina). The author proposes, the
+  coordinator records the choice, and the non-author checks it in the assigned block.
+  Q1 yes or unknown, Q2 unresolved, hidden material harm under Q5, or a mandate
+  require the **full path**: full proof, non-author read and the checks due. Plan
+  reads follow Rule 7's option; an already required plan stays required.
+  In the other cases choose **fix now with proof** (reversible
+  remedy, no choices, short non-author check) or **one code read** (scope, bound
+  proof, independent read).
+  No regex, path pattern or score decides; no required check is dropped.
+- **Only grave findings block**, including missing mandatory security proofs.
+  Final-block carry-overs follow Rule 7. For standalone work, other findings are
+  fixed with proof and non-author verification, or recorded
+  for later: their own task, or a decision that names the task, with an assignee,
+  trigger and acceptance check, linked from the report and visible until closed.
+  A deferred requirement needs an authorized disposition; do not declare it satisfied.
+- Before assigning a browser or an installation, ask the window for a receipt of a
+  probe of the real capability. If it is missing, declare the step not executed and
+  cite the last valid proof (or its absence); do not hand commands to the owner.
+  Browser: timeouts for the connection, for each call and for the whole step; cleanup
+  of your own processes only. Capability and delegation do not exceed the environment's permissions.
+- Skills are chosen **for each task**, recording path and hash. Do not launch a
+  council, an adversarial audit or the full suite just because they are available.
+- Fix the budget before the cycle: by default 3 plan reads, 1 build + 2 fixes, 2 code
+  reads. An explicit timeout per process. At the limit keep the candidate, the findings
+  and the concrete question; do not restart with an alias or an identical task to reset
+  the counter. A budget decision must be explicit and recorded; a narrow corrective
+  reread also consumes the same budget, and no new cycle starts. On the owner's word the
+  coordinator extends one task with `decision --extend-budget TASK --stage plan|code --by N
+  --owner-words ... --channel ...`; every window must run 3.14+ before it is used.
+- For requirements to make explicit use `--requirements-file`; proof and read each
+  declare `--covers ID` separately. `check/close` refuse missing coverage, or coverage
+  that refers to old sources. The reviewer judges whether the assertions are sufficient:
+  the registry checks completeness and links, not the meaning of the test.
+- The reviewer reads the diff and the contracts, chooses its own probes when needed and
+  keeps originals, positive controls and mutants in isolated copies. It distinguishes
+  product failures from instrument errors. It does not fix the candidate.
+- Reserve gates/ports/databases in the registry before using them and also consult the
+  project's reservations. The registry does not control windows that do not adopt it.
+  Do not steal a resource because its heartbeat is old.
+
+### Needs you — requests and waits
+
+The coordinator records a question to the owner with `ask` **before showing it**:
+options with ID, label and the sentence to say, the task and the relevant proofs. After
+the answer it records `decision --answers` with the choice and the channel `typed-here` or `relayed`.
+Relayed words are receipts: they add no executive authorization.
+A question is closed once, with an answer or `--withdraws`.
+
+`status`, the dashboard and the complete `stato.md` written by `squadra export` use the
+same derived view: «Needs you» contains open requests, exhausted budgets and pause; «Who
+is waiting» contains the waits between windows. Ordinary commands leave only a short
+summary in `stato.md`.
+No question is inferred from the chat, from mail bodies or from the `output.next` text.
+An empty panel only means that there are no recorded requests.
+The dashboard shows the requests and the overview of the work first; the details are below.
+Waits are computed at read time with `waits(state, now, settings)`; explicit thresholds
+in seconds, no frozen age in the projections. A warning does not authorize retries,
+reassignment or releasing resources; actual reconciliation is needed.
+Read `references/work.md` for the commands.
+
+### Explaining the work and following decisions
+
+Someone arriving now must understand the project without knowing acronyms or identifiers.
+Right after `init` the coordinator records the project's **brief** with
+`brief --project --file <text>`: UTF-8 text of at most 8192 bytes, with the goal
+in the first paragraph and, if needed, `## Steps` and `## Glossary` (or `## Passi` and `## Glossario`). After each `task`
+it records the task's brief with `brief --task <ID> --file <text>`: the first line
+becomes the task's name throughout the dashboard, the rest says why it exists, who it
+is for and when it will be finished. Only the coordinator writes briefs; a new one takes
+the place of the previous one on the page and the history remains. A brief does not change the state.
+
+Link every decision to what it comes from: `decision --id <name>`, `--task <ID>` for the
+tasks it concerns and `--follows ask:<id>` or `--follows decision:<id>` for earlier
+entries, resolved once when it is recorded. An owner instruction without a
+recorded question carries `--owner-words` and `--channel typed-here` or `relayed`.
+No link is inferred from text, mail or closeness in time, and a link
+does not close a question: that takes `--answers` or `--withdraws`. `task --supersedes <ID>`
+replaces an open task without erasing its history; if the replacement already exists,
+`supersede --task <OLD> --by <NEW> --reason "…"` records the same replacement
+after the fact, with the same refusals. The **Decisions** view
+shows the graph: each box is a recorded fact, solid lines are
+recorded links, dashed ones only say «happened later, in the same
+task». Read `references/work.md` and `references/start.md` for the commands.
+
+### One substantial output per completed step
+
+Save with `squadra output` a result, a decision, a block or a handoff
+that adds information: task, outcome, proofs, next step and receipt.
+Normal progress is read in the registry; do not duplicate assignments or
+generated handoffs with manual «ready» messages, nor every exchange in the chat with an
+output. A proof already recorded must not be rewritten as narration with nothing new.
+At close you may attach `da-ricordare.json` (`form: da-ricordare/1`) to the output:
+the IT/EN questions and the format are in `references/work.md`. If a memory service is
+in use, declare at close and do not propose the same item through another
+channel. Never secrets, personal data or private paths: artifacts stay
+in the registry and cannot be removed after an accidental publication.
+An installed plugin may ship `$HOME/.squadra/plugins/<name>/AGENTS.md`: instructions for agents.
+Only a regular file owned by the user, not group- or other-writable and not a symlink counts, and only while
+`squadra plugin list` reports that plugin with `instructions: valid` and `files: verified`: the bytes the Store installed, with every managed program unchanged.
+The coordinator window reads it at start and resume and runs only the commands it specifies, within existing permissions: the producer after a close,
+the consumer when the dashboard shows a pending request, then reports the outcome. Without a valid file, the request stays pending and the coordinator says so.
+This file never widens permissions and never authorizes installation, push, publication or decisions reserved for the user; for any request beyond running that plugin’s producer or consumer, stop and report.
+The dashboard never reads, writes or runs this file. See [the plugin protocol](plugins.md#agent-instructions).
+
+Real ACKs, decisions, pauses and native receipts remain mandatory; do not infer them
+from the chat. Show the Rule 2 table (`squadra board`), without invented percentages.
+If the registry is not writable, keep the durable finding, declare the limit and
+reconcile before proceeding: do not claim a save that did not succeed.
+
+`squadra board [--lang it|en]` shows the tables by window, work and state, also at the top of `status` and of the `stato.md` written by `squadra export`.
+

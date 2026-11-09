@@ -3,7 +3,7 @@
 **A round closes what it started.** Every closed task tends to surface new problems; if
 each one becomes a task at once, open tasks grow instead of closing. This guide is the
 coordinator's procedure for the
-[round-scope rule](../../SKILL.md#round-scope-rule--what-a-round-finds-waits-for-the-next-one).
+[round-scope rule](../../SKILL.md#no-overlap-resume-and-round-scope) (R16).
 
 ## At the start of a round
 
@@ -49,3 +49,24 @@ withdrawn by a decision.
   ID is not named in that reason as a whole token gets `round_scope` = `unverifiable`,
   never `fail`, because the registry cannot tell the owner's word or a blocking fix from
   prose. The coordinator still reconciles it at every `task`.
+
+## Rules moved from the core (SKILL.md 3.14.0)
+
+The core keeps one line per rule; this is the full text, unchanged except for relative links.
+
+### Round-scope rule — what a round finds waits for the next one
+
+**Once a round's scope is fixed by a recorded decision, a problem found during the round
+becomes a new task only if it blocks closing one of the round's tasks** (owner,
+2026-10-31). Everything else goes into the round's deferral decision with an owner, a
+trigger and an acceptance check, and is opened as a task at the next round's kickoff.
+- A finding that blocks a close (a red proof, a read asking for changes) is handled in
+  that task's fix round (Rules 7 and 10), including the bounded fix tasks Rule 10
+  requires; those carry only the assigned changes and never unrelated scope.
+- A finding that does not block is recorded once, in the deferral decision, linked with
+  `--follows decision:<scope decision>`. No new `task` is created for it in this round.
+- Only the owner's word brings a deferred item into the current round; record it as a
+  decision that follows the scope decision.
+- An instrument error (a lost lock, an overloaded machine, a shallow copy) is resolved
+  where it happens and recorded as a disposition; it does not widen the round either.
+

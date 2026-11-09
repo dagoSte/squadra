@@ -607,3 +607,42 @@ synthetic test registries and checkpoints. It does not record a retention event;
 manual removal of an active candidate is reported as missing by doctor/checkpoint.
 
 For explicit `save --repo`, missing unselected registered repositories are MANIFEST warnings; selected missing repositories still fail. Destination containment still covers all registered source paths. See [window replacement](replacement.md) for handover and service-wait records.
+
+## Rules moved from the core (SKILL.md 3.14.0)
+
+The core keeps one line per rule; this is the full text, unchanged except for relative links.
+
+### Dashboard, stop and continuity
+
+- **Autonomous checkpoints:** do not wait for the owner to ask for them. After a
+  completed increment, an accepted review and before a session change or
+  publication, run `checkpoint --actor WINDOW --compact --to <new-durable-folder>` and record the
+  receipt in the output. The checkpoint keeps the registry; to also protect
+  sources and WIP use `save` and a real `restore-check`. Do not rerun tests that are
+  already valid just to create a resume point. Read the handover protocol in
+  `references/recovery.md`. Before every new long round run `storage purge --dry-run`.
+  Retain three checkpoints, three saves, the last successfully restored save,
+  everything younger than 24 hours and explicit `storage keep` points. Only the
+  coordinator's explicit `storage purge --apply --actor COORD --reason TEXT`
+  deletes files. Identical bytes of the newest recorded checkpoint on the same
+  filesystem are reused automatically (`--reuse PREVIOUS` names one); for data
+  already on disk preview `storage compact --dry-run`. Checkpoints made before 3.13 are unregistered: bring
+  those of this registry under retention with `storage adopt --scan DIR` (dry run first, then `--apply`
+  by the coordinator). Never `cp -R` a live registry; `cp -c` is only for disposable tests.
+- `squadra selftest`: synthetic toolkit checks without model calls, with
+  result and logs kept. It verifies the protocol, not the general quality of the
+  generated code or the security of a product. Do not present it as a
+  comparative benchmark of two agents.
+- A secret recorded into an artifact by mistake: delete its file and record `decision --scrub-artifact SHA256 --reason ...` (coordinator only); read «Removing a leaked artifact» in `references/recovery.md`.
+- Old packets can be imported as **unverified historical copies**;
+  they generate no tasks, ACKs or acceptances. A squad already active keeps its
+  frozen protocol until it receives an explicit version switch.
+
+### What registry reads verify
+
+The other ordinary reads above do **not** reverify events before the anchor, untouched cache
+leaves, or whether the cached root equals a complete replay of the reducer. An
+invalid, missing or foreign cache falls back to verified reconstruction; a failing
+verification is not a successful cached read. Source manifests store file lists
+once and preserve the original source fingerprint; binding checks resolve them.
+
