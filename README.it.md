@@ -13,7 +13,7 @@ Coordina Claude Code, Codex e Cursor con incarichi condivisi, revisioni indipend
 
 **Gratuita e open source** — licenza MIT, nessun account, tutto gira sul tuo computer.
 
-**Versione 3.14.0** · Python 3.12+ · macOS / POSIX
+**Versione 3.15.0** · Python 3.12+ · macOS / POSIX
 
 [English](README.md) · **Italiano** · [Privacy](PRIVACY.it.md)
 
@@ -996,6 +996,22 @@ Controlli statici, comportamentali e delle dipendenze, con `tests/` esclusa. Il 
 <a id="news"></a>
 ## Novità
 
+**3.15.0 — passaggio di sede in due comandi e una squadra più semplice da guidare**
+
+- **Passaggio di sede.** Una finestra lunga diventa costosa e meno affidabile: ora la si sostituisce senza perdere nulla, coordinatore compreso. `squadra handover prepare --from SEDE --to NUOVA` registra le parole del proprietario, le condizioni di partenza (`task:ID` chiuso, `after:ORARIO`, `confirm:"…"`) e la sezione «stato fuori dal registro» (server, sessioni aperte, rilasci in corso, promesse), obbligatoria e rifiutata se contiene una password o un token riconoscibile, anche in forma Markdown. Alla finestra nuova basta «riprendi la sede NUOVA»: `handover accept` registra la sede, eredita incarichi, letture, posta utile e ruolo in un solo evento, mette in stand-by la vecchia e presenta la sede nuova a ogni finestra. `context --seat` scrive la nota di ripresa dell'intera sede.
+- **Momento sicuro.** `checklist --moment handover --actor SEDE` dice «adesso no» con un run in corso, una risorsa prenotata, una lettura a metà, un rilascio aperto, modifiche non committate o condizioni non ancora vere, ed elenca cosa aspettare. Un passaggio deciso ma rinviato resta visibile in `status`, nella tabella e nella dashboard finché non è fatto; quando tutto è vero compare «Adesso si può: apri una finestra nuova e scrivi «riprendi la sede …»».
+- **Finestra stanca.** La dashboard (Finestre e Bilancio) e `doctor --resume` mostrano per ogni sede da quanto è attiva la sessione e quanto contesto occupa, letti dai transcript Claude e Codex, e avvisano «conviene ripartire» oltre `tired_hours` (8) o `tired_context_fraction` (0,6). Mai percentuali inventate: per Claude la frazione compare solo se `context_window` del modello è dichiarato. Solo un avviso: nulla cambia da solo.
+- **Più semplice, senza perdere funzioni.** SKILL.md passa da 55 KB a 20,5 KB (−63%): ogni regola in una riga con il rimando alla sua sede, e `references/regole.md` come inventario; un test confronta ogni clausola di ogni regola della 3.14.0 con la sua sede. `squadra assign` fa in un comando incarico, brief, consegna e checklist; `squadra join` entra nella squadra; `squadra pickup` riassume dove si è rimasti, in sola lettura; una prova di parità garantisce gli stessi eventi della sequenza lunga. Ogni scrittura risponde con una riga (61–136 byte invece dei ~3,6 KB della tabella), `--verbose` ripristina tutto. `decision --round-scope` sostituisce il prefisso di testo, `squadra project --set PERCORSO` ripara un progetto spostato, `ask --evidence decision:ID` accetta un riferimento.
+- **Correzioni.** `doctor --resume` non segnala più come fermo un successore che registra il piano ereditato, né un incarico qualsiasi con «.L» nel nome; il costruttore di una corsia non può leggere il padre, nemmeno tramite `reassign`, `replace` o un passaggio di sede.
+- **Aggiorna tutte le finestre insieme.** I passaggi di sede scrivono il formato di journal 5: le finestre 3.14 lo rifiutano invece di ignorarlo.
+
+**Guarda il film delle novità della 3.10.2, due minuti — attiva l'audio nel lettore:**
+
+https://github.com/user-attachments/assets/8f38a443-b738-48f8-b562-9b072419b5f0
+
+<details>
+<summary><strong>Versioni precedenti</strong></summary>
+
 **3.14.0 — corsie automatiche, budget per incarico e una ripresa più attenta**
 
 - **Corsie automatiche.** `task --paths GLOB` (ripetibile) analizza i file da toccare — le co-modifiche Git pesano più degli import, le copie byte-identiche restano insieme, gli hub condivisi vanno in una corsia contratto L0 del coordinatore — e, quando ci sono due o più gruppi indipendenti e costruttori liberi, crea da sola le corsie: file posseduti disgiunti, un costruttore per corsia scelto da balance nel proprio checkout del progetto, un lettore dell'altro modello, dipendenze da L0, un brief per corsia, una decisione registrata e le assegnazioni, tutto o niente. Non sceglie mai finestre silenziose da due giorni, in stand-by o che leggono il padre. `lanes --task ID --paths …` mostra l'anteprima, `--apply` è solo del coordinatore, `--lanes none` tiene un solo incarico. Misurato sul repository reale: ritrova da sola in meno di un secondo le due corsie del giro storage della 3.13.
@@ -1008,12 +1024,6 @@ Controlli statici, comportamentali e delle dipendenze, con `tests/` esclusa. Il 
 
 - **Per chi integra.** `storage_reuse.compact` è passata in `storage_compact.compact` (senza alias, per tenere i moduli storage senza cicli di import); il comando `storage compact` non cambia.
 
-**Guarda il film delle novità della 3.10.2, due minuti — attiva l'audio nel lettore:**
-
-https://github.com/user-attachments/assets/8f38a443-b738-48f8-b562-9b072419b5f0
-
-<details>
-<summary><strong>Versioni precedenti</strong></summary>
 
 **3.13.1 — una copia del registro non cancella mai i punti di recupero dell'originale**
 
@@ -1029,11 +1039,6 @@ https://github.com/user-attachments/assets/8f38a443-b738-48f8-b562-9b072419b5f0
 - **Checkpoint registrati e compatti.** `checkpoint --actor FINESTRA --compact` registra il punto di recupero e omette le viste ricostruite all'apertura; `save` riusa il pacchetto precedente. Un checkpoint non fallisce più quando un file temporaneo di uno scrittore concorrente sparisce durante la copia.
 - **Basta una frase.** Dopo l'aggiornamento di' a una finestra Claude: «Usa squadra: compatta lo spazio del registro /percorso/del/registro». A ogni ripresa `doctor --resume` segnala i vecchi checkpoint non registrati o più di 1 GB di candidati, e il coordinatore te la propone.
 - **Le istruzioni della skill** non chiedono più copie complete ripetute: i checkpoint sono compatti e registrati, e ogni giro lungo comincia con `storage purge --dry-run`.
-
-**3.12.1 — la dashboard apre i registri con finestre sostituite**
-
-- **Correzione della dashboard.** Dalla 3.11.1 `replace` registra incarichi successori, letture e avvii dentro un solo evento `replace`. L'avanzamento degli incarichi della dashboard ignorava queste operazioni annidate, e ogni registro con una sostituzione andava in errore con `KeyError: '<incarico>-takeover-…'`. Ora l'avanzamento le applica come fa il registro, e un test di regressione lo fissa.
-- Le copie bridge dei plugin di `scripts/registry.py` hanno la stessa correzione; il pin di lettura di memoranda accetta i byte della 3.12.1.
 
 </details>
 

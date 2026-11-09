@@ -13,7 +13,7 @@ Coordinate Claude Code, Codex and Cursor with shared tasks, independent reviews 
 
 **Free and open source** — MIT licence, no account, everything runs on your machine.
 
-**Version 3.14.0** · Python 3.12+ · macOS / POSIX
+**Version 3.15.0** · Python 3.12+ · macOS / POSIX
 
 **English** · [Italiano](README.it.md) · [Privacy](PRIVACY.md)
 
@@ -991,6 +991,22 @@ Static, behavioral and dependency checks, excluding `tests/`. Passing means no H
 <a id="news"></a>
 ## What's new
 
+**3.15.0 — seat handover in two commands and a squad that is simpler to run**
+
+- **Seat handover.** A long-running window grows costly and less reliable: it can now be replaced without losing anything, the coordinator included. `squadra handover prepare --from SEAT --to NEW` records the owner's words, the start conditions (`task:ID` closed, `after:TIME`, `confirm:"…"`) and the «state outside the registry» section (servers, open sessions, releases in progress, promises), which is required and refused when it contains a recognisable password or token, Markdown forms included. The new window only needs «resume seat NEW»: `handover accept` registers the seat and inherits tasks, reads, useful mail and the role in a single event, parks the old seat and introduces the new one to every window. `context --seat` writes the resume note for the whole seat.
+- **Safe moment.** `checklist --moment handover --actor SEAT` answers «not now» while a run is live, a resource is held, a read is half done, a release is open, changes are uncommitted or conditions are not yet true, and lists what to wait for. A handover decided but postponed stays visible in `status`, the board and the dashboard until it is done; when everything holds it reads «Ready now: open a new window and type «resume seat …»».
+- **Tired window.** The dashboard (Windows and Balance) and `doctor --resume` show for every seat how long its session has been running and how much context it holds, read from the Claude and Codex transcripts, and advise «consider restarting» past `tired_hours` (8) or `tired_context_fraction` (0.6). No invented percentages: for Claude the fraction appears only when the model's `context_window` is declared. Advice only: nothing changes by itself.
+- **Simpler, with nothing lost.** SKILL.md goes from 55 KB to 20.5 KB (−63%): every rule in one line with a pointer to its home, and `references/regole.md` as the inventory; a test compares every clause of every 3.14.0 rule with its home. `squadra assign` does task, brief, delivery and checklist in one command; `squadra join` joins the squad; `squadra pickup` summarises where you left off, read-only; a parity test guarantees the same events as the long sequence. Every write answers with one line (61–136 bytes instead of the ~3.6 KB board), `--verbose` brings everything back. `decision --round-scope` replaces the text prefix, `squadra project --set PATH` repairs a moved project, `ask --evidence decision:ID` accepts a reference.
+- **Fixes.** `doctor --resume` no longer reports as idle a successor that records its inherited plan, nor any task with «.L» in its name; a lane's builder can never read its parent, not even through `reassign`, `replace` or a seat handover.
+- **Upgrade every window together.** Seat handovers write journal format 5: 3.14 windows refuse it instead of ignoring it.
+
+**Watch the two-minute film of what's new in 3.10.2 — turn the sound on in the player:**
+
+https://github.com/user-attachments/assets/6ea747a5-a993-4aa7-a58d-1b2b7f908720
+
+<details>
+<summary><strong>Earlier versions</strong></summary>
+
 **3.14.0 — automatic lanes, per-task budgets and a sharper resume**
 
 - **Automatic lanes.** `task --paths GLOB` (repeatable) analyses the files to change — Git co-changes weigh more than imports, byte-identical copies stay together, shared hubs go to a coordinator contract lane L0 — and, when there are two or more independent groups and free builders, creates the lanes itself: disjoint owned files, a builder per lane chosen by balance in its own checkout of the project, a reader of the other model, dependencies on L0, a brief per lane, one recorded decision and the assignments, all or nothing. Windows silent for two days, in stand-by or reading the parent are never chosen. `lanes --task ID --paths …` previews, `--apply` is coordinator only, `--lanes none` keeps one task. Measured on the real repository: the two lanes of the 3.13 storage round are found again in under a second.
@@ -1003,12 +1019,6 @@ Static, behavioral and dependency checks, excluding `tests/`. Passing means no H
 
 - **For integrators.** `storage_reuse.compact` moved to `storage_compact.compact` (no alias, to keep the storage modules free of import cycles); the CLI `storage compact` is unchanged.
 
-**Watch the two-minute film of what's new in 3.10.2 — turn the sound on in the player:**
-
-https://github.com/user-attachments/assets/6ea747a5-a993-4aa7-a58d-1b2b7f908720
-
-<details>
-<summary><strong>Earlier versions</strong></summary>
 
 **3.13.1 — a copy of a registry never purges the original's recovery points**
 
@@ -1024,11 +1034,6 @@ https://github.com/user-attachments/assets/6ea747a5-a993-4aa7-a58d-1b2b7f908720
 - **Recorded, compact checkpoints.** `checkpoint --actor WINDOW --compact` records the recovery point and omits views that are rebuilt on opening; `save` reuses the previous package. A checkpoint no longer fails when a concurrent writer's temporary file disappears mid-copy.
 - **Ask for it in one sentence.** After updating, tell a Claude window: «Use squadra to compact the storage of the registry at /path/to/registry». At every resume `doctor --resume` notices old unregistered checkpoints or more than 1 GB of candidates, and the coordinator proposes that sentence.
 - **Skill instructions** no longer ask for repeated full copies: checkpoints are compact and recorded, and every long round starts with `storage purge --dry-run`.
-
-**3.12.1 — the dashboard opens registries that replaced windows**
-
-- **Dashboard fix.** Since 3.11.1, `replace` records the successor tasks, reads and starts inside one `replace` event. The dashboard's task progress ignored those nested operations, so every registry with a replacement failed with `KeyError: '<task>-takeover-…'`. Task progress now applies them the way the registry does, and a regression test pins it.
-- The plugin bridge copies of `scripts/registry.py` carry the same fix; the memoranda reader pin accepts the 3.12.1 bytes.
 
 </details>
 
