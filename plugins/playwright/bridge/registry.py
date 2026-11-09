@@ -1488,7 +1488,7 @@ def review_request(actor, data):
     return 'review-request:' + digest(canonical({'actor': actor, **identity}).encode())
 
 
-def lane_builder_of(state, parent, reader):
+def lane_builder_of(state, parent, reader, declaration=None):
     """The lane of ``parent`` built by any seat of ``reader``'s identity, or None.
 
     Lanes are the tasks of the decision lanes_apply records for the parent (``lanes-<parent>`` with
@@ -1497,10 +1497,13 @@ def lane_builder_of(state, parent, reader):
     agent = state["agents"].get(reader)
     if agent is None:
         return None
+    # A successor (replace, handover, supersede) keeps the lanes of every task it descends from.
+    # A task being validated is not in state yet: only then its own declaration carries supersedes.
+    ancestors = task_lineage(state, state["tasks"].get(parent) or declaration or {"id": parent})
     for decision in state["decisions"]:
         tasks = decision.get("tasks")
-        if (decision.get("id") != "lanes-" + parent or "plan" not in decision or not isinstance(tasks, list)
-                or not tasks or tasks[0] != parent):
+        if (not isinstance(tasks, list) or not tasks or tasks[0] not in ancestors
+                or decision.get("id") != "lanes-" + tasks[0] or "plan" not in decision):
             continue
         for lane in tasks[1:]:
             task = state["tasks"].get(lane)
@@ -1510,9 +1513,24 @@ def lane_builder_of(state, parent, reader):
     return None
 
 
-def require_not_lane_builder(state, parent, reader):
+def task_lineage(state, task):
+    """The task and every ancestor through supersedes/taken_over_from, nearest first; cycles stop the walk."""
+    seen, pending = [], [task]
+    while pending:
+        current = pending.pop()
+        name = current.get("id")
+        if not isinstance(name, str) or name in seen:
+            continue
+        seen.append(name)
+        for origin in (current.get("supersedes"), current.get("taken_over_from")):
+            if isinstance(origin, str) and origin not in seen:
+                pending.append(state["tasks"].get(origin) or {"id": origin})
+    return seen
+
+
+def require_not_lane_builder(state, parent, reader, declaration=None):
     """One rule for --reviewer, a pool member and reassign: a lane's builder never reads its parent."""
-    lane = lane_builder_of(state, parent, reader)
+    lane = lane_builder_of(state, parent, reader, declaration)
     require(lane is None, "lane_builder_reader: " + str(reader) + " built lane " + str(lane) + " of " + parent +
             " (same identity); the parent's integration is read by a window that built none of its lanes")
 
@@ -1531,7 +1549,7 @@ def check_pool(state, d):
                    "author alias is not independent" if agent["identity"] == owner else None)
         require(problem is None, "review_pool_member: " + str(member) + ": " + str(problem))
         try:
-            require_not_lane_builder(state, d["id"], member)
+            require_not_lane_builder(state, d["id"], member, d)
         except Error as exc:
             raise Error("review_pool_member: " + str(member) + ": " + str(exc)) from None
 
@@ -2364,7 +2382,7 @@ def validate(state, kind, actor, d, stored_packet=None, *, candidate_history=())
                     "Registered reviewer required")
             require(not standby(state, reader), "Reviewer is in stand-by; coordinator must record return first")
             require(state["agents"][reader]["identity"] != state["agents"][d["owner"]]["identity"], "Author alias is not independent")
-            require_not_lane_builder(state, d["id"], reader)
+            require_not_lane_builder(state, d["id"], reader, d)
         if d.get("pool") is not None:
             check_pool(state, d)
         if "cross_client" in d or "same_client_reason" in d:
