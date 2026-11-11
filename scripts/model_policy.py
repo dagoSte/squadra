@@ -1,7 +1,10 @@
 """Opt-in model profiles, recorded per real window through existing registrations."""
+from contextlib import contextmanager
 import json
+import os
 from pathlib import Path
 import re
+import stat
 import sys
 
 from registry import Error, plain, require
@@ -22,6 +25,32 @@ REASONS = {
 
 def binding(agent):
     return {k: agent.get(k, '') for k in ('identity', 'session', 'client')}
+
+
+@contextmanager
+def window_lock(store):
+    """Serialize preference updates and registrations before reading their versions."""
+    fd = os.open(store.root / 'models.lock', os.O_CREAT | os.O_RDWR | getattr(os, 'O_NOFOLLOW', 0), 0o600)
+    try:
+        info = os.fstat(fd)
+        require(stat.S_ISREG(info.st_mode) and info.st_nlink == 1, 'Unsafe model preference lock')
+        if os.name == 'nt':
+            import msvcrt
+            if not info.st_size:
+                os.write(fd, b'0')
+            os.lseek(fd, 0, os.SEEK_SET)
+            msvcrt.locking(fd, msvcrt.LK_LOCK, 1)
+        else:
+            import fcntl
+            fcntl.flock(fd, fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            if os.name == 'nt':
+                os.lseek(fd, 0, os.SEEK_SET)
+                msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
+    finally:
+        os.close(fd)
 
 
 def profiles(value, client):
@@ -63,6 +92,11 @@ def preference(state, actor):
 
 
 def configure(store, actor, mode, path=None):
+    with window_lock(store):
+        return _configure(store, actor, mode, path)
+
+
+def _configure(store, actor, mode, path):
     state = store.resolved()
     previous = preference(state, actor)
     require(mode in {'on', 'off'}, 'Choose automatic models on or off')
@@ -162,11 +196,12 @@ def failure_reason(run):
 
 
 def execute(store, actor, task_id, **kwargs):
-    from runtime import execute as run
+    from runtime import execute as run, DEFAULT_TIMEOUT
     state = store.resolved()
     if state['agents'].get(actor, {}).get('client') == 'cursor':
         # Keep the native runner's pre-process refusal, including for a new unanswered window.
         return run(store, actor, task_id, **kwargs)
+    timeout = kwargs.setdefault('timeout', DEFAULT_TIMEOUT)
     selection = choose(state, actor, task_id, kwargs['mode'], kwargs.get('stage', 'code'), root=store.root)
     lang = state.get('workspace', {}).get('lang', 'it')
     if selection:
@@ -188,7 +223,7 @@ def execute(store, actor, task_id, **kwargs):
         target_profile = 'quality'
     if not alternatives or alternatives[0]['model'] == selection['model']:
         return result
-    remaining = int(kwargs.get('timeout', 600) - result.get('seconds', 0))
+    remaining = int(timeout - result.get('seconds', 0))
     if remaining < 1:
         return result
     fallback = {k: alternatives[0][k] for k in ('model', 'effort')} | {

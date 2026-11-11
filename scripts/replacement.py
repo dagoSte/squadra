@@ -177,7 +177,8 @@ class Plan:
                     role = 'builder' if any(t['owner'] in self.mapping and self.mapping[t['owner']] == new
                                             for t in original['tasks'].values()) else prior['role']
                 self.add('agent', {'id': new, 'identity': session or new, 'role': role, 'client': client,
-                                  'session': session, 'repo': prior['repo'], 'skills': []})
+                                  'session': session, 'repo': prior['repo'], 'skills': [],
+                                  'model_choice_required': True})
 
         unresolved = []
         for run in original['runs'].values():

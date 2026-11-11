@@ -302,8 +302,11 @@ def terminate(proc):
     proc.wait(timeout=10)
 
 
+DEFAULT_TIMEOUT = 120
+
+
 def execute(store, actor, task_id, argv=None, mode="proof", prompt=None,
-            timeout=120, gate=False, executable=None, run_id=None, stage="code", expected_rc=0, covers=None,
+            timeout=DEFAULT_TIMEOUT, gate=False, executable=None, run_id=None, stage="code", expected_rc=0, covers=None,
             *, checked=None, also=None, model_selection=None):
     run_id = run_id or uuid.uuid4().hex
     with run_lease(store.root, run_id) as lease_fd:

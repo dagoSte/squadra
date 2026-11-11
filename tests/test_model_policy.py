@@ -4,7 +4,9 @@ from copy import deepcopy
 import io
 import json
 from pathlib import Path
+import subprocess
 import sys
+import time
 import unittest
 from unittest.mock import patch
 
@@ -129,6 +131,108 @@ class ModelPolicy(unittest.TestCase):
         model_policy.configure(self.store, 'A', 'on')
         self.assertEqual(model_policy.preference(self.store.resolved(), 'A')['profiles'], chosen)
 
+    def test_concurrent_alias_writers_respect_the_last_committed_off_after_reopening(self):
+        self.cli('agent', '--id', 'Z', '--identity', 'author', '--role', 'executor',
+                 '--client', 'codex', '--repo', str(self.repo))
+        worker = self.base / 'writer.py'
+        worker.write_text('''import sys, time
+from pathlib import Path
+from unittest.mock import patch
+sys.path.insert(0, sys.argv[1])
+from registry import Store
+from squadra import main
+root, actor, mode, sync = sys.argv[2:]
+sync = Path(sync)
+def wait(name, seconds=10):
+    end = time.monotonic() + seconds
+    while not (sync / name).exists() and time.monotonic() < end:
+        time.sleep(.01)
+    return (sync / name).exists()
+append = Store.append
+def scheduled(store, kind, author, data, event_id=None):
+    if kind == 'agent' and data.get('model_policy', {}).get('mode') == mode:
+        (sync / (mode + '.prepared')).touch()
+        if mode == 'on':
+            wait('off.prepared', 1)
+        else:
+            assert wait('on.done')
+    return append(store, kind, author, data, event_id)
+with patch.object(Store, 'append', scheduled):
+    rc = main(['--root', root, 'models', '--actor', actor, '--auto', mode, '--json'])
+assert rc == 0
+(sync / (mode + '.done')).touch()
+''')
+        sync = self.base / 'sync'
+        sync.mkdir()
+        scripts = str(Path(model_policy.__file__).parent)
+        first = subprocess.Popen([sys.executable, '-B', str(worker), scripts, str(self.root), 'A', 'on', str(sync)],
+                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        self.addCleanup(lambda: first.kill() if first.poll() is None else None)
+        end = time.monotonic() + 10
+        while not (sync / 'on.prepared').exists() and time.monotonic() < end:
+            time.sleep(.01)
+        self.assertTrue((sync / 'on.prepared').exists())
+        second = subprocess.Popen([sys.executable, '-B', str(worker), scripts, str(self.root), 'Z', 'off', str(sync)],
+                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        self.addCleanup(lambda: second.kill() if second.poll() is None else None)
+        for proc in (first, second):
+            out, err = proc.communicate(timeout=20)
+            self.assertEqual(proc.returncode, 0, (out, err))
+        from registry import Store
+        reopened = Store(self.root)
+        self.addCleanup(reopened.close)
+        state = reopened.resolved()
+        history = [e for e in reopened.events() if e['kind'] == 'agent' and e['data'].get('model_policy')]
+        self.assertEqual(history[-1]['data']['model_policy']['mode'], 'off')
+        for actor in ('A', 'Z'):
+            self.assertEqual(model_policy.preference(state, actor)['mode'], 'off')
+        self.ack()
+        with contextlib.redirect_stderr(io.StringIO()):
+            result = model_policy.execute(reopened, 'A', 'T', mode='build', prompt='Scoped work',
+                                          executable=str(self.fake_client()), timeout=10)
+        self.assertEqual(result['status'], 'passed')
+        run = reopened.resolved()['runs'][result['id']]
+        self.assertIsNone(run.get('model_selection'))
+        self.assertNotIn('-m', run['argv'])
+        self.assertFalse(any('model_reasoning_effort=' in arg for arg in run['argv']))
+        self.assertNotEqual(reopened.audit()['cache'], 'mismatch')
+
+    def test_replace_requires_a_fresh_answer_and_keeps_existing_target_preferences(self):
+        from replacement import execute
+        req = {'map': {'A': 'B'}, 'sessions': {'B': 'new-session'}, 'client': 'codex',
+               'carry': 'useful', 'force': False, 'reason': 'Synthetic replacement'}
+        with patch('replacement.deliver_outbox', return_value=None):
+            result = execute(self.store, 'C', req)
+        successor = result['successors']['T']
+        with self.assertRaisesRegex(Error, 'Choose automatic models before work'):
+            model_policy.choose(self.store.resolved(), 'B', successor, 'build')
+        model_policy.configure(self.store, 'B', 'off')
+        self.assertIsNone(model_policy.choose(self.store.resolved(), 'B', successor, 'build'))
+        with patch('replacement.deliver_outbox', return_value=None):
+            execute(self.store, 'C', req | {'map': {'R': 'B'}})
+        self.assertEqual(model_policy.preference(self.store.resolved(), 'B')['mode'], 'off')
+
+    def test_handover_requires_a_fresh_answer_including_its_reader_alias(self):
+        import handover
+        from types import SimpleNamespace
+        outside = self.base / 'outside.md'
+        outside.write_text('\n'.join(h + '\nnessuno\n' for h in handover.HEADINGS))
+        with patch('checklist.run', return_value={'ready': True, 'items': []}), \
+                patch.dict(sys.modules, {'handover_conditions': SimpleNamespace(evaluate=lambda *args: [])}), \
+                patch('replacement.deliver_outbox', return_value=None), \
+                patch('squadra.codex_queue', return_value={'delivered': True, 'native_rc': 0}):
+            ident = handover.prepare(self.store, 'C', 'C', 'New', outside_file=outside,
+                                     owner_words='Apri una nuova finestra', channel='typed-here')['id']
+            handover.accept(self.store, 'New', ident, 'new-session', 'codex')
+        self.assertEqual(self.cli('agent', '--id', 'New-read', '--identity', 'new-session', '--session', 'new-session',
+                                  '--role', 'reviewer', '--client', 'codex', '--repo', str(self.repo))[0], 0)
+        for actor in ('New', 'New-read'):
+            with self.assertRaisesRegex(Error, 'Choose automatic models before work'):
+                model_policy.choose(self.store.resolved(), actor, 'T', 'read')
+        model_policy.configure(self.store, 'New', 'off')
+        for actor in ('New', 'New-read'):
+            self.assertIsNone(model_policy.choose(self.store.resolved(), actor, 'T', 'read'))
+
     def test_history_does_not_follow_a_reused_actor_into_a_new_session(self):
         state = plain(self.store.resolved())
         old_window = model_policy.binding(state['agents']['A'])
@@ -196,7 +300,7 @@ class ModelPolicy(unittest.TestCase):
 import json, pathlib, sys, uuid
 if '--version' in sys.argv:
     print('fake-codex 1'); raise SystemExit(0)
-name = sys.argv[sys.argv.index('-m') + 1]
+name = sys.argv[sys.argv.index('-m') + 1] if '-m' in sys.argv else ''
 print(json.dumps({'type': 'thread.started', 'thread_id': str(uuid.uuid4())}))
 if name == 'gpt-6-luna':
     if OPERATIVE: print(json.dumps({'type': 'item.started', 'item': {'type': 'command_execution'}}))
@@ -225,6 +329,17 @@ print(json.dumps({'type': 'turn.completed', 'usage': {}}))
         self.assertEqual(runs[1]['model_selection']['previous_run'], runs[0]['id'])
         self.assertIn('motivo:', err.getvalue())
         self.assertEqual(self.store.resolved()['tasks']['L']['rounds']['code'], 0)
+
+    def test_fallback_without_an_explicit_timeout_keeps_the_native_default_budget(self):
+        model_policy.configure(self.store, 'A', 'on')
+        self.register()
+        with contextlib.redirect_stderr(io.StringIO()):
+            result = model_policy.execute(self.store, 'A', 'L', mode='build', prompt='Scoped work',
+                                          executable=str(self.fake_client()))
+        self.assertEqual(result['status'], 'passed')
+        runs = list(self.store.resolved()['runs'].values())
+        self.assertEqual(runs[0]['timeout'], 120)
+        self.assertLessEqual(runs[1]['timeout'], runs[0]['timeout'] - runs[0]['seconds'])
 
     def test_no_retry_after_operational_output_or_for_shared_account_quota(self):
         model_policy.configure(self.store, 'A', 'on')

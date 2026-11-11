@@ -802,18 +802,19 @@ def dispatch(a, store):
         for file in a.skill:
             artifact = store.artifact(file)
             skills.append({"name": Path(file).parent.name, "path": str(Path(file).resolve()), "sha256": artifact["sha256"]})
-        new_window = not any(x.get('identity') == a.identity and x.get('session', '') == a.session
-                             for x in state['agents'].values())
-        pending = new_window or state['agents'].get(a.id, {}).get('model_choice_required')
         import model_policy
-        previous = state['agents'].get(a.id)
-        policy = (model_policy.preference(state, a.id) if previous and
-                  model_policy.binding(previous) == {'identity': a.identity, 'session': a.session, 'client': a.client}
-                  else None)
-        store.append("agent", a.id, {"id": a.id, "identity": a.identity, "role": a.role, "client": a.client,
-                    "model": a.model, "session": a.session, "repo": str(Path(a.repo).resolve(strict=True)), "skills": skills,
-                    **({'model_choice_required': True} if pending else {}),
-                    **({'model_policy': policy} if policy and policy['mode'] != 'ask' else {})})
+        with model_policy.window_lock(store):
+            state = store.resolved()
+            seat = {'identity': a.identity, 'session': a.session, 'client': a.client}
+            new_window = not any(model_policy.binding(x) == seat for x in state['agents'].values())
+            pending = new_window or state['agents'].get(a.id, {}).get('model_choice_required')
+            previous = state['agents'].get(a.id)
+            policy = (model_policy.preference(state, a.id) if previous and
+                      model_policy.binding(previous) == seat else None)
+            store.append("agent", a.id, {"id": a.id, "identity": a.identity, "role": a.role, "client": a.client,
+                        "model": a.model, "session": a.session, "repo": str(Path(a.repo).resolve(strict=True)), "skills": skills,
+                        **({'model_choice_required': True} if pending else {}),
+                        **({'model_policy': policy} if policy and policy['mode'] != 'ask' else {})})
         if a.auto_models is not None:
             model_policy.configure(store, a.id, a.auto_models)
         elif new_window:

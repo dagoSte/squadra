@@ -27,8 +27,11 @@ squadra models --actor builder --task T1 --mode read --json
 `agent --auto-models on|off` records an explicit answer during registration. Automatic
 selection is off until answered on; a new CLI registration with an unanswered choice
 cannot start a native model turn. Legacy registrations with no choice remain compatible.
-The choice is retained in existing `agent` events, without a new event format. A later
-ordinary re-registration preserves it. No personal Codex, Claude or Cursor defaults are
+The choice is retained in existing `agent` events, without a new event format. Preference
+updates and ordinary registrations serialize their read/write cycle, including across
+role aliases, so the last committed choice wins. A later ordinary re-registration preserves
+it. New windows created by replacement or coordinator handover also require an answer.
+No personal Codex, Claude or Cursor defaults are
 rewritten.
 Turning the option off keeps its configured profiles for a later re-enable; disabling
 it while a rejected turn is ending also prevents that turn's automatic fallback.
