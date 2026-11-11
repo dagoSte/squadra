@@ -6,6 +6,27 @@ Python 3.12 or later, Git and the standard library only. No service to buy.
 The local `squadra` launcher runs `scripts/squadra.py`; use `--help` for commands.
 Native clients are optional: mail, proofs and the dashboard work without models.
 
+## First question in each new window
+
+Before census, assignments or work, ask in the owner's language: **“Enable automatic
+model and effort selection for this window? Small bounded work uses the economy
+profile; complex or uncertain work uses quality.”** Honour an explicit answer already
+given for this window in the current session instead of asking again. A choice from
+another window is not an answer. Silence never enables automatic selection.
+
+After registering the real identity/session, save the answer with
+`squadra models --actor WINDOW --auto on|off`. The same identity's role aliases share
+the answer; a new session asks again. `agent --auto-models on|off` records an explicit
+answer during registration. `models --actor WINDOW` reads the preference or prints the
+unanswered question without writing. New CLI registrations retain the pending question
+and native `run` refuses until answered; a skill-driven interactive window must also
+wait before working. Existing registrations retain their previous runner behavior.
+
+See [model and effort profiles](models.md) before enabling or changing profiles. The
+option affects native turns launched by Squadra. A window controlled by an external
+client keeps that client's controls; never claim a running interactive turn was
+switched by setting this preference.
+
 The coordinator is a Claude window. Before assigning or starting work, the first Claude
 window that invokes the skill becomes the coordinator, takes a census of the project and
 introduces itself to every window found. A Codex window, or any client that cannot see

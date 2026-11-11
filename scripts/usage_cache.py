@@ -11,7 +11,8 @@ import re
 import secrets
 import stat
 
-VERSION = 1
+VERSION = 2
+EFFORTS = frozenset(('none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max', 'ultra'))
 MAX_ENTRY_BYTES = 64 * 1024 * 1024
 MAX_TOTAL_BYTES = 256 * 1024 * 1024
 MAX_SOURCES = 1000
@@ -81,8 +82,10 @@ def record(value, client):
         fields(value, ('type', 'session'))
         return dict(type=kind, session=name(value['session'], SESSION, True))
     if kind == 'model':
-        fields(value, ('type', 'model', 'at'))
-        return dict(type=kind, model=name(value['model'], MODEL, True), at=timestamp(value['at']))
+        fields(value, ('type', 'model', 'effort', 'at'))
+        effort = value['effort']
+        require(effort is None or (type(effort) is str and effort in EFFORTS))
+        return dict(type=kind, model=name(value['model'], MODEL, True), effort=effort, at=timestamp(value['at']))
     extras = {'context_tokens', 'context_window'} & value.keys()
     fields(value, {'type', 'at', 'tokens', 'quota'} | extras)
     require(kind == 'sample' and type(value['quota']) is list and len(value['quota']) <= 2)

@@ -229,6 +229,7 @@ def window_rows(state, usage, reference, now):
             'identity': identity, 'seats': sorted(group['seats']), 'roles': sorted(group['roles']),
             'clients': sorted(group['clients']), 'model': model, 'model_source': source,
             'measured_models': measured_models, 'declared_models': sorted(group['declared']),
+            'configuration': (seen or {}).get('configuration'),
             'available': not group['standby'], **{k: v for k, v in loads[identity].items()},
             'quota': quota,
             'tokens_per_hour': rate * 60 if isinstance(rate, (int, float)) and not isinstance(rate, bool) else None,

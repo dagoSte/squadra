@@ -44,6 +44,9 @@ class UsagePage(unittest.TestCase):
     def test_js_usage_charts_tables_and_languages(self):
         self.run_contract('charts')
 
+    def test_js_usage_model_effort_source_switch_and_missing_values(self):
+        self.run_contract('configuration')
+
     def test_js_usage_unknown_zero_partial_and_estimated(self):
         self.run_contract('coverage')
 

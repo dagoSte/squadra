@@ -27,6 +27,17 @@ const chart=(app,id)=>one(app.content,e=>e.getAttribute('data-usage-chart')===id
 const rows=(app,id)=>all(chart(app,id),e=>e.tag==='tr').slice(1).map(r=>r.children.map(c=>c.textContent));
 const requests=app=>app.fetched.filter(p=>p==='/api/usage');
 const tests={
+ async configuration(){
+  const app=await setup(),w=app.data.windows[0];
+  w.configuration={model:'gpt-6-astra',effort:'max',source:'codex_turn_context',observed_at:app.data.observed_at,switch:{model:'gpt-6-luna',effort:'low',reason:'client_reason_unavailable'},private_text:'PRIVATE_CANARY'};
+  await app.select();let section=one(app.content,e=>e.getAttribute('data-model-configurations')==='usage');
+  assert.match(text(section),/gpt-6-astra.*max/);assert.match(text(section),/Motivo non esposto dal client/);
+  assert.match(text(section),/gpt-6-luna.*low/);assert.doesNotMatch(app.run('JSON.stringify(usageUI.data)'),/PRIVATE_CANARY/);
+  app.run("setLanguage('en')");await settle();section=one(app.content,e=>e.getAttribute('data-model-configurations')==='usage');
+  assert.match(text(section),/Reason not exposed by client/);assert.match(text(section),/Codex turn/);
+  w.configuration.effort='high';await app.refresh();section=one(app.content,e=>e.getAttribute('data-model-configurations')==='usage');assert.match(text(section),/gpt-6-astra.*high/);
+  delete w.configuration;await app.refresh();section=one(app.content,e=>e.getAttribute('data-model-configurations')==='usage');assert.match(text(section),/Not available/);assert.doesNotMatch(text(section),/gpt-6-astra/);
+ },
  async charts(){
   for(const language of ['it-IT','en-US'])for(const theme of ['light','dark'])for(const phone of [false,true]){
    const app=await setup({language,stored:{'squadra-theme':theme},phone});await app.select();

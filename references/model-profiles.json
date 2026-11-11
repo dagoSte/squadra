@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "clients": {
+    "codex": {
+      "economy": {"model": "gpt-6-luna", "effort": "low"},
+      "quality": {"model": "gpt-6-astra", "effort": "max"}
+    },
+    "claude": {
+      "economy": {"model": "sonnet", "effort": "low"},
+      "quality": {"model": "opus", "effort": "max"}
+    }
+  }
+}

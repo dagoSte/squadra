@@ -21,7 +21,7 @@ leaves only through it.
 - **R08 Ping and sweep.** While coordinating use `ping --all`; `ping --sweep` records stand-by only for expired pings a transport delivered; no timer changes a state. [→](references/work.md)
 - **R09 Stand-by.** Stand-by covers every role of an identity, blocks new tasks and review handoffs and stops no process; a return needs a new ping and its ACK, or `standby --resume`. [→](references/work.md)
 - **R35 What it is.** Squadra is a shared registry with roles and proofs bound to code; explain to a newcomer what is done, by whom, at which step and who waits, with identifiers under «Technical details». [→](references/start.md)
-- **R36 Announce.** Announce the skill, read the mandate and the owner's instructions, keep given authorizations; an accepted review never authorizes publishing. [→](references/start.md)
+- **R36 Announce.** In each new window, first ask whether to enable automatic model/effort selection, unless the owner already answered for it; record on/off with `models`. Announce the skill, read the mandate and keep given authorizations; an accepted review never authorizes publishing. [→](references/start.md)
 - **R37 Before assigning.** Before assigning read `status`, `doctor --resume`, tasks, the latest delivery and mail; every window without a native queue arms `inbox --follow` on all its names and re-arms it on expiry. [→](references/start.md)
 - **R38 Durable registry.** A new squad uses a durable registry folder outside `/tmp`. [→](references/start.md)
 - **R39 Identity and role.** Identity (the real window or session) is not a role; two roles share one identity; an alias creates no independence. [→](references/start.md)

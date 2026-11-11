@@ -103,7 +103,8 @@ class UsageCache(unittest.TestCase):
     def test_corruption_version_duplicate_keys_and_digest_are_ignored(self):
         self.assertTrue(self.cache.save(fixture()))
         good = self.path.read_bytes()
-        damaged = [b'{', b'[]', b'{"version":1,"version":1}', good.replace(b'"version":1', b'"version":2'),
+        damaged = [b'{', b'[]', b'{"version":1,"version":1}',
+                   good.replace(('"version":' + str(cache.VERSION)).encode(), b'"version":999'),
                    good.replace(b'"input":10', b'"input":11'), good.replace(b'"observed":1792072800.25', b'"observed":NaN')]
         for raw in damaged:
             with self.subTest(raw=raw[:60]):

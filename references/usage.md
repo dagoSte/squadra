@@ -5,6 +5,10 @@ Open **Usage** (**Consumi** in Italian), or run `squadra usage --root <registry>
 not a bill, processor utilization or evidence that a window is currently working.
 The page has charts and tables for days, windows, models, tasks and observed Codex
 quota. It refreshes only while open, through the dashboard's existing serial cycle.
+Window observations also include the latest verified model and effort, source and time,
+independent of token totals. The CLI reports observed changes with an unavailable reason
+when the client does not expose one. See [model and effort profiles](models.md) for the
+explicit on/off preference and separately recorded automatic runner choices.
 
 ## Project scope
 
@@ -49,7 +53,7 @@ that have such a window are walked.
 
 Each bounded JSONL line is parsed once. Conversation text may pass through the
 parser's memory; it is immediately discarded. Only numeric usage and structural
-identity, model, deduplication and timestamp fields are retained. No conversation
+identity, model, allowlisted effort, deduplication and timestamp fields are retained. No conversation
 text is cached, logged, exported or shown. Usage does not create a registry, append
 events, rewrite projections, send telemetry or call a model/provider API. The
 protected local `/api/usage` route retains the dashboard's Host and token checks.

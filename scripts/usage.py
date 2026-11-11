@@ -117,7 +117,10 @@ def project(raw, client):
             session = payload.get('id')
             return {'type': 'session', 'session': session if isinstance(session, str) and SESSION.fullmatch(session) else None}
         if kind == 'turn_context':
-            return {'type': 'model', 'model': model_name(payload.get('model')), 'at': instant(stamp)}
+            effort = payload.get('effort')
+            return {'type': 'model', 'model': model_name(payload.get('model')),
+                    'effort': effort if isinstance(effort, str) and effort in usage_cache.EFFORTS else None,
+                    'at': instant(stamp)}
         if kind != 'event_msg' or payload.get('type') != 'token_count':
             return None
         result = {'type': 'sample', 'at': instant(stamp), 'tokens': None, 'quota': []}
@@ -247,6 +250,39 @@ def project_scope(events, state, windows):
                 at = max(start, instant(e['utc']))
                 joins[key] = min(joins.get(key, at), at)
     return {'kind': 'project', 'from': utc(start), 'reason': None}, joins
+
+
+def window_configuration(seat_sources, now, sessions):
+    """Latest verified settings, independent of token totals and child agents."""
+    result = dict(model=None, effort=None, source=None, observed_at=None, switch=None)
+    candidates = []
+    for source in seat_sources:
+        if source.restored or not source.checked:
+            continue
+        if 'subagents' in source.path.parts:
+            child = source.path.stem.removeprefix('agent-')
+            if not any(child == s or child.startswith(s) for s in sessions):
+                continue
+        _, _, reasons = source.normalized()
+        if {'identity_mismatch', 'identity_unverified', 'duplicate_conflict'} & reasons:
+            continue
+        for offset, row in sorted(source.records.items()):
+            if row['type'] not in {'model', 'sample'} or row['at'] > now:
+                continue
+            if source.client == 'codex' and row['type'] != 'model':
+                continue
+            candidates.append((row['at'], str(source.path), offset, {
+                'model': row['model'], 'effort': row.get('effort'),
+                'source': 'codex_turn_context' if source.client == 'codex' else 'claude_assistant',
+                'observed_at': utc(row['at'])}))
+    for _, _, _, current in sorted(candidates):
+        changed = any(result[k] is not None and current[k] is not None and result[k] != current[k]
+                      for k in ('model', 'effort'))
+        switch = ({'model': result['model'], 'effort': result['effort'],
+                   'observed_at': current['observed_at'], 'reason': 'client_reason_unavailable'}
+                  if changed else result['switch'])
+        result = {**current, 'switch': switch}
+    return result
 
 
 def tiredness(seat_sources, now, settings):
@@ -953,6 +989,8 @@ class Collector:
                        models=model_rows(samples, complete, now),
                        hourly=hourly(samples, complete, now), rolling=rolling(samples, complete, now),
                        quota=latest_quotas(quotas, now))
+            row['configuration'] = window_configuration(
+                [self.sources[(w['client'], str(path))] for _, path in selected], now, w['sessions'])
             row['tiredness'] = tiredness([self.sources[(w['client'], str(path))] for _, path in selected],
                                         now, state.get('workspace', {}))
             recent = interval(samples, now - 900, now, complete)
@@ -1254,6 +1292,8 @@ def next_transition(collector, now):
     future = [math.floor(now / 3600) * 3600 + 3600]
     for source in collector.sources.values():
         samples, quotas, _ = source.normalized()
+        future.extend(row['at'] for row in source.records.values()
+                      if row['type'] == 'model' and row['at'] > now)
         if source.observed is not None:
             future.append(source.observed + 60.000001)
         for sample in samples:
@@ -1300,6 +1340,16 @@ def text_report(data):
     for w in data['windows']:
         total = count(w)
         lines.append(f"{w['identity']}: {total} tokens ({w['status']}; {', '.join(w['reasons']) or 'observed'})")
+        config = w.get('configuration') or {}
+        lines.append('  Model: ' + (config.get('model') or 'not available') +
+                     '; effort: ' + (config.get('effort') or 'not available') +
+                     '; source: ' + (config.get('source') or 'not available') +
+                     '; observed: ' + (config.get('observed_at') or 'not available'))
+        if config.get('switch'):
+            previous = config['switch']
+            lines.append('  Client switch: ' + (previous.get('model') or 'unknown') + ' / ' +
+                         (previous.get('effort') or 'unknown') + ' -> ' + (config.get('model') or 'unknown') +
+                         ' / ' + (config.get('effort') or 'unknown') + '; reason: not exposed by client')
     for m in data['models']:
         lines.append(f"Model {m['model'] or 'unknown'}: {count(m)} tokens ({m['status']})")
     for t in data['tasks']:

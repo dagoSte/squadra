@@ -146,7 +146,7 @@ CURSOR_REFUSAL = ("Squadra does not launch cursor-agent: Cursor runs team, user 
                   "utente e azienda senza sandbox. Le finestre Cursor lavorano in modo interattivo")
 
 
-def cli_command(client, mode, folder, model=None, executable=None):
+def cli_command(client, mode, folder, model=None, executable=None, effort=None):
     if client == "cursor":
         raise Error(CURSOR_REFUSAL)
     executable = executable or client
@@ -158,6 +158,8 @@ def cli_command(client, mode, folder, model=None, executable=None):
             args += ["--ignore-user-config", "--output-schema", str(folder / "schema.json")]
         if model:
             args += ["-m", model]
+        if effort:
+            args += ["-c", 'model_reasoning_effort=' + json.dumps(effort)]
         return args + ["-"]
     if client == "claude":
         args = [executable, "-p", "--output-format", "json", "--permission-prompts", "none"]
@@ -170,6 +172,8 @@ def cli_command(client, mode, folder, model=None, executable=None):
             args += ["--permission-mode", "acceptEdits"]
         if model:
             args += ["--model", model]
+        if effort:
+            args += ["--effort", effort]
         return args
     raise Error("Only registered codex/claude clients can run; manual seats use shared inbox")
 
@@ -197,7 +201,9 @@ def validate_reply(client, folder, structured=True):
                 value.get("subtype") == "success" and not value.get("is_error"), "Failed Claude turn")
         response = value.get("structured_output") if structured else value.get("result")
         session, usage = value.get("session_id"), value.get("usage")
-        models = [value["model"]] if isinstance(value.get("model"), str) else []
+        observed = value.get('modelUsage')
+        models = sorted({name for name in [value.get('model'), *(observed if isinstance(observed, dict) else {})]
+                         if isinstance(name, str)})
     try:
         uuid.UUID(session)
     except (ValueError, TypeError, AttributeError) as exc:
@@ -298,15 +304,16 @@ def terminate(proc):
 
 def execute(store, actor, task_id, argv=None, mode="proof", prompt=None,
             timeout=120, gate=False, executable=None, run_id=None, stage="code", expected_rc=0, covers=None,
-            *, checked=None, also=None):
+            *, checked=None, also=None, model_selection=None):
     run_id = run_id or uuid.uuid4().hex
     with run_lease(store.root, run_id) as lease_fd:
         return _execute_owned(store, actor, task_id, argv, mode, prompt, timeout, gate, executable,
-                              run_id, stage, expected_rc, covers, checked=checked, also=also, lease_fd=lease_fd)
+                              run_id, stage, expected_rc, covers, checked=checked, also=also, lease_fd=lease_fd,
+                              model_selection=model_selection)
 
 
 def _execute_owned(store, actor, task_id, argv, mode, prompt, timeout, gate, executable,
-                   run_id, stage, expected_rc, covers, *, checked, also, lease_fd):
+                   run_id, stage, expected_rc, covers, *, checked, also, lease_fd, model_selection=None):
     state = store.resolved()
     require(task_id in state["tasks"], "Unknown task")
     task = state["tasks"][task_id]
@@ -356,7 +363,9 @@ def _execute_owned(store, actor, task_id, argv, mode, prompt, timeout, gate, exe
         else:
             prompt = ("Build only your scoped assignment. Do not commit, push or publish. "
                       "Report changed files, meaningful tests and any denied operation.\n" + prompt)
-        argv = cli_command(agent["client"], mode, folder, agent.get("model") or None, executable)
+        selected_model = model_selection['model'] if model_selection else agent.get('model') or None
+        selected_effort = model_selection['effort'] if model_selection else None
+        argv = cli_command(agent["client"], mode, folder, selected_model, executable, effort=selected_effort)
         if agent["client"] == "codex" and mode == "read":
             config = Path(working_repo) / ".codex/config.toml"
             require(not config.exists(), "Review repo contains Codex config; inspect in a clean isolated copy without external MCP configuration")
@@ -373,6 +382,9 @@ def _execute_owned(store, actor, task_id, argv, mode, prompt, timeout, gate, exe
               "before": before, "gate": gate, "timeout": timeout, "folder": str(folder), "stage": stage,
               "expected_rc": expected_rc, "requested_model": agent.get("model"), "covers": covers or [], **route_record}
     record.update(fix_record)
+    if model_selection:
+        record.update(requested_model=model_selection['model'], requested_effort=model_selection['effort'],
+                      model_selection=model_selection)
     if probe_frozen:
         record["frozen_copy"] = True
     record["lease_version"] = 1

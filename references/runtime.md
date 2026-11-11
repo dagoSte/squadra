@@ -29,8 +29,10 @@ squadra run --actor reviewer --task T1 --mode read --stage code --prompt-file /e
 The task must be acknowledged; the builder must own it; the reviewer must have a different
 identity from the authors. `--cli /path/to/client` allows an explicit binary.
 Prompts are passed from files through stdin, never through shell concatenation.
-No model choice is hardcoded: `agent --model` is optional, and the choice must be agreed
-with the owner. The toolkit does not estimate unknown costs. These commands consume the
+Without the optional [window model profiles](models.md), `agent --model` remains optional.
+After the owner's explicit `models --auto on`, the runner selects the configured economy
+or quality model and effort and prints/records its reason. `models --auto off` restores
+the existing choice. The toolkit does not estimate unknown costs. These commands consume the
 chosen client's quota; `selftest` uses fake clients only and consumes no quota.
 
 Codex: JSONL, a read-only sandbox for reviews/workspace-write for builds,

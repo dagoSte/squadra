@@ -405,6 +405,14 @@ def parser():
     a = sub.add_parser("balance", help="Read-only advice on windows and models by load, quota and history; assigns nothing")
     a.add_argument("--task", help="Rank build and read candidates for this open task")
     a.add_argument("--reference", help="JSON file with the declared Claude reference {\"claude\":{\"h5\":N,\"week\":N}}")
+    a = sub.add_parser('models', help='Inspect or enable automatic model and effort profiles for this window')
+    a.add_argument('--actor', required=True)
+    a.add_argument('--auto', choices=['on', 'off'], help='Explicit window preference; no answer never enables it')
+    a.add_argument('--profiles', help='JSON economy/quality profiles; shown and recorded when enabled')
+    a.add_argument('--task', help='Preview the automatic choice for an existing task')
+    a.add_argument('--mode', choices=['build', 'read'], default='build')
+    a.add_argument('--stage', choices=['plan', 'code'], default='code')
+    a.add_argument('--json', action='store_true')
     a = sub.add_parser("usage", help="Read-only local token usage; partial coverage after a 30-second collection deadline")
     a.add_argument("--json", action="store_true", help="Print the same measured data as JSON")
     a.add_argument("--prices", metavar="FILE", help="Optional local price table for a labelled estimate; no default prices")
@@ -449,6 +457,7 @@ def parser():
     a.add_argument("--role", choices=["coordinator", "builder", "executor", "reviewer"], required=True)
     a.add_argument("--client", choices=["codex", "claude", "cursor", "manual"], required=True)
     a.add_argument("--model", default=""); a.add_argument("--session", default=""); a.add_argument("--repo", required=True)
+    a.add_argument('--auto-models', choices=['on', 'off'], help='Answer the first model-choice question for this window')
     a.add_argument("--skill", action="append", default=[])
     a = sub.add_parser("census", help="Observe local Codex/Claude processes and registered replies without writes")
     a.add_argument("--project", help="Project path; required before init, otherwise registry project")
@@ -793,8 +802,23 @@ def dispatch(a, store):
         for file in a.skill:
             artifact = store.artifact(file)
             skills.append({"name": Path(file).parent.name, "path": str(Path(file).resolve()), "sha256": artifact["sha256"]})
+        new_window = not any(x.get('identity') == a.identity and x.get('session', '') == a.session
+                             for x in state['agents'].values())
+        pending = new_window or state['agents'].get(a.id, {}).get('model_choice_required')
+        import model_policy
+        previous = state['agents'].get(a.id)
+        policy = (model_policy.preference(state, a.id) if previous and
+                  model_policy.binding(previous) == {'identity': a.identity, 'session': a.session, 'client': a.client}
+                  else None)
         store.append("agent", a.id, {"id": a.id, "identity": a.identity, "role": a.role, "client": a.client,
-                    "model": a.model, "session": a.session, "repo": str(Path(a.repo).resolve(strict=True)), "skills": skills})
+                    "model": a.model, "session": a.session, "repo": str(Path(a.repo).resolve(strict=True)), "skills": skills,
+                    **({'model_choice_required': True} if pending else {}),
+                    **({'model_policy': policy} if policy and policy['mode'] != 'ask' else {})})
+        if a.auto_models is not None:
+            model_policy.configure(store, a.id, a.auto_models)
+        elif new_window:
+            print(model_policy.text_report(model_policy.report(store.resolved(), a.id),
+                                           state['workspace'].get('lang', 'it')), file=sys.stderr)
     elif command == "task":
         require(a.id not in state['tasks'], 'Task ID already exists')
         if a.proof:
@@ -1135,6 +1159,8 @@ def dispatch(a, store):
         return {"receipt": event, "saved": True, "task": a.task}
     elif command in {"prove", "probe", "run"}:
         from runtime import execute
+        if command == 'run':
+            from model_policy import execute
         argv = a.argv[1:] if command != "run" and a.argv and a.argv[0] == "--" else getattr(a, "argv", None)
         if command == 'prove' and not argv and a.task in state['tasks'] and state['tasks'][a.task].get('proof'):
             argv = list(state['tasks'][a.task]['proof'])  # the agreed proof, as the task records it
@@ -1615,6 +1641,17 @@ def _main(argv=None, receipt=None):
                                          registry_root=str(store.root), max_chars=a.max_chars, as_json=a.json)
             print(context_brief.render(packet, a.json), end='')
             return 0
+        if a.command == 'models':
+            import model_policy
+            require(a.profiles is None or a.auto == 'on', '--profiles requires --auto on')
+            store = Store(root, read_only=a.auto is None)
+            if a.auto is not None:
+                model_policy.configure(store, a.actor, a.auto, a.profiles)
+            state = store.resolved()
+            result = model_policy.report(state, a.actor, a.task, a.mode, a.stage, root=store.root)
+            print(json.dumps(result, ensure_ascii=False, indent=2) if a.json else
+                  model_policy.text_report(result, state['workspace'].get('lang', 'it')))
+            return 0
         if a.command == "usage":
             import time
             import usage
@@ -1861,7 +1898,7 @@ def main(argv=None):
     """Successful writes have one bounded receipt; --verbose retains the full interface."""
     args = parse_cli(argv)
     if args.verbose or args.command in {'status', 'inbox', 'doctor', 'dash', 'check', 'checklist',
-                                       'forecast', 'balance', 'usage', 'context', 'census', 'selftest'}:
+                                       'forecast', 'balance', 'usage', 'models', 'context', 'census', 'selftest'}:
         return _main(argv, _receipt_context.get())
     out, receipt = io.StringIO(), {}
     parent = _receipt_context.get()
