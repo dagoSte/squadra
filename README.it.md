@@ -17,7 +17,7 @@ Coordina Claude Code, Codex e Cursor con incarichi condivisi, revisioni indipend
 
 [English](README.md) · **Italiano** · [Privacy](PRIVACY.it.md)
 
-[Panoramica](#overview) · [Installa](#start) · [Primi passi](#first-steps) · [Prompt](#prompts) · [Dashboard](#dashboard) · [Plugin](#plugins) · [Comandi](#commands) · [Guide](#reference) · [Novità](#news) · [Comunità](#community)
+[Panoramica](#overview) · [Installa](#start) · [Primi passi](#first-steps) · [Prompt](#prompts) · [Dashboard](#dashboard) · [Plugin](#plugins) · [Comandi](#commands) · [Guide](#reference) · [Novità](#news) · [Comunità](#community) · [Sponsor](#support)
 
 </div>
 
@@ -1062,6 +1062,13 @@ Storia completa: [CHANGELOG.it.md](CHANGELOG.it.md).
 
 Squadra è gratuita e open source, e cresce grazie a chi la usa, la estende e la fa conoscere.
 
+<a id="support"></a>
+### Sostienimi nello sviluppo
+
+Se Squadra ti è utile, [lascia una stella su GitHub](https://github.com/dagoSte/squadra) ⭐ e sostienimi nello sviluppo con un contributo su Ko-fi.
+
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/J3K52ADG60)
+
 ### Sponsor
 
 <p><a href="https://memoranda.dev/it/"><img src="docs/images/memoranda-mark.png" alt="Logo di memoranda" width="64" height="64"></a></p>
@@ -1078,7 +1085,7 @@ Squadra fa parte dello [XERJ Corpus Hub](https://hub.xerj.org/contributors/dagoS
 
 Fa parte di Squadra chiunque costruisca un plugin, segnali un problema, migliori la documentazione o aiuti qualcuno a cominciare. Chi contribuisce al codice compare nella [pagina dei contributori](https://github.com/dagoSte/squadra/graphs/contributors) di GitHub; chi pubblica ogni plugin è indicato nella sua scheda dello Store, accanto a versione e licenza.
 
-Le organizzazioni che vogliono sostenere Squadra possono scriverlo in una [issue](https://github.com/dagoSte/squadra/issues). Non c'è ancora un programma di sponsorizzazione, quindi la forma si decide insieme.
+Accetto sponsorizzazioni da persone e organizzazioni che vogliono sostenere lo sviluppo di Squadra. Puoi contribuire su [Ko-fi](https://ko-fi.com/J3K52ADG60) oppure [aprire una issue](https://github.com/dagoSte/squadra/issues) per concordare una collaborazione.
 
 ### Partecipa
 

@@ -17,7 +17,7 @@ Coordinate Claude Code, Codex and Cursor with shared tasks, independent reviews 
 
 **English** · [Italiano](README.it.md) · [Privacy](PRIVACY.md)
 
-[Overview](#overview) · [Install](#start) · [First steps](#first-steps) · [Prompts](#prompts) · [Dashboard](#dashboard) · [Plugins](#plugins) · [Commands](#commands) · [Guides](#reference) · [What's new](#news) · [Community](#community)
+[Overview](#overview) · [Install](#start) · [First steps](#first-steps) · [Prompts](#prompts) · [Dashboard](#dashboard) · [Plugins](#plugins) · [Commands](#commands) · [Guides](#reference) · [What's new](#news) · [Community](#community) · [Sponsor](#support)
 
 </div>
 
@@ -1057,6 +1057,13 @@ Full history: [CHANGELOG.md](CHANGELOG.md).
 
 Squadra is free and open source, and it grows with the people who use it, extend it and talk about it.
 
+<a id="support"></a>
+### Support development
+
+If Squadra helps you, [leave a star on GitHub](https://github.com/dagoSte/squadra) ⭐ and support my work with a contribution on Ko-fi.
+
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/J3K52ADG60)
+
 ### Sponsor
 
 <p><a href="https://memoranda.dev"><img src="docs/images/memoranda-mark.png" alt="memoranda logo" width="64" height="64"></a></p>
@@ -1073,7 +1080,7 @@ Squadra is part of the [XERJ Corpus Hub](https://hub.xerj.org/contributors/dagoS
 
 Everyone who builds a plugin, reports a problem, improves the docs or helps someone get started is part of Squadra. Code contributors appear on GitHub's [contributors page](https://github.com/dagoSte/squadra/graphs/contributors); each plugin's publisher is named on its Store card, next to its version and licence.
 
-Organisations that would like to support Squadra can say so in an [issue](https://github.com/dagoSte/squadra/issues). There is no sponsorship programme yet, so the form is agreed together.
+I welcome sponsorships from individuals and organisations that want to support Squadra's development. You can contribute on [Ko-fi](https://ko-fi.com/J3K52ADG60) or [open an issue](https://github.com/dagoSte/squadra/issues) to discuss a collaboration.
 
 ### Get involved
 
