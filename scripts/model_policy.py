@@ -163,6 +163,9 @@ def failure_reason(run):
 def execute(store, actor, task_id, **kwargs):
     from runtime import execute as run
     state = store.resolved()
+    if state['agents'].get(actor, {}).get('client') == 'cursor':
+        # Keep the native runner's pre-process refusal, including for a new unanswered window.
+        return run(store, actor, task_id, **kwargs)
     selection = choose(state, actor, task_id, kwargs['mode'], kwargs.get('stage', 'code'), root=store.root)
     lang = state.get('workspace', {}).get('lang', 'it')
     if selection:
