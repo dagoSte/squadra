@@ -30,6 +30,8 @@ cannot start a native model turn. Legacy registrations with no choice remain com
 The choice is retained in existing `agent` events, without a new event format. A later
 ordinary re-registration preserves it. No personal Codex, Claude or Cursor defaults are
 rewritten.
+Turning the option off keeps its configured profiles for a later re-enable; disabling
+it while a rejected turn is ending also prevents that turn's automatic fallback.
 
 ## Profiles and conservative selection
 

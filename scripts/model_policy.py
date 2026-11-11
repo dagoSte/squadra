@@ -57,7 +57,8 @@ def preference(state, actor):
         require(all(type(v.get('seq')) is int for v in values), 'Invalid model preference sequence')
         value = max(values, key=lambda v: v['seq'])
         require(value.get('mode') in {'on', 'off'}, 'Invalid recorded model preference')
-        return {**value, 'profiles': profiles(value['profiles'], seat['client']) if value['mode'] == 'on' else {}}
+        return {**value, 'profiles': profiles(value['profiles'], seat['client'])
+                if value['mode'] == 'on' or value.get('profiles') else {}}
     return {'window': seat, 'mode': 'ask', 'profiles': {}}
 
 
@@ -65,11 +66,11 @@ def configure(store, actor, mode, path=None):
     state = store.resolved()
     previous = preference(state, actor)
     require(mode in {'on', 'off'}, 'Choose automatic models on or off')
-    chosen = {}
+    chosen = previous['profiles']
     if mode == 'on':
         client = state['agents'][actor]['client']
         require(client in {'codex', 'claude'}, 'Automatic models require a supported Codex or Claude runner')
-        if path is None and previous['mode'] == 'on':
+        if path is None and previous['profiles']:
             chosen = previous['profiles']
         else:
             raw = Path(path or DEFAULT_PROFILES).read_bytes()
@@ -114,7 +115,7 @@ def choose(state, actor, task_id, mode, stage='code', *, root=None):
                 profile, reason = 'economy', 'bounded_light_task'
     chosen = policy['profiles'][profile]
     return {k: chosen[k] for k in ('model', 'effort')} | {
-        'automatic': True, 'profile': profile, 'reason': reason, 'evidence': evidence}
+        'automatic': True, 'window': policy['window'], 'profile': profile, 'reason': reason, 'evidence': evidence}
 
 
 def message(selection, lang='it'):
@@ -178,6 +179,8 @@ def execute(store, actor, task_id, **kwargs):
     if reason is None:
         return result
     policy = preference(store.resolved(), actor)
+    if policy['mode'] != 'on' or policy['window'] != selection['window']:
+        return result
     alternatives = policy['profiles'][selection['profile']].get('fallback', [])
     target_profile = selection['profile']
     if not alternatives and selection['profile'] == 'economy':
@@ -189,7 +192,7 @@ def execute(store, actor, task_id, **kwargs):
     if remaining < 1:
         return result
     fallback = {k: alternatives[0][k] for k in ('model', 'effort')} | {
-        'automatic': True, 'profile': target_profile, 'reason': reason,
+        'automatic': True, 'window': policy['window'], 'profile': target_profile, 'reason': reason,
         'previous': {k: selection[k] for k in ('model', 'effort')}, 'previous_run': result['id'], 'evidence': {}}
     print(message(fallback, lang), file=sys.stderr, flush=True)
     # A second, separately recorded run consumes the ordinary task budget. Never loop or replay tool work.
@@ -207,7 +210,7 @@ def report(state, actor, task_id=None, mode='build', stage='code', *, root=None)
     elif task_id:
         result['selection'] = choose(state, actor, task_id, mode, stage, root=root)
     runs = [r for r in state.get('runs', {}).values()
-            if binding(state['agents'].get(r.get('agent'), {})) == policy['window'] and r.get('model_selection')]
+            if r.get('model_selection') and plain(r['model_selection'].get('window')) == policy['window']]
     if runs:
         last = max(runs, key=lambda r: (r['utc'], r['id']))
         result['last_selection'] = {**last['model_selection'], 'run': last['id'], 'utc': last['utc']}

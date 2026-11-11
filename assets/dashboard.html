@@ -4421,8 +4421,8 @@ function modelConfigurationView(value){
  box.setAttribute('data-model-configuration',config?'observed':'unavailable');
  if(!config){box.append(node('span',tr('modelConfig.unavailable')));return box}
  box.append(node('span',(config.model||tr('modelConfig.model'))+' / '+(config.effort||tr('modelConfig.effort'))));
- box.append(node('span',tr('modelConfig.basis',{source:tr('modelConfig.source.'+config.source),time:date(config.observed_at)}),'sub'));
- if(config.switch)box.append(node('span',tr('modelConfig.switch',{model:config.switch.model||tr('modelConfig.model'),effort:config.switch.effort||tr('modelConfig.effort')}),'sub'));
+ box.append(node('br'),node('span',tr('modelConfig.basis',{source:tr('modelConfig.source.'+config.source),time:date(config.observed_at)}),'sub'));
+ if(config.switch)box.append(node('br'),node('span',tr('modelConfig.switch',{model:config.switch.model||tr('modelConfig.model'),effort:config.switch.effort||tr('modelConfig.effort')}),'sub'));
  return box;
 }
 function tiredText(value){

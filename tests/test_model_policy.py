@@ -6,11 +6,12 @@ import json
 from pathlib import Path
 import sys
 import unittest
+from unittest.mock import patch
 
 import test_light_route
 import test_squadra as support
 import model_policy
-from registry import Error
+from registry import Error, plain
 from runtime import cli_command, validate_reply
 from squadra import main
 
@@ -117,6 +118,40 @@ class ModelPolicy(unittest.TestCase):
             with self.assertRaises(Error):
                 model_policy.configure(self.store, 'A', 'on', file)
         self.assertEqual(len(self.store.events()), count)
+
+    def test_turning_off_and_back_on_preserves_custom_profiles(self):
+        chosen = {'economy': {'model': 'gpt-6.1-sol', 'effort': 'low'},
+                  'quality': {'model': 'gpt-6-astra', 'effort': 'xhigh'}}
+        file = self.base / 'custom-profiles.json'
+        file.write_text(json.dumps({'schema': 1, 'clients': {'codex': chosen}}))
+        model_policy.configure(self.store, 'A', 'on', file)
+        model_policy.configure(self.store, 'A', 'off')
+        model_policy.configure(self.store, 'A', 'on')
+        self.assertEqual(model_policy.preference(self.store.resolved(), 'A')['profiles'], chosen)
+
+    def test_history_does_not_follow_a_reused_actor_into_a_new_session(self):
+        state = plain(self.store.resolved())
+        old_window = model_policy.binding(state['agents']['A'])
+        state['runs']['old'] = {'id': 'old', 'agent': 'A', 'utc': '2026-11-11T10:00:00Z',
+                               'model_selection': {'window': old_window, 'model': 'gpt-6-astra', 'effort': 'max',
+                                                   'reason': 'complex_task', 'profile': 'quality'}}
+        state['agents']['A']['session'] = 'replacement-session'
+        self.assertNotIn('last_selection', model_policy.report(state, 'A'))
+
+    def test_turning_off_during_a_rejected_run_prevents_an_automatic_retry(self):
+        import runtime
+        native = runtime.execute
+        model_policy.configure(self.store, 'A', 'on')
+        self.register()
+        def stop_after_first(*args, **kwargs):
+            result = native(*args, **kwargs)
+            model_policy.configure(self.store, 'A', 'off')
+            return result
+        with patch.object(runtime, 'execute', side_effect=stop_after_first), contextlib.redirect_stderr(io.StringIO()):
+            result = model_policy.execute(self.store, 'A', 'L', mode='build', prompt='Scoped work',
+                                          executable=str(self.fake_client()), timeout=10)
+        self.assertEqual(result['status'], 'failed')
+        self.assertEqual(len(self.store.resolved()['runs']), 1)
 
     def test_reregistration_keeps_choice_and_an_alias_cannot_bypass_the_first_question(self):
         model_policy.configure(self.store, 'A', 'on')
