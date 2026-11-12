@@ -60,6 +60,20 @@ https://github.com/user-attachments/assets/69f512be-775c-40ae-95c2-e1e403b3f5d1
 - **Claude, Codex and Cursor together**, and open to community plugins.
 - **One view of what every AI window spends.** Tokens per window, model and task across Claude Code and Codex, with advice on which window or model should take the next task, computed on your computer.
 
+### Model and effort for each window
+
+Each new window first asks whether to enable automatic model and effort selection. Turn it on or off from the CLI; role aliases share the choice and a replacement session asks again.
+
+```sh
+squadra models --actor builder
+squadra models --actor builder --auto on
+squadra models --actor builder --auto off
+```
+
+With automatic selection enabled, small work bounded by a valid light-route contract can use the economy profile; complex or uncertain work and independent reviews use the quality profile. Profiles are configurable. The CLI shows the requested model, effort and reason for the selection or fallback; existing proof, review, permission and budget rules still apply.
+
+This applies to new turns managed by `squadra run`. An interactive session already running keeps its settings. The Windows, Usage and Balance views show observed client model/effort with source and time, separately from requested settings and token totals. These are client settings, not a measurement of cognitive work or model quality. [Commands, profiles and limits](references/models.md).
+
 <a id="start"></a>
 ## Installation
 
@@ -999,6 +1013,10 @@ Static, behavioral and dependency checks, excluding `tests/`. Passing means no H
 
 <a id="news"></a>
 ## What's new
+
+**Latest on main — model and effort profiles for each window**
+
+Opt in at the first question or from the CLI: economy for bounded small work, quality for complex or uncertain work, with reasons shown in the CLI. The dashboard reports observed settings; choices survive role aliases, and replacement windows ask again. [How it works](references/models.md).
 
 **3.15.1 (includes 3.15.0) — a tired window is replaced without losing anything, and the squad is simpler to run**
 

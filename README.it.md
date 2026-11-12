@@ -60,6 +60,20 @@ https://github.com/user-attachments/assets/d0a696da-9562-4a84-9eea-0fda7b8c75d1
 - **Claude, Codex e Cursor insieme**, e aperta ai plugin della community.
 - **Un'unica vista di quanto spende ogni finestra AI.** Token per finestra, modello e lavoro, tra Claude Code e Codex, con il consiglio su quale finestra o modello debba prendere il prossimo lavoro, calcolati sul tuo computer.
 
+### Modello ed effort per ogni finestra
+
+Ogni finestra nuova chiede per prima cosa se attivare la scelta automatica di modello ed effort. Puoi abilitarla o disabilitarla dalla CLI; gli alias di ruolo condividono la scelta e una sessione sostitutiva chiede di nuovo.
+
+```sh
+squadra models --actor builder
+squadra models --actor builder --auto on
+squadra models --actor builder --auto off
+```
+
+Con la scelta automatica attiva, i lavori piccoli delimitati da un contratto valido del percorso leggero possono usare il profilo risparmio; i lavori complessi o incerti e le revisioni indipendenti usano il profilo qualità. I profili sono configurabili. La CLI mostra modello ed effort richiesti e il motivo della scelta o del fallback; restano valide le regole su prove, revisioni, permessi e budget.
+
+Vale per i nuovi turni gestiti da `squadra run`. Una sessione interattiva già in esecuzione mantiene le proprie impostazioni. Le viste Finestre, Consumi e Bilanciamento mostrano modello/effort osservati nel client, con fonte e data, separati dalle impostazioni richieste e dai token. Sono impostazioni del client, non misure del lavoro cognitivo o della qualità del modello. [Comandi, profili e limiti](references/models.md), in inglese.
+
 <a id="start"></a>
 ## Installazione
 
@@ -1004,6 +1018,10 @@ Controlli statici, comportamentali e delle dipendenze, con `tests/` esclusa. Il 
 
 <a id="news"></a>
 ## Novità
+
+**Novità su main — profili di modello ed effort per ogni finestra**
+
+Attivali alla prima domanda o dalla CLI: risparmio per i lavori piccoli delimitati, qualità per quelli complessi o incerti, con il motivo mostrato nella CLI. La dashboard riporta le impostazioni osservate; gli alias di ruolo conservano la scelta e le finestre sostitutive chiedono di nuovo. [Come funziona](references/models.md), in inglese.
 
 **3.15.1 (comprende la 3.15.0) — una finestra stanca si sostituisce senza perdere nulla, e la squadra è più semplice da guidare**
 
