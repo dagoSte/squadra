@@ -256,6 +256,7 @@ def window_configuration(seat_sources, now, sessions):
     """Latest verified settings, independent of token totals and child agents."""
     result = dict(model=None, effort=None, source=None, observed_at=None, switch=None)
     candidates = []
+    claude_models = defaultdict(set)
     for source in seat_sources:
         if source.restored or not source.checked:
             continue
@@ -264,18 +265,25 @@ def window_configuration(seat_sources, now, sessions):
             if not any(child == s or child.startswith(s) for s in sessions):
                 continue
         _, _, reasons = source.normalized()
-        if {'identity_mismatch', 'identity_unverified', 'duplicate_conflict'} & reasons:
+        if {'identity_mismatch', 'identity_unverified'} & reasons:
             continue
         for offset, row in sorted(source.records.items()):
             if row['type'] not in {'model', 'sample'} or row['at'] > now:
                 continue
             if source.client == 'codex' and row['type'] != 'model':
                 continue
-            candidates.append((row['at'], str(source.path), offset, {
+            if source.client == 'claude':
+                claude_models[row['key']].add(row['model'])
+            candidates.append((row['at'], str(source.path), offset, row.get('key'), {
                 'model': row['model'], 'effort': row.get('effort'),
                 'source': 'codex_turn_context' if source.client == 'codex' else 'claude_assistant',
                 'observed_at': utc(row['at'])}))
-    for _, _, _, current in sorted(candidates):
+    # Token conflicts do not discredit an agreed model; contradictory copies of
+    # one Claude message cannot establish either a setting or a client switch.
+    conflicts = {key for key, models in claude_models.items() if len(models) > 1}
+    for _, _, _, key, current in sorted(candidates):
+        if key in conflicts:
+            continue
         changed = any(result[k] is not None and current[k] is not None and result[k] != current[k]
                       for k in ('model', 'effort'))
         switch = ({'model': result['model'], 'effort': result['effort'],

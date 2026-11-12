@@ -77,6 +77,85 @@ class ModelEffort(unittest.TestCase):
         self.assertEqual(window['configuration']['model'], 'claude-sonnet-4-5')
         self.assertIsNone(window['configuration']['effort'])
 
+    def claude_copies(self, first, second, *, same_source=False):
+        self.write('claude', first + second if same_source else first)
+        self.write('claude', [] if same_source else second,
+                   path=self.roots['claude'] / 'copy' / (support.CLAUDE + '.jsonl'))
+
+    def test_discordant_duplicate_models_never_supply_a_configuration_or_switch(self):
+        self.seat()
+        for same_source in (False, True):
+            for delay in (0, 5):
+                with self.subTest(same_source=same_source, delay=delay):
+                    self.claude_copies(
+                        [support.claude(NOW - 20, model='claude-sonnet-4-5')],
+                        [support.claude(NOW - 20 + delay, model='claude-opus-4-5')],
+                        same_source=same_source)
+                    _, window = self.one()
+                    self.assertEqual(window['configuration'], dict(
+                        model=None, effort=None, source=None, observed_at=None, switch=None))
+
+    def test_valid_claude_history_ignores_only_the_discordant_message(self):
+        self.seat()
+        for same_source in (False, True):
+            for after_model in ('claude-haiku-4-5', 'claude-sonnet-4-5'):
+                with self.subTest(same_source=same_source, after_model=after_model):
+                    self.claude_copies([
+                        support.claude(NOW - 60, key='before', model='claude-haiku-4-5'),
+                        support.claude(NOW - 40, key='conflict', model='claude-sonnet-4-5'),
+                        support.claude(NOW - 10, key='after', model=after_model)],
+                        [support.claude(NOW - 30, key='conflict', model='claude-opus-4-5')],
+                        same_source=same_source)
+                    _, window = self.one()
+                    config = window['configuration']
+                    self.assertEqual(config['model'], after_model)
+                    self.assertEqual(config['observed_at'], support.stamp(NOW - 10))
+                    if after_model == 'claude-haiku-4-5':
+                        self.assertIsNone(config['switch'])
+                    else:
+                        self.assertEqual(config['switch']['model'], 'claude-haiku-4-5')
+                        self.assertEqual(config['switch']['observed_at'], support.stamp(NOW - 10))
+
+    def test_token_only_conflicts_keep_agreed_claude_model_and_valid_history(self):
+        self.seat()
+        for same_source in (False, True):
+            with self.subTest(same_source=same_source):
+                self.claude_copies([
+                    support.claude(NOW - 60, key='before', model='claude-haiku-4-5'),
+                    support.claude(NOW - 20, inp=20, model='claude-sonnet-4-5')],
+                    [support.claude(NOW - 10, inp=10, model='claude-sonnet-4-5')],
+                    same_source=same_source)
+                _, window = self.one()
+                self.assertIn('duplicate_conflict', window['reasons'])
+                config = window['configuration']
+                self.assertEqual(config['model'], 'claude-sonnet-4-5')
+                self.assertEqual(config['observed_at'], support.stamp(NOW - 10))
+                self.assertEqual(config['switch']['model'], 'claude-haiku-4-5')
+
+    def test_future_duplicate_model_cannot_invalidate_a_current_claude_observation(self):
+        self.seat()
+        self.claude_copies([
+            support.claude(NOW - 60, key='before', model='claude-haiku-4-5'),
+            support.claude(NOW - 20, model='claude-sonnet-4-5')],
+            [support.claude(NOW + 3, model='claude-opus-4-5')])
+        first = usage.response(self.events, self.state, roots=self.roots, now=NOW, budget_seconds=2)
+        self.assertEqual(first['windows'][0]['configuration']['model'], 'claude-sonnet-4-5')
+        after = usage.response(self.events, self.state, roots=self.roots, now=NOW + 3,
+                               revision=first['revision'], budget_seconds=2)
+        config = after['windows'][0]['configuration']
+        self.assertEqual(config['model'], 'claude-haiku-4-5')
+        self.assertIsNone(config['switch'])
+
+    def test_child_duplicate_model_does_not_invalidate_parent_configuration(self):
+        self.seat()
+        self.write('claude', [support.claude(NOW - 30, model='claude-sonnet-4-5')])
+        self.write('claude', [support.claude(NOW - 5, model='claude-opus-4-5')],
+                   path=self.roots['claude'] / 'project' / support.CLAUDE / 'subagents/agent-abcdef.jsonl')
+        _, window = self.one()
+        self.assertIn('duplicate_conflict', window['reasons'])
+        self.assertEqual(window['configuration']['model'], 'claude-sonnet-4-5')
+        self.assertIsNone(window['configuration']['switch'])
+
     def test_effort_cache_projection_is_allowlisted(self):
         row = usage.project(json.dumps(self.turn(NOW)).encode(), 'codex')
         self.assertEqual(usage_cache.record(row, 'codex'), row)
