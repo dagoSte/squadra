@@ -213,6 +213,26 @@ class ModelEffort(unittest.TestCase):
         self.assertNotIn('unchanged', after)
         self.assertEqual(after['windows'][0]['configuration']['effort'], 'high')
 
+    def test_future_claude_conflict_invalidates_response_even_if_token_counters_drop(self):
+        self.seat()
+        self.write('claude', [
+            support.claude(NOW - 60, key='before', model='claude-haiku-4-5'),
+            support.claude(NOW - 20, key='conflict', inp=20, model='claude-sonnet-4-5'),
+            support.claude(NOW + 3, key='conflict', inp=10, model='claude-opus-4-5')])
+        before = usage.response(self.events, self.state, roots=self.roots, now=NOW, budget_seconds=2)
+        self.assertEqual(before['windows'][0]['configuration']['model'], 'claude-sonnet-4-5')
+        early = usage.response(self.events, self.state, roots=self.roots, now=NOW + 2,
+                               revision=before['revision'], budget_seconds=2)
+        self.assertTrue(early.get('unchanged'))
+        after = usage.response(self.events, self.state, roots=self.roots, now=NOW + 3,
+                               revision=before['revision'], budget_seconds=2)
+        self.assertNotIn('unchanged', after)
+        config = after['windows'][0]['configuration']
+        self.assertEqual(config['model'], 'claude-haiku-4-5')
+        self.assertIsNone(config['switch'])
+        fresh = usage.collect(self.events, self.state, roots=self.roots, now=NOW + 3, budget_seconds=2)
+        self.assertEqual(config, fresh['windows'][0]['configuration'])
+
 
 if __name__ == '__main__':
     unittest.main()

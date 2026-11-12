@@ -1301,8 +1301,10 @@ def next_transition(collector, now):
     future = [math.floor(now / 3600) * 3600 + 3600]
     for source in collector.sources.values():
         samples, quotas, _ = source.normalized()
+        # Claude configuration also uses observations discarded by token accounting.
         future.extend(row['at'] for row in source.records.values()
-                      if row['type'] == 'model' and row['at'] > now)
+                      if (row['type'] == 'model' or
+                          (source.client == 'claude' and row['type'] == 'sample')) and row['at'] > now)
         if source.observed is not None:
             future.append(source.observed + 60.000001)
         for sample in samples:
