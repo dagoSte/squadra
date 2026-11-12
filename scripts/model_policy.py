@@ -118,6 +118,7 @@ def _configure(store, actor, mode, path):
         value['seq'] = state['event_count'] + 1
         record = plain(state['agents'][actor])
         record.pop('updated', None)
+        record.pop('availability', None)  # Derived presence is preserved by the agent reducer.
         store.append('agent', actor, record | {'model_policy': value})
         store.publish()
     return value
