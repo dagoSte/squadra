@@ -538,8 +538,8 @@ def apply(state, event):
     elif kind == "init":
         state["workspace"] = dict(d)
     elif kind == "agent":
-        previous = next((a.get("availability") for a in state["agents"].values()
-                         if a["identity"] == d["identity"] and a.get("availability")), None)
+        previous = plain(next((a.get("availability") for a in state["agents"].values()
+                               if a["identity"] == d["identity"] and a.get("availability")), None))
         state["agents"][d["id"]] = {**d, "updated": event["utc"]}
         if previous:
             state["agents"][d["id"]]["availability"] = previous
