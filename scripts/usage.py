@@ -272,14 +272,15 @@ def window_configuration(seat_sources, now, sessions):
                 continue
             if source.client == 'codex' and row['type'] != 'model':
                 continue
-            if source.client == 'claude':
+            if source.client == 'claude' and row['model'] is not None:
                 claude_models[row['key']].add(row['model'])
             candidates.append((row['at'], str(source.path), offset, row.get('key'), {
                 'model': row['model'], 'effort': row.get('effort'),
                 'source': 'codex_turn_context' if source.client == 'codex' else 'claude_assistant',
                 'observed_at': utc(row['at'])}))
     # Token conflicts do not discredit an agreed model; contradictory copies of
-    # one Claude message cannot establish either a setting or a client switch.
+    # one Claude message with different known models cannot establish a setting
+    # or a client switch. Missing models stay unavailable on their own sample.
     conflicts = {key for key, models in claude_models.items() if len(models) > 1}
     for _, _, _, key, current in sorted(candidates):
         if key in conflicts:

@@ -156,6 +156,46 @@ class ModelEffort(unittest.TestCase):
         self.assertEqual(window['configuration']['model'], 'claude-sonnet-4-5')
         self.assertIsNone(window['configuration']['switch'])
 
+    def test_missing_claude_message_identity_is_rejected_before_configuration(self):
+        self.seat()
+        rows = [support.claude(NOW - 20, model='claude-sonnet-4-5'),
+                support.claude(NOW - 10, model='claude-opus-4-5')]
+        for row in rows:
+            del row['message']['id']
+            del row['requestId']
+            with self.assertRaisesRegex(usage.Invalid, 'sample_identity_missing'):
+                usage.project(json.dumps(row).encode(), 'claude')
+        self.write('claude', rows)
+        _, window = self.one()
+        self.assertIn('sample_identity_missing', window['reasons'])
+        self.assertEqual(window['configuration'], dict(
+            model=None, effort=None, source=None, observed_at=None, switch=None))
+        projected = usage.project(json.dumps(support.claude(NOW - 10)).encode(), 'claude')
+        projected['key'] = None
+        with self.assertRaises(ValueError):
+            usage_cache.record(projected, 'claude')
+
+    def test_missing_claude_model_is_unavailable_without_creating_a_model_conflict(self):
+        self.seat()
+        for same_source in (False, True):
+            for missing_last in (False, True):
+                for missing in (None, support.CANARY):
+                    with self.subTest(same_source=same_source, missing_last=missing_last, missing=missing):
+                        known = support.claude(NOW - (20 if missing_last else 10), model='claude-sonnet-4-5')
+                        unknown = support.claude(NOW - (10 if missing_last else 20), model=missing)
+                        if missing is None:
+                            del unknown['message']['model']
+                        first, last = (known, unknown) if missing_last else (unknown, known)
+                        self.claude_copies([first], [last], same_source=same_source)
+                        _, window = self.one()
+                        config = window['configuration']
+                        self.assertEqual(config['model'], None if missing_last else 'claude-sonnet-4-5')
+                        self.assertEqual(config['source'], 'claude_assistant')
+                        self.assertEqual(config['observed_at'], support.stamp(NOW - 10))
+                        self.assertIsNone(config['effort'])
+                        self.assertIsNone(config['switch'])
+                        self.assertNotIn(support.CANARY, json.dumps(window))
+
     def test_effort_cache_projection_is_allowlisted(self):
         row = usage.project(json.dumps(self.turn(NOW)).encode(), 'codex')
         self.assertEqual(usage_cache.record(row, 'codex'), row)
