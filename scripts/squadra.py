@@ -830,7 +830,10 @@ def dispatch(a, store):
                         "model": a.model, "session": a.session, "repo": str(Path(a.repo).resolve(strict=True)), "skills": skills,
                         **({'model_choice_required': True} if pending else {}),
                         **({'model_policy': policy} if policy and policy['mode'] != 'ask' else {})}, None))
-            store.batch(operations)
+            if len(operations) == 1:
+                store.append(*operations[0])
+            else:
+                store.batch(operations)
         if a.auto_models is not None:
             model_policy.configure(store, a.id, a.auto_models)
         elif new_window:
