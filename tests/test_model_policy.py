@@ -351,6 +351,124 @@ print(json.dumps({'type': 'turn.completed', 'usage': {}}))
                 self.assertEqual(result['status'], 'failed')
                 self.assertEqual(len(self.store.resolved()['runs']), index + 1)
 
+    def test_council_new_session_before_runtime_snapshot_cannot_use_old_selection(self):
+        import runtime
+        native = runtime.execute
+        model_policy.configure(self.store, 'A', 'on')
+        self.ack()
+        def move_before_snapshot(*args, **kwargs):
+            self.assertEqual(self.cli('agent', '--id', 'A', '--identity', 'author', '--session', 'new-session',
+                                      '--role', 'builder', '--client', 'codex', '--repo', str(self.repo))[0], 0)
+            return native(*args, **kwargs)
+        with patch.object(runtime, 'execute', side_effect=move_before_snapshot), \
+                contextlib.redirect_stderr(io.StringIO()), \
+                self.assertRaisesRegex(Error, 'Choose automatic models before work|selection changed'):
+            model_policy.execute(self.store, 'A', 'T', mode='build', prompt='Scoped work',
+                                 executable=str(self.fake_client()), timeout=5)
+        self.assertFalse(self.store.resolved()['runs'])
+
+    def test_council_preference_changes_before_runtime_snapshot_reject_stale_selection(self):
+        import runtime
+        native = runtime.execute
+        self.ack()
+        for reenable in (False, True):
+            with self.subTest(reenable=reenable):
+                model_policy.configure(self.store, 'A', 'on')
+                def change_before_snapshot(*args, **kwargs):
+                    model_policy.configure(self.store, 'A', 'off')
+                    if reenable:
+                        model_policy.configure(self.store, 'A', 'on')
+                    return native(*args, **kwargs)
+                with patch.object(runtime, 'execute', side_effect=change_before_snapshot), \
+                        contextlib.redirect_stderr(io.StringIO()), \
+                        self.assertRaisesRegex(Error, 'selection changed'):
+                    model_policy.execute(self.store, 'A', 'T', mode='build', prompt='Scoped work',
+                                         executable=str(self.fake_client()), timeout=5)
+        self.assertFalse(self.store.resolved()['runs'])
+
+    def test_council_fallback_rechecks_new_session_at_its_own_runtime_snapshot(self):
+        import runtime
+        native = runtime.execute
+        model_policy.configure(self.store, 'A', 'on')
+        self.register()
+        calls = []
+        def move_before_retry(*args, **kwargs):
+            calls.append(kwargs['model_selection']['model'])
+            if len(calls) == 2:
+                self.assertEqual(self.cli('agent', '--id', 'A', '--identity', 'author', '--session', 'new-session',
+                                          '--role', 'builder', '--client', 'codex', '--repo', str(self.repo))[0], 0)
+            return native(*args, **kwargs)
+        with patch.object(runtime, 'execute', side_effect=move_before_retry), \
+                contextlib.redirect_stderr(io.StringIO()), \
+                self.assertRaisesRegex(Error, 'Choose automatic models before work|selection changed'):
+            model_policy.execute(self.store, 'A', 'L', mode='build', prompt='Scoped work',
+                                 executable=str(self.fake_client()), timeout=5)
+        self.assertEqual(len(self.store.resolved()['runs']), 1)
+
+    def test_council_off_after_acceptance_does_not_cancel_the_accepted_turn(self):
+        model_policy.configure(self.store, 'A', 'on')
+        self.ack()
+        client = self.fake_client()
+        argv = [sys.executable, '-B', str(Path(model_policy.__file__).with_name('squadra.py')),
+                '--root', str(self.root), 'models', '--actor', 'A', '--auto', 'off']
+        client.write_text(client.read_text().replace("print('fake-codex 1'); raise SystemExit(0)",
+                          'import subprocess; subprocess.run(' + repr(argv) + ', check=True, capture_output=True); '
+                          "print('fake-codex 1'); raise SystemExit(0)"))
+        with contextlib.redirect_stderr(io.StringIO()):
+            result = model_policy.execute(self.store, 'A', 'T', mode='build', prompt='Scoped work',
+                                          executable=str(client), timeout=5)
+        self.assertEqual(result['status'], 'passed')
+        self.assertEqual(model_policy.preference(self.store.resolved(), 'A')['mode'], 'off')
+        self.assertTrue(self.store.resolved()['runs'][result['id']]['model_selection']['automatic'])
+        with contextlib.redirect_stderr(io.StringIO()):
+            again = model_policy.execute(self.store, 'A', 'T', mode='build', prompt='Scoped work',
+                                         executable=str(client), timeout=5)
+        self.assertEqual(again['status'], 'passed')
+        self.assertIsNone(self.store.resolved()['runs'][again['id']].get('model_selection'))
+
+    def council_alias_case(self, answer, *, old_alias=False):
+        fresh, alias = 'Fresh' + str(answer), 'Alias' + str(answer)
+        for name in (fresh, alias):
+            self.assertEqual(self.cli('agent', '--id', name, '--identity', fresh, '--session', 's1',
+                                      '--role', 'builder', '--client', 'codex', '--repo', str(self.repo))[0], 0)
+        if old_alias:
+            record = plain(self.store.resolved()['agents'][alias])
+            for field in ('updated', 'model_policy', 'model_choice_required'):
+                record.pop(field, None)
+            self.store.append('agent', alias, record)
+        chosen = {'economy': {'model': 'gpt-6-luna', 'effort': 'low'},
+                  'quality': {'model': 'gpt-6.1-sol', 'effort': 'high'}}
+        file = self.base / 'council-profiles.json'
+        file.write_text(json.dumps({'schema': 1, 'clients': {'codex': chosen}}))
+        if answer:
+            model_policy.configure(self.store, fresh, answer, file if answer == 'on' else None)
+        before = model_policy.preference(self.store.resolved(), alias)
+        self.assertEqual(self.cli('agent', '--id', fresh, '--identity', fresh, '--session', 's2',
+                                  '--role', 'builder', '--client', 'codex', '--repo', str(self.repo))[0], 0)
+        state = self.store.resolved()
+        after = model_policy.preference(state, alias)
+        self.assertEqual(after, before)
+        self.assertTrue(state['agents'][alias].get('model_choice_required'))
+        self.assertEqual(model_policy.preference(state, fresh)['mode'], 'ask')
+        if answer is None:
+            with self.assertRaisesRegex(Error, 'Choose automatic models before work'):
+                model_policy.choose(state, alias, 'T', 'build')
+        elif answer == 'on':
+            self.assertEqual(after['profiles'], chosen)
+            self.assertEqual(model_policy.choose(state, alias, 'T', 'build')['model'], 'gpt-6.1-sol')
+        else:
+            self.assertIsNone(model_policy.choose(state, alias, 'T', 'build'))
+
+    def test_council_alias_retains_choice_and_question_after_carrier_changes_session(self):
+        for answer in (None, 'on', 'off'):
+            with self.subTest(answer=answer):
+                self.council_alias_case(answer)
+
+    def test_council_existing_alias_is_preserved_before_its_carrier_moves(self):
+        for answer in (None, 'on', 'off'):
+            with self.subTest(answer=answer):
+                self.council_alias_case(answer, old_alias=True)
+
 
 if __name__ == '__main__':
     unittest.main()

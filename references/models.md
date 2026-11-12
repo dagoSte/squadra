@@ -31,10 +31,20 @@ The choice is retained in existing `agent` events, without a new event format. P
 updates and ordinary registrations serialize their read/write cycle, including across
 role aliases, so the last committed choice wins. A later ordinary re-registration preserves
 it. New windows created by replacement or coordinator handover also require an answer.
+New aliases keep their window's question and choice; changing one seat's session preserves
+the old binding's choice and profiles on its remaining aliases, including older registrations.
 No personal Codex, Claude or Cursor defaults are
 rewritten.
-Turning the option off keeps its configured profiles for a later re-enable; disabling
-it while a rejected turn is ending also prevents that turn's automatic fallback.
+Turning the option off keeps its configured profiles for a later re-enable. Disabling
+it before the fallback is accepted prevents that new automatic turn.
+
+A native turn is accepted on the runner's initial registry snapshot, after the wrapper's
+selection. At that point an unanswered new window is refused, and an automatic selection
+must match that snapshot's window, preference version and configured profile. A stale
+request is refused before client preflight or run registration; retry after answering or
+updating the choice. The fallback is a separate turn and performs the same acceptance check.
+Changes after acceptance apply to later turns; they do not cancel an already accepted turn
+while its client preflight or process is running. No preference lock covers those waits.
 
 ## Profiles and conservative selection
 

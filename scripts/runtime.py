@@ -323,6 +323,9 @@ def _execute_owned(store, actor, task_id, argv, mode, prompt, timeout, gate, exe
     agent = state["agents"][actor]
     # Refuse automated Cursor runs before creating files or processes.
     require(not (mode in {"read", "build"} and agent["client"] == "cursor"), CURSOR_REFUSAL)
+    if mode in {"read", "build"}:
+        from model_policy import accept
+        accept(state, actor, model_selection)
     require(1 <= timeout <= 86400, "Timeout must be explicit and bounded")
     if task.get("plan"):
         from registry import digest

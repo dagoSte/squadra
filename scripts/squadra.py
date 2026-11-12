@@ -806,15 +806,31 @@ def dispatch(a, store):
         with model_policy.window_lock(store):
             state = store.resolved()
             seat = {'identity': a.identity, 'session': a.session, 'client': a.client}
-            new_window = not any(model_policy.binding(x) == seat for x in state['agents'].values())
-            pending = new_window or state['agents'].get(a.id, {}).get('model_choice_required')
             previous = state['agents'].get(a.id)
-            policy = (model_policy.preference(state, a.id) if previous and
-                      model_policy.binding(previous) == seat else None)
-            store.append("agent", a.id, {"id": a.id, "identity": a.identity, "role": a.role, "client": a.client,
+            operations = []
+            if previous and model_policy.binding(previous) != seat:
+                old_window = model_policy.binding(previous)
+                old_policy = model_policy.preference(state, a.id)
+                old_required = any(model_policy.binding(x) == old_window and x.get('model_choice_required')
+                                   for x in state['agents'].values())
+                # Preserve the old window before its only carrier changes session.
+                for name, other in state['agents'].items():
+                    if name == a.id or model_policy.binding(other) != old_window:
+                        continue
+                    original = {k: plain(v) for k, v in other.items() if k not in {'updated', 'availability'}}
+                    kept = {**original, **({'model_choice_required': True} if old_required else {}),
+                            **({'model_policy': old_policy} if old_policy['mode'] != 'ask' else {})}
+                    if kept != original:
+                        operations.append(('agent', a.id, kept, None))
+            peers = [name for name, other in state['agents'].items() if model_policy.binding(other) == seat]
+            new_window = not peers
+            pending = new_window or any(state['agents'][name].get('model_choice_required') for name in peers)
+            policy = model_policy.preference(state, peers[0]) if peers else None
+            operations.append(("agent", a.id, {"id": a.id, "identity": a.identity, "role": a.role, "client": a.client,
                         "model": a.model, "session": a.session, "repo": str(Path(a.repo).resolve(strict=True)), "skills": skills,
                         **({'model_choice_required': True} if pending else {}),
-                        **({'model_policy': policy} if policy and policy['mode'] != 'ask' else {})})
+                        **({'model_policy': policy} if policy and policy['mode'] != 'ask' else {})}, None))
+            store.batch(operations)
         if a.auto_models is not None:
             model_policy.configure(store, a.id, a.auto_models)
         elif new_window:

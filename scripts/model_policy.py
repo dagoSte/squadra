@@ -123,13 +123,33 @@ def _configure(store, actor, mode, path):
     return value
 
 
+def require_answer(state, actor, policy):
+    pending = any(binding(a) == policy['window'] and a.get('model_choice_required')
+                  for a in state['agents'].values())
+    require(policy['mode'] != 'ask' or not pending,
+            'Choose automatic models before work: squadra models --actor ' + actor + ' --auto on|off')
+
+
+def accept(state, actor, selection):
+    """The runner's initial snapshot accepts one coherent window and preference."""
+    policy = preference(state, actor)
+    require_answer(state, actor, policy)
+    if selection is None:
+        return
+    require(selection.get('window') == policy['window'] and policy['mode'] == 'on' and
+            selection.get('policy_seq') == policy.get('seq'),
+            'Automatic model selection changed before turn acceptance; retry the request')
+    profile = policy['profiles'].get(selection.get('profile'))
+    require(profile is not None and any(
+        all(selection.get(key) == candidate[key] for key in ('model', 'effort'))
+        for candidate in [profile, *profile.get('fallback', [])]),
+        'Automatic model selection changed before turn acceptance; retry the request')
+
+
 def choose(state, actor, task_id, mode, stage='code', *, root=None):
     policy = preference(state, actor)
     if policy['mode'] != 'on':
-        pending = any(binding(a) == policy['window'] and a.get('model_choice_required')
-                      for a in state['agents'].values())
-        require(policy['mode'] != 'ask' or not pending,
-                'Choose automatic models before work: squadra models --actor ' + actor + ' --auto on|off')
+        require_answer(state, actor, policy)
         return None
     require(task_id in state['tasks'], 'Unknown task')
     task = state['tasks'][task_id]
@@ -149,7 +169,8 @@ def choose(state, actor, task_id, mode, stage='code', *, root=None):
                 profile, reason = 'economy', 'bounded_light_task'
     chosen = policy['profiles'][profile]
     return {k: chosen[k] for k in ('model', 'effort')} | {
-        'automatic': True, 'window': policy['window'], 'profile': profile, 'reason': reason, 'evidence': evidence}
+        'automatic': True, 'window': policy['window'], 'policy_seq': policy['seq'],
+        'profile': profile, 'reason': reason, 'evidence': evidence}
 
 
 def message(selection, lang='it'):
@@ -227,7 +248,8 @@ def execute(store, actor, task_id, **kwargs):
     if remaining < 1:
         return result
     fallback = {k: alternatives[0][k] for k in ('model', 'effort')} | {
-        'automatic': True, 'window': policy['window'], 'profile': target_profile, 'reason': reason,
+        'automatic': True, 'window': policy['window'], 'policy_seq': policy['seq'],
+        'profile': target_profile, 'reason': reason,
         'previous': {k: selection[k] for k in ('model', 'effort')}, 'previous_run': result['id'], 'evidence': {}}
     print(message(fallback, lang), file=sys.stderr, flush=True)
     # A second, separately recorded run consumes the ordinary task budget. Never loop or replay tool work.
