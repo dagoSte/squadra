@@ -10,7 +10,8 @@ OTHER_KNOWN = {"access.probe", "reader.ready", "replace", "service.wait", "init"
                "resource.release", "pause", "resume", "legacy", "decision", "ask", "diagnostic",
                "settings", "save", "restore.check", "restore.freeze", "challenge", "benchmark", "brief",
                "supersede", "reassign", "route", "fix", "lesson", "lesson.retire", "lesson.recall", "lesson.ineffective",
-               "handover", "handover.prepare", "handover.confirm", "handover.cancel", "project.set"}
+               "handover", "handover.prepare", "handover.confirm", "handover.cancel", "project.set",
+               "finding.outcome", "lesson.promote", "faster"}
 AVAILABILITY = {"active", "stand-by"}
 LIMIT = 500
 
