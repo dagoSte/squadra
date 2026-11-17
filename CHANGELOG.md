@@ -4,6 +4,7 @@ Every Squadra release, newest first. The README keeps the newest release and the
 
 **Unreleased**
 
+- Closing advice measures the longest ACK/build/read/fix phase; `faster` records the coordinator's remedy and warns when that phase recurs in two of the first three tasks assigned afterwards. Plan waits remain separate; incomplete history invents no estimate. Historical malformed contesto counts no longer break System skills, and accepted code reads missing either lens are unverifiable in the delivery checklist. The new `faster` event requires every window to upgrade before its first write; the journal format is unchanged and historical events remain readable.
 - Code reads apply contesto alongside rasoio in one review: check changed constants and units, recent history and callers, requirement match, and sign the verified/unverified scope. Adapted from laulauraluo's MIT-licensed ai-code-review-triage at `91a1c77`; full attribution is in `THIRD_PARTY_NOTICES.md`.
 - Repeat `review --lens` for both lenses; contesto records validated declared counts with `--constants-checked` and `--constants-suspect`. System skills shows those declarations, not measurements or confirmed defects. Verdicts, checks, closures and budgets are unchanged.
 - No journal-format or event-kind change: historical rasoio reviews keep their fields and validity. The optional `review.contesto` object is preserved but ignored for validation and activity counts by 3.15.1 readers; update every window for consistent contesto support.

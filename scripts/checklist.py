@@ -177,6 +177,18 @@ def _deliver(store, state, task, items):
     _add(items, 'handoff_ack', lambda: _expect(any(state['messages'].get(h, {}).get('ack') for h in handoffs),
                                              'Current review handoff must have its recipient ACK'))
 
+    def review_lenses():
+        accepted = [review for review in task.get('reviews', [])
+                    if review.get('stage') == 'code' and review.get('verdict') == 'accepted'
+                    and review.get('binding') == task.get('candidate', {}).get('sha256')]
+        missing = [review for review in accepted
+                   if review.get('lens') != 'rasoio' or not isinstance(review.get('contesto'), dict)]
+        if missing:
+            return 'unverifiable', 'Current accepted code read requires both rasoio and contesto declarations'
+        return 'Current accepted code reads declare rasoio and contesto; no missing lenses'
+
+    _add(items, 'review_lenses', review_lenses)
+
 
 def _commit(repo, ref):
     return _git(repo, 'rev-parse', '--verify', '--end-of-options', ref + '^{commit}')

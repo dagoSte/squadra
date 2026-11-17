@@ -1535,8 +1535,16 @@ declared but not recorded is written as such.
   cap, and reports what was spent and on what. No secret key enters chat, logs or files.
 - **Rule 8 — faster next time.** At every close the coordinator reads where the task's
   time went (the dashboard measures waiting for the acknowledgement, building, waiting
-  for the read and fix rounds), writes one line «Faster next time: …» in its closing
-  output, and applies it to the next assignment.
+  for the read and fix rounds). `close` prints the longest of those measured phases in
+  minutes; plan-review waiting is shown separately. Incomplete history produces no estimate.
+  Record one remedy with `squadra faster --actor COORD --task TASK --phase build
+  --remedy "Concrete change for the next assignments"` (phases: ack, build, read, fix); minutes come from the verified
+  history, using the dashboard's interval partition. Only a coordinator records remedies.
+  Apply it to the next assignments. On the third closure of tasks assigned after the
+  remedy, two occurrences of the same longest phase produce an ineffectiveness warning.
+  Tasks assigned earlier cannot benefit and are excluded. Fewer than three closes give
+  no judgment, and the warning never blocks work. Accepted code reads missing rasoio or
+  contesto declarations are `unverifiable` in the delivery checklist, never a new gate.
 - **Rule 9 — the release leaves on time.** These are rules, not coordinator choices.
   - **Cut-off.** When a release's scope is fixed, its cut-off is set two hours later,
     unless the owner names a time, and recorded as a decision. At the cut-off only lanes

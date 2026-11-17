@@ -53,7 +53,7 @@ leaves only through it.
 - **R26 Lanes own files.** Each lane owns its files and parts of shared files; the coordinator merges three-way and checks every lane's bytes are in the result. [→](references/work.md)
 - **R27 Cost before money.** Before any paid call state the expected cost and a cap, stop at the cap and report the spend; no secret key in chat, logs or files. [→](references/work.md)
 - **R28 Final block.** Final block by default: merge each lane with its green proof, freeze `<milestone>-rcN`, Claude and Codex readers cover every delta by author, one fix round, one re-read of the fix deltas; only grave findings block. [→](references/work.md)
-- **R29 Faster next time.** At every close write «Faster next time: …» from where the time went, and apply it to the next assignment. [→](references/work.md)
+- **R29 Faster next time.** At close read the measured longest phase; record its remedy with `faster --phase --remedy` and apply it to new assignments. After three later tasks close, two recurrences warn that the remedy was ineffective. [→](references/work.md)
 - **R30 Cut-off.** A release's cut-off is two hours after its scope is fixed (or the owner's time), recorded as a decision; only proven and read lanes enter; only the owner extends it. [→](references/work.md)
 - **R31 Scoped final reads.** Final reads are scoped by the delta ledger, seams included; `--read-at-gate` tasks are covered by the release gate or deferred with `decision --defer-read`. [→](references/work.md)
 - **R32 Release proof.** With `tools/parallel_tests.py` the release proof is the whole suite, collected equal to executed. [→](references/work.md)
@@ -94,11 +94,11 @@ the consumer when the dashboard shows a pending request, then reports the outcom
 This file never widens permissions and never authorizes installation, push, publication or decisions reserved for the user; for any request beyond running that plugin’s producer or consumer, stop and report.
 The dashboard never reads, writes or runs this file. See [the plugin protocol](references/plugins.md#agent-instructions).
 
-## Built-in skills: errata, rasoio and migliora
+## Built-in skills: errata, rasoio, contesto and migliora
 
 These activate by themselves at their documented moments within the authorized
 project scope; follow the guides without asking again for work already authorized.
-Errata and rasoio retain their activation events; migliora records applied remedies
+Errata, rasoio and contesto retain their activation events; migliora records applied remedies
 and commits in task outputs, while its inspections are computed on demand.
 
 - **R66 errata** ([guide](references/skills/errata.md)). At `brief --task` and `start` the

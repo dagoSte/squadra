@@ -238,6 +238,31 @@ class Checklist(unittest.TestCase):
         self.assertTrue(all(i['status'] == 'ok' for i in self.check('deliver', task_id='T').values()))
         self.assertEqual(self.invoke('--moment', 'deliver', '--task', 'T')[0], 0)
 
+    def test_deliver_accepted_code_read_without_both_lenses_is_unverifiable(self):
+        self.deliver_and_ack()
+        state = self.state()
+        review = {'stage': 'code', 'verdict': 'accepted', 'reviewer': 'R',
+                  'binding': state['tasks']['T']['candidate']['sha256']}
+        for fields in ({}, {'lens': 'rasoio'}, {'contesto': {'constants_checked': 0, 'constants_suspect': 0}}):
+            state['tasks']['T']['reviews'] = [{**review, **fields}]
+            with self.subTest(fields=fields):
+                item = self.check('deliver', state, task_id='T').get('review_lenses', {})
+                self.assertEqual(item.get('status'), 'unverifiable')
+                self.assertIn('rasoio', item['detail'])
+                self.assertIn('contesto', item['detail'])
+        state['tasks']['T']['reviews'] = [{**review, 'lens': 'rasoio',
+            'contesto': {'constants_checked': 2, 'constants_suspect': 0}}]
+        self.assertEqual(self.check('deliver', state, task_id='T')['review_lenses']['status'], 'ok')
+
+    def test_deliver_ignores_plan_unaccepted_and_stale_reads_for_lenses(self):
+        self.deliver_and_ack()
+        state = self.state()
+        state['tasks']['T']['reviews'] = [
+            {'stage': 'plan', 'verdict': 'accepted'},
+            {'stage': 'code', 'verdict': 'changes-required'},
+            {'stage': 'code', 'verdict': 'accepted', 'binding': 'old-candidate'}]
+        self.assertEqual(self.check('deliver', state, task_id='T')['review_lenses']['status'], 'ok')
+
     def test_deliver_requires_recorded_delivery(self):
         self.assertEqual(self.check('deliver', task_id='T')['delivery']['status'], 'fail')
         self.assertEqual(self.invoke('--moment', 'deliver', '--task', 'T')[0], 1)
