@@ -40,7 +40,7 @@ TASK_STATUSES = ("waiting-ack", "ready", "working", "delivered", "changes-requir
 # reducer from their own events, so a declaration never presets them (M-8).
 TASK_FIELDS = frozenset({"id", "title", "owner", "repo", "base", "scope", "proof", "expected", "full_gate", "depends",
                          "reviewer", "pool", "requirements", "delivery_policy", "read_at_gate", "release_gate", "route",
-                         "light_policy", "contract", "fix", "supersedes", "cross_client", "same_client_reason"})
+                         "light_policy", "contract", "fix", "supersedes", "cross_client", "same_client_reason", "red_first"})
 NEXT_STEPS = {
     "waiting-ack": "ACK dell'esecutore",
     "ready": "Avvio dell'esecutore",
@@ -90,11 +90,18 @@ BUSY_MS = 30000
 
 def validate_findings(value):
     valid = isinstance(value, list) and len(value) <= 32
+    ids = set()
     if valid:
         for item in value:
-            if not isinstance(item, dict) or set(item) != {'severity', 'title'}:
+            if not isinstance(item, dict) or set(item) not in ({'severity', 'title'}, {'id', 'severity', 'title'}):
                 valid = False
                 break
+            if 'id' in item:
+                name = item['id']
+                if not isinstance(name, str) or not re.fullmatch(r'[A-Z][0-9]{1,3}', name) or name in ids:
+                    valid = False
+                    break
+                ids.add(name)
             title = item['title']
             if (item['severity'] not in SEVERITIES or not isinstance(title, str)
                     or not 1 <= len(title) <= 200 or not title.strip()
@@ -456,7 +463,10 @@ def ready_readers(state, task):
 def apply(state, event):
     d, kind = event["data"], event["kind"]
     refs = state.setdefault("refs", {"ask": {}, "decision": {}})
-    if kind == 'handover.prepare':
+    if kind == 'finding.outcome':
+        state['tasks'][d['task']].setdefault('finding_outcomes', []).append(
+            {**d, 'actor': event['actor'], 'utc': event['utc']})
+    elif kind == 'handover.prepare':
         state.setdefault('handovers', {})[d['id']] = {**plain(d), 'by': event['actor'], 'utc': event['utc'], 'status': 'pending'}
         apply(state, {**event, 'kind': 'decision', 'data': d['decision']})
         state['event_count'] -= 1
@@ -626,7 +636,8 @@ def apply(state, event):
             task.pop("claim", None)
     elif kind == "review":
         task = state["tasks"][d["task"]]
-        task["reviews"].append({**d, "reviewer": event["actor"], "utc": event["utc"]})
+        task["reviews"].append({**d, "reviewer": event["actor"], "utc": event["utc"],
+                               **({'receipt': event['id']} if any(f.get('id') for f in d.get('findings', [])) else {})})
         task["rounds"][d["stage"]] += 1
         if d["stage"] == "code":
             task["status"] = "reviewed" if d["verdict"] == "accepted" else "changes-required"
@@ -695,7 +706,8 @@ def apply(state, event):
         state[{"save": "saves", "restore.check": "restores", "challenge": "challenges", "benchmark":"benchmarks"}[kind]].append(
             {**d, "actor": event["actor"], "utc": event["utc"]})
         if kind == "challenge" and d.get("task"):
-            state["tasks"][d["task"]]["fix_result"] = dict(d)
+            key = 'requirement_result' if d.get('requirements') is True else 'fix_result'
+            state["tasks"][d["task"]][key] = dict(d)
     elif kind == "lesson":
         state.setdefault("lessons", {})[d["id"]] = {**d, "author": event["actor"], "utc": event["utc"],
                                                    "seq": event.get("seq"), "retired": None, "recalls": [],
@@ -1315,6 +1327,8 @@ def proof_binding(task):
     value = {key: plain(task.get(key)) for key in fields}
     if task.get('fix'):
         value['fix_binding'] = fix_binding(task)
+    if task.get('red_first'):
+        value['red_first'] = True
     return digest(canonical(value).encode())
 
 
@@ -2234,7 +2248,10 @@ def validate(state, kind, actor, d, stored_packet=None, *, candidate_history=())
                     "finding.outcome", "lesson.promote", "faster"},
             "Unknown event kind")
     # Giro 3.16 (coordination/r316-contratto.md): ogni corsia sostituisce solo la propria riga.
-    require(kind != 'finding.outcome', "kind_not_ready")
+    if kind == 'finding.outcome':
+        from findings import validate_event
+        validate_event(state, actor, d)
+        return
     require(kind != 'lesson.promote', "kind_not_ready")
     require(kind != 'faster', "kind_not_ready")
     if kind == 'access.probe':
@@ -2509,8 +2526,10 @@ def validate(state, kind, actor, d, stored_packet=None, *, candidate_history=())
             register(d, state)
         else:
             require(not d.get("contract") and not d.get("light_policy"), "Full task cannot forge route metadata")
-    if (kind == "task" and "fix" in d) or kind == "fix" or (kind == "challenge" and d.get("task")) or (
-            kind in {"run.start", "deliver", "review", "close"} and state["tasks"].get(d.get("task"), {}).get("fix")):
+    if (kind == "task" and ("fix" in d or 'red_first' in d)) or kind == "fix" or (kind == "challenge" and d.get("task")) or (
+            kind in {"run.start", "deliver", "review", "close"} and
+            (state["tasks"].get(d.get("task"), {}).get("fix") or
+             state["tasks"].get(d.get("task"), {}).get('red_first'))):
         from fix_challenge import validate_event as validate_fix_event
         validate_fix_event(state, kind, actor, d)
     if kind.startswith("lesson"):

@@ -878,7 +878,7 @@ attiva degrada l'integrita del candidato. Vedi la
 
 Non serve scrivere questi comandi: **il modo consigliato è chiedere alla finestra in parole semplici**, come nella colonna *Oppure chiedi* e nei [prompt di esempio](#prompts); il comando lo esegue la finestra. I comandi sono quello che eseguono le finestre, e quello che puoi scrivere tu per controllare.
 
-Ogni comando, raggruppato per scopo: **67 sottocomandi**, più `--version`. Usa `squadra <comando> --help` per le opzioni; i comandi del registro accettano `--root` o `SQUADRA_ROOT`. «Solo il coordinatore» segna ciò che solo il coordinatore può registrare: `task`, `route`, `supersede`, `reassign`, `replace`, `brief`, `close`, `ask`, `decision` (compreso `--extend-budget`), `lanes --apply`, `settings`, `pause`, `resume`, `save`, `standby`, `ping --all`, `ping --sweep`, e la ricevuta che `restore-check` scrive nel registro vivo. Senza installare, gli stessi comandi girano come `python3 -B scripts/squadra.py <comando>`.
+Ogni comando, raggruppato per scopo: **68 sottocomandi**, più `--version`. Usa `squadra <comando> --help` per le opzioni; i comandi del registro accettano `--root` o `SQUADRA_ROOT`. «Solo il coordinatore» segna ciò che solo il coordinatore può registrare: `task`, `route`, `supersede`, `reassign`, `replace`, `brief`, `close`, `ask`, `decision` (compreso `--extend-budget`), `lanes --apply`, `settings`, `pause`, `resume`, `save`, `standby`, `ping --all`, `ping --sweep`, e la ricevuta che `restore-check` scrive nel registro vivo. Senza installare, gli stessi comandi girano come `python3 -B scripts/squadra.py <comando>`.
 
 <details>
 <summary><strong>Tutti i 67 comandi con i loro prompt, raggruppati per scopo</strong></summary>
@@ -936,6 +936,7 @@ Ogni comando, raggruppato per scopo: **67 sottocomandi**, più `--version`. Usa 
 | `deliver` | Consegna al lettore un pacchetto immutabile del candidato provato. | «Consegna al revisore il candidato provato.» |
 | `advance` | Riconcilia un passaggio già consegnato, senza costruire né approvare. | «T1 è già stato consegnato: riconcilia il passaggio, senza costruire né approvare nulla.» |
 | `review` | Registra il verdetto di un non autore su un piano o sul codice: accettato, correzioni richieste o bloccato. | Al revisore: «Leggi il candidato congelato di T1 e registra il tuo verdetto.» |
+| `finding` | Registra corretto, respinto o rinviato per un rilievo identificato, con riferimento e motivo. | «Registra perché N1 è respinto e dove N2 è corretto.» |
 | `migliora` | Analizza gli attriti; applica e verifica una regola del progetto e crea il suo commit locale. | «Elimina i passaggi ripetuti dimostrati dalle prove.» |
 | `check` | Controlla che prova, lettura e candidato corrispondano ancora. | «Controlla che prova, lettura e candidato di T1 corrispondano ancora.» |
 | `close` | Solo il coordinatore: registra la fine di un incarico controllato. | Al coordinatore: «Chiudi T1 se il controllo passa, poi mostrami la tabella dell'avanzamento.» |

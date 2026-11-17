@@ -1134,6 +1134,93 @@ read but cannot qualify a close. Nothing installs or migrates a live squad.
 
 <a id="errata-and-rasoio"></a>
 
+## Dispositions of identified findings
+
+Each item in `review --findings-file` may additionally declare an `id`, matching
+`^[A-Z][0-9]{1,3}$` and unique within that review. Historical items without IDs keep
+their existing meaning; they acquire no outcome requirement or warning.
+
+```sh
+squadra finding --actor builder --task TASK --review REVIEW_RECEIPT --id N1 \
+  --outcome rejected --ref decision:DISPOSITION --reason 'The documented caller already validates this boundary'
+```
+
+Outcomes are `fixed`, `rejected` or `deferred`. Every outcome names an already
+recorded event (event ID or sequence) concerning the task, or `decision:ID`, and
+a nonblank reason of at most 1000 characters. The task's owner, coordinator,
+configured reader or pool member may record it. A repeated disposition retains
+the history; the latest one is shown. A reason alone is never evidence of a fix.
+
+The new `finding.outcome` event contains `task`, `review`, `finding`, `outcome`,
+`ref` and `reason`. Identified reviews retain their actual event receipt. `check`
+and `checklist` show unresolved identified findings as **unverifiable**, never as
+a failed gate. They still enforce every existing proof and independent-read gate.
+Reread packets and task context show rejected findings with their reasons and
+references, plus open and total identified findings for each review round. A
+reader uses those recorded reasons before reopening an observation; the registry
+does not infer that a later report contains new facts.
+
+| Refusal | When |
+|---|---|
+| `finding_fields_invalid`, `finding_task_unknown` | malformed outcome fields or unknown task |
+| `finding_actor_refused` | actor is not an assigned participant |
+| `finding_review_unknown`, `finding_id_unknown` | receipt or identified observation does not belong to this task |
+| `finding_outcome_invalid`, `finding_reason_required` | unsupported outcome or missing/invalid visible reason |
+| `finding_ref_required`, `finding_ref_unknown`, `finding_ref_wrong_task` | missing, unrecorded, future or unrelated event reference |
+
+## Requirement tests that discriminate the change
+
+`task --red-first --requirements-file requirements.json` opts into an additional
+close requirement. Each requirement has exactly one of `tests` (a nonempty list of
+fully qualified unittest method IDs) or `exception` (a visible, nonblank reason,
+at most 1000 characters, for work such as documentation or refactoring).
+
+```json
+[
+  {"id":"A1","text":"The new boundary is enforced","tests":["test_boundary.Boundary.test_limit"]},
+  {"id":"A2","text":"Document the convention","exception":"Documentation is inspected by the independent reader"}
+]
+```
+
+Run `squadra challenge --actor builder --task TASK --requirements` after the tests
+and candidate exist. `--output NEW_EXTERNAL_FOLDER` optionally selects the retained
+experiment directory; otherwise it is under the registry. The existing
+`python-unittest-v1` runner overlays the **same frozen test files** on the original
+Git base and the exact candidate. Every declared method must fail by assertion in
+its test body on the base and pass on the candidate. Import/setup errors, skips,
+expected failures, timeouts, source drift or a test already green on the base do
+not qualify. Shared test IDs across requirements are executed once.
+
+The existing `challenge` event records `requirements: true`, the frozen agreement,
+requirement-policy binding, exceptions, source bindings and native observations.
+Failed experiments remain visible but never satisfy close. Test files, wrapper,
+configurations, logs and results retain their existing hashes and verification.
+Handoffs show the opt-in, declared exceptions and latest requirement challenge.
+All-exception requirements need no fabricated test run: their visible reasons are
+judged in the ordinary independent read. The usual green proof, requirement
+coverage and independent acceptance are still required. Defect-fix challenges
+and requirement challenges retain separate results when both policies apply.
+
+`check` and `close` refuse missing, stale or non-discriminating required evidence.
+Without `--red-first`, requirement metadata and closure behave as before. This
+adds neither a runner nor a model call and does not replace `--covers`.
+
+| Refusal | When |
+|---|---|
+| `red_first_invalid`, `red_first_required` | invalid policy flag or requirement challenge on an ordinary task |
+| `requirement_tests_required`, `requirement_tests_or_exception` | no requirements or a requirement without exactly one evidence form |
+| `requirement_test_ids_invalid`, `requirement_test_ids_changed` | malformed, duplicate or changed method IDs |
+| `requirement_exception_reason_required`, `requirement_exceptions_changed` | absent, invisible or changed exception reason |
+| `requirement_test_file_missing_or_ambiguous` | a declared method's module cannot be resolved uniquely inside the test tree |
+| `requirement_challenge_required_or_stale`, `requirement_challenge_binding_changed` | missing evidence or evidence bound to different policy/source bytes |
+| `requirement_challenge_invalid`, `requirement_challenge_not_matched` | malformed experiment or tests that do not discriminate every requirement |
+
+The journal envelope stays unchanged. **Upgrade every window before recording
+identified findings, `finding.outcome` or using `--red-first`**: 3.15.x refuses the new event kind and
+does not enforce the new requirement policy. Historical findings, tasks and fix
+challenges retain their existing behavior; mixed-version enforcement is not
+promised.
+
 ## Lessons (errata) and review lenses
 
 These built-in skills record their activations as registry events. The guides are

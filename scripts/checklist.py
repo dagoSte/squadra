@@ -410,4 +410,9 @@ def run(store, moment, *, actor=None, task_id=None, repo=None, revision_range=No
                 _assign(store, state, task, items)
             else:
                 _deliver(store, state, task, items)
+    if task_id in state['tasks']:
+        from findings import observation
+        item = observation(state, state['tasks'][task_id])
+        if item is not None:
+            items.append(item)
     return {'moment': moment, 'items': items, 'ready': not any(item['status'] == 'fail' for item in items)}

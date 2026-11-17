@@ -196,9 +196,20 @@ def validate_event(state, kind, actor, data):
     task = state['tasks'].get(data.get('task'))
     root = state['root']
     if kind == 'task':
+        if 'red_first' in data:
+            from challenge_requirements import validate_task
+            validate_task(data)
         if 'fix' in data:
             validate_fix(data['fix'], root)
         return
+    if kind == 'challenge' and data.get('requirements') is True:
+        from challenge_requirements import validate_event as validate_requirements
+        validate_requirements(state, actor, data)
+        return
+    if kind == 'close' and task and task.get('red_first'):
+        from challenge_requirements import evidence as requirement_evidence
+        from frozen_candidate import current as delivered
+        requirement_evidence(task, delivered(task, root), root)
     if kind == 'fix':
         require(task is not None, 'Unknown task')
         require(state['agents'][actor]['role'] == 'coordinator', 'Coordinator role required')
@@ -265,13 +276,24 @@ def register(store, actor, task_id, filename, reason):
     store.append('fix', actor, data)
 
 
-def execute(store, actor, task_id, destination, timeout=30, exception=None):
+def execute(store, actor, task_id, destination, timeout=30, exception=None, *, requirements=False):
     state = store.resolved(); task = state['tasks'][task_id]
     eligible(state, task, actor)
+    if requirements:
+        from challenge_requirements import prepare as prepare_requirements, exceptions, policy
+        require(exception is None, 'Requirements exceptions belong in the declared requirement')
+        task = {**task, 'fix': prepare_requirements(store, task)}
     require(task.get('fix'), 'fix_agreement_required')
     validate_fix(task['fix'], store.root)
     current = snapshot(task['repo'])
     record = {'task': task_id, 'base': task['base'], 'binding': binding(task), 'candidate': current}
+    if requirements:
+        record.update(requirements=True, agreement=task['fix']['agreement'],
+                      requirements_binding=policy(task), exceptions=exceptions(task))
+        if task['fix']['agreement'] is None:
+            record['runs'] = []
+            store.append('challenge', actor, record)
+            return {'status': 'excepted', 'exceptions': exceptions(task)}
     if exception is not None:
         record.update(exception=True, reason=exception)
         store.append('challenge', actor, record)
