@@ -715,6 +715,13 @@ def apply(state, event):
         state["lessons"][d["lesson"]]["ineffective"].append({"recall": d["recall"], "reason": d["reason"],
                                                              "actor": event["actor"], "utc": event["utc"],
                                                              "seq": event.get("seq")})
+    elif kind == 'faster':
+        state.setdefault('faster', []).append({**d, 'seq': event.get('seq'),
+            'assigned_before': list(state['tasks']), 'following': []})
+    if kind == 'close':
+        for remedy in state.get('faster', []):
+            if len(remedy['following']) < 3 and d['task'] not in remedy['assigned_before']:
+                remedy['following'].append(d['task'])
     # Readiness expires on delivery or a changed window; returning must declare it again.
     if kind in {'deliver', 'reassign', 'close', 'supersede'}:
         state['tasks'][d['task']].pop('reader_ready', None)
