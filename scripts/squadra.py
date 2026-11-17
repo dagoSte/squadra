@@ -591,13 +591,19 @@ def parser():
     for name in ('actor', 'task', 'review', 'id', 'ref', 'reason'):
         a.add_argument('--' + name, required=True)
     a.add_argument('--outcome', choices=['fixed', 'rejected', 'deferred'], required=True)
-    a = sub.add_parser("lesson", help="Record, retire, mark ineffective or list errata lessons")
+    a = sub.add_parser("lesson", help="Record, retire, mark ineffective, promote or list errata lessons")
     a.add_argument("--actor"); a.add_argument("--task"); a.add_argument("--source-event", type=int)
     a.add_argument("--text"); a.add_argument("--path", action="append", default=[]); a.add_argument("--word", action="append", default=[])
     a.add_argument("--any-source", action="store_true", help="Cite an event of the task that is not a red")
     form = a.add_mutually_exclusive_group()
     form.add_argument("--retire"); form.add_argument("--ineffective"); form.add_argument("--list", action="store_true")
+    form.add_argument("--promote", metavar="LID", help="Write the lesson to <repo>/lessons/promoted.json")
     a.add_argument("--recall", type=int); a.add_argument("--reason")
+    a.add_argument("--despite", action="append", default=[], metavar="LID",
+                   help="Record although this active lesson already matches the trigger (repeat for each)")
+    a.add_argument("--repo", help="With --promote: the repository that keeps the promoted lessons")
+    a.add_argument("--absorbs", action="append", default=[], metavar="LID",
+                   help="With --promote: a retired lesson this one replaces; it leaves the file")
     a = sub.add_parser("output"); a.add_argument("--actor", required=True); a.add_argument("--task")
     a.add_argument("--file", required=True); a.add_argument("--next", required=True)
     a.add_argument("--artifact", action="append", default=[])
@@ -724,15 +730,68 @@ def seq_of(store, event_id):
 
 
 def recall(store, state, actor, task, at, operation, extra=""):
-    """Append brief/start, plus the lessons it showed; without a match nothing differs from before."""
-    from errata import select
-    shown = select(state, store.root, task, extra) if task in state["tasks"] and state.get("lessons") else []
+    """Append brief/start, plus the lessons it showed; without a match nothing differs from before.
+    The repository's promoted lessons follow the registry's, marked promoted; they are not registry recalls."""
+    import errata
+    known = task in state["tasks"]
+    shown = errata.select(state, store.root, task, extra) if known and state.get("lessons") else []
+    extra_shown, problem = errata.promoted(state, store.root, task, extra, shown) if known else ([], None)
+    result = {"lessons": shown + extra_shown} if shown or extra_shown else {}
+    if problem:
+        warning(problem)
+        result["promoted_warning"] = problem
     if not shown:
         store.batch([operation])
-        return None
+        return result or None
     saved = store.batch([operation, ("lesson.recall", actor, {"task": task, "at": at,
                                      "lessons": [s["id"] for s in shown]}, None)])
-    return {"lessons": shown, "recall": seq_of(store, saved[1])}
+    return {**result, "recall": seq_of(store, saved[1])}
+
+
+def promote(store, state, a):
+    """Write one lesson to the repository's promoted file after the registry accepted lesson.promote."""
+    import errata
+    from registry import atomic
+    require(bool(a.repo) and Path(a.repo).is_dir(), "lesson_promote_repo_required")
+    try:
+        path = errata.promoted_path(a.repo)
+    except (OSError, RuntimeError, ValueError) as exc:
+        raise Error("lesson_promoted_path_unsafe: " + str(exc)[:200])
+    try:
+        entries = errata.read_promoted(path) if path.exists() else {}
+    except (OSError, UnicodeDecodeError, ValueError) as exc:
+        raise Error("lesson_promoted_file_invalid: " + str(path) + ": " + str(exc)[:120])
+    data = {"lesson": a.promote, "path": str(path), "reason": a.reason}
+    if a.absorbs:
+        data["absorbs"] = a.absorbs
+    require(a.actor in state["agents"], "Unknown agent: " + a.actor)
+    errata.validate_event(state, "lesson.promote", a.actor, data)
+    lesson, current = plain(state["lessons"][a.promote]), entries.get(a.promote, {})
+    registry_id = store.db.execute("SELECT hash FROM events WHERE seq=1 AND kind='init'").fetchone()[0]
+
+    def ours(entry):
+        origin = entry.get("provenance")
+        return isinstance(origin, dict) and origin.get("registry_id") == registry_id
+    for name in [a.promote, *a.absorbs]:
+        require(name not in entries or ours(entries[name]),
+                "lesson_id_taken: " + name + " in " + str(path) + " comes from another registry")
+    promoted_by = current.get("provenance", {}).get("promote_hash") if current else None
+    recorded = isinstance(promoted_by, str) and store.db.execute(
+        "SELECT data FROM events WHERE hash=? AND kind='lesson.promote'", (promoted_by,)).fetchone()
+    if (recorded and json.loads(recorded[0]).get("lesson") == a.promote
+            and (current.get("text"), current.get("trigger")) == (lesson["text"], lesson["trigger"])
+            and not set(a.absorbs) & set(entries)):
+        return {"lesson": a.promote, "path": str(path), "unchanged": True}
+    saved = store.append("lesson.promote", a.actor, data)
+    # The event comes first so the entry can cite it; a failed write is repaired by running the command again.
+    row = store.db.execute("SELECT seq, utc, hash FROM events WHERE id=?", (saved,)).fetchone()
+    event = {"seq": row[0], "utc": row[1], "hash": row[2]}
+    for name in a.absorbs:
+        entries.pop(name, None)
+    entries[a.promote] = errata.promoted_entry(state, a.promote, event, registry_id)
+    path.parent.mkdir(exist_ok=True)
+    atomic(path, errata.dump_promoted(entries))
+    return {"lesson": a.promote, "path": str(path), "event": event["seq"], "absorbed": a.absorbs}
 
 
 def lesson(store, state, a):
@@ -746,13 +805,24 @@ def lesson(store, state, a):
     if a.ineffective:
         event = store.append("lesson.ineffective", a.actor, {"lesson": a.ineffective, "recall": a.recall, "reason": a.reason})
         return {"lesson": a.ineffective, "ineffective": True, "event": seq_of(store, event)}
+    if a.promote:
+        return promote(store, state, a)
     require(a.task in state["tasks"] and a.source_event is not None, "lesson_source_required")
     eligible = errata.source_check(state, store.events(), a.task, a.source_event, a.any_source)
     name = errata.next_id(state)
     trigger = {k: v for k, v in (("paths", a.path), ("words", a.word)) if v}
-    event = store.append("lesson", a.actor, {"id": name, "text": a.text, "trigger": trigger,
-                         "source": {"task": a.task, "event": a.source_event, "eligible": eligible}})
-    return {"lesson": name, "event": seq_of(store, event), "source_eligible": eligible}
+    found = errata.overlaps(state, trigger)
+    ids = [f["id"] for f in found]
+    confirmed = bool(found) and sorted(set(a.despite)) == sorted(ids)
+    require(not a.despite or confirmed, "lesson_despite_mismatch: --despite must name exactly " + (", ".join(ids) or "nothing"))
+    data = {"id": name, "text": a.text, "trigger": trigger,
+            "source": {"task": a.task, "event": a.source_event, "eligible": eligible}}
+    if confirmed:
+        data["despite"] = {"lessons": ids, "reason": a.reason}
+    event = store.append("lesson", a.actor, data)
+    if found and not confirmed:
+        warning(errata.overlap_notice(name, found))
+    return {"lesson": name, "event": seq_of(store, event), "source_eligible": eligible, "overlaps": found}
 
 
 INBOX_RECENT = 10

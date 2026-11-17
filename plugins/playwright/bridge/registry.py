@@ -2252,7 +2252,6 @@ def validate(state, kind, actor, d, stored_packet=None, *, candidate_history=())
         from findings import validate_event
         validate_event(state, actor, d)
         return
-    require(kind != 'lesson.promote', "kind_not_ready")
     require(kind != 'faster', "kind_not_ready")
     if kind == 'access.probe':
         validate_access(state, actor, d)
