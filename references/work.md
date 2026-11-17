@@ -1208,6 +1208,7 @@ these kinds, so mixed-version enforcement is not promised.
 | `lesson_promote_path_invalid` | a `lesson.promote` path that is not absolute and does not end in `lessons/promoted.json` |
 | `lesson_absorbs_invalid`, `lesson_absorbed_not_retired` | an empty, repeated or self-naming `absorbs`, or an absorbed lesson not yet retired |
 | `lesson_promote_repo_required` | `--promote` without an existing `--repo` directory (CLI) |
+| `lesson_promoted_path_unsafe` | `lessons/` or `promoted.json` is a symbolic link, or the file's real path leaves the repository (CLI, before any event) |
 | `lens_unknown` | a lens other than `rasoio` |
 | `net_lines_requires_lens`, `net_lines_invalid` | `net_lines` without the lens, or not an integer from 0 to 1,000,000 |
 | `lens_duplicate` | a repeated `--lens` value (CLI) |

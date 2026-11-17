@@ -200,11 +200,22 @@ def dump_promoted(entries):
     return (json.dumps(body, ensure_ascii=False, indent=2, sort_keys=True) + "\n").encode()
 
 
-def promoted_entry(state, name, event):
-    """One file entry: the lesson as recorded, and where it came from, verifiable in the registry."""
+def promoted_path(repo):
+    """<repo>/lessons/promoted.json; ValueError when a link could carry a read or write outside the repository."""
+    root = Path(repo).resolve()
+    path = root / PROMOTED
+    if path.parent.is_symlink() or path.is_symlink() or not path.resolve().is_relative_to(root):
+        raise ValueError("%s or its folder is a link, or leaves %s" % (PROMOTED, root))
+    return path
+
+
+def promoted_entry(state, name, event, registry_id):
+    """One file entry: the lesson as recorded, and where it came from, verifiable in the registry.
+    registry_id is the hash of the registry's init event: a name can repeat, that hash cannot."""
     lesson = plain(state["lessons"][name])
     return {"id": name, "text": lesson["text"], "trigger": lesson["trigger"],
-            "provenance": {"registry": state["workspace"].get("name"), "task": lesson["source"]["task"],
+            "provenance": {"registry": state["workspace"].get("name"), "registry_id": registry_id,
+                           "task": lesson["source"]["task"],
                            "lesson_event": lesson["seq"], "promote_event": event["seq"],
                            "promote_hash": event["hash"], "utc": event["utc"]}}
 
@@ -212,12 +223,12 @@ def promoted_entry(state, name, event):
 def promoted(state, root, task_id, extra, shown):
     """Promoted lessons of the task's repository that match it, by the same score; never a lesson already shown."""
     task = state["tasks"][task_id]
-    path = Path(task.get("repo") or "-") / PROMOTED
-    if not path.is_file():
-        return [], None
     try:
+        path = promoted_path(task.get("repo") or "-")
+        if not path.is_file():
+            return [], None
         entries = read_promoted(path)
-    except (OSError, UnicodeDecodeError, ValueError) as exc:
+    except (OSError, RuntimeError, UnicodeDecodeError, ValueError) as exc:
         return [], "%s ignored: %s" % (PROMOTED, str(exc)[:120])
     text = task_text(root, task, extra)
     tokens, seen = _tokens(text), {(s["id"], s["text"]) for s in shown}

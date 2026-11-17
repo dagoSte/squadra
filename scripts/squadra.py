@@ -738,7 +738,10 @@ def promote(store, state, a):
     import errata
     from registry import atomic
     require(bool(a.repo) and Path(a.repo).is_dir(), "lesson_promote_repo_required")
-    path = Path(a.repo).resolve() / errata.PROMOTED
+    try:
+        path = errata.promoted_path(a.repo)
+    except (OSError, RuntimeError, ValueError) as exc:
+        raise Error("lesson_promoted_path_unsafe: " + str(exc)[:200])
     try:
         entries = errata.read_promoted(path) if path.exists() else {}
     except (OSError, UnicodeDecodeError, ValueError) as exc:
@@ -749,10 +752,19 @@ def promote(store, state, a):
     require(a.actor in state["agents"], "Unknown agent: " + a.actor)
     errata.validate_event(state, "lesson.promote", a.actor, data)
     lesson, current = plain(state["lessons"][a.promote]), entries.get(a.promote, {})
-    origin = current.get("provenance")
-    require(not current or (isinstance(origin, dict) and origin.get("registry") == state["workspace"].get("name")),
-            "lesson_id_taken: " + a.promote + " in " + str(path) + " comes from another registry")
-    if ((current.get("text"), current.get("trigger")) == (lesson["text"], lesson["trigger"])
+    registry_id = store.db.execute("SELECT hash FROM events WHERE seq=1 AND kind='init'").fetchone()[0]
+
+    def ours(entry):
+        origin = entry.get("provenance")
+        return isinstance(origin, dict) and origin.get("registry_id") == registry_id
+    for name in [a.promote, *a.absorbs]:
+        require(name not in entries or ours(entries[name]),
+                "lesson_id_taken: " + name + " in " + str(path) + " comes from another registry")
+    promoted_by = current.get("provenance", {}).get("promote_hash") if current else None
+    recorded = isinstance(promoted_by, str) and store.db.execute(
+        "SELECT data FROM events WHERE hash=? AND kind='lesson.promote'", (promoted_by,)).fetchone()
+    if (recorded and json.loads(recorded[0]).get("lesson") == a.promote
+            and (current.get("text"), current.get("trigger")) == (lesson["text"], lesson["trigger"])
             and not set(a.absorbs) & set(entries)):
         return {"lesson": a.promote, "path": str(path), "unchanged": True}
     saved = store.append("lesson.promote", a.actor, data)
@@ -761,7 +773,7 @@ def promote(store, state, a):
     event = {"seq": row[0], "utc": row[1], "hash": row[2]}
     for name in a.absorbs:
         entries.pop(name, None)
-    entries[a.promote] = errata.promoted_entry(state, a.promote, event)
+    entries[a.promote] = errata.promoted_entry(state, a.promote, event, registry_id)
     path.parent.mkdir(exist_ok=True)
     atomic(path, errata.dump_promoted(entries))
     return {"lesson": a.promote, "path": str(path), "event": event["seq"], "absorbed": a.absorbs}

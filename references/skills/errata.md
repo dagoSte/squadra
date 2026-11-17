@@ -10,7 +10,8 @@ did not prevent a repeat.
 Each moment is automatic, and none needs the owner:
 
 - **A task is briefed or started:** `brief --task` and `start` show the lessons whose
-  trigger matches the task, at most five, best first. Showing them records a
+  trigger matches the task, at most five, best first (then up to five promoted lessons of
+  the task's repository, see below). Showing them records a
   `lesson.recall` event. Read them and apply them in this task.
 - **A red happens:** a code read that asks for changes, a failed proof, or the close of a
   defect fix. The command's output asks the agent who ran it to record a lesson, naming
@@ -108,30 +109,37 @@ squadra lesson --actor coord --promote L0004 --repo /path/to/repo \
   least two distinct tasks, it was never marked ineffective and it is not retired.
 - **One file, stable bytes.** `<repo>/lessons/promoted.json` holds `{"version": 1,
   "lessons": [...]}`, one entry per lesson sorted by id: `id`, `text`, `trigger` and
-  `provenance` (`registry` name, source `task`, `lesson_event`, `promote_event`,
-  `promote_hash`, `utc`). The hash ties the entry to the `lesson.promote` event, so the
-  claim can be checked in the registry; no local path is written. Commit the file with the
-  code.
+  `provenance` (`registry` name, `registry_id`, source `task`, `lesson_event`,
+  `promote_event`, `promote_hash`, `utc`). `registry_id` is the hash of the registry's
+  `init` event: two registries may share a name, never that hash. `promote_hash` ties the
+  entry to the `lesson.promote` event, so the claim can be checked in the registry; no
+  local path is written. Commit the file with the code.
 - **Replace, do not pile up.** `--absorbs LID` (repeatable) removes lessons the new one
   replaces. Each must be retired first (`lesson_absorbed_not_retired`). Promoting the same
-  lesson again with nothing to absorb answers `unchanged` and writes nothing.
+  lesson again with nothing to absorb answers `unchanged` and writes nothing, but only when
+  the entry's `promote_hash` is a `lesson.promote` event of this registry.
 - **Nothing foreign is overwritten.** A damaged file is refused
-  (`lesson_promoted_file_invalid`) until a person repairs it; an id another registry
-  promoted into the same file is refused (`lesson_id_taken`).
+  (`lesson_promoted_file_invalid`) until a person repairs it. An entry whose
+  `registry_id` is not this registry's cannot be updated or absorbed (`lesson_id_taken`).
+  If `lessons/` or `promoted.json` is a symbolic link, or the file's real path leaves the
+  repository, the promotion is refused before any event (`lesson_promoted_path_unsafe`).
 
 At `brief --task` and `start`, the promoted lessons of the task's repository that match by
-the same score follow the registry's, marked `"promoted": true`, at most five. A lesson the
+the same score follow the registry's, marked `"promoted": true`: up to five from the
+registry and up to five promoted, so at most ten in all. A lesson the
 registry already showed (same id and text) is not repeated. Promoted lessons are not
 registry recalls: they add no `lesson.recall` and cannot be marked ineffective; retire or
 improve the registry lesson and promote again. A missing file changes nothing; an unreadable
-or malformed one shows no promoted lesson and a warning, and `brief`/`start` go on.
+or malformed one, or one reached through a link, shows no promoted lesson and a warning,
+and `brief`/`start` go on.
 
 ## Limits
 
 - The recall matches text and globs; it does not understand code. A lesson about a file
   the scope never names will not come back: write its trigger with the words the next task
   will use.
-- At most five lessons are shown, and a longer match list is cut, never padded.
+- At most five registry lessons and five promoted lessons are shown; a longer match list
+  is cut, never padded.
 - Lessons belong to one registry. Only promoted lessons travel, with the repository that
   keeps them.
 
