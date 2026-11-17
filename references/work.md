@@ -1202,6 +1202,12 @@ these kinds, so mixed-version enforcement is not promised.
 | `lesson_recall_invalid` | a recall with an unknown stage, no lessons, more than five, repeats, retired or unknown lessons |
 | `lesson_recall_unknown` | an ineffective mark citing a recall that did not show the lesson |
 | `lesson_actor_required` | `lesson` without `--actor`, except `--list` (CLI) |
+| `lesson_despite_invalid` | a `despite` that is not `{lessons, reason}` with distinct known lessons and a reason |
+| `lesson_promote_retired`, `lesson_promote_ineffective` | promoting a retired lesson, or one ever marked ineffective |
+| `lesson_promote_needs_recall_in_two_tasks` | promoting a lesson recalled in fewer than two distinct tasks |
+| `lesson_promote_path_invalid` | a `lesson.promote` path that is not absolute and does not end in `lessons/promoted.json` |
+| `lesson_absorbs_invalid`, `lesson_absorbed_not_retired` | an empty, repeated or self-naming `absorbs`, or an absorbed lesson not yet retired |
+| `lesson_promote_repo_required` | `--promote` without an existing `--repo` directory (CLI) |
 | `lens_unknown` | a lens other than `rasoio` |
 | `net_lines_requires_lens`, `net_lines_invalid` | `net_lines` without the lens, or not an integer from 0 to 1,000,000 |
 | `lens_duplicate` | a repeated `--lens` value (CLI) |
