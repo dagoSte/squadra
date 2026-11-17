@@ -2230,8 +2230,13 @@ def validate(state, kind, actor, d, stored_packet=None, *, candidate_history=())
                     "settings", "save", "restore.check", "restore.freeze", "challenge", "benchmark", "brief",
                     "availability", "supersede", "reassign", "route", "fix", "replace", "service.wait", "access.probe", "reader.ready",
                     "lesson", "lesson.retire", "lesson.recall", "lesson.ineffective",
-                    "handover", "handover.prepare", "handover.confirm", "handover.cancel", "project.set"},
+                    "handover", "handover.prepare", "handover.confirm", "handover.cancel", "project.set",
+                    "finding.outcome", "lesson.promote", "faster"},
             "Unknown event kind")
+    # Giro 3.16 (coordination/r316-contratto.md): ogni corsia sostituisce solo la propria riga.
+    require(kind != 'finding.outcome', "kind_not_ready")
+    require(kind != 'lesson.promote', "kind_not_ready")
+    require(kind != 'faster', "kind_not_ready")
     if kind == 'access.probe':
         validate_access(state, actor, d)
         return
