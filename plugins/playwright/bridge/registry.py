@@ -2236,7 +2236,10 @@ def validate(state, kind, actor, d, stored_packet=None, *, candidate_history=())
     # Giro 3.16 (coordination/r316-contratto.md): ogni corsia sostituisce solo la propria riga.
     require(kind != 'finding.outcome', "kind_not_ready")
     require(kind != 'lesson.promote', "kind_not_ready")
-    require(kind != 'faster', "kind_not_ready")
+    if kind == 'faster':
+        from faster import validate_event
+        validate_event(state, actor, d)
+        return
     if kind == 'access.probe':
         validate_access(state, actor, d)
         return
