@@ -1535,8 +1535,11 @@ declared but not recorded is written as such.
   cap, and reports what was spent and on what. No secret key enters chat, logs or files.
 - **Rule 8 — faster next time.** At every close the coordinator reads where the task's
   time went (the dashboard measures waiting for the acknowledgement, building, waiting
-  for the read and fix rounds). `close` prints the longest of those measured phases in
-  minutes; plan-review waiting is shown separately. Incomplete history produces no estimate.
+  for the read and fix rounds), writes one line «Faster next time: …» in its closing
+  output, and applies it to the next assignment.
+
+  `close` prints the longest of those measured phases in minutes; plan-review waiting
+  is shown separately. Incomplete history produces no estimate.
   Record one remedy with `squadra faster --actor COORD --task TASK --phase build
   --remedy "Concrete change for the next assignments"` (phases: ack, build, read, fix); minutes come from the verified
   history, using the dashboard's interval partition. Only a coordinator records remedies.

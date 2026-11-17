@@ -35,7 +35,8 @@ def validate_event(state, actor, data):
 
 
 def record(store, actor, task, phase, remedy):
-    measured = measure(store.events(), task)
+    _, histories = _context(store)
+    measured = measure(histories.get(task, []), task)
     require(measured is not None, 'faster_timing_unavailable')
     data = {'task': task, 'phase': phase, 'minutes': measured['seconds'][phase] / 60,
             'remedy': remedy}
@@ -43,31 +44,31 @@ def record(store, actor, task, phase, remedy):
     return data
 
 
-def ineffective(events, closing_task):
+def ineffective(state, histories, closing_task):
     """Judge the first three closes of tasks assigned after the remedy was recorded."""
-    assigned = {event['data']['id']: event['seq'] for event in events if event['kind'] == 'task'}
-    closes = [event for event in events if event['kind'] == 'close']
     warnings = []
-    for event in events:
-        if event['kind'] != 'faster':
+    for data in state.get('faster', []):
+        following = data['following']
+        if len(following) < 3 or following[-1] != closing_task:
             continue
-        data = event['data']
-        following = [closed for closed in closes
-                     if assigned.get(closed['data']['task'], 0) > event['seq']][:3]
-        if len(following) < 3 or following[-1]['data']['task'] != closing_task:
-            continue
-        measured = [measure(events, closed['data']['task']) for closed in following]
+        measured = [measure(histories.get(task, []), task) for task in following]
         repeated = sum(value is not None and value['phase'] == data['phase'] for value in measured)
         if repeated >= 2:
-            warnings.append({'event': event['seq'], 'task': data['task'], 'phase': data['phase'],
+            warnings.append({'event': data['seq'], 'task': data['task'], 'phase': data['phase'],
                              'remedy': data['remedy'], 'repeated': repeated,
-                             'tasks': [closed['data']['task'] for closed in following]})
+                             'tasks': list(following)})
     return warnings
 
 
+def _context(store):
+    state = store.resolved(compact=True)
+    return state, (state.current or {}).get('forecast_events', {})
+
+
 def closing(store, task):
-    events = store.events()
-    return {'measured': measure(events, task), 'ineffective': ineffective(events, task)}
+    state, histories = _context(store)
+    return {'measured': measure(histories.get(task, []), task),
+            'ineffective': ineffective(state, histories, task)}
 
 
 def announce(report, lang):

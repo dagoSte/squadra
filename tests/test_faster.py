@@ -6,11 +6,12 @@ import json
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 import unittest
 from unittest.mock import patch
 
 import faster
-from registry import Error, Store
+from registry import Error, Store, apply, plain
 from squadra import bindings, main
 from test_errata import Fixture, run
 
@@ -104,39 +105,33 @@ class Measurements(unittest.TestCase):
 
 class RemedyEvaluation(unittest.TestCase):
     def corpus(self):
-        events = history('original')
-        put(events, 'task', {'id': 'already-assigned'})
-        remedy = put(events, 'faster', {'task': 'original', 'phase': 'build', 'minutes': 60,
-                                      'remedy': 'Split independent changes before assignment'})
-        for task, phase in [('already-assigned', 'build'), ('one', 'build'), ('two', 'read'), ('three', 'build')]:
-            for event in history(task, phase):
-                if task == 'already-assigned' and event['kind'] == 'task':
-                    continue
-                put(events, event['kind'], event['data'])['utc'] = event['utc']
-        return events, remedy
+        remedy = {'seq': 10, 'task': 'original', 'phase': 'build', 'minutes': 60,
+                  'remedy': 'Split independent changes before assignment',
+                  'assigned_before': ['original', 'already-assigned'], 'following': ['one', 'two', 'three']}
+        histories = {task: history(task, phase) for task, phase in
+                     [('already-assigned', 'build'), ('one', 'build'), ('two', 'read'), ('three', 'build')]}
+        return {'faster': [remedy]}, histories
 
     def test_two_of_first_three_new_assignments_warns_across_builders(self):
-        events, remedy = self.corpus()
-        warnings = faster.ineffective(events, 'three')
+        state, histories = self.corpus()
+        warnings = faster.ineffective(state, histories, 'three')
         self.assertEqual(len(warnings), 1)
-        self.assertEqual((warnings[0]['event'], warnings[0]['repeated']), (remedy['seq'], 2))
+        self.assertEqual((warnings[0]['event'], warnings[0]['repeated']), (10, 2))
         self.assertEqual(warnings[0]['tasks'], ['one', 'two', 'three'])
-        self.assertEqual(faster.ineffective(events, 'two'), [])
+        self.assertEqual(faster.ineffective(state, histories, 'two'), [])
 
     def test_under_three_and_only_one_recurrence_give_no_warning(self):
-        events, _ = self.corpus()
-        self.assertEqual(faster.ineffective(events[:-len(history('three'))], 'two'), [])
-        for event in events:
-            if event['data'].get('task', event['data'].get('id')) == 'three':
-                event['utc'] = next(old['utc'] for old in history('three', 'read')
-                                    if old['kind'] == event['kind'] and old['data'] == event['data'])
-        self.assertEqual(faster.ineffective(events, 'three'), [])
+        state, histories = self.corpus()
+        state['faster'][0]['following'] = ['one', 'two']
+        self.assertEqual(faster.ineffective(state, histories, 'two'), [])
+        state['faster'][0]['following'].append('three')
+        histories['three'] = history('three', 'read')
+        self.assertEqual(faster.ineffective(state, histories, 'three'), [])
 
     def test_warning_does_not_repeat_on_fourth_close(self):
-        events, _ = self.corpus()
-        for event in history('four'):
-            put(events, event['kind'], event['data'])['utc'] = event['utc']
-        self.assertEqual(faster.ineffective(events, 'four'), [])
+        state, histories = self.corpus()
+        histories['four'] = history('four')
+        self.assertEqual(faster.ineffective(state, histories, 'four'), [])
 
 
 class RegistryAndCLI(Fixture, unittest.TestCase):
@@ -189,7 +184,7 @@ class RegistryAndCLI(Fixture, unittest.TestCase):
     def test_compact_faster_reply_stays_a_bounded_receipt(self):
         self.close_task()
         out = io.StringIO()
-        with contextlib.redirect_stdout(out):
+        with contextlib.redirect_stdout(out), patch.object(Store, 'events', side_effect=AssertionError('Full replay')):
             rc = main(['--root', str(self.root), 'faster', '--actor', 'C', '--task', 'T',
                        '--phase', 'build', '--remedy', 'Prepare earlier'])
         self.assertEqual(rc, 0)
@@ -204,6 +199,38 @@ class RegistryAndCLI(Fixture, unittest.TestCase):
         self.assertEqual(result['faster']['ineffective'], [warning])
         self.assertIn('inefficace', err)
         self.assertEqual(self.store.state()['tasks']['T']['status'], 'done')
+
+    def test_only_new_assignments_count_in_close_event_order(self):
+        self.task('already-assigned')
+        self.close_task()
+        rc, _, err = run(self.root, 'faster', '--actor', 'C', '--task', 'T',
+                         '--phase', 'build', '--remedy', 'Prepare earlier')
+        self.assertEqual(rc, 0, err)
+        for task in ('one', 'two', 'three', 'four'):
+            self.task(task)
+        state = plain(self.store.state())
+        for task in ('already-assigned', 'two', 'one', 'three', 'four'):
+            # Identical UTC stamps must not reorder the recorded close sequence.
+            apply(state, {'kind': 'close', 'actor': 'C', 'utc': ORIGIN.isoformat(),
+                          'data': {'task': task}, 'seq': state['event_count'] + 1})
+        self.assertEqual(state['faster'][0]['following'], ['two', 'one', 'three'])
+
+    def test_all_bridges_replay_faster_without_importing_its_writer(self):
+        self.close_task()
+        self.assertEqual(run(self.root, 'faster', '--actor', 'C', '--task', 'T',
+                             '--phase', 'build', '--remedy', 'Prepare earlier')[0], 0)
+        program = ('import sys;sys.path.insert(0,sys.argv[1]);import registry;'
+                   's=registry.Store(sys.argv[2],read_only=True);'
+                   'st=s.state(events=s.events(),resolve=False,with_waits=False);s.close();'
+                   'assert st["faster"][0]["task"]=="T";'
+                   'assert "faster" not in sys.modules;print("read")')
+        for name in ('memoranda', 'playwright', 'sentry'):
+            with self.subTest(bridge=name):
+                result = subprocess.run([sys.executable, '-I', '-B', '-c', program,
+                    str(ROOT / 'plugins' / name / 'bridge'), str(self.root)],
+                    capture_output=True, text=True, timeout=30)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn('read', result.stdout)
 
 
 if __name__ == '__main__':

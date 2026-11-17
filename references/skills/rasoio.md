@@ -113,8 +113,10 @@ The core keeps one line per rule; this is the full text, unchanged except for re
 ### Built-in skills: errata, rasoio, contesto and migliora
 
 - **rasoio** ([guide](rasoio.md)). Every code read whose candidate
-  changes code, not only prose, applies both lenses in the same review:
-  `review --lens rasoio --net-lines N --lens contesto --constants-checked C --constants-suspect S`,
+  changes code, not only prose, applies the lens: `review --lens rasoio --net-lines N`,
   with the guide's tags and its closing net figure. The lens adds observations; it never
   changes a verdict, check or close rule.
+
+  Apply [contesto](contesto.md) in that same review with `--lens contesto
+  --constants-checked C --constants-suspect S`; both declarations remain observations.
 
