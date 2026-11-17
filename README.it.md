@@ -13,7 +13,7 @@ Coordina Claude Code, Codex e Cursor con incarichi condivisi, revisioni indipend
 
 **Gratuita e open source** — licenza MIT, nessun account, tutto gira sul tuo computer.
 
-**Versione 3.15.1** · Python 3.12+ · macOS / POSIX
+**Versione 3.16.0** · Python 3.12+ · macOS / POSIX
 
 [English](README.md) · **Italiano** · [Privacy](PRIVACY.it.md)
 
@@ -1021,9 +1021,25 @@ Controlli statici, comportamentali e delle dipendenze, con `tests/` esclusa. Il 
 <a id="news"></a>
 ## Novità
 
-**Novità su main — profili di modello ed effort per ogni finestra**
+**3.16.0 — letture che guardano oltre il codice, rilievi che si chiudono, lezioni che viaggiano**
 
-Attivali alla prima domanda o dalla CLI: risparmio per i lavori piccoli delimitati, qualità per quelli complessi o incerti, con il motivo mostrato nella CLI. La dashboard riporta le impostazioni osservate; gli alias di ruolo conservano la scelta e le finestre sostitutive chiedono di nuovo. [Come funziona](references/models.md), in inglese.
+Il codice scritto dagli agenti può passare tutti i test ed essere comunque sbagliato. Con la 3.16.0 chi legge controlla ordini di grandezza, storia e la richiesta vera; ogni rilievo riceve un esito; i test di un requisito devono fallire senza la modifica; le lezioni smettono di ripetersi e possono vivere con il codice; e «più veloce la prossima volta» diventa una misura.
+
+- **La lente contesto.** Ogni lettura di codice applica contesto accanto a rasoio: una riga per ogni costante o unità cambiata (vecchio → nuovo, plausibile?), storia recente, revert e chiamanti dei file toccati, cosa il diff aggiunge o tralascia rispetto all'incarico, e una firma che dice cosa è stato verificato e cosa no. `review --lens rasoio --lens contesto --constants-checked N --constants-suspect M`. Adattata da ai-code-review-triage di laulauraluo, licenza MIT.
+- **Ogni rilievo riceve un esito.** I rilievi possono avere un id; `squadra finding` registra corretto, respinto o rinviato con un riferimento e un motivo. `check` elenca come non verificabili, mai come fallimento, i rilievi ancora senza esito, e chi rilegge vede i respinti con il loro motivo e quanti rilievi restano aperti a ogni giro: un rilievo già deciso non si riapre senza fatti nuovi.
+- **Requisiti rossi prima.** Con `task --red-first` ogni requisito nomina i suoi test, oppure un'eccezione visibile; `challenge --requirements` li esegue sulla base e sul candidato esatto: prima devono fallire per asserzione, dopo devono passare. Un test già verde sulla base non prova nulla e viene rifiutato; `close` rifiuta senza la sfida o se il candidato è cambiato.
+- **Lezioni senza doppioni, lezioni che viaggiano.** Quando si registra una lezione, squadra nomina le lezioni attive che il suo innesco già incontra; tenere un doppione richiede `--despite` con un motivo. Una lezione richiamata in due incarichi e mai inefficace si può promuovere con `lesson --promote` nel file `lessons/promoted.json` del repository, con la provenienza legata all'identità del registro, e `brief` e `start` la mostrano alle squadre che verranno. Link e percorsi che escono dal repository sono rifiutati.
+- **«Più veloce la prossima volta», misurato.** `close` indica in minuti la fase più lunga (attesa dell'ACK, costruzione, attesa della lettura, correzioni); `squadra faster` registra il rimedio del coordinatore e, sui primi tre incarichi assegnati dopo, avvisa se la stessa fase è rimasta la più lunga in due di essi.
+- **Modello ed effort per ogni finestra.** Attivali alla prima domanda o dalla CLI: risparmio per i lavori piccoli delimitati, qualità per quelli complessi o incerti, con il motivo mostrato nella CLI. La dashboard riporta le impostazioni osservate. [Come funziona](references/models.md), in inglese.
+- **Come è stato controllato.** Tre corsie costruite in parallelo da due finestre Codex e una Claude, ognuna letta dall'altro modello. Le letture hanno riprodotto due difetti gravi prima del rilascio, un link che permetteva a una promozione di scrivere fuori dal repository e un nome di registro che poteva sovrascrivere la lezione di un altro registro; entrambi corretti con test rossi prima e verdi dopo, e riletti. Più di 2590 test nella suite completa. Le idee della lente e delle cinque migliorie vengono da skill pubbliche con licenza MIT (laulauraluo, off-grid-ai) e sono state riscritte come nostre.
+- **Aggiornare tutte le finestre insieme.** Tre nuovi tipi di evento (`finding.outcome`, `lesson.promote`, `faster`) e rilievi con id: le finestre 3.15 li rifiutano invece di ignorarli. Il formato del journal non cambia e gli eventi vecchi restano leggibili.
+
+**Guarda il film delle novità della 3.10.2, due minuti — attiva l'audio nel lettore:**
+
+https://github.com/user-attachments/assets/8f38a443-b738-48f8-b562-9b072419b5f0
+
+<details>
+<summary><strong>Versioni precedenti</strong></summary>
 
 **3.15.1 (comprende la 3.15.0) — una finestra stanca si sostituisce senza perdere nulla, e la squadra è più semplice da guidare**
 
@@ -1039,12 +1055,6 @@ Una finestra che lavora per ore diventa costosa e meno affidabile. Ora la si sos
 - **Aggiorna tutte le finestre insieme.** I passaggi di sede scrivono il formato di journal 5: le finestre 3.14 lo rifiutano invece di ignorarlo.
 - **Nella 3.15.1.** `access probe` risponde anch'esso con la riga corta; la cache degli avvisi di stanchezza si scrive solo quando serve; un test non cade più per la manutenzione automatica di Git; una sonda conferma che dichiararsi pronti a leggere non apre varchi all'indipendenza; documentazione precisata.
 
-**Guarda il film delle novità della 3.10.2, due minuti — attiva l'audio nel lettore:**
-
-https://github.com/user-attachments/assets/8f38a443-b738-48f8-b562-9b072419b5f0
-
-<details>
-<summary><strong>Versioni precedenti</strong></summary>
 
 **3.14.0 — corsie automatiche, budget per incarico e una ripresa più attenta**
 
@@ -1064,15 +1074,6 @@ https://github.com/user-attachments/assets/8f38a443-b738-48f8-b562-9b072419b5f0
 - **Correzione.** Nella 3.13.0 i punti di recupero erano registrati solo con il percorso assoluto, quindi una copia del registro (clone, ripristino, copia aperta con `--root`) ereditava checkpoint e salvataggi dell'originale, e `storage purge --apply` lanciato nella copia poteva cancellarli. Ora ogni checkpoint, adozione e salvataggio registra la radice del registro che l'ha creato; altrove è elencato come estraneo e non è mai un bersaglio di purge. Le registrazioni senza radice valgono solo dentro il proprio registro. Un test di regressione cancella il checkpoint dell'originale con la 3.13.0 e lo conserva ora.
 - Trovato compattando un registro reale da 7,2 GB con la 3.13.0: `storage adopt` ha registrato 7 vecchi checkpoint, e `storage compact` ha condiviso 163 794 file su 166 663 e liberato 2,62 GB misurati su disco, con l'audit completo superato dopo.
 - **Recupera lo spazio dopo l'aggiornamento:** di' a una finestra Claude «Usa squadra: compatta lo spazio del registro /percorso/del/registro». Il coordinatore mostra in anteprima adopt, compact e purge e applica solo con il tuo via libera.
-
-**3.13.0 — checkpoint che condividono i byte, una politica di conservazione e la compattazione dei dati che hai già**
-
-- **Riuso dei contenuti immutabili.** Nuovi candidati congelati e checkpoint condividono i file identici invece di copiarli: clone copy-on-write (APFS, o `FICLONE` su Linux), hardlink solo per file in sola lettura verificati dove il clone non esiste, copia normale come ultima scelta. Byte, percorsi, impronte e formati dei pacchetti non cambiano, e le versioni precedenti continuano a ripristinarli. Misurato su una copia di un registro reale, 10 checkpoint consecutivi con scritture concorrenti: 8,97 GB → 0,60 GB su APFS (−93%), 9,22 GB → 3,60 GB senza copy-on-write (−61%).
-- **Compattazione dei dati esistenti.** `storage adopt --scan CARTELLA` registra i checkpoint fatti prima della 3.13, solo se il loro ultimo evento coincide con questo registro. `storage compact` poi condivide sul posto i byte di candidati, checkpoint, salvataggi e log delle corse archiviati. Su una copia da 4,25 GB di un registro reale con sei vecchi checkpoint, 89 485 file su 93 684 sono stati condivisi e il registro è sceso a 0,98 GB (−77%) in 7 minuti. All'apertura non si compatta nulla: ogni passo mostra prima un'anteprima, e `--apply` spetta al coordinatore.
-- **Politica di conservazione.** `storage status` e `storage purge --dry-run` mostrano cosa si può togliere. Per impostazione predefinita restano i tre checkpoint e i tre salvataggi più recenti, l'ultimo salvataggio ripristinato, tutto ciò che ha meno di 24 ore e i percorsi `storage keep`. Incarichi aperti, corse vive e il registro attivo sono sempre protetti, e le cartelle sconosciute non si toccano mai. `storage purge --apply` è solo del coordinatore. Un keep o un incarico che arriva durante una purge ferma la cancellazione o viene rifiutato, mai registrato su dati cancellati. Sulla stessa copia: 0,88 GB dopo la purge predefinita (−79%).
-- **Checkpoint registrati e compatti.** `checkpoint --actor FINESTRA --compact` registra il punto di recupero e omette le viste ricostruite all'apertura; `save` riusa il pacchetto precedente. Un checkpoint non fallisce più quando un file temporaneo di uno scrittore concorrente sparisce durante la copia.
-- **Basta una frase.** Dopo l'aggiornamento di' a una finestra Claude: «Usa squadra: compatta lo spazio del registro /percorso/del/registro». A ogni ripresa `doctor --resume` segnala i vecchi checkpoint non registrati o più di 1 GB di candidati, e il coordinatore te la propone.
-- **Le istruzioni della skill** non chiedono più copie complete ripetute: i checkpoint sono compatti e registrati, e ogni giro lungo comincia con `storage purge --dry-run`.
 
 </details>
 

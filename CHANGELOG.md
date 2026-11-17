@@ -2,7 +2,7 @@
 
 Every Squadra release, newest first. The README keeps the newest release and the three before it.
 
-**Unreleased**
+**3.16.0 — reads that look beyond the code, findings that are settled, lessons that travel**
 
 - Upgrade every window before the first 3.16 write: three new event kinds (`finding.outcome`, `lesson.promote`, `faster`) and review findings with an `id` are refused by 3.15.x clients. The journal format is unchanged and historical events stay readable.
 

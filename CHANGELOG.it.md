@@ -2,7 +2,7 @@
 
 Tutte le versioni di Squadra, dalla più nuova. Il README tiene la più nuova e le tre precedenti.
 
-**Unreleased**
+**3.16.0 — letture che guardano oltre il codice, rilievi che si chiudono, lezioni che viaggiano**
 
 - Aggiornare tutte le finestre prima della prima scrittura 3.16: i client 3.15.x rifiutano tre nuovi tipi di evento (`finding.outcome`, `lesson.promote`, `faster`) e i rilievi di review con `id`. Il formato journal non cambia e gli eventi storici restano leggibili.
 

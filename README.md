@@ -13,7 +13,7 @@ Coordinate Claude Code, Codex and Cursor with shared tasks, independent reviews 
 
 **Free and open source** — MIT licence, no account, everything runs on your machine.
 
-**Version 3.15.1** · Python 3.12+ · macOS / POSIX
+**Version 3.16.0** · Python 3.12+ · macOS / POSIX
 
 **English** · [Italiano](README.it.md) · [Privacy](PRIVACY.md)
 
@@ -1016,9 +1016,25 @@ Static, behavioral and dependency checks, excluding `tests/`. Passing means no H
 <a id="news"></a>
 ## What's new
 
-**Latest on main — model and effort profiles for each window**
+**3.16.0 — reads that look beyond the code, findings that are settled, lessons that travel**
 
-Opt in at the first question or from the CLI: economy for bounded small work, quality for complex or uncertain work, with reasons shown in the CLI. The dashboard reports observed settings; choices survive role aliases, and replacement windows ask again. [How it works](references/models.md).
+Code written by agents can pass every test and still be wrong. In 3.16.0 the reader checks magnitudes, history and the actual request; every finding gets an outcome; a requirement's tests must fail without the change; lessons stop repeating themselves and can live with the code; and «faster next time» becomes a measurement.
+
+- **The contesto lens.** Every code read applies contesto next to rasoio: one line per changed constant or unit (old → new, plausible?), recent history, reverts and callers of the touched files, what the diff adds or leaves out against the task, and a signature naming what was verified and what was not. `review --lens rasoio --lens contesto --constants-checked N --constants-suspect M`. Adapted from laulauraluo's MIT-licensed ai-code-review-triage.
+- **Every finding gets an outcome.** Findings can carry an id; `squadra finding` records fixed, rejected or deferred with a reference and a reason. `check` lists findings still without an outcome as unverifiable, never as a failure, and a re-read sees the rejected ones with their reason and the open count of each round, so a settled finding is not reopened without new facts.
+- **Requirements red first.** With `task --red-first` each requirement names its tests, or a visible exception; `challenge --requirements` runs them on the base and on the exact candidate: they must fail by assertion before and pass after. A test already green on the base proves nothing and is refused; `close` refuses without the challenge or once the candidate has changed.
+- **Lessons without twins, lessons that travel.** Recording a lesson names the active lessons its trigger already meets; keeping a twin takes `--despite` with a reason. A lesson recalled in two tasks and never ineffective can be promoted with `lesson --promote` into the repository's `lessons/promoted.json`, its provenance tied to the registry's identity, and `brief` and `start` show it to the squads that come next. Links and paths leaving the repository are refused.
+- **«Faster next time», measured.** `close` names the longest phase (waiting for the ACK, building, waiting for the read, fixes) in minutes; `squadra faster` records the coordinator's remedy and, over the first three tasks assigned afterwards, warns when the same phase was still the longest in two of them.
+- **Model and effort for each window.** Opt in at the first question or from the CLI: economy for bounded small work, quality for complex or uncertain work, with the reason shown in the CLI. The dashboard reports the observed settings. [How it works](references/models.md).
+- **How it was checked.** Three lanes built in parallel by two Codex windows and one Claude window, each read by the other model. The reads reproduced two grave defects before release, a link that let a promotion write outside the repository and a registry name that could overwrite another registry's lesson; both were fixed with tests red before and green after, and re-read. More than 2590 tests in the full suite. The ideas behind the lens and the five improvements come from public MIT-licensed skills (laulauraluo, off-grid-ai) and were rewritten as Squadra's own.
+- **Upgrade every window together.** Three new event kinds (`finding.outcome`, `lesson.promote`, `faster`) and findings with an id: 3.15 windows refuse them instead of ignoring them. The journal format is unchanged and old events stay readable.
+
+**Watch the two-minute film of what's new in 3.10.2 — turn the sound on in the player:**
+
+https://github.com/user-attachments/assets/6ea747a5-a993-4aa7-a58d-1b2b7f908720
+
+<details>
+<summary><strong>Earlier versions</strong></summary>
 
 **3.15.1 (includes 3.15.0) — a tired window is replaced without losing anything, and the squad is simpler to run**
 
@@ -1034,12 +1050,6 @@ A window that runs for hours grows costly and less reliable. It can now be repla
 - **Upgrade every window together.** Seat handovers write journal format 5: 3.14 windows refuse it instead of ignoring it.
 - **In 3.15.1.** `access probe` answers with the short line too; the tiredness notice cache is written only when needed; a test no longer trips on Git's automatic maintenance; a probe confirms that declaring yourself ready to read opens no gap in independence; documentation qualified.
 
-**Watch the two-minute film of what's new in 3.10.2 — turn the sound on in the player:**
-
-https://github.com/user-attachments/assets/6ea747a5-a993-4aa7-a58d-1b2b7f908720
-
-<details>
-<summary><strong>Earlier versions</strong></summary>
 
 **3.14.0 — automatic lanes, per-task budgets and a sharper resume**
 
@@ -1059,15 +1069,6 @@ https://github.com/user-attachments/assets/6ea747a5-a993-4aa7-a58d-1b2b7f908720
 - **Fix.** In 3.13.0, recovery points were recorded by absolute path only, so a copy of a registry (a clone, a restore, a backup opened with `--root`) inherited the original's checkpoints and saves, and `storage purge --apply` run in the copy could remove them. Every checkpoint, adoption and save now records the root of the registry that made it; elsewhere it is listed as foreign and is never a purge target. Records without a root count only inside their own registry. A regression test removes the original's checkpoint on 3.13.0 and keeps it now.
 - Found while compacting a real 7.2 GB registry with 3.13.0: `storage adopt` registered 7 old checkpoints, and `storage compact` shared 163,794 of 166,663 files and freed 2.62 GB measured on disk, with a full audit passing afterwards.
 - **Reclaim your space after updating:** tell a Claude window «Use squadra to compact the storage of the registry at /path/to/registry». The coordinator previews adopt, compact and purge and applies only on your word.
-
-**3.13.0 — checkpoints that share their bytes, a retention policy and compaction of the data you already have**
-
-- **Reuse of immutable content.** New frozen candidates and checkpoints share identical files instead of copying them: a copy-on-write clone (APFS, or `FICLONE` on Linux), a hardlink only for verified read-only files where clones do not exist, a plain copy last. Bytes, paths, fingerprints and package formats are unchanged, so older versions still restore them. Measured on a copy of a real registry, 10 consecutive checkpoints with concurrent writes: 8.97 GB → 0.60 GB on APFS (−93%), 9.22 GB → 3.60 GB without copy-on-write (−61%).
-- **Compaction of existing data.** `storage adopt --scan DIR` registers checkpoints made before 3.13, but only those whose last event matches this journal. `storage compact` then shares the bytes of candidates, checkpoints, saves and archived run logs in place. On a 4.25 GB copy of a real registry with six old checkpoints, 89,485 of 93,684 files were shared and the registry shrank to 0.98 GB (−77%) in 7 minutes. Nothing is compacted at opening: every step previews first, and `--apply` belongs to the coordinator.
-- **Retention policy.** `storage status` and `storage purge --dry-run` show what can go. By default the newest three checkpoints and three saves are kept, along with the last restored save, anything under 24 hours and `storage keep` paths. Open tasks, live runs and the active registry are always protected, and unknown folders are never touched. `storage purge --apply` is coordinator only. A keep or a task that arrives during a purge stops the deletion or is refused, never recorded for deleted data. On the same copy: 0.88 GB after the default purge (−79%).
-- **Recorded, compact checkpoints.** `checkpoint --actor WINDOW --compact` records the recovery point and omits views that are rebuilt on opening; `save` reuses the previous package. A checkpoint no longer fails when a concurrent writer's temporary file disappears mid-copy.
-- **Ask for it in one sentence.** After updating, tell a Claude window: «Use squadra to compact the storage of the registry at /path/to/registry». At every resume `doctor --resume` notices old unregistered checkpoints or more than 1 GB of candidates, and the coordinator proposes that sentence.
-- **Skill instructions** no longer ask for repeated full copies: checkpoints are compact and recorded, and every long round starts with `storage purge --dry-run`.
 
 </details>
 
