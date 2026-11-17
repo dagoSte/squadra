@@ -206,6 +206,8 @@ def transform_packet(value, transform):
         result["proofs"] = [transform_run(run, transform) for run in value["proofs"]]
     if value.get("fix_result") is not None:
         result["fix_result"] = transform_event("challenge", value["fix_result"], transform)
+    if value.get('requirement_result') is not None:
+        result['requirement_result'] = transform_event('challenge', value['requirement_result'], transform)
     return result
 
 
@@ -235,6 +237,8 @@ def transform_task(value, transform):
         result["delivery"] = transform_event("deliver", value["delivery"], transform)
     if value.get("fix_result") is not None:
         result["fix_result"] = transform_event("challenge", value["fix_result"], transform)
+    if value.get('requirement_result') is not None:
+        result['requirement_result'] = transform_event('challenge', value['requirement_result'], transform)
     return result
 
 

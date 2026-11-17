@@ -94,7 +94,7 @@ def build(state, task_id, revision, *, registry_root=None, max_chars=DEFAULT_CHA
     candidate = task.get('candidate', {})
     task_fields = ('id', 'title', 'status', 'owner', 'coordinator', 'repo', 'base', 'reviewer',
                    'pool', 'claim', 'authors', 'proof', 'expected', 'full_gate', 'release_gate',
-                   'read_at_gate', 'route', 'rounds', 'superseded_by', 'supersedes', 'requirements')
+                   'read_at_gate', 'route', 'rounds', 'superseded_by', 'supersedes', 'requirements', 'red_first')
     packet = {
         'schema': 'squadra.context/1', 'notice': NOTICE, 'revision': revision,
         'registry': registry_root or state.get('root') or 'not recorded',
@@ -124,6 +124,10 @@ def build(state, task_id, revision, *, registry_root=None, max_chars=DEFAULT_CHA
                          'Before native compaction or a new session, preserve required checkpoint/source recovery.',
                          'Use the client-native compaction command; this packet neither compacts nor restarts a client.'],
     }
+    from findings import summary as findings_summary
+    findings = findings_summary(state, task)
+    if findings['rounds']:
+        packet['findings'] = findings
     proof, chronological, attempts = latest_attempt(state, task)
     if proof:
         entry = next((e for e in (proof.get('shared_proof') or {}).get('tasks', [])
@@ -365,6 +369,8 @@ def reentry(store, task_id, *, recipient=None, since=None, max_chars=DEFAULT_CHA
         'changes': [], 'omitted': {'changes': 0, 'seq_range': None},
         'delta_empty': True, 'measured': {},
     }
+    if base.get('findings'):
+        packet['findings'] = base['findings']
     lesson_names = {l['id'] for l in lessons}
     def relevant(event):
         data, kind = event['data'], event['kind']

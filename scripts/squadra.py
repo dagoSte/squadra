@@ -160,6 +160,9 @@ def bindings(store, task_id, require_review=True):
         from fix_challenge import evidence, gate_exception
         gate_exception(task)
         evidence(task, current, store.root, require_review=not read_at_gate(task))
+    if require_review and task.get('red_first'):
+        from challenge_requirements import evidence as requirement_evidence
+        requirement_evidence(task, current, store.root)
     if require_review and task.get("release_gate") is True:
         gate_checks(state, task, current)
     return current
@@ -325,6 +328,12 @@ def deliver(store, actor, task_id, reconcile=False, note=None):
                   "scope": task["scope"], "plan": task.get("plan"), "requirements": task.get("requirements", []),
                   "proofs": current_proofs(task, current),
                   "instructions": "ACK this exact message, read frozen candidate in an isolated copy, record independent verdict and limitations; never publish or edit the candidate."}
+        from findings import summary as findings_summary
+        findings = findings_summary(state, task)
+        if findings['rounds']:
+            packet['findings'] = findings
+        if task.get('red_first'):
+            packet.update(red_first=True, requirement_result=task.get('requirement_result'))
         if data.get('frozen'):
             packet['frozen'] = data['frozen']
         if note:
@@ -498,6 +507,7 @@ def parser():
     a.add_argument("--depends", action="append", default=[])
     a.add_argument("--reviewer", action="append", help="Reader; repeat for a pool of 2-4 where the first ACK takes the read")
     a.add_argument("--requirements-file")
+    a.add_argument('--red-first', action='store_true', help='Before close require assertion-red/base and green/candidate evidence for requirement tests')
     a.add_argument("--read-at-gate", action="store_true", help="Light only: close without its own read; a release gate reads it")
     a.add_argument("--release-gate", action="store_true", help="Check/close require every outstanding read-at-gate task covered or deferred")
     a.add_argument("--defect-fix", action="store_true", help="Require a bound original-red/remedy-green challenge before close")
@@ -577,6 +587,10 @@ def parser():
     a.add_argument("--constants-checked", type=int, help="With --lens contesto: declared constants checked")
     a.add_argument("--constants-suspect", type=int, help="With --lens contesto: declared suspect constants among those checked")
     a.add_argument("--gate-covers", action="append", default=[], help="Release gate read: an outstanding read-at-gate task this read covers")
+    a = sub.add_parser('finding', help='Record a disposition of an identified review finding')
+    for name in ('actor', 'task', 'review', 'id', 'ref', 'reason'):
+        a.add_argument('--' + name, required=True)
+    a.add_argument('--outcome', choices=['fixed', 'rejected', 'deferred'], required=True)
     a = sub.add_parser("lesson", help="Record, retire, mark ineffective or list errata lessons")
     a.add_argument("--actor"); a.add_argument("--task"); a.add_argument("--source-event", type=int)
     a.add_argument("--text"); a.add_argument("--path", action="append", default=[]); a.add_argument("--word", action="append", default=[])
@@ -670,6 +684,7 @@ def parser():
     a.add_argument("--to", required=True); a.add_argument("--actor")
     a = sub.add_parser("settings"); a.add_argument("--actor", required=True); a.add_argument("--file", required=True)
     a = sub.add_parser("challenge"); a.add_argument("--actor", required=True); a.add_argument("--oracle")
+    a.add_argument('--requirements', action='store_true', help='Exercise the test IDs of a --red-first task on its base and candidate')
     a.add_argument("--original"); a.add_argument("--remedy"); a.add_argument("--positive")
     a.add_argument("--output"); a.add_argument("--timeout", type=int, default=30)
     a.add_argument("--task"); mode = a.add_mutually_exclusive_group()
@@ -864,6 +879,8 @@ def dispatch(a, store):
             task["pool"] = a.reviewer
         if a.read_at_gate:
             task["read_at_gate"] = True
+        if a.red_first:
+            task['red_first'] = True
         if a.release_gate:
             task["release_gate"] = True
         require(not a.challenge_file or a.defect_fix, "--challenge-file requires --defect-fix")
@@ -1129,6 +1146,12 @@ def dispatch(a, store):
             store.audit()
         current = bindings(store, a.task)
         result = {"task": a.task, "verified": True, "snapshot": current["sha256"], "publication_authorized": False}
+        from findings import observation
+        item = observation(state, state['tasks'][a.task])
+        if item is not None:
+            result['findings'] = item
+            if item['status'] == 'unverifiable':
+                warning('unverifiable: ' + item['detail'])
         if command == "close":
             event = store.append("close", actor, {"task": a.task, **({'note': a.note} if a.note else {})})
             from migliora import inspect as inspect_friction
@@ -1137,6 +1160,11 @@ def dispatch(a, store):
                 from errata import hint
                 result["errata"] = hint(a.task, seq_of(store, event), actor, "defect fix closed")
         return result
+    elif command == 'finding':
+        data = {'task': a.task, 'review': a.review, 'finding': a.id,
+                'outcome': a.outcome, 'ref': a.ref, 'reason': a.reason}
+        event = store.append('finding.outcome', actor, data)
+        return {'receipt': event, 'task': a.task, 'finding': a.id, 'outcome': a.outcome}
     elif command == "review":
         from reads import load_findings
         from registry import review_handoff, review_request
@@ -1445,6 +1473,14 @@ def dispatch(a, store):
     elif command == "settings":
         store.append("settings", actor, wait_settings(json.loads(Path(a.file).read_text())))
     elif command == "challenge":
+        if a.requirements:
+            from fix_challenge import execute
+            require(a.task and not any((a.register, a.exception, a.contract_file, a.reason,
+                    a.original, a.remedy, a.positive, a.oracle)), 'Requirements challenge needs only a task and its declared inputs')
+            destination = a.output or str(store.root / 'requirement-challenges' / uuid.uuid4().hex)
+            result = execute(store, actor, a.task, destination, a.timeout, requirements=True)
+            require(result['status'] in ('matched', 'excepted'), 'requirement_challenge_not_matched; read retained logs')
+            return result
         if a.task:
             from fix_challenge import register, execute
             require(not any((a.original, a.remedy, a.positive, a.oracle)), "Task challenge uses the registered inputs")

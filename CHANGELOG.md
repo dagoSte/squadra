@@ -4,6 +4,7 @@ Every Squadra release, newest first. The README keeps the newest release and the
 
 **Unreleased**
 
+- Identified review findings now record fixed/rejected/deferred outcomes with a reference and reason; unresolved outcomes are unverifiable observations, and rereads retain rejected reasons and per-round open counts. Opt-in `task --red-first` requires assertion-red/base and green/candidate requirement tests through the existing unittest challenge runner, or visible per-requirement exceptions. Upgrade every window before the new `finding.outcome` event or red-first policy; the journal envelope and historical behavior are unchanged.
 - Code reads apply contesto alongside rasoio in one review: check changed constants and units, recent history and callers, requirement match, and sign the verified/unverified scope. Adapted from laulauraluo's MIT-licensed ai-code-review-triage at `91a1c77`; full attribution is in `THIRD_PARTY_NOTICES.md`.
 - Repeat `review --lens` for both lenses; contesto records validated declared counts with `--constants-checked` and `--constants-suspect`. System skills shows those declarations, not measurements or confirmed defects. Verdicts, checks, closures and budgets are unchanged.
 - No journal-format or event-kind change: historical rasoio reviews keep their fields and validity. The optional `review.contesto` object is preserved but ignored for validation and activity counts by 3.15.1 readers; update every window for consistent contesto support.
