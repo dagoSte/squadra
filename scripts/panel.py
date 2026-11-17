@@ -9,9 +9,9 @@ ORDER = ("comms", "work", "reads", "other")
 FAMILIES = {
     "comms": {"message", "ack", "transport", "availability", "service.wait", "access.probe"},
     "work": {"task", "replace", "reassign", "route", "fix", "supersede", "brief", "plan", "start", "deliver", "output", "run.start", "run.end", "run.cancel", "run.abandon",
-             "resource.acquire", "resource.release", "lesson", "lesson.retire", "lesson.recall", "lesson.ineffective",
+             "resource.acquire", "resource.release", "lesson", "lesson.retire", "lesson.recall", "lesson.ineffective", "lesson.promote", "faster",
              "handover", "handover.prepare", "handover.confirm", "handover.cancel"},
-    "reads": {"reader.ready", "review", "close", "ask", "decision", "pause", "resume"},
+    "reads": {"reader.ready", "review", "finding.outcome", "close", "ask", "decision", "pause", "resume"},
     "other": {"init", "agent", "legacy", "diagnostic", "settings", "project.set", "save", "restore.check", "restore.freeze",
               "challenge", "benchmark"},
 }
