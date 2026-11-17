@@ -182,8 +182,14 @@ def catalogue(events, state, root=ROOT, read_at=None):
                 if skill == 'rasoio' and type(data.get('net_lines')) is int:
                     counts['net_lines'] += data['net_lines']
                 if skill == 'contesto':
-                    for key in ('constants_checked', 'constants_suspect'):
-                        counts[key] += data['contesto'][key]
+                    declaration = data['contesto']
+                    keys = ('constants_checked', 'constants_suspect')
+                    if (isinstance(declaration, dict)
+                            and all(type(declaration.get(key)) is int and 0 <= declaration[key] <= 1000000
+                                    for key in keys)
+                            and declaration['constants_suspect'] <= declaration['constants_checked']):
+                        for key in keys:
+                            counts[key] += declaration[key]
         counts['recalled_pairs'] = len(pairs)
         activations.sort(key=lambda item: (instant(item['utc']), item['event']))
         on_demand = skill in ON_DEMAND

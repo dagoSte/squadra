@@ -446,7 +446,7 @@ Views: **Summary**, **Windows**, **Tasks**, **Mail**, **Communications**, **Deci
 
 ![The Balance page: one piece of advice, the rules it checks with today's values, and each window's load and quota](docs/images/dashboard-balance-en.png)
 
-**System skills** lists the five built-in skills ([errata](references/skills/errata.md), [previsione](references/skills/previsione.md), [rasoio](references/skills/rasoio.md), [bilanciamento](references/skills/bilanciamento.md), [migliora](references/skills/migliora.md)), with what each does, its recorded activity and the security scan result for its files.
+**System skills** lists the six built-in skills ([errata](references/skills/errata.md), [previsione](references/skills/previsione.md), [rasoio](references/skills/rasoio.md), [bilanciamento](references/skills/bilanciamento.md), [migliora](references/skills/migliora.md), [contesto](references/skills/contesto.md)), with what each does, its recorded activity and the security scan result for its files.
 
 ![The System skills page: each built-in skill with what it does and its recorded activations](docs/images/dashboard-system-skills-en.png)
 
@@ -935,6 +935,7 @@ Every command, grouped by purpose: **68 subcommands**, plus `--version`. Use `sq
 | `migliora` | Inspect friction; apply and check a project rule and create its local commit. | “Remove repeated steps demonstrated by the evidence.” |
 | `check` | Check that proof, review and candidate still match. | “Check that the proof, the review and the candidate of T1 still match.” |
 | `close` | Coordinator only: record the end of a checked task. | To the coordinator: “Close T1 if its check passes, then show me the progress table.” |
+| `faster` | Coordinator only: record a measured phase (`ack`, `build`, `read` or `fix`) and remedy with `--task`, `--phase`, `--remedy`. After three later assignments close, two recurrences warn of ineffectiveness. | “Use the measured closing advice to improve the next assignments.” |
 | `challenge` | Prove a declared fix fails without the change, or run a standalone three-input oracle. | “Show that the fix in T2 matters: its test must fail without the change.” |
 | `lesson` | Record what a red taught (errata), mark a lesson ineffective or retire it, or list lessons; brief and start show the matching ones. | “Record what this failed test taught us, so the next briefs show it.” |
 

@@ -126,6 +126,16 @@ class RoutesAndPage(unittest.TestCase):
     def test_js_contesto_declared_counts_bilingual_and_same_review_event(self):
         self.contract('contesto')
 
+    def test_api_skips_malformed_historical_contesto_counts(self):
+        task = self.store.view()['tasks']['T']
+        with patch('registry.validate'):
+            self.store.append('review', 'R', {'task': 'T', 'stage': 'plan', 'verdict': 'accepted',
+                'binding': task['plan']['sha256'], 'report': task['plan'], 'covers': [], 'contesto': None})
+        code, body, _ = self.request()
+        self.assertEqual(code, 200)
+        row = next(row for row in body['skills'] if row['id'] == 'contesto')
+        self.assertEqual(row['counts']['constants_checked'], 0)
+
 
 def event(seq, kind, data, minute=0):
     return {'seq': seq, 'id': 'e' + str(seq), 'kind': kind, 'data': data, 'actor': 'A',
@@ -410,6 +420,25 @@ class Activity(unittest.TestCase):
         self.assertEqual(row['audit']['status'], 'not_audited')
         self.assertIsNotNone(row['guide'])
         self.assertEqual(rows['rasoio']['total'], 3)
+
+    def test_malformed_contesto_declarations_do_not_poison_valid_totals(self):
+        invalid = [None, [], 2, 'counts', {}, {'constants_checked': 1},
+                   {'constants_checked': True, 'constants_suspect': 0},
+                   {'constants_checked': -1, 'constants_suspect': 0},
+                   {'constants_checked': 1.5, 'constants_suspect': 0},
+                   {'constants_checked': 1000001, 'constants_suspect': 0},
+                   {'constants_checked': 1, 'constants_suspect': 2},
+                   {'constants_checked': 1, 'constants_suspect': '0'}]
+        for declaration in invalid:
+            with self.subTest(declaration=declaration):
+                events = activity_fixture() + [event(10, 'review', {'contesto': declaration})]
+                try:
+                    rows = skills.catalogue(events, {'tasks': {'T': {}}}, read_at=NOW)['skills']
+                    counts = next(row['counts'] for row in rows if row['id'] == 'contesto')
+                    result = (counts['constants_checked'], counts['constants_suspect'])
+                except (TypeError, KeyError) as exc:
+                    result = type(exc).__name__
+                self.assertEqual(result, (3, 1))
 
     def test_full_history_utc_boundaries_and_missing_origin(self):
         events = [event(i + 1, 'review', {'task': 'absent', 'lens': 'rasoio'}, -i) for i in range(140)]

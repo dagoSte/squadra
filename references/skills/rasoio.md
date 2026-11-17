@@ -7,7 +7,8 @@ not careless. The best code is the code never written.
 ## When it activates in a squad
 
 - **Every code read whose candidate changes code** (not only prose or docs) applies the
-  lens, without asking the owner: `squadra review ... --lens rasoio --net-lines N`.
+  lens alongside [contesto](contesto.md), without asking the owner:
+  `squadra review ... --lens rasoio --net-lines N --lens contesto --constants-checked C --constants-suspect S`.
 - **A builder** follows the ladder below while writing the change.
 - The lens **adds observations only**. It never changes a verdict, a check or a close
   rule: a review with the lens is accepted, changed or blocked exactly as without it.
@@ -109,10 +110,13 @@ breaks.
 
 The core keeps one line per rule; this is the full text, unchanged except for relative links.
 
-### Built-in skills: errata, rasoio and migliora
+### Built-in skills: errata, rasoio, contesto and migliora
 
 - **rasoio** ([guide](rasoio.md)). Every code read whose candidate
   changes code, not only prose, applies the lens: `review --lens rasoio --net-lines N`,
   with the guide's tags and its closing net figure. The lens adds observations; it never
   changes a verdict, check or close rule.
+
+  Apply [contesto](contesto.md) in that same review with `--lens contesto
+  --constants-checked C --constants-suspect S`; both declarations remain observations.
 

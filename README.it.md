@@ -448,7 +448,7 @@ Viste: **Quadro**, **Finestre**, **Incarichi**, **Posta**, **Comunicazioni**, **
 
 ![La pagina Bilanciamento: un consiglio, le regole che controlla con i valori di oggi, e carico e quota di ogni finestra](docs/images/dashboard-balance-it.png)
 
-**Skill di sistema** elenca le cinque skill incluse ([errata](references/skills/errata.md), [previsione](references/skills/previsione.md), [rasoio](references/skills/rasoio.md), [bilanciamento](references/skills/bilanciamento.md), [migliora](references/skills/migliora.md), in inglese), con cosa fa ognuna, la sua attività registrata e l'esito del controllo di sicurezza sui suoi file.
+**Skill di sistema** elenca le sei skill incluse ([errata](references/skills/errata.md), [previsione](references/skills/previsione.md), [rasoio](references/skills/rasoio.md), [bilanciamento](references/skills/bilanciamento.md), [migliora](references/skills/migliora.md), [contesto](references/skills/contesto.md), in inglese), con cosa fa ognuna, la sua attività registrata e l'esito del controllo di sicurezza sui suoi file.
 
 ![La pagina Skill di sistema: ogni skill inclusa con cosa fa e le attivazioni registrate](docs/images/dashboard-system-skills-it.png)
 
@@ -940,6 +940,7 @@ Ogni comando, raggruppato per scopo: **68 sottocomandi**, più `--version`. Usa 
 | `migliora` | Analizza gli attriti; applica e verifica una regola del progetto e crea il suo commit locale. | «Elimina i passaggi ripetuti dimostrati dalle prove.» |
 | `check` | Controlla che prova, lettura e candidato corrispondano ancora. | «Controlla che prova, lettura e candidato di T1 corrispondano ancora.» |
 | `close` | Solo il coordinatore: registra la fine di un incarico controllato. | Al coordinatore: «Chiudi T1 se il controllo passa, poi mostrami la tabella dell'avanzamento.» |
+| `faster` | Solo il coordinatore: registra fase misurata (`ack`, `build`, `read` o `fix`) e rimedio con `--task`, `--phase`, `--remedy`. Dopo tre chiusure di incarichi assegnati in seguito, due ricorrenze segnalano inefficacia. | «Usa il consiglio misurato alla chiusura per migliorare le prossime assegnazioni.» |
 | `challenge` | Dimostra che un fix dichiarato fallisce senza la modifica, oppure esegue la sonda autonoma a tre input. | «Dimostra che il fix di T2 serve: il suo test deve fallire senza la modifica.» |
 | `lesson` | Registra quello che un esito negativo ha insegnato (errata), segna una lezione come inefficace o la ritira, oppure elenca le lezioni; briefing e avvio mostrano quelle pertinenti. | «Registra cosa ci ha insegnato questo test fallito, così i prossimi briefing lo mostrano.» |
 

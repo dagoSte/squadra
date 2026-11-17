@@ -574,6 +574,10 @@ def parser():
         a = sub.add_parser(command); a.add_argument("--actor", required=True); a.add_argument("--task", required=True)
         if command in {'deliver', 'close'}:
             a.add_argument('--note', help='A note retained with this delivery or closure')
+    a = sub.add_parser('faster', help='Record a measured phase and the remedy for future assignments')
+    a.add_argument('--actor', required=True); a.add_argument('--task', required=True)
+    a.add_argument('--phase', choices=['ack', 'build', 'read', 'fix'], required=True)
+    a.add_argument('--remedy', required=True)
     a = sub.add_parser("review"); a.add_argument("--actor", required=True); a.add_argument("--task", required=True)
     a.add_argument("--stage", choices=["plan", "code"], default="code")
     a.add_argument("--verdict", choices=["accepted", "changes-required", "blocked"], required=True)
@@ -1211,6 +1215,9 @@ def dispatch(a, store):
         return recall(store, state, actor, a.task, "start", ("start", actor, {"task": a.task}, None))
     elif command in {"deliver", "advance"}:
         return deliver(store, actor, a.task, reconcile=command == "advance", note=getattr(a, 'note', None))
+    elif command == 'faster':
+        from faster import record as record_faster
+        return record_faster(store, actor, a.task, a.phase, a.remedy)
     elif command in {"check", "close"}:
         if command == 'close' and state['tasks'][a.task].get('release_gate') is True:
             store.audit()
@@ -1224,6 +1231,9 @@ def dispatch(a, store):
                 warning('unverifiable: ' + item['detail'])
         if command == "close":
             event = store.append("close", actor, {"task": a.task, **({'note': a.note} if a.note else {})})
+            from faster import announce, closing
+            result['faster'] = closing(store, a.task)
+            announce(result['faster'], state['workspace'].get('lang', 'it'))
             from migliora import inspect as inspect_friction
             result['migliora'] = inspect_friction(store, a.task)
             if state["tasks"][a.task].get("fix"):
