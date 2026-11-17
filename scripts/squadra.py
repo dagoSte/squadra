@@ -571,8 +571,11 @@ def parser():
     a.add_argument('--amend', help='Explicitly replace this recorded review request; consumes a review round')
     a.add_argument("--findings-file", help="Optional bounded JSON observations (severity and one-line title)")
     a.add_argument("--covers", action="append", default=[])
-    a.add_argument("--lens", choices=["rasoio"], help="Optional lean-code lens (references/skills/rasoio.md)")
-    a.add_argument("--net-lines", type=int, help="With --lens: declared lines that could be removed")
+    a.add_argument("--lens", choices=["rasoio", "contesto"], action="append", default=[],
+                   help="Review lens; repeat to apply rasoio and contesto in one read")
+    a.add_argument("--net-lines", type=int, help="With --lens rasoio: declared lines that could be removed")
+    a.add_argument("--constants-checked", type=int, help="With --lens contesto: declared constants checked")
+    a.add_argument("--constants-suspect", type=int, help="With --lens contesto: declared suspect constants among those checked")
     a.add_argument("--gate-covers", action="append", default=[], help="Release gate read: an outstanding read-at-gate task this read covers")
     a = sub.add_parser("lesson", help="Record, retire, mark ineffective or list errata lessons")
     a.add_argument("--actor"); a.add_argument("--task"); a.add_argument("--source-event", type=int)
@@ -1137,6 +1140,9 @@ def dispatch(a, store):
     elif command == "review":
         from reads import load_findings
         from registry import review_handoff, review_request
+        require(len(set(a.lens)) == len(a.lens), 'lens_duplicate')
+        require('contesto' in a.lens or (a.constants_checked is None and a.constants_suspect is None),
+                'contesto_counts_require_lens')
         extra = {'findings': load_findings(a.findings_file)} if a.findings_file is not None else {}
         task = store.task(a.task, state)
         if a.stage == "plan":
@@ -1148,7 +1154,11 @@ def dispatch(a, store):
             binding = current["sha256"]
         modern = task.get('delivery_policy') == 'frozen-v1'
         require(modern or a.amend is None, 'Legacy intentional rereads use a new report within the existing budget')
-        lens = {k: v for k, v in (("lens", a.lens), ("net_lines", a.net_lines)) if v is not None}
+        lens = {'lens': 'rasoio'} if 'rasoio' in a.lens else {}
+        if a.net_lines is not None:
+            lens['net_lines'] = a.net_lines
+        if 'contesto' in a.lens:
+            lens['contesto'] = {'constants_checked': a.constants_checked, 'constants_suspect': a.constants_suspect}
         data = {"task": a.task, "stage": a.stage, "verdict": a.verdict,
                 "binding": binding, "covers": a.covers, "report": store.artifact(a.report), **extra,
                 **({"gate_covers": a.gate_covers} if a.gate_covers else {}),

@@ -2620,6 +2620,14 @@ def validate(state, kind, actor, d, stored_packet=None, *, candidate_history=())
                 require(type(d['net_lines']) is int and 0 <= d['net_lines'] <= 1000000, "net_lines_invalid")
             if 'lens' in d:
                 require(d['lens'] == "rasoio", "lens_unknown")
+            if 'contesto' in d:
+                counts = d['contesto']
+                require(isinstance(counts, dict) and set(counts) == {'constants_checked', 'constants_suspect'},
+                        'contesto_counts_required')
+                require(all(type(n) is int and 0 <= n <= 1000000 for n in counts.values()),
+                        'contesto_counts_invalid')
+                require(counts['constants_suspect'] <= counts['constants_checked'],
+                        'contesto_suspect_exceeds_checked')
             author_identities = {state["agents"][a]["identity"] for a in task["authors"]}
             require(state["agents"][actor]["identity"] not in author_identities,
                     "Author cannot independently review own changes, even under another seat ID")

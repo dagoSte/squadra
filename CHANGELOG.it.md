@@ -2,6 +2,12 @@
 
 Tutte le versioni di Squadra, dalla più nuova. Il README tiene la più nuova e le tre precedenti.
 
+**Unreleased**
+
+- Le letture di codice applicano contesto insieme a rasoio nella stessa review: costanti e unità cambiate, storia recente e chiamanti, aderenza ai requisiti e firma del perimetro verificato/non verificato. Adattata da ai-code-review-triage di laulauraluo, licenza MIT, commit `91a1c77`; attribuzione completa in `THIRD_PARTY_NOTICES.md`.
+- `review --lens` è ripetibile per applicare entrambe le lenti; contesto registra conteggi dichiarati validati con `--constants-checked` e `--constants-suspect`. Skill di sistema mostra dichiarazioni, non misure o difetti confermati. Verdetti, check, chiusure e budget restano invariati.
+- Nessun cambio al formato journal o ai tipi di evento: le review rasoio storiche mantengono campi e validità. I lettori 3.15.1 conservano l'oggetto opzionale `review.contesto`, ma lo ignorano nella validazione e nei conteggi delle attività; aggiornare tutte le finestre per supportare contesto in modo uniforme.
+
 
 **3.15.1 — rifiniture dopo la 3.15.0**
 

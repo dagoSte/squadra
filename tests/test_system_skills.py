@@ -73,7 +73,7 @@ class RoutesAndPage(unittest.TestCase):
                 self.assertEqual(code, 200)
                 self.assertIn("default-src 'none'", headers['Content-Security-Policy'])
                 if route.endswith('skills'):
-                    self.assertEqual([s['id'] for s in body['skills']], ['errata', 'previsione', 'rasoio', 'bilanciamento', 'migliora'])
+                    self.assertEqual([s['id'] for s in body['skills']], ['errata', 'previsione', 'rasoio', 'bilanciamento', 'migliora', 'contesto'])
                 else:
                     self.assertEqual(body['task'], 'T')
         self.assertEqual(self.request('/api/forecast', **{'X-Squadra-Record': 'unknown'})[0], 409)
@@ -123,6 +123,9 @@ class RoutesAndPage(unittest.TestCase):
     def test_js_system_skills_failure_retry_and_honest_zero(self):
         self.contract('failureAndZero')
 
+    def test_js_contesto_declared_counts_bilingual_and_same_review_event(self):
+        self.contract('contesto')
+
 
 def event(seq, kind, data, minute=0):
     return {'seq': seq, 'id': 'e' + str(seq), 'kind': kind, 'data': data, 'actor': 'A',
@@ -149,7 +152,11 @@ def activity_fixture():
             event(4, 'lesson.ineffective', {'lesson': 'L', 'recall': 2, 'reason': 'Repeated'}, 3),
             event(5, 'lesson.retire', {'lesson': 'L', 'reason': 'Replaced'}, 4),
             event(6, 'review', {'task': 'T', 'stage': 'code', 'lens': 'rasoio', 'net_lines': 7}, 5),
-            event(7, 'review', {'task': 'T', 'stage': 'code', 'lens': 'rasoio'}, 6)]
+            event(7, 'review', {'task': 'T', 'stage': 'code', 'lens': 'rasoio'}, 6),
+            event(8, 'review', {'task': 'T', 'stage': 'code', 'lens': 'rasoio', 'net_lines': 0,
+                              'contesto': {'constants_checked': 3, 'constants_suspect': 1}}, 7),
+            event(9, 'review', {'task': 'T', 'stage': 'code',
+                              'contesto': {'constants_checked': 0, 'constants_suspect': 0}}, 8)]
 
 
 class Forecast(unittest.TestCase):
@@ -375,7 +382,7 @@ class Audits(unittest.TestCase):
 class Activity(unittest.TestCase):
     def test_empty_and_unrecorded_are_distinct(self):
         values = skills.catalogue([], {'tasks': {}}, read_at=NOW)['skills']
-        self.assertEqual([s['total'] for s in values], [0, None, 0, None, 0])
+        self.assertEqual([s['total'] for s in values], [0, None, 0, None, 0, 0])
         self.assertEqual(values[0]['daily'], [0] * 56)
         self.assertIsNone(values[1]['daily']); self.assertIsNone(values[1]['first'])
 
@@ -383,11 +390,26 @@ class Activity(unittest.TestCase):
         values = skills.catalogue(activity_fixture(), {'tasks': {'T': {}}}, read_at=NOW)['skills']
         self.assertEqual(values[0]['total'], 5)
         self.assertEqual(values[0]['counts'], dict(lessons=1, recalled_pairs=2, recall_events=2, ineffective=1, reads=0, net_lines=0))
-        self.assertEqual(values[2]['total'], 2); self.assertEqual(values[2]['counts']['net_lines'], 7)
+        self.assertEqual(values[2]['total'], 3); self.assertEqual(values[2]['counts']['net_lines'], 7)
         self.assertEqual(values[0]['last']['task_relation'], 'origin')
         self.assertEqual(values[0]['recent'][1]['task_relation'], 'origin')
         self.assertEqual(values[0]['first']['record']['data']['text'], 'Keep a valid control')
         self.assertTrue(values[0]['first']['outside_standard_sources'])
+
+    def test_contesto_counts_same_review_once_and_ignores_legacy_and_future_reviews(self):
+        events = activity_fixture() + [event(10, 'review', {
+            'contesto': {'constants_checked': 100, 'constants_suspect': 100}}, 2000)]
+        rows = {row['id']: row for row in skills.catalogue(events, {'tasks': {'T': {}}}, read_at=NOW)['skills']}
+        row = rows['contesto']
+        self.assertEqual((row['total'], row['last_24h'], row['counts']['reads']), (2, 2, 2))
+        self.assertEqual((row['counts']['constants_checked'], row['counts']['constants_suspect']), (3, 1))
+        self.assertEqual(sum(row['daily']), 2)
+        self.assertEqual(row['first']['record']['data']['lens'], 'rasoio')
+        self.assertIn('declared', row['records']['en'])
+        self.assertIn('not measurements', row['records']['en'])
+        self.assertEqual(row['audit']['status'], 'not_audited')
+        self.assertIsNotNone(row['guide'])
+        self.assertEqual(rows['rasoio']['total'], 3)
 
     def test_full_history_utc_boundaries_and_missing_origin(self):
         events = [event(i + 1, 'review', {'task': 'absent', 'lens': 'rasoio'}, -i) for i in range(140)]

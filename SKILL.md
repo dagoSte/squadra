@@ -108,9 +108,11 @@ and commits in task outputs, while its inspections are computed on demand.
   `squadra lesson` (`lesson` event), or say in the output why no trigger can be named.
   When a mistake comes back after its lesson was shown, mark it with
   `lesson --ineffective` (`lesson.ineffective` event) and record a better one.
-- **R67 rasoio** ([guide](references/skills/rasoio.md)). Every code read whose candidate
-  changes code, not only prose, applies the lens: `review --lens rasoio --net-lines N`,
-  with the guide's tags and its closing net figure. The lens adds observations; it never
+- **R67 rasoio and contesto** ([rasoio](references/skills/rasoio.md), [contesto](references/skills/contesto.md)). Every code read whose candidate
+  changes code, not only prose, applies both lenses in the same review:
+  `review --lens rasoio --net-lines N --lens contesto --constants-checked C --constants-suspect S`.
+  Use rasoio's tags and closing net figure; contesto checks magnitudes, history and
+  requirement match and signs the verified/unverified scope. Each lens adds observations; it never
   changes a verdict, check or close rule.
 
 - **R68 migliora** ([guide](references/skills/migliora.md)). At task close, after repeated

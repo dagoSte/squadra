@@ -16,7 +16,7 @@ COMMON_FILES = ('SKILL.md', 'scripts/registry.py', 'scripts/squadra.py', 'script
                 'scripts/system_skills.py', 'assets/dashboard.html')
 DEPENDENCIES = {'errata': ('scripts/errata.py',), 'rasoio': (), 'previsione': ('scripts/forecast.py',),
                 'bilanciamento': ('scripts/balance.py', 'scripts/forecast.py', 'scripts/usage.py'),
-                'migliora': ('scripts/migliora.py',)}
+                'migliora': ('scripts/migliora.py',), 'contesto': ()}
 ON_DEMAND = frozenset({'previsione', 'bilanciamento'})
 CATALOGUE = (
     {'id': 'errata', 'tag': {'it': 'Esperienza', 'en': 'Experience'},
@@ -54,6 +54,14 @@ CATALOGUE = (
      'records': {'it': 'Conta gli interventi e i commit registrati negli output; le semplici analisi non sono contate.', 'en': 'Counts interventions and commits recorded in outputs; inspections are not counted.'},
      'limits': {'it': 'Conserva i mandati e le modifiche altrui. Non pubblica e non approva memorie.', 'en': 'Preserves mandates and others’ changes. Never publishes or approves memories.'},
      'command': 'squadra migliora inspect --task TASK', 'prompt': {'it': 'Correggi gli attriti dimostrati di questo progetto con migliora.', 'en': 'Use migliora to remedy demonstrated development friction in this project.'}},
+    {'id': 'contesto', 'tag': {'it': 'Lettura', 'en': 'Review'},
+     'description': {'it': 'Controlla costanti, storia e aderenza della modifica alla richiesta.', 'en': 'Checks constants, history and whether the change meets the request.'},
+     'trigger': {'it': 'In ogni lettura di modifiche al codice, insieme a rasoio.', 'en': 'In every review of code changes, alongside rasoio.'},
+     'action': {'it': 'Il lettore verifica unità e ordini di grandezza, storia e vicini, scope e requisiti; firma cosa ha verificato e cosa no.', 'en': 'The reader checks units and orders of magnitude, history and neighbours, scope and requirements; signs what was and was not verified.'},
+     'records': {'it': 'Conta letture e costanti controllate o sospette dichiarate dal lettore, non misure o difetti confermati.', 'en': 'Counts reviews and checked or suspect constants declared by the reader, not measurements or confirmed defects.'},
+     'limits': {'it': 'Aggiunge osservazioni; non cambia verdetti, check, chiusure o budget.', 'en': 'Adds observations; never changes verdicts, checks, closures or budgets.'},
+     'command': 'squadra review --lens rasoio --net-lines N --lens contesto --constants-checked C --constants-suspect S …',
+     'prompt': {'it': 'Leggi questa modifica con contesto: controlla costanti, storia e requisiti e dichiara il perimetro verificato.', 'en': 'Read this change with contesto: check constants, history and requirements and declare the verified scope.'}},
 )
 
 
@@ -141,10 +149,13 @@ def catalogue(events, state, root=ROOT, read_at=None):
             row['guide'] = None
         activations, bins, pairs = [], [0] * 56, set()
         counts = dict(lessons=0, recalled_pairs=0, recall_events=0, ineffective=0, reads=0, net_lines=0)
+        if skill == 'contesto':
+            counts.update(constants_checked=0, constants_suspect=0)
         for event in events if skill not in ON_DEMAND else []:
             kind, data = event['kind'], event['data']
             if not ((skill == 'errata' and kind in ('lesson', 'lesson.retire', 'lesson.recall', 'lesson.ineffective'))
                     or (skill == 'rasoio' and kind == 'review' and data.get('lens') == 'rasoio')
+                    or (skill == 'contesto' and kind == 'review' and 'contesto' in data)
                     or (skill == 'migliora' and kind == 'output' and data.get('migliora'))):
                 continue
             at = instant(event['utc'])
@@ -168,8 +179,11 @@ def catalogue(events, state, root=ROOT, read_at=None):
                 pairs.update((data['task'], lesson) for lesson in data.get('lessons', []))
             if kind == 'review':
                 counts['reads'] += 1
-                if type(data.get('net_lines')) is int:
+                if skill == 'rasoio' and type(data.get('net_lines')) is int:
                     counts['net_lines'] += data['net_lines']
+                if skill == 'contesto':
+                    for key in ('constants_checked', 'constants_suspect'):
+                        counts[key] += data['contesto'][key]
         counts['recalled_pairs'] = len(pairs)
         activations.sort(key=lambda item: (instant(item['utc']), item['event']))
         on_demand = skill in ON_DEMAND

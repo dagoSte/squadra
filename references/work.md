@@ -1134,10 +1134,14 @@ read but cannot qualify a close. Nothing installs or migrates a live squad.
 
 <a id="errata-and-rasoio"></a>
 
-## Lessons (errata) and the rasoio lens
+## Lessons (errata) and review lenses
 
-The two built-in skills record their activations as registry events. The guides are
-[errata](skills/errata.md) and [rasoio](skills/rasoio.md).
+These built-in skills record their activations as registry events. The guides are
+[errata](skills/errata.md), [rasoio](skills/rasoio.md) and [contesto](skills/contesto.md).
+Every code read whose candidate changes code applies rasoio and contesto together
+in the same review. Contesto checks orders of magnitude, recent history and callers,
+and requirement match; the reader signs what was and was not verified. Both lenses
+add observations only: verdicts, check, close and review budgets stay unchanged.
 
 | Kind | Actor | Fields |
 |---|---|---|
@@ -1145,7 +1149,7 @@ The two built-in skills record their activations as registry events. The guides 
 | `lesson.retire` | the coordinator or the lesson's author | `lesson`, `reason` (1–500 characters) |
 | `lesson.recall` | the actor of `brief --task` or `start` | `task`, `at` (`brief` or `start`), `lessons` (1–5 distinct ids, none retired) |
 | `lesson.ineffective` | any seat | `lesson`, `recall` (the seq of a `lesson.recall` that showed it), `reason` |
-| `review` | unchanged | optional `lens` (`rasoio`) and `net_lines` (integer 0–1,000,000, only with `lens`) |
+| `review` | unchanged | optional `lens` (`rasoio`) and `net_lines` (integer 0–1,000,000, only with `lens`); optional `contesto` with exactly `constants_checked` and `constants_suspect` (integers 0–1,000,000; suspect ≤ checked) |
 
 `squadra lesson --task T --source-event N --text … --path GLOB --word WORD` records a
 lesson. The source must be one of the task's reds: a code review with `changes-required`, the
@@ -1153,6 +1157,16 @@ lesson. The source must be one of the task's reds: a code review with `changes-r
 another event of the task and records `"eligible": false`. `--retire ID --reason …`,
 `--ineffective ID --recall SEQ --reason …` and the read-only `--list` complete it.
 `review --lens rasoio --net-lines N` declares the lens.
+Repeat `--lens` to declare both in one read:
+`review --lens rasoio --net-lines N --lens contesto --constants-checked C --constants-suspect S`.
+The CLI keeps the historical scalar `lens: "rasoio"` and `net_lines` unchanged and
+adds the optional `contesto` object. Both constant counts must be explicit, including
+zero. The System skills page shows contesto reads and checked/suspect constants as
+**declared counts, not measurements**. A suspect count neither confirms a defect nor
+changes the verdict. Evidence and verified/unverified scope belong in the report.
+The journal format and event kinds stay unchanged. Historical reviews remain valid.
+Squadra 3.15.1 preserves the new field but does not validate or count it; update all
+windows to use contesto's validation and counts consistently.
 
 `brief --task` and `start` show at most five matching lessons: 3 points per trigger glob
 matching a path named in the task's title, scope, requirements or brief, 1 per trigger word
@@ -1190,6 +1204,11 @@ these kinds, so mixed-version enforcement is not promised.
 | `lesson_actor_required` | `lesson` without `--actor`, except `--list` (CLI) |
 | `lens_unknown` | a lens other than `rasoio` |
 | `net_lines_requires_lens`, `net_lines_invalid` | `net_lines` without the lens, or not an integer from 0 to 1,000,000 |
+| `lens_duplicate` | a repeated `--lens` value (CLI) |
+| `contesto_counts_require_lens` | constant-count flags without `--lens contesto` (CLI) |
+| `contesto_counts_required` | a `contesto` value that is not an object with exactly both count keys |
+| `contesto_counts_invalid` | a missing count or a value other than an integer from 0 to 1,000,000 (booleans excluded) |
+| `contesto_suspect_exceeds_checked` | more suspect constants than checked constants |
 
 <a id="readme-protocol-details"></a>
 
