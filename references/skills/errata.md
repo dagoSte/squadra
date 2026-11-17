@@ -19,8 +19,8 @@ Each moment is automatic, and none needs the owner:
 - **The same mistake comes back** after a lesson was shown: mark the lesson ineffective
   with that recall, then record a better lesson.
 
-Every activation leaves a registry event: `lesson.recall`, `lesson` or
-`lesson.ineffective`. The System skills page counts them.
+Every activation leaves a registry event: `lesson.recall`, `lesson`,
+`lesson.ineffective` or `lesson.promote`. The System skills page counts them.
 
 ## What a lesson is
 
@@ -77,13 +77,63 @@ squadra lesson --list
 Only the coordinator or the lesson's author retires a lesson. Nothing is deleted: the
 registry is append-only.
 
+## A lesson that already exists
+
+Recording a lesson runs the recall score of `brief` and `start` on the two triggers, both
+ways: an active lesson (new, active or ineffective; never retired) whose glob or word meets
+the new trigger is an overlap. Nothing is blocked: the lesson is recorded, and the command
+names every overlap on stderr, where a short receipt cannot hide it, with the ways forward:
+
+- the mistake came back: mark the old lesson `--ineffective LID --recall SEQ --reason`;
+- the old lesson no longer applies: `--retire LID --reason`;
+- the new lesson is a twin by mistake: retire the new one.
+
+When you already know the overlap and want both, record with `--despite LID` for **every**
+overlapping id and a `--reason`: no notice, and the `lesson` event keeps
+`despite: {lessons, reason}`, so a reader sees a twin was chosen, not missed. A `--despite`
+that does not name exactly the overlaps is refused (`lesson_despite_mismatch`) and writes
+nothing. The result lists `overlaps` either way.
+
+## Promoted lessons: the repository keeps them
+
+A lesson that proved itself across tasks can leave the registry and live with the code,
+where every future squad on that repository finds it.
+
+```sh
+squadra lesson --actor coord --promote L0004 --repo /path/to/repo \
+  --reason "Recalled in T7 and T12, never ineffective"
+```
+
+- **Earned, not declared.** Allowed only when `lesson.recall` events showed the lesson in at
+  least two distinct tasks, it was never marked ineffective and it is not retired.
+- **One file, stable bytes.** `<repo>/lessons/promoted.json` holds `{"version": 1,
+  "lessons": [...]}`, one entry per lesson sorted by id: `id`, `text`, `trigger` and
+  `provenance` (`registry` name, source `task`, `lesson_event`, `promote_event`,
+  `promote_hash`, `utc`). The hash ties the entry to the `lesson.promote` event, so the
+  claim can be checked in the registry; no local path is written. Commit the file with the
+  code.
+- **Replace, do not pile up.** `--absorbs LID` (repeatable) removes lessons the new one
+  replaces. Each must be retired first (`lesson_absorbed_not_retired`). Promoting the same
+  lesson again with nothing to absorb answers `unchanged` and writes nothing.
+- **Nothing foreign is overwritten.** A damaged file is refused
+  (`lesson_promoted_file_invalid`) until a person repairs it; an id another registry
+  promoted into the same file is refused (`lesson_id_taken`).
+
+At `brief --task` and `start`, the promoted lessons of the task's repository that match by
+the same score follow the registry's, marked `"promoted": true`, at most five. A lesson the
+registry already showed (same id and text) is not repeated. Promoted lessons are not
+registry recalls: they add no `lesson.recall` and cannot be marked ineffective; retire or
+improve the registry lesson and promote again. A missing file changes nothing; an unreadable
+or malformed one shows no promoted lesson and a warning, and `brief`/`start` go on.
+
 ## Limits
 
 - The recall matches text and globs; it does not understand code. A lesson about a file
   the scope never names will not come back: write its trigger with the words the next task
   will use.
 - At most five lessons are shown, and a longer match list is cut, never padded.
-- Lessons belong to one registry. A squad's lessons do not travel to another squad.
+- Lessons belong to one registry. Only promoted lessons travel, with the repository that
+  keeps them.
 
 ## Rules moved from the core (SKILL.md 3.14.0)
 
