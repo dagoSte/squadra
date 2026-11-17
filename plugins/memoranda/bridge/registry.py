@@ -2254,7 +2254,6 @@ def validate(state, kind, actor, d, stored_packet=None, *, candidate_history=())
                     "handover", "handover.prepare", "handover.confirm", "handover.cancel", "project.set",
                     "finding.outcome", "lesson.promote", "faster"},
             "Unknown event kind")
-    # Giro 3.16 (coordination/r316-contratto.md): ogni corsia sostituisce solo la propria riga.
     if kind == 'finding.outcome':
         from findings import validate_event
         validate_event(state, actor, d)
